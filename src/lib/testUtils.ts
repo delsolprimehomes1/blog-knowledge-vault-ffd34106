@@ -565,6 +565,192 @@ async function testArticleInIframe(slug: string): Promise<TestResult> {
   });
 }
 
+// Helper function: Test SEO meta tags using hidden iframe
+async function testSeoMetaTagsInIframe(slug: string): Promise<TestResult[]> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.style.position = 'absolute';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    
+    const articleUrl = `/blog/${slug}`;
+    let timeoutId: NodeJS.Timeout;
+    
+    iframe.onload = () => {
+      try {
+        // Wait for React Helmet to inject meta tags
+        setTimeout(() => {
+          try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            
+            if (!iframeDoc) {
+              resolve([{
+                name: 'SEO Meta Tags',
+                status: 'fail',
+                message: '✗ Could not access iframe document',
+                details: 'Iframe loading failed or was blocked'
+              }]);
+              document.body.removeChild(iframe);
+              clearTimeout(timeoutId);
+              return;
+            }
+
+            const results: TestResult[] = [];
+
+            // Test 1: Title Tag
+            const titleTag = iframeDoc.querySelector('title');
+            results.push({
+              name: 'Meta Title',
+              status: titleTag && titleTag.textContent ? 'pass' : 'fail',
+              message: titleTag && titleTag.textContent
+                ? `✓ Title tag present: "${titleTag.textContent.substring(0, 60)}${titleTag.textContent.length > 60 ? '...' : ''}"`
+                : '✗ Missing title tag',
+              details: titleTag ? `Full title: ${titleTag.textContent}` : undefined
+            });
+
+            // Test 2: Meta Description
+            const metaDescription = iframeDoc.querySelector('meta[name="description"]');
+            const descContent = metaDescription?.getAttribute('content');
+            results.push({
+              name: 'Meta Description',
+              status: descContent ? 'pass' : 'fail',
+              message: descContent
+                ? `✓ Meta description present (${descContent.length} chars)`
+                : '✗ Missing meta description',
+              details: descContent ? `Content: ${descContent.substring(0, 100)}${descContent.length > 100 ? '...' : ''}` : undefined
+            });
+
+            // Test 3: Canonical Tag
+            const canonicalTag = iframeDoc.querySelector('link[rel="canonical"]');
+            const canonicalHref = canonicalTag?.getAttribute('href');
+            results.push({
+              name: 'Canonical Tag',
+              status: canonicalHref ? 'pass' : 'fail',
+              message: canonicalHref
+                ? `✓ Canonical tag present`
+                : '✗ Missing canonical tag',
+              details: canonicalHref ? `Points to: ${canonicalHref}` : undefined
+            });
+
+            // Test 4: Hreflang Tags
+            const hreflangTags = iframeDoc.querySelectorAll('link[rel="alternate"][hreflang]');
+            results.push({
+              name: 'Hreflang Tags',
+              status: hreflangTags.length > 0 ? 'pass' : 'warning',
+              message: hreflangTags.length > 0
+                ? `✓ Hreflang tags present (${hreflangTags.length} languages)`
+                : '⚠ No hreflang tags found',
+              details: hreflangTags.length > 0
+                ? `Languages: ${Array.from(hreflangTags).map(tag => tag.getAttribute('hreflang')).join(', ')}`
+                : 'Hreflang tags help with international SEO'
+            });
+
+            // Test 5: Open Graph Tags
+            const ogTitle = iframeDoc.querySelector('meta[property="og:title"]');
+            const ogDescription = iframeDoc.querySelector('meta[property="og:description"]');
+            const ogImage = iframeDoc.querySelector('meta[property="og:image"]');
+            const ogUrl = iframeDoc.querySelector('meta[property="og:url"]');
+            const ogType = iframeDoc.querySelector('meta[property="og:type"]');
+            const ogTags = iframeDoc.querySelectorAll('meta[property^="og:"]');
+            
+            const ogCount = ogTags.length;
+            const hasRequiredOG = ogTitle && ogDescription && ogImage;
+            
+            results.push({
+              name: 'Open Graph Tags',
+              status: hasRequiredOG ? 'pass' : 'fail',
+              message: hasRequiredOG
+                ? `✓ Open Graph tags present (${ogCount} total)`
+                : `✗ Missing required OG tags`,
+              details: `OG Title: ${ogTitle ? '✓' : '✗'}\n` +
+                      `OG Description: ${ogDescription ? '✓' : '✗'}\n` +
+                      `OG Image: ${ogImage ? '✓' : '✗'}\n` +
+                      `OG URL: ${ogUrl ? '✓' : '✗'}\n` +
+                      `OG Type: ${ogType ? '✓' : '✗'}`
+            });
+
+            // Test 6: Twitter Card Tags
+            const twitterCard = iframeDoc.querySelector('meta[name="twitter:card"]');
+            const twitterTitle = iframeDoc.querySelector('meta[name="twitter:title"]');
+            const twitterDescription = iframeDoc.querySelector('meta[name="twitter:description"]');
+            const twitterImage = iframeDoc.querySelector('meta[name="twitter:image"]');
+            const twitterTags = iframeDoc.querySelectorAll('meta[name^="twitter:"]');
+            
+            const hasTwitterCard = twitterCard !== null;
+            
+            results.push({
+              name: 'Twitter Card Tags',
+              status: hasTwitterCard ? 'pass' : 'warning',
+              message: hasTwitterCard
+                ? `✓ Twitter Card tags present (${twitterTags.length} total)`
+                : '⚠ No Twitter Card tags found',
+              details: hasTwitterCard
+                ? `Twitter Card: ${twitterCard?.getAttribute('content') || 'N/A'}\n` +
+                  `Twitter Title: ${twitterTitle ? '✓' : '✗'}\n` +
+                  `Twitter Description: ${twitterDescription ? '✓' : '✗'}\n` +
+                  `Twitter Image: ${twitterImage ? '✓' : '✗'}`
+                : 'Twitter Cards enhance social sharing appearance'
+            });
+
+            document.body.removeChild(iframe);
+            clearTimeout(timeoutId);
+            resolve(results);
+          } catch (error: any) {
+            resolve([{
+              name: 'SEO Meta Tags',
+              status: 'fail',
+              message: '✗ Error testing iframe content',
+              details: error.message
+            }]);
+            document.body.removeChild(iframe);
+            clearTimeout(timeoutId);
+          }
+        }, 2000); // Wait 2 seconds for React Helmet to inject meta tags
+      } catch (error: any) {
+        resolve([{
+          name: 'SEO Meta Tags',
+          status: 'fail',
+          message: '✗ Iframe access error',
+          details: error.message
+        }]);
+        document.body.removeChild(iframe);
+        clearTimeout(timeoutId);
+      }
+    };
+
+    iframe.onerror = () => {
+      resolve([{
+        name: 'SEO Meta Tags',
+        status: 'fail',
+        message: '✗ Failed to load article page in iframe',
+        details: `Could not load /blog/${slug}`
+      }]);
+      document.body.removeChild(iframe);
+      clearTimeout(timeoutId);
+    };
+
+    // Set timeout to prevent hanging
+    timeoutId = setTimeout(() => {
+      resolve([{
+        name: 'SEO Meta Tags',
+        status: 'fail',
+        message: '✗ Iframe loading timeout',
+        details: 'Article page took too long to load (>10 seconds)'
+      }]);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 10000);
+
+    // Append iframe and load article
+    document.body.appendChild(iframe);
+    iframe.src = articleUrl;
+  });
+}
+
 // Phase 8: Public Article Display Page (Enhanced with Auto-Testing)
 export async function testPhase8(): Promise<TestResult[]> {
   const results: TestResult[] = [];
@@ -700,10 +886,11 @@ export async function testPhase10(): Promise<TestResult[]> {
   return results;
 }
 
-// Phase 11: SEO Meta Tags
+// Phase 11: SEO Meta Tags (Enhanced with Auto-Testing)
 export async function testPhase11(): Promise<TestResult[]> {
   const results: TestResult[] = [];
 
+  // Fetch a published article
   const { data: article } = await supabase
     .from('blog_articles')
     .select('slug')
@@ -715,65 +902,103 @@ export async function testPhase11(): Promise<TestResult[]> {
     results.push({
       name: 'SEO Meta Tags',
       status: 'warning',
-      message: '⚠ No published articles to test'
+      message: '⚠ No published articles to test',
+      details: 'Create and publish an article first'
     });
     return results;
   }
 
-  // Check if we're currently on a blog article page
+  // Check current location
   const currentPath = window.location.pathname;
   const isOnArticlePage = currentPath.startsWith('/blog/') && currentPath !== '/blog';
 
   if (isOnArticlePage) {
-    // Check the actual DOM for meta tags injected by React Helmet
+    // Already on article page - test directly from current DOM
     const titleTag = document.querySelector('title');
     const metaDescription = document.querySelector('meta[name="description"]');
-    const ogTags = document.querySelectorAll('meta[property^="og:"]');
     const canonicalTag = document.querySelector('link[rel="canonical"]');
+    const hreflangTags = document.querySelectorAll('link[rel="alternate"][hreflang]');
+    const ogTags = document.querySelectorAll('meta[property^="og:"]');
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    const twitterCard = document.querySelector('meta[name="twitter:card"]');
+    const twitterTags = document.querySelectorAll('meta[name^="twitter:"]');
     
     results.push({
+      name: 'SEO Test Location',
+      status: 'pass',
+      message: `✓ Currently viewing article page`
+    });
+    
+    // Title
+    results.push({
       name: 'Meta Title',
-      status: titleTag ? 'pass' : 'fail',
-      message: titleTag 
-        ? `✓ Title tag present: "${titleTag.textContent?.substring(0, 50)}..."` 
+      status: titleTag && titleTag.textContent ? 'pass' : 'fail',
+      message: titleTag && titleTag.textContent
+        ? `✓ Title tag present: "${titleTag.textContent.substring(0, 60)}${titleTag.textContent.length > 60 ? '...' : ''}"`
         : '✗ Missing title tag'
     });
     
+    // Description
+    const descContent = metaDescription?.getAttribute('content');
     results.push({
       name: 'Meta Description',
-      status: metaDescription ? 'pass' : 'fail',
-      message: metaDescription 
-        ? `✓ Meta description present (${metaDescription.getAttribute('content')?.length} chars)` 
+      status: descContent ? 'pass' : 'fail',
+      message: descContent
+        ? `✓ Meta description present (${descContent.length} chars)`
         : '✗ Missing meta description'
     });
     
-    results.push({
-      name: 'Open Graph Tags',
-      status: ogTags.length > 0 ? 'pass' : 'fail',
-      message: ogTags.length > 0
-        ? `✓ Open Graph tags present (${ogTags.length} tags)` 
-        : '✗ Missing OG tags'
-    });
-    
+    // Canonical
     results.push({
       name: 'Canonical Tag',
       status: canonicalTag ? 'pass' : 'fail',
-      message: canonicalTag 
-        ? `✓ Canonical tag present: ${canonicalTag.getAttribute('href')}` 
-        : '✗ Missing canonical',
-      details: canonicalTag 
-        ? `Points to: ${canonicalTag.getAttribute('href')}` 
-        : undefined
+      message: canonicalTag
+        ? `✓ Canonical tag present`
+        : '✗ Missing canonical tag',
+      details: canonicalTag ? `Points to: ${canonicalTag.getAttribute('href')}` : undefined
+    });
+    
+    // Hreflang
+    results.push({
+      name: 'Hreflang Tags',
+      status: hreflangTags.length > 0 ? 'pass' : 'warning',
+      message: hreflangTags.length > 0
+        ? `✓ Hreflang tags present (${hreflangTags.length} languages)`
+        : '⚠ No hreflang tags found'
+    });
+    
+    // Open Graph
+    const hasRequiredOG = ogTitle && ogDescription && ogImage;
+    results.push({
+      name: 'Open Graph Tags',
+      status: hasRequiredOG ? 'pass' : 'fail',
+      message: hasRequiredOG
+        ? `✓ Open Graph tags present (${ogTags.length} total)`
+        : '✗ Missing required OG tags'
+    });
+    
+    // Twitter
+    results.push({
+      name: 'Twitter Card Tags',
+      status: twitterCard ? 'pass' : 'warning',
+      message: twitterCard
+        ? `✓ Twitter Card tags present (${twitterTags.length} total)`
+        : '⚠ No Twitter Card tags found'
     });
     
   } else {
-    // Not on article page - provide instructions
+    // Not on article page - use iframe testing
     results.push({
-      name: 'SEO Meta Tags',
-      status: 'warning',
-      message: `⚠ Navigate to an article to test SEO tags`,
-      details: `Example: /blog/${article.slug}\n\nThis test must be run while viewing a blog article page to check meta tags injected by React Helmet.`
+      name: 'SEO Test Location',
+      status: 'pass',
+      message: `✓ Testing article programmatically: /blog/${article.slug}`
     });
+
+    // Test SEO meta tags via iframe
+    const seoTestResults = await testSeoMetaTagsInIframe(article.slug);
+    results.push(...seoTestResults);
   }
 
   return results;
