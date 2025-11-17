@@ -237,15 +237,11 @@ const BlogArticle = () => {
         <meta name="language" content={article.language} />
         
         {/* Inject JSON-LD schemas only if static schemas don't exist */}
-        {shouldInjectSchemas && (
-          <>
-            <script type="application/ld+json">{JSON.stringify(schemas.article)}</script>
-            <script type="application/ld+json">{JSON.stringify(schemas.speakable)}</script>
-            <script type="application/ld+json">{JSON.stringify(schemas.breadcrumb)}</script>
-            {schemas.faq && <script type="application/ld+json">{JSON.stringify(schemas.faq)}</script>}
-            <script type="application/ld+json">{JSON.stringify(schemas.organization)}</script>
-          </>
-        )}
+        {shouldInjectSchemas && <script type="application/ld+json">{JSON.stringify(schemas.article)}</script>}
+        {shouldInjectSchemas && <script type="application/ld+json">{JSON.stringify(schemas.speakable)}</script>}
+        {shouldInjectSchemas && <script type="application/ld+json">{JSON.stringify(schemas.breadcrumb)}</script>}
+        {shouldInjectSchemas && schemas.faq && <script type="application/ld+json">{JSON.stringify(schemas.faq)}</script>}
+        {shouldInjectSchemas && <script type="application/ld+json">{JSON.stringify(schemas.organization)}</script>}
       </Helmet>
 
       <div className="min-h-screen py-8 md:py-12">
