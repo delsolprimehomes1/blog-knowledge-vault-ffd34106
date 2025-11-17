@@ -171,19 +171,35 @@ IMPORTANT:
       throw new Error(`Suggested domain ${replacementDomain} is not in approved whitelist`);
     }
 
-    // Step 5: Verify URL is accessible
-    try {
-      const headCheck = await fetch(suggestion.url, { method: 'HEAD' });
-      if (!headCheck.ok) {
-        throw new Error(`URL returned ${headCheck.status}`);
+    // Determine if this is a high-trust government domain (Option 2)
+    const isHighTrustGov = approvedDomain.tier === 'tier_1' && approvedDomain.trust_score >= 9;
+    console.log(`Domain trust level: tier=${approvedDomain.tier}, trust_score=${approvedDomain.trust_score}, isHighTrustGov=${isHighTrustGov}`);
+
+    // Step 5: Verify URL is accessible (skip for high-trust government domains)
+    if (!isHighTrustGov) {
+      try {
+        const headCheck = await fetch(suggestion.url, { method: 'HEAD' });
+        if (!headCheck.ok) {
+          throw new Error(`URL returned ${headCheck.status}`);
+        }
+        console.log('URL accessibility verified');
+      } catch (accessError) {
+        console.error('URL not accessible:', accessError);
+        throw new Error('Suggested URL is not accessible');
       }
-    } catch (accessError) {
-      console.error('URL not accessible:', accessError);
-      throw new Error('Suggested URL is not accessible');
+    } else {
+      console.log('Skipping accessibility check for high-trust government domain');
     }
 
-    // Step 6: Calculate final score
+    // Step 6: Calculate final score and validate relevance (Option 4)
     const relevanceScore = suggestion.relevanceScore || 80;
+    const minRelevance = isHighTrustGov ? 70 : 80;
+    
+    if (relevanceScore < minRelevance) {
+      throw new Error(`Relevance score too low: ${relevanceScore}/100 (minimum ${minRelevance} for ${approvedDomain.tier})`);
+    }
+    console.log(`Relevance score ${relevanceScore}/100 meets threshold of ${minRelevance}`);
+    
     const trustScore = approvedDomain.trust_score;
     const usageCount = approvedDomain.usage_count || 0;
     const diversityBonus = Math.max(0, 100 - (usageCount * 5));
