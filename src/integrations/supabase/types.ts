@@ -1976,13 +1976,14 @@ export type Database = {
       check_stuck_citation_jobs: { Args: never; Returns: undefined }
       check_stuck_cluster_jobs: { Args: never; Returns: undefined }
       find_articles_with_citation: {
-        Args: { citation_url: string }
+        Args: { citation_url: string; published_only?: boolean }
         Returns: {
           detailed_content: string
           external_citations: Json
           headline: string
           id: string
           language: string
+          status: string
         }[]
       }
       get_database_triggers: {

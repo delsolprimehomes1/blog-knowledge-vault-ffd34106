@@ -264,22 +264,80 @@ const CitationHealth = () => {
     try {
       toast.info("Searching for replacement...", { duration: 2000 });
       
-      // Find which article(s) use this citation (published only)
-      const { data: articles, error: queryError } = await supabase
-        .rpc('find_articles_with_citation', { citation_url: url });
+      // First, try to find citation in published articles only
+      const { data: publishedArticles, error: publishedError } = await supabase
+        .rpc('find_articles_with_citation', { 
+          citation_url: url,
+          published_only: true 
+        });
       
-      if (queryError) {
-        console.error("Query error:", queryError);
+      if (publishedError) {
+        console.error("Query error:", publishedError);
         toast.error("Error searching for citation in articles");
         return;
       }
       
-      if (!articles || articles.length === 0) {
-        toast.error("Citation not found in any published article");
+      // If found in published articles, use that
+      if (publishedArticles && publishedArticles.length > 0) {
+        const article = publishedArticles[0];
+        
+        // Call discover-better-links with proper parameters
+        const { data, error } = await supabase.functions.invoke('discover-better-links', {
+          body: { 
+            originalUrl: url,
+            articleHeadline: article.headline,
+            articleContent: article.detailed_content,
+            articleLanguage: article.language,
+          }
+        });
+
+        if (error) {
+          console.error("Error finding replacement:", error);
+          toast.error("Failed to find replacement");
+          return;
+        }
+
+        toast.success("Replacement suggestion created");
+        queryClient.invalidateQueries({ queryKey: ["dead-link-replacements"] });
         return;
       }
       
-      const article = articles[0];
+      // Not found in published articles, search ALL articles
+      const { data: allArticles, error: allError } = await supabase
+        .rpc('find_articles_with_citation', { 
+          citation_url: url,
+          published_only: false 
+        });
+      
+      if (allError) {
+        console.error("Query error:", allError);
+        toast.error("Error searching for citation in articles");
+        return;
+      }
+      
+      if (!allArticles || allArticles.length === 0) {
+        toast.error("Citation not found in any article", {
+          description: "This citation may have been removed or the URL might be incorrect."
+        });
+        return;
+      }
+      
+      // Found in draft/archived articles
+      const statusCounts = allArticles.reduce((acc: Record<string, number>, article: any) => {
+        acc[article.status] = (acc[article.status] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const statusMessage = Object.entries(statusCounts)
+        .map(([status, count]) => `${count} ${status}`)
+        .join(", ");
+      
+      toast.warning(`Citation found in ${statusMessage} article(s)`, {
+        description: "Finding replacement for unpublished articles. Consider publishing them first."
+      });
+      
+      // Use first article found for context
+      const article = allArticles[0];
       
       // Call discover-better-links with proper parameters
       const { data, error } = await supabase.functions.invoke('discover-better-links', {
