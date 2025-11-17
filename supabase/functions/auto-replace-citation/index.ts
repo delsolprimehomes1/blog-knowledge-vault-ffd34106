@@ -45,10 +45,10 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!perplexityApiKey) {
-      throw new Error('PERPLEXITY_API_KEY is not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -139,47 +139,84 @@ VALIDATION BEFORE RESPONDING:
 4. Ensure relevanceScore is realistic (0-100)
 5. Return ONLY valid JSON, no extra text`;
 
-    // Step 3: Call Perplexity
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+    // Step 3: Call Lovable AI with structured output for strict constraint enforcement
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: 'You are a citation replacement expert. You MUST only suggest URLs from the provided approved domain whitelist. Return only valid JSON.'
+            content: 'You are a citation replacement expert. You can ONLY suggest URLs from approved domains provided by the user.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'suggest_replacement',
+            description: 'Suggest a replacement URL from the approved whitelist',
+            parameters: {
+              type: 'object',
+              properties: {
+                url: {
+                  type: 'string',
+                  description: 'Full URL from one of the approved domains in the whitelist'
+                },
+                sourceName: {
+                  type: 'string',
+                  description: 'Name of the source'
+                },
+                relevanceScore: {
+                  type: 'number',
+                  description: 'Relevance score from 0-100',
+                  minimum: 0,
+                  maximum: 100
+                },
+                reason: {
+                  type: 'string',
+                  description: 'Brief explanation of why this replaces the broken link'
+                }
+              },
+              required: ['url', 'sourceName', 'relevanceScore', 'reason'],
+              additionalProperties: false
+            }
+          }
+        }],
+        tool_choice: { type: 'function', function: { name: 'suggest_replacement' } },
         temperature: 0.2,
-        max_tokens: 1000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      throw new Error(`Lovable AI error: ${response.status}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    console.log('Lovable AI response:', JSON.stringify(data, null, 2));
 
-    console.log('Perplexity response:', aiResponse);
+    // Extract structured output from tool call
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== 'suggest_replacement') {
+      throw new Error('AI did not return a valid replacement suggestion');
+    }
 
-    // Parse suggestion
     let suggestion: any;
     try {
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      suggestion = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(aiResponse);
+      suggestion = JSON.parse(toolCall.function.arguments);
+      console.log('Parsed suggestion:', suggestion);
     } catch (parseError) {
-      console.error('Failed to parse suggestion:', parseError);
-      throw new Error('Could not parse AI response');
+      console.error('Failed to parse tool call arguments:', parseError);
+      throw new Error('Could not parse AI suggestion');
     }
 
     // Step 4: Validate suggestion is in approved whitelist
