@@ -266,10 +266,7 @@ const CitationHealth = () => {
       
       // Find which article(s) use this citation (published only)
       const { data: articles, error: queryError } = await supabase
-        .from('blog_articles')
-        .select('id, headline, detailed_content, language, external_citations')
-        .eq('status', 'published')
-        .like('external_citations', `%"url":"${url}"%`);
+        .rpc('find_articles_with_citation', { citation_url: url });
       
       if (queryError) {
         console.error("Query error:", queryError);
