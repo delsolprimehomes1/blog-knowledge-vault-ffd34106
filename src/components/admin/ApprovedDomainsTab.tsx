@@ -1,12 +1,18 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle2, XCircle, TrendingUp } from "lucide-react";
+import { CheckCircle2, XCircle, TrendingUp, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const ApprovedDomainsTab = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
   const { data: domains, isLoading } = useQuery({
     queryKey: ['approved-domains'],
     queryFn: async () => {
@@ -34,6 +40,37 @@ export const ApprovedDomainsTab = () => {
   });
 
   const usageMap = new Map(usageStats?.map(s => [s.domain, s]) || []);
+
+  // Get unique categories for filter
+  const categories = useMemo(() => {
+    if (!domains) return [];
+    const uniqueCategories = new Set(domains.map(d => d.category));
+    return Array.from(uniqueCategories).sort();
+  }, [domains]);
+
+  // Filter domains based on search and category
+  const filteredDomains = useMemo(() => {
+    if (!domains) return [];
+    
+    let filtered = domains;
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(domain => 
+        domain.domain.toLowerCase().includes(query) ||
+        domain.category.toLowerCase().includes(query) ||
+        domain.notes?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply category filter
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(domain => domain.category === categoryFilter);
+    }
+
+    return filtered;
+  }, [domains, searchQuery, categoryFilter]);
 
   const getTierColor = (tier: string) => {
     switch (tier) {
@@ -107,78 +144,117 @@ export const ApprovedDomainsTab = () => {
         </Card>
       </div>
 
+      {/* Search and Filter Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter Domains</CardTitle>
+          <CardDescription>Search by domain name, category, or description</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4 flex-col sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search domains..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {filteredDomains.length === totalDomains 
+              ? `Showing all ${totalDomains} domains`
+              : `Showing ${filteredDomains.length} of ${totalDomains} domains`
+            }
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Approved Domains</CardTitle>
           <CardDescription>
-            High-authority sources whitelisted for automatic citation placement
+            Whitelisted domains for Perplexity citations - diversity enforced at 20 uses
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Domain</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Tier</TableHead>
-                <TableHead className="text-center">Trust Score</TableHead>
-                <TableHead className="text-center">Usage</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {domains?.map((domain) => {
-                const usage = usageMap.get(domain.domain);
-                const uses = usage?.total_uses || 0;
-
-                return (
-                  <TableRow key={domain.id}>
-                    <TableCell className="font-mono text-sm">
-                      {domain.domain}
-                      {domain.notes && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {domain.notes}
+          <div className="max-h-[600px] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background">
+                <TableRow>
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead>Trust Score</TableHead>
+                  <TableHead>Usage</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDomains.map((domain) => {
+                  const usage = usageMap.get(domain.domain);
+                  const totalUses = usage?.total_uses || 0;
+                  
+                  return (
+                    <TableRow key={domain.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div className="font-mono text-sm">{domain.domain}</div>
+                          {domain.notes && (
+                            <div className="text-xs text-muted-foreground mt-1">{domain.notes}</div>
+                          )}
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {domain.category}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getTierColor(domain.tier || '')}>
-                        {domain.tier?.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <div className="font-semibold">{domain.trust_score}</div>
-                        <div className="text-xs text-muted-foreground">/ 10</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={getUsageColor(uses)}>
-                        {uses}
-                        {usage && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({usage.articles_used_in} articles)
-                          </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{domain.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getTierColor(domain.tier || 'unknown')}>
+                          {domain.tier?.replace('tier_', 'Tier ') || 'N/A'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold">{domain.trust_score}/10</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className={getUsageColor(totalUses)}>
+                            {totalUses} {totalUses === 1 ? 'use' : 'uses'}
+                          </div>
+                          {usage?.articles_used_in && usage.articles_used_in > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              in {usage.articles_used_in} {usage.articles_used_in === 1 ? 'article' : 'articles'}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {domain.is_allowed ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-500" />
                         )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {domain.is_allowed ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-red-600 mx-auto" />
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
