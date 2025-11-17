@@ -92,32 +92,52 @@ serve(async (req) => {
       .split(brokenUrl)[0]
       .slice(-300) + brokenUrl + articleContent.split(brokenUrl)[1].slice(0, 300);
 
-    const prompt = `Find a replacement citation for this broken link. 
+    // Create a strict whitelist with domain-only list for validation
+    const domainOnlyList = availableDomains
+      .slice(0, 100)
+      .map(d => d.domain)
+      .join(', ');
 
-CRITICAL REQUIREMENT: You MUST ONLY use domains from this APPROVED WHITELIST:
+    const prompt = `You are a citation replacement expert. Find a replacement for a broken citation.
 
+CRITICAL CONSTRAINTS - FAILURE TO COMPLY WILL REJECT YOUR RESPONSE:
+═══════════════════════════════════════════════════════════════════
+
+1. APPROVED DOMAINS WHITELIST (YOU MUST USE ONE OF THESE):
 ${domainList}
 
-Article Topic: "${articleHeadline}"
-Article Language: ${articleLanguage}
-Broken Link: ${brokenUrl}
+2. DOMAIN VALIDATION CHECKLIST:
+   ✓ Extract the domain from your suggested URL
+   ✓ Check if it appears in the list above
+   ✓ If NOT in the list, DO NOT use it - choose another domain from the list
+   
+3. FORBIDDEN: Do NOT suggest domains like:
+   ❌ sede.seg-social.gob.es (not in whitelist)
+   ❌ Any domain not explicitly listed above
+   ✅ ONLY use: ${domainOnlyList}
 
-Context around broken link:
-"${contextSnippet}"
+═══════════════════════════════════════════════════════════════════
 
-Return ONLY a single JSON object for the BEST matching URL from the approved whitelist:
+TASK CONTEXT:
+- Article Topic: "${articleHeadline}"
+- Article Language: ${articleLanguage}
+- Broken Link: ${brokenUrl}
+- Context: "${contextSnippet}"
+
+REQUIRED OUTPUT FORMAT (JSON only, no markdown):
 {
-  "url": "https://approved-domain.com/exact-page",
-  "sourceName": "Source Name",
-  "relevanceScore": 95,
-  "reason": "Why this specific page replaces the broken link"
+  "url": "https://[domain-from-whitelist-above]/specific-page-path",
+  "sourceName": "Official Source Name",
+  "relevanceScore": 85,
+  "reason": "Brief explanation of why this replaces the broken link"
 }
 
-IMPORTANT:
-- The domain MUST be from the whitelist above
-- The URL must be specific and relevant, not just the homepage
-- relevanceScore should be 0-100
-- Return ONLY the JSON object, nothing else`;
+VALIDATION BEFORE RESPONDING:
+1. Extract domain from your URL (e.g., "example.com" from "https://example.com/page")
+2. Verify this exact domain appears in the whitelist above
+3. If not found, choose a different domain from the whitelist
+4. Ensure relevanceScore is realistic (0-100)
+5. Return ONLY valid JSON, no extra text`;
 
     // Step 3: Call Perplexity
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
