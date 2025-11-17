@@ -41,7 +41,14 @@ const BlogArticle = () => {
       // Remove static content once React takes over
       if (staticContent && data.id === isStaticPrerendered) {
         staticContent.classList.add('opacity-0');
-        setTimeout(() => staticContent.remove(), 300);
+        setTimeout(() => {
+          staticContent.remove();
+          
+          // Clean up static schemas from head to prevent duplicates
+          document.querySelectorAll('head script[type="application/ld+json"][data-schema]').forEach(script => {
+            script.remove();
+          });
+        }, 300);
       }
 
       return data as unknown as BlogArticleType;
@@ -158,24 +165,6 @@ const BlogArticle = () => {
 
   const schemas = generateAllSchemas(article, author || null, reviewer || null);
 
-  // Check if static schemas already exist to prevent duplicates
-  const existingSchemas = {
-    article: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="article"]'),
-    faq: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="faq"]'),
-    speakable: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="speakable"]'),
-    breadcrumb: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="breadcrumb"]'),
-    organization: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="organization"]')
-  };
-
-  // Check each schema type individually to prevent duplicates
-  const shouldInjectSchemas = {
-    article: !existingSchemas.article,
-    speakable: !existingSchemas.speakable,
-    breadcrumb: !existingSchemas.breadcrumb,
-    faq: !existingSchemas.faq,
-    organization: !existingSchemas.organization
-  };
-
   const baseUrl = window.location.origin;
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
 
@@ -270,42 +259,34 @@ const BlogArticle = () => {
         <meta name="language" content={article.language} />
       </Helmet>
 
-      {/* Synchronous JSON-LD Schema Injection */}
-      {shouldInjectSchemas.article && (
-        <script 
-          type="application/ld+json" 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.article) }}
-          data-schema="article"
-        />
-      )}
-      {shouldInjectSchemas.speakable && (
-        <script 
-          type="application/ld+json" 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.speakable) }}
-          data-schema="speakable"
-        />
-      )}
-      {shouldInjectSchemas.breadcrumb && (
-        <script 
-          type="application/ld+json" 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumb) }}
-          data-schema="breadcrumb"
-        />
-      )}
-      {shouldInjectSchemas.faq && schemas.faq && (
+      {/* Synchronous JSON-LD Schema Injection - Always render */}
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.article) }}
+        data-schema="article"
+      />
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.speakable) }}
+        data-schema="speakable"
+      />
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumb) }}
+        data-schema="breadcrumb"
+      />
+      {schemas.faq && (
         <script 
           type="application/ld+json" 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.faq) }}
           data-schema="faq"
         />
       )}
-      {shouldInjectSchemas.organization && (
-        <script 
-          type="application/ld+json" 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.organization) }}
-          data-schema="organization"
-        />
-      )}
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.organization) }}
+        data-schema="organization"
+      />
 
       <div className="min-h-screen py-8 md:py-12">
         <div className="flex flex-col">
