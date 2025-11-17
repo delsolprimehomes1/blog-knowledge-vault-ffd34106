@@ -25,6 +25,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ChangePreviewModal } from "@/components/admin/ChangePreviewModal";
 import { BulkReplacementDialog } from "@/components/admin/BulkReplacementDialog";
 import { CitationHealthAnalysis } from "@/components/admin/CitationHealthAnalysis";
+import { ApprovedDomainsTab } from "@/components/admin/ApprovedDomainsTab";
 import { Progress } from "@/components/ui/progress";
 
 interface CitationHealth {
@@ -58,6 +59,8 @@ interface DeadLinkReplacement {
 const CitationHealth = () => {
   const queryClient = useQueryClient();
   const [isRunningCheck, setIsRunningCheck] = useState(false);
+  const [isAutoFixing, setIsAutoFixing] = useState(false);
+  const [autoFixProgress, setAutoFixProgress] = useState<{ current: number; total: number; message: string } | null>(null);
   const [selectedReplacements, setSelectedReplacements] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -207,53 +210,39 @@ const CitationHealth = () => {
     }
   };
 
+  // Auto-fix broken links with intelligent Perplexity-powered placement
   const autoFixBrokenLinks = useMutation({
     mutationFn: async () => {
-      // Get all broken/unreachable citations
-      const { data: brokenLinks } = await supabase
-        .from('external_citation_health')
-        .select('url, source_name')
-        .in('status', ['broken', 'unreachable']);
+      setIsAutoFixing(true);
+      setAutoFixProgress({ current: 0, total: 100, message: 'Initializing intelligent citation enhancement...' });
       
-      if (!brokenLinks || brokenLinks.length === 0) {
-        return { fixed: 0, needsReview: 0, message: 'No broken links found' };
-      }
-
-      // Find if there are already approved replacements for these URLs
-      const { data: existingReplacements } = await supabase
-        .from('dead_link_replacements')
-        .select('*')
-        .in('original_url', brokenLinks.map(l => l.url))
-        .eq('status', 'approved')
-        .gte('confidence_score', 85);
-      
-      if (!existingReplacements || existingReplacements.length === 0) {
-        return { fixed: 0, needsReview: brokenLinks.length, message: 'Run health check first to find replacements' };
-      }
-
-      // Apply high-confidence replacements
-      const { data } = await supabase.functions.invoke('apply-citation-replacement', {
+      const { data, error } = await supabase.functions.invoke('auto-enhance-citations', {
         body: {
-          replacementIds: existingReplacements.map(r => r.id),
-          preview: false
+          mode: 'fix_broken',
+          auto_apply: true,
+          use_approved_domains_only: true,
+          diversity_threshold: 20,
+          max_citations_per_article: 5
         }
       });
-      
-      return { 
-        fixed: existingReplacements.length, 
-        needsReview: brokenLinks.length - existingReplacements.length,
-        articlesUpdated: data?.articlesUpdated || 0
-      };
+
+      if (error) throw error;
+      return data;
     },
-    onSuccess: (data) => {
-      if (data.fixed === 0) {
-        toast.info(data.message);
-      } else {
-        toast.success("Auto-fix complete!", {
-          description: `Fixed ${data.fixed} citations in ${data.articlesUpdated} articles. ${data.needsReview > 0 ? `${data.needsReview} need manual review.` : ''}`
+    onSuccess: (result) => {
+      setIsAutoFixing(false);
+      setAutoFixProgress(null);
+      
+      if (result.success) {
+        toast.success(`✨ Intelligent citation enhancement complete!`, {
+          description: `Enhanced ${result.articlesUpdated} articles with ${result.citationsAdded} new citations from ${result.domainsUsed} diverse approved sources.`,
+          duration: 6000
         });
-        queryClient.invalidateQueries({ queryKey: ["citation-health", "dead-link-replacements", "approved-replacements"] });
       }
+
+      queryClient.invalidateQueries({ queryKey: ['citation-health'] });
+      queryClient.invalidateQueries({ queryKey: ['dead-link-replacements'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-domains'] });
     },
     onError: () => {
       toast.error("Auto-fix failed");
@@ -522,6 +511,7 @@ const CitationHealth = () => {
             <TabsTrigger value="pending">Pending ({replacements?.length || 0})</TabsTrigger>
             <TabsTrigger value="approved">Approved ({approvedReplacements?.length || 0})</TabsTrigger>
             <TabsTrigger value="applied">Applied ({appliedReplacements?.length || 0})</TabsTrigger>
+            <TabsTrigger value="domains">Approved Domains</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending">
@@ -566,6 +556,10 @@ const CitationHealth = () => {
                 ))}
               </CardContent></Card>
             ) : <Card><CardContent className="py-12 text-center text-muted-foreground">No applied replacements</CardContent></Card>}
+          </TabsContent>
+
+          <TabsContent value="domains">
+            <ApprovedDomainsTab />
           </TabsContent>
         </Tabs>
 

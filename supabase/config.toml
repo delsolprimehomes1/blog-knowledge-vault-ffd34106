@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.rollback-citation-replacement]
 verify_jwt = false
+
+[functions.auto-enhance-citations]
+verify_jwt = false
