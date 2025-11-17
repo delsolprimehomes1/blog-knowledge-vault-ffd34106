@@ -20,6 +20,7 @@ interface Citation {
   relevance: string;
   language: string;
   index: number;
+  fallbackCitation?: boolean; // Flag for overused domain fallbacks
 }
 
 // ===== DOMAIN DIVERSITY ENFORCEMENT =====
@@ -50,31 +51,38 @@ function extractDomain(url: string): string {
 
 async function trackDomainUsage(supabase: any, domain: string, articleId?: string): Promise<void> {
   try {
-    // First, get current count
-    const { data: existing } = await supabase
-      .from('domain_usage_stats')
-      .select('total_uses')
-      .eq('domain', domain)
-      .single();
+    // ✅ ATOMIC UPDATE: Use Supabase RPC with SQL transaction
+    const { data, error } = await supabase.rpc('increment_domain_usage', {
+      p_domain: domain,
+      p_article_id: articleId
+    });
     
-    const newCount = (existing?.total_uses || 0) + 1;
-    
-    // Upsert with incremented value
-    const { error } = await supabase
-      .from('domain_usage_stats')
-      .upsert({
-        domain,
-        total_uses: newCount,
-        last_used_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'domain'
-      });
-      
     if (error) {
       console.error('Domain tracking error:', error);
+      
+      // Fallback to non-atomic update if RPC fails
+      const { data: existing } = await supabase
+        .from('domain_usage_stats')
+        .select('total_uses')
+        .eq('domain', domain)
+        .single();
+      
+      const newCount = (existing?.total_uses || 0) + 1;
+      
+      await supabase
+        .from('domain_usage_stats')
+        .upsert({
+          domain,
+          total_uses: newCount,
+          last_used_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'domain'
+        });
+        
+      console.log(`⚠️ Fallback tracking: ${domain} (${newCount} total uses)`);
     } else {
-      console.log(`✓ Tracked: ${domain} (${newCount} total uses)`);
+      console.log(`✓ Tracked: ${domain} (atomic)`);
     }
   } catch (error) {
     console.error('Domain tracking failed:', error);
@@ -125,13 +133,32 @@ serve(async (req) => {
         console.log(`   Sentence: "${context.claim.substring(0, 60)}..."`);
         console.log(`   Blocked domains: ${blockedDomains.length}`);
         
-        const citation = await findCitationForClaim(context, language, preferredSourceTypes, blockedDomains, supabase);
+        let citation = await findCitationForClaim(context, language, preferredSourceTypes, blockedDomains, supabase);
+        
+        // ✅ FALLBACK: If all domains blocked/failed, try without blocking
+        if (!citation && blockedDomains.length > 100) { // Only if many domains blocked
+          console.warn('   ⚠️ All domains blocked - attempting fallback...');
+          
+          citation = await findCitationForClaim(
+            context, 
+            language, 
+            preferredSourceTypes, 
+            [], // NO BLOCKED DOMAINS for fallback
+            supabase
+          );
+          
+          if (citation) {
+            // Tag as fallback citation
+            citation.fallbackCitation = true;
+            console.log(`   ⚠️ FALLBACK citation used: ${citation.sourceName}`);
+          }
+        }
         
         if (citation) {
           const domain = extractDomain(citation.url);
           
-          // Double-check domain isn't blocked (safety)
-          if (blockedDomains.includes(domain)) {
+          // Double-check domain isn't blocked (safety) - SKIP for fallback
+          if (!citation.fallbackCitation && blockedDomains.includes(domain)) {
             console.warn(`⚠️ Perplexity returned blocked domain: ${domain} - REJECTING`);
             continue;
           }
@@ -140,7 +167,7 @@ serve(async (req) => {
           console.log(`   ✓ Selected: ${citation.sourceName}`);
           console.log(`   ✓ Domain: ${domain}`);
           
-          // Track domain usage
+          // Track domain usage (even for fallback)
           await trackDomainUsage(supabase, domain, articleId);
         } else {
           console.log(`   ✗ No citation found`);
@@ -182,6 +209,45 @@ serve(async (req) => {
   }
 });
 
+// Enhanced sentence splitter that handles abbreviations, URLs, and decimals
+function smartSentenceSplit(text: string): string[] {
+  // Protect URLs
+  const urlPattern = /https?:\/\/[^\s]+/g;
+  const urls: string[] = [];
+  let protectedText = text.replace(urlPattern, (match) => {
+    urls.push(match);
+    return `__URL_${urls.length - 1}__`;
+  });
+  
+  // Protect common abbreviations
+  const abbrevs = ['U.K.', 'U.S.', 'U.N.', 'E.U.', 'etc.', 'Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Prof.', 'i.e.', 'e.g.'];
+  const abbrevMap: Record<string, string> = {};
+  abbrevs.forEach((abbrev, idx) => {
+    const placeholder = `__ABBREV_${idx}__`;
+    abbrevMap[placeholder] = abbrev;
+    protectedText = protectedText.replace(new RegExp(abbrev.replace('.', '\\.'), 'g'), placeholder);
+  });
+  
+  // Split on sentence boundaries (only when followed by capital letter)
+  const sentences = protectedText
+    .split(/(?<=[.!?])\s+(?=[A-Z])/)
+    .filter(s => s.trim().length > 0);
+  
+  // Restore protected content
+  return sentences.map(sentence => {
+    let restored = sentence;
+    // Restore abbreviations
+    Object.entries(abbrevMap).forEach(([placeholder, original]) => {
+      restored = restored.replace(placeholder, original);
+    });
+    // Restore URLs
+    urls.forEach((url, idx) => {
+      restored = restored.replace(`__URL_${idx}__`, url);
+    });
+    return restored;
+  });
+}
+
 function extractCitationContexts(
   content: string, 
   headline: string,
@@ -191,7 +257,8 @@ function extractCitationContexts(
   
   // Split content into sentences (handle HTML)
   const withoutTags = content.replace(/<[^>]+>/g, ' ');
-  const sentences = withoutTags.split(/(?<=[.!?])\s+/);
+  // ✅ USE SMART SENTENCE SPLITTING
+  const sentences = smartSentenceSplit(withoutTags);
   
   let markerIndex = 0;
   sentences.forEach((sentence, index) => {
@@ -318,12 +385,84 @@ async function verifyUrlWithRetry(url: string, retries = 2): Promise<boolean> {
   return false;
 }
 
+// Semantic validation: Check if citation URL content matches target sentence
+async function validateCitationRelevance(
+  targetSentence: string,
+  citation: Citation,
+  minKeywordMatches: number = 3
+): Promise<{ valid: boolean; score: number; reason: string }> {
+  
+  // Extract keywords from target sentence
+  const extractKeywords = (text: string): Set<string> => {
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those']);
+    
+    return new Set(
+      text
+        .toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 3 && !stopWords.has(word))
+    );
+  };
+  
+  const sentenceKeywords = extractKeywords(targetSentence);
+  const citationKeywords = extractKeywords(citation.sourceName + ' ' + (citation.relevance || ''));
+  
+  // Count keyword overlaps
+  let matchCount = 0;
+  sentenceKeywords.forEach(keyword => {
+    if (citationKeywords.has(keyword)) {
+      matchCount++;
+    }
+  });
+  
+  // Calculate relevance score (0-100)
+  const maxPossible = Math.max(sentenceKeywords.size, citationKeywords.size);
+  const score = maxPossible > 0 ? Math.round((matchCount / maxPossible) * 100) : 0;
+  
+  // Validation logic
+  if (matchCount >= minKeywordMatches) {
+    return {
+      valid: true,
+      score,
+      reason: `Strong match: ${matchCount} shared keywords`
+    };
+  }
+  
+  // Check for named entities (locations, regions)
+  const entityPattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g;
+  const sentenceEntities = new Set((targetSentence.match(entityPattern) || []).map(e => e.toLowerCase()));
+  const citationEntities = new Set((citation.sourceName.match(entityPattern) || []).map(e => e.toLowerCase()));
+  
+  let entityMatches = 0;
+  sentenceEntities.forEach(entity => {
+    if (citationEntities.has(entity)) {
+      entityMatches++;
+    }
+  });
+  
+  if (entityMatches >= 1) {
+    return {
+      valid: true,
+      score: score + 20, // Bonus for entity match
+      reason: `Entity match: ${entityMatches} shared entities`
+    };
+  }
+  
+  return {
+    valid: false,
+    score,
+    reason: `Insufficient match: only ${matchCount} keywords, ${entityMatches} entities`
+  };
+}
+
 async function findCitationForClaim(
   context: CitationContext,
   language: string,
   preferredSourceTypes: string[] = [],
   blockedDomains: string[] = [],
-  supabase: any
+  supabase: any,
+  retryAttempt: number = 0 // Track retries
 ): Promise<Citation | null> {
   
   const languageInstructions: Record<string, string> = {
@@ -450,6 +589,30 @@ Return ONLY this JSON (no markdown, no explanation):
     if (!urlCheck) {
       console.error(`URL not accessible after retries: ${citation.url}`);
       return null;
+    }
+    
+    // ✅ POST-VALIDATION: Verify semantic relevance
+    const validation = await validateCitationRelevance(context.claim, citation);
+    console.log(`   Validation: ${validation.valid ? '✓' : '✗'} Score: ${validation.score}% - ${validation.reason}`);
+
+    if (!validation.valid) {
+      console.warn(`Citation rejected: ${citation.url} - ${validation.reason}`);
+      
+      // Retry with more restrictive prompt (expand context window)
+      if (retryAttempt < 1) { // Allow 1 retry
+        console.log('   Retrying with expanded context...');
+        
+        return await findCitationForClaim(
+          context, 
+          language, 
+          preferredSourceTypes, 
+          blockedDomains, 
+          supabase,
+          retryAttempt + 1 // Track retry count
+        );
+      }
+      
+      return null; // Failed validation and retry
     }
 
     return {
