@@ -158,6 +158,17 @@ const BlogArticle = () => {
 
   const schemas = generateAllSchemas(article, author || null, reviewer || null);
 
+  // Check if static schemas already exist to prevent duplicates
+  const existingSchemas = {
+    article: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="article"]'),
+    faq: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="faq"]'),
+    speakable: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="speakable"]'),
+    breadcrumb: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="breadcrumb"]'),
+    organization: typeof document !== 'undefined' && document.querySelector('script[type="application/ld+json"][data-schema="organization"]')
+  };
+
+  const shouldInjectSchemas = !isStaticPrerendered || !existingSchemas.article;
+
   const baseUrl = window.location.origin;
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
 
@@ -225,12 +236,16 @@ const BlogArticle = () => {
         {author && <meta name="author" content={author.name} />}
         <meta name="language" content={article.language} />
         
-        {/* Inject JSON-LD schemas */}
-        <script type="application/ld+json">{JSON.stringify(schemas.article)}</script>
-        <script type="application/ld+json">{JSON.stringify(schemas.speakable)}</script>
-        <script type="application/ld+json">{JSON.stringify(schemas.breadcrumb)}</script>
-        {schemas.faq && <script type="application/ld+json">{JSON.stringify(schemas.faq)}</script>}
-        <script type="application/ld+json">{JSON.stringify(schemas.organization)}</script>
+        {/* Inject JSON-LD schemas only if static schemas don't exist */}
+        {shouldInjectSchemas && (
+          <>
+            <script type="application/ld+json">{JSON.stringify(schemas.article)}</script>
+            <script type="application/ld+json">{JSON.stringify(schemas.speakable)}</script>
+            <script type="application/ld+json">{JSON.stringify(schemas.breadcrumb)}</script>
+            {schemas.faq && <script type="application/ld+json">{JSON.stringify(schemas.faq)}</script>}
+            <script type="application/ld+json">{JSON.stringify(schemas.organization)}</script>
+          </>
+        )}
       </Helmet>
 
       <div className="min-h-screen py-8 md:py-12">

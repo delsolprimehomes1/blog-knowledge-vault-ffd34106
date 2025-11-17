@@ -192,14 +192,15 @@ function generateStaticHTML(article: ArticleData): string {
   const breadcrumbSchema = generateBreadcrumbSchema(article);
   const faqSchema = generateFAQSchema(article);
   
-  const schemas = [
-    organizationSchema,
-    authorSchema,
-    articleSchema,
-    speakableSchema,
-    breadcrumbSchema,
-    faqSchema
-  ].filter(Boolean);
+  // Individual schemas for injection with data-schema attributes
+  const schemaScripts = [
+    `<script type="application/ld+json" data-schema="organization">${JSON.stringify(organizationSchema, null, 2)}</script>`,
+    authorSchema ? `<script type="application/ld+json" data-schema="author">${JSON.stringify(authorSchema, null, 2)}</script>` : '',
+    `<script type="application/ld+json" data-schema="article">${JSON.stringify(articleSchema, null, 2)}</script>`,
+    `<script type="application/ld+json" data-schema="speakable">${JSON.stringify(speakableSchema, null, 2)}</script>`,
+    `<script type="application/ld+json" data-schema="breadcrumb">${JSON.stringify(breadcrumbSchema, null, 2)}</script>`,
+    faqSchema ? `<script type="application/ld+json" data-schema="faq">${JSON.stringify(faqSchema, null, 2)}</script>` : ''
+  ].filter(Boolean).join('\n  ');
 
   // Build hreflang links for translations
   const hreflangLinks = Object.entries(article.translations)
@@ -234,7 +235,7 @@ ${hreflangLinks}
   <meta name="twitter:image" content="${article.featured_image_url}" />
   
   <!-- JSON-LD Schemas -->
-${schemas.map(schema => `  <script type="application/ld+json">${JSON.stringify(schema, null, 2)}</script>`).join('\n')}
+  ${schemaScripts}
   
   <!-- Preconnect to improve performance -->
   <link rel="preconnect" href="https://kazggnufaoicopvmwhdl.supabase.co">
