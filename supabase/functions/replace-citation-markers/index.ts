@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,15 +22,82 @@ interface Citation {
   index: number;
 }
 
+// ===== DOMAIN DIVERSITY ENFORCEMENT =====
+async function getOverusedDomains(supabase: any, limit: number = 20): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('domain_usage_stats')
+    .select('domain, total_uses')
+    .gte('total_uses', limit)
+    .order('total_uses', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching domain stats:', error);
+    return [];
+  }
+  
+  console.log(`🚫 Blocked ${data.length} overused domains (>${limit} uses)`);
+  return data.map((d: any) => d.domain);
+}
+
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
+}
+
+async function trackDomainUsage(supabase: any, domain: string, articleId?: string): Promise<void> {
+  try {
+    // First, get current count
+    const { data: existing } = await supabase
+      .from('domain_usage_stats')
+      .select('total_uses')
+      .eq('domain', domain)
+      .single();
+    
+    const newCount = (existing?.total_uses || 0) + 1;
+    
+    // Upsert with incremented value
+    const { error } = await supabase
+      .from('domain_usage_stats')
+      .upsert({
+        domain,
+        total_uses: newCount,
+        last_used_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'domain'
+      });
+      
+    if (error) {
+      console.error('Domain tracking error:', error);
+    } else {
+      console.log(`✓ Tracked: ${domain} (${newCount} total uses)`);
+    }
+  } catch (error) {
+    console.error('Domain tracking failed:', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { content, headline, language, category, preferredSourceTypes = [] } = await req.json();
+    const { content, headline, language, category, preferredSourceTypes = [], articleId } = await req.json();
 
     console.log('Citation replacement request:', { headline, language, category });
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get blocked domains (>20 uses)
+    const blockedDomains = await getOverusedDomains(supabase, 20);
 
     // Extract all [CITATION_NEEDED] markers with context
     const citationContexts = extractCitationContexts(content, headline, language);
@@ -53,13 +121,29 @@ serve(async (req) => {
 
     for (const context of citationContexts) {
       try {
-        console.log(`Finding citation for: "${context.claim.substring(0, 50)}..."`);
-        const citation = await findCitationForClaim(context, language, preferredSourceTypes);
+        console.log(`\n🎯 Citation Request #${context.index + 1}`);
+        console.log(`   Sentence: "${context.claim.substring(0, 60)}..."`);
+        console.log(`   Blocked domains: ${blockedDomains.length}`);
+        
+        const citation = await findCitationForClaim(context, language, preferredSourceTypes, blockedDomains, supabase);
+        
         if (citation) {
+          const domain = extractDomain(citation.url);
+          
+          // Double-check domain isn't blocked (safety)
+          if (blockedDomains.includes(domain)) {
+            console.warn(`⚠️ Perplexity returned blocked domain: ${domain} - REJECTING`);
+            continue;
+          }
+          
           citations.push(citation);
-          console.log(`✓ Found: ${citation.sourceName}`);
+          console.log(`   ✓ Selected: ${citation.sourceName}`);
+          console.log(`   ✓ Domain: ${domain}`);
+          
+          // Track domain usage
+          await trackDomainUsage(supabase, domain, articleId);
         } else {
-          console.log(`✗ No citation found for claim`);
+          console.log(`   ✗ No citation found`);
         }
       } catch (error) {
         console.error('Error finding citation:', error);
@@ -112,9 +196,9 @@ function extractCitationContexts(
   let markerIndex = 0;
   sentences.forEach((sentence, index) => {
     if (sentence.includes('[CITATION_NEEDED]')) {
-      // Get surrounding context (2 sentences before and after)
-      const start = Math.max(0, index - 2);
-      const end = Math.min(sentences.length, index + 3);
+      // ✅ SENTENCE-LEVEL CONTEXT: Get 3 sentences before and after
+      const start = Math.max(0, index - 3);
+      const end = Math.min(sentences.length, index + 4);
       const surroundingText = sentences.slice(start, end).join(' ');
       
       // Extract the actual claim (text before [CITATION_NEEDED])
@@ -237,7 +321,9 @@ async function verifyUrlWithRetry(url: string, retries = 2): Promise<boolean> {
 async function findCitationForClaim(
   context: CitationContext,
   language: string,
-  preferredSourceTypes: string[] = []
+  preferredSourceTypes: string[] = [],
+  blockedDomains: string[] = [],
+  supabase: any
 ): Promise<Citation | null> {
   
   const languageInstructions: Record<string, string> = {
@@ -256,24 +342,36 @@ async function findCitationForClaim(
     ? `\n- PRIORITIZE these source types (in order): ${preferredSourceTypes.join(', ')}`
     : '';
 
-  const prompt = `Find ONE authoritative source to cite this claim about "${context.articleTopic}":
+  // ✅ DOMAIN DIVERSITY ENFORCEMENT
+  const blockedDomainsText = blockedDomains.length > 0
+    ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (Do NOT use under ANY circumstances):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains have exceeded the 20-use limit. You MUST find sources from other domains.**`
+    : '';
 
-CLAIM: "${context.claim}"
+  const prompt = `Find ONE authoritative source to cite this EXACT SENTENCE about "${context.articleTopic}":
 
-CONTEXT: ${context.surroundingText}
+✅ **EXACT SENTENCE TO CITE:**
+"${context.claim}"
 
-REQUIREMENTS:
+📝 **MICRO-CONTEXT (surrounding sentences):**
+${context.surroundingText}
+
+🎯 **CRITICAL REQUIREMENT:**
+The citation must DIRECTLY support the topic of the EXACT SENTENCE above.
+NOT just the general article topic — the specific idea in that sentence.
+The reader should feel the link naturally extends what they just read.${blockedDomainsText}
+
+**OTHER REQUIREMENTS:**
 - ${languageInstructions[language] || 'Find English sources'}
 - Prioritize official/government sources (.gov, .gob.es, etc.)${sourcePreferenceText}
 - Must be a real, accessible URL (verify it exists)
-- Must be directly relevant to the specific claim
 - Must be in ${language.toUpperCase()} language
+- SELECT FROM DIVERSE, UNUSED DOMAINS (we have 600+ approved domains)
 
 Return ONLY this JSON (no markdown, no explanation):
 {
   "sourceName": "Official name of organization/website",
   "url": "https://exact-url-to-source",
-  "relevance": "One sentence explaining why this source validates the claim",
+  "relevance": "One sentence explaining why this source validates the EXACT SENTENCE",
   "language": "${language}"
 }`;
 
@@ -295,8 +393,8 @@ Return ONLY this JSON (no markdown, no explanation):
           model: 'sonar-pro',
           messages: [
             {
-              role: 'system',
-              content: `You are a research expert finding authoritative citations. CRITICAL: Only return sources in ${language.toUpperCase()} language. Verify URLs are real and accessible. Return ONLY valid JSON.`
+            role: 'system',
+            content: `You are a research expert finding authoritative citations. CRITICAL: Only return sources in ${language.toUpperCase()} language. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}Match citations to SENTENCE-LEVEL context, not just article topic. Verify URLs are real and accessible. Return ONLY valid JSON.`
             },
             {
               role: 'user',
