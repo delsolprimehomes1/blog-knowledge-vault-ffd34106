@@ -308,10 +308,13 @@ VALIDATION BEFORE RESPONDING:
     }
 
     // Step 9: Replace in content and citations
-    const updatedContent = article.detailed_content.replace(
-      new RegExp(brokenUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-      suggestion.url
-    );
+    const urlRegex = new RegExp(brokenUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const updatedContent = article.detailed_content.replace(urlRegex, suggestion.url);
+    
+    // Log replacement details
+    const replacementCount = (article.detailed_content.match(urlRegex) || []).length;
+    console.log(`Replacing ${replacementCount} occurrence(s) of broken URL in content`);
+    console.log(`Original content length: ${article.detailed_content.length}, Updated: ${updatedContent.length}`);
 
     const updatedCitations = (article.external_citations as any[]).map(c =>
       c.url === brokenUrl
@@ -323,21 +326,33 @@ VALIDATION BEFORE RESPONDING:
           }
         : c
     );
+    
+    const citationReplaceCount = updatedCitations.filter(c => c.url === suggestion.url).length;
+    console.log(`Updated ${citationReplaceCount} citation(s) in external_citations array`);
 
-    // Step 10: Update article
-    const { error: updateError } = await supabase
+    // Step 10: Update article - with detailed logging
+    console.log(`Attempting to update article ${articleId}...`);
+    const { data: updateData, error: updateError, count } = await supabase
       .from('blog_articles')
       .update({
         detailed_content: updatedContent,
         external_citations: updatedCitations,
         updated_at: new Date().toISOString()
       })
-      .eq('id', articleId);
+      .eq('id', articleId)
+      .select();
 
     if (updateError) {
       console.error('Failed to update article:', updateError);
-      throw new Error('Failed to update article');
+      throw new Error(`Failed to update article: ${updateError.message}`);
     }
+
+    if (!updateData || updateData.length === 0) {
+      console.error('Update returned no data - article may not exist or RLS policy blocking update');
+      throw new Error('Article update failed: No rows affected. Check article ID and permissions.');
+    }
+
+    console.log(`✅ Successfully updated article ${articleId}. Rows affected: ${updateData.length}`);
 
     // Step 11: Update citation tracking
     await supabase
