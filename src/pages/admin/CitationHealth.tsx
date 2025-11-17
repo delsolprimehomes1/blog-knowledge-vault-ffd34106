@@ -81,7 +81,7 @@ const CitationHealth = () => {
   const { data: replacements } = useQuery({
     queryKey: ["dead-link-replacements"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("dead_link_replacements").select("*").eq("status", "pending").order("confidence_score", { ascending: false });
+      const { data, error } = await supabase.from("dead_link_replacements").select("*").in("status", ["pending", "suggested"]).order("confidence_score", { ascending: false });
       if (error) throw error;
       return data as DeadLinkReplacement[];
     },
