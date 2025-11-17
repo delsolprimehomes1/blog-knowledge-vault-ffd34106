@@ -108,6 +108,26 @@ const CitationHealth = () => {
     },
   });
 
+  const syncCitationHealth = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-citation-health', {
+        body: {}
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(
+        `Sync complete! Removed ${data.staleEntriesDeleted} stale entries, added ${data.newHealthRecordsCreated} new records.`
+      );
+      queryClient.invalidateQueries({ queryKey: ['citation-health'] });
+      queryClient.invalidateQueries({ queryKey: ['dead-link-replacements'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Sync failed: ${error.message}`);
+    }
+  });
+
   const runHealthCheck = useMutation({
     mutationFn: async () => {
       setCheckProgress({ current: 0, total: 100 });
@@ -336,6 +356,23 @@ const CitationHealth = () => {
             <p className="text-muted-foreground">Monitor external citations and manage replacements</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={() => syncCitationHealth.mutate()}
+              disabled={syncCitationHealth.isPending}
+              variant="outline"
+            >
+              {syncCitationHealth.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Re-Sync Data
+                </>
+              )}
+            </Button>
             <Button 
               onClick={() => autoFixBrokenLinks.mutate()}
               disabled={autoFixBrokenLinks.isPending || stats.broken === 0}
