@@ -1213,71 +1213,121 @@ Return ONLY valid JSON:
         article.reviewer_id = null;
       }
 
-      // 10. EXTERNAL CITATIONS (Perplexity for authoritative sources)
-      try {
-        console.log(`[Job ${jobId}] Finding external citations for article ${i+1}: "${plan.headline}" (${language})`);
-        const citationsResponse = await withTimeout(
-          retryWithBackoff(
-            () => supabase.functions.invoke('find-external-links', {
-              body: {
-                content: article.detailed_content,
-                headline: plan.headline,
-                language: language,
-              },
-            }),
-            3,
-            2000
-          ),
-          120000,
-          'External citations lookup timeout after 2 minutes'
-        );
+      // 10. EXTERNAL CITATIONS (Perplexity for authoritative sources) - WITH RETRY & VALIDATION
+      let citationAttempts = 0;
+      const maxCitationAttempts = 2; // Initial attempt + 1 retry if insufficient
+      const minCitationsRequired = 3;
+      
+      while (citationAttempts < maxCitationAttempts) {
+        citationAttempts++;
+        try {
+          console.log(`[Job ${jobId}] 📚 Finding external citations for article ${i+1}: "${plan.headline}" (${language}) [Attempt ${citationAttempts}/${maxCitationAttempts}]`);
+          
+          const citationsResponse = await withTimeout(
+            retryWithBackoff(
+              () => supabase.functions.invoke('find-external-links', {
+                body: {
+                  content: article.detailed_content,
+                  headline: plan.headline,
+                  language: language,
+                },
+              }),
+              3, // 3 retries with exponential backoff
+              1000, // Start with 1s delay
+              `External citations for article ${i+1}`
+            ),
+            20000, // 20 second timeout per attempt (increased from default)
+            'External citations lookup timeout after 20 seconds'
+          );
 
-        if (citationsResponse.data?.citations && citationsResponse.data.citations.length > 0) {
-          console.log(`[Job ${jobId}] Found ${citationsResponse.data.citations.length} external citations (${citationsResponse.data.totalVerified || 0} verified)`);
-          const citations = citationsResponse.data.citations;
+          // Validate response structure
+          if (citationsResponse.error) {
+            throw new Error(`Edge function error: ${JSON.stringify(citationsResponse.error)}`);
+          }
+
+          const citations = citationsResponse.data?.citations || [];
+          const totalVerified = citationsResponse.data?.totalVerified || 0;
           
-          // Insert citations into content
-          let updatedContent = article.detailed_content;
-          
-          for (const citation of citations) {
-            if (citation.insertAfterHeading) {
-              // Find the heading and insert citation in first paragraph after it
-              const headingRegex = new RegExp(
-                `<h2[^>]*>\\s*${citation.insertAfterHeading}\\s*</h2>`,
-                'i'
-              );
-              
-              const match = updatedContent.match(headingRegex);
-              if (match && match.index !== undefined) {
-                const headingIndex = match.index + match[0].length;
-                const afterHeading = updatedContent.substring(headingIndex);
-                const nextParagraphMatch = afterHeading.match(/<p>/);
+          console.log(`[Job ${jobId}] ✅ Found ${citations.length} external citations (${totalVerified} verified)`);
+
+          // Check if we met minimum threshold
+          if (citations.length < minCitationsRequired) {
+            console.warn(`[Job ${jobId}] ⚠️ Only found ${citations.length} citations (minimum: ${minCitationsRequired})`);
+            
+            if (citationAttempts < maxCitationAttempts) {
+              console.log(`[Job ${jobId}] 🔄 Retrying with relaxed parameters...`);
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+              continue; // Try again
+            } else {
+              console.warn(`[Job ${jobId}] ⚠️ Proceeding with ${citations.length} citations after ${citationAttempts} attempts`);
+            }
+          }
+
+          if (citations.length > 0) {
+            // Insert citations into content
+            let updatedContent = article.detailed_content;
+            
+            for (const citation of citations) {
+              if (citation.insertAfterHeading) {
+                // Find the heading and insert citation in first paragraph after it
+                const headingRegex = new RegExp(
+                  `<h2[^>]*>\\s*${citation.insertAfterHeading}\\s*</h2>`,
+                  'i'
+                );
                 
-                if (nextParagraphMatch && nextParagraphMatch.index !== undefined) {
-                  const insertPoint = headingIndex + nextParagraphMatch.index + 3; // after <p>
+                const match = updatedContent.match(headingRegex);
+                if (match && match.index !== undefined) {
+                  const headingIndex = match.index + match[0].length;
+                  const afterHeading = updatedContent.substring(headingIndex);
+                  const nextParagraphMatch = afterHeading.match(/<p>/);
                   
-                  const citationLink = `According to the <a href="${citation.url}" target="_blank" rel="noopener" title="${citation.sourceName}">${citation.anchorText}</a>, `;
-                  
-                  updatedContent = updatedContent.substring(0, insertPoint) + 
-                                 citationLink + 
-                                 updatedContent.substring(insertPoint);
+                  if (nextParagraphMatch && nextParagraphMatch.index !== undefined) {
+                    const insertPoint = headingIndex + nextParagraphMatch.index + 3; // after <p>
+                    
+                    const citationLink = `According to the <a href="${citation.url}" target="_blank" rel="noopener" title="${citation.sourceName}">${citation.anchorText}</a>, `;
+                    
+                    updatedContent = updatedContent.substring(0, insertPoint) + 
+                                   citationLink + 
+                                   updatedContent.substring(insertPoint);
+                  }
                 }
               }
             }
+            
+            article.detailed_content = updatedContent;
+            article.external_citations = citations.map((c: any) => ({
+              text: c.anchorText,
+              url: c.url,
+              source: c.sourceName,
+            }));
+            
+            console.log(`[Job ${jobId}] 💾 Saved ${citations.length} citations to article`);
+          } else {
+            article.external_citations = [];
+            console.warn(`[Job ${jobId}] ⚠️ No citations found after ${citationAttempts} attempts`);
           }
           
-          article.detailed_content = updatedContent;
-          article.external_citations = citations.map((c: any) => ({
-            text: c.anchorText,
-            url: c.url,
-            source: c.sourceName,
-          }));
-        } else {
-          article.external_citations = [];
+          break; // Success - exit retry loop
+          
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`[Job ${jobId}] ❌ External citations attempt ${citationAttempts}/${maxCitationAttempts} failed:`, {
+            error: errorMessage,
+            article: plan.headline,
+            language: language
+          });
+          
+          // If this was the last attempt, set empty citations
+          if (citationAttempts >= maxCitationAttempts) {
+            console.error(`[Job ${jobId}] ❌ All citation attempts failed - proceeding with 0 citations`);
+            article.external_citations = [];
+            break;
+          }
+          
+          // Wait before next attempt
+          console.log(`[Job ${jobId}] 🔄 Waiting 3s before next citation attempt...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
-      } catch (error) {
-        console.error('External citations failed:', error);
-        article.external_citations = [];
       }
 
       // Post-process: Replace any remaining [CITATION_NEEDED] markers
