@@ -61,13 +61,14 @@ export const ExternalCitationsSection = ({
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <Alert className="mb-4">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Approved Domains Only</AlertTitle>
+        <Alert variant="destructive" className="mb-4 border-red-500 bg-red-50">
+          <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Citations must be from the approved 250-domain whitelist. Government sources (.gob.es, spain.info) are prioritized.
-            {' '}
-            <a href="/admin/approved-domains" className="text-primary underline">View approved domains</a>
+            <strong>⚠️ Competitor Blacklist Active:</strong> Citations from ~296 competitor real estate websites are strictly blocked. 
+            The AI will automatically reject any suggestions from blacklisted competitor domains.{' '}
+            <a href="/admin/approved-domains" className="text-red-700 underline hover:text-red-900 font-semibold">
+              View blocked domains →
+            </a>
           </AlertDescription>
         </Alert>
         

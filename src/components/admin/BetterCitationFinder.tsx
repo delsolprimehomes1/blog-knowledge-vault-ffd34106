@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw } from "lucide-react";
+import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface BetterCitation {
@@ -110,6 +110,12 @@ export const BetterCitationFinder = ({
         <CardDescription>
           Discover high-authority sources with Perplexity AI
         </CardDescription>
+        <Alert variant="destructive" className="mt-3 border-red-500 bg-red-50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            <strong>Competitor Blacklist:</strong> ~296 competitor domains are automatically blocked from suggestions.
+          </AlertDescription>
+        </Alert>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button

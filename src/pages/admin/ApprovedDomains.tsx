@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Building2, TrendingUp } from "lucide-react";
+import { XCircle, Shield, TrendingUp, AlertCircle } from "lucide-react";
 
 export default function ApprovedDomains() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +21,7 @@ export default function ApprovedDomains() {
       const { data, error } = await supabase
         .from('approved_domains')
         .select('*')
-        .eq('is_allowed', true)
+        .eq('is_allowed', false) // BLACKLIST: Show blocked domains
         .order('domain', { ascending: true });
       
       if (error) throw error;
@@ -110,56 +110,59 @@ export default function ApprovedDomains() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Approved Citation Domains</h1>
-            <p className="text-muted-foreground mt-1">
-              Strict whitelist of 250 allowed domains for citations
-            </p>
-          </div>
-          <Badge variant="outline" className="text-lg px-4 py-2">
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            {domains?.length || 0} / 250 domains
-          </Badge>
+        <div>
+          <h1 className="text-3xl font-bold mb-2 text-red-600">🚫 Blocked Competitor Domains</h1>
+          <p className="text-muted-foreground">
+            This is a <strong>BLACKLIST</strong> of competitor domains that are automatically blocked from all citations. 
+            These 296 real estate competitor websites will never appear in AI-suggested citations.
+          </p>
         </div>
-
+        
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="border-red-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Approved</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Blocked Competitor Domains
+              </CardTitle>
+              <XCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{domains?.length || 0}</div>
+              <div className="text-2xl font-bold text-red-600">{domains?.length || 0}</div>
               <p className="text-xs text-muted-foreground">
-                Strict whitelist enforced
+                Blacklisted competitors
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-red-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tier 1 Domains</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Real Estate Competitors
+              </CardTitle>
+              <Shield className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{tier1Count}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {domains?.filter(d => d.category === 'Real Estate Competitors').length || 0}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Government & official sources
+                Direct property competitors
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-red-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usage</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">
+                Protection Status
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalUsage}</div>
+              <div className="text-2xl font-bold text-green-600">Active</div>
               <p className="text-xs text-muted-foreground">
-                Citations across all articles
+                All competitor citations blocked
               </p>
             </CardContent>
           </Card>
@@ -232,9 +235,12 @@ export default function ApprovedDomains() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
-                          ✓ Active
-                        </Badge>
+                      <Badge 
+                        variant="destructive"
+                        className="whitespace-nowrap bg-red-600 hover:bg-red-700"
+                      >
+                        🚫 BLOCKED
+                      </Badge>
                       </TableCell>
                     </TableRow>
                   ))}
