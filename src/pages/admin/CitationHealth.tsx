@@ -251,185 +251,56 @@ const CitationHealth = () => {
 
   const handleFindReplacement = async (url: string) => {
     try {
-      toast.info("Searching for replacement...", { duration: 2000 });
-      
-      // First, try to find citation in published articles only
-      const { data: publishedArticles, error: publishedError } = await supabase
-        .rpc('find_articles_with_citation', { 
-          citation_url: url,
-          published_only: true 
-        });
-      
-      if (publishedError) {
-        console.error("Query error:", publishedError);
-        toast.error("Error searching for citation in articles");
-        return;
-      }
-      
-      // If found in published articles, use that
-      if (publishedArticles && publishedArticles.length > 0) {
-        const article = publishedArticles[0];
-        
-        // Call discover-better-links with proper parameters
-        const { data, error } = await supabase.functions.invoke('discover-better-links', {
-          body: { 
-            originalUrl: url,
-            articleHeadline: article.headline,
-            articleContent: article.detailed_content,
-            articleLanguage: article.language,
-          }
-        });
+      setIsAutoFixing(true);
+      toast.info("Finding approved replacement...", { duration: 2000 });
 
-        if (error) {
-          console.error("Error finding replacement:", error);
-          toast.error("Failed to find replacement");
-          return;
-        }
-
-        // Save suggestions to dead_link_replacements table with duplicate prevention
-        if (data?.suggestions && data.suggestions.length > 0) {
-          const replacementsToInsert = data.suggestions.slice(0, 3).map((s: any) => ({
-            original_url: url,
-            original_source: 'Auto-detected broken link',
-            replacement_url: s.suggestedUrl,
-            replacement_source: s.sourceName,
-            replacement_reason: s.reason,
-            confidence_score: (s.relevanceScore + s.authorityScore * 10) / 2,
-            status: s.verified ? 'suggested' : 'pending',
-            suggested_by: 'ai'
-          }));
-          
-          let newCount = 0;
-          let updatedCount = 0;
-          
-          for (const replacement of replacementsToInsert) {
-            // Check if this exact pair already exists
-            const { data: existing } = await supabase
-              .from("dead_link_replacements")
-              .select("id, duplicate_count")
-              .eq("original_url", replacement.original_url)
-              .eq("replacement_url", replacement.replacement_url)
-              .in("status", ["pending", "suggested"])
-              .maybeSingle();
-
-            if (existing) {
-              // Update existing record instead of inserting
-              const { error: updateError } = await supabase
-                .from("dead_link_replacements")
-                .update({ 
-                  updated_at: new Date().toISOString(),
-                  duplicate_count: (existing.duplicate_count || 0) + 1
-                })
-                .eq("id", existing.id);
-              
-              if (!updateError) {
-                updatedCount++;
-              }
-            } else {
-              // Insert new record
-              const { error: insertError } = await supabase
-                .from("dead_link_replacements")
-                .insert({ ...replacement, duplicate_count: 0 });
-              
-              if (!insertError) {
-                newCount++;
-              }
-            }
-          }
-
-          if (newCount > 0 || updatedCount > 0) {
-            const message = [];
-            if (newCount > 0) message.push(`${newCount} new`);
-            if (updatedCount > 0) message.push(`${updatedCount} updated`);
-            toast.success(`Replacement suggestions: ${message.join(", ")}`);
-            queryClient.invalidateQueries({ queryKey: ["dead-link-replacements"] });
-          } else {
-            toast.warning("No new replacement suggestions found");
-          }
-        } else {
-          toast.warning("No suitable replacements found");
-        }
-        return;
-      }
-      
-      // Not found in published articles, search ALL articles
-      const { data: allArticles, error: allError } = await supabase
-        .rpc('find_articles_with_citation', { 
-          citation_url: url,
-          published_only: false 
-        });
-      
-      if (allError) {
-        console.error("Query error:", allError);
-        toast.error("Error searching for citation in articles");
-        return;
-      }
-      
-      if (!allArticles || allArticles.length === 0) {
-        toast.error("Citation not found in any article", {
-          description: "This citation may have been removed or the URL might be incorrect."
-        });
-        return;
-      }
-      
-      // Found in draft/archived articles
-      const statusCounts = allArticles.reduce((acc: Record<string, number>, article: any) => {
-        acc[article.status] = (acc[article.status] || 0) + 1;
-        return acc;
-      }, {});
-      
-      const statusMessage = Object.entries(statusCounts)
-        .map(([status, count]) => `${count} ${status}`)
-        .join(", ");
-      
-      toast.warning(`Citation found in ${statusMessage} article(s)`, {
-        description: "Finding replacement for unpublished articles. Consider publishing them first."
+      // Find article using this citation
+      const { data: articles, error: articlesError } = await supabase.rpc('find_articles_with_citation', {
+        citation_url: url,
+        published_only: true
       });
-      
-      // Use first article found for context
-      const article = allArticles[0];
-      
-      // Call discover-better-links with proper parameters
-      const { data, error } = await supabase.functions.invoke('discover-better-links', {
-        body: { 
-          originalUrl: url,
+
+      if (articlesError) throw articlesError;
+
+      if (!articles || articles.length === 0) {
+        toast.error("No published articles found with this citation");
+        return;
+      }
+
+      const article = articles[0];
+
+      // Call new auto-replace function
+      const { data, error } = await supabase.functions.invoke('auto-replace-citation', {
+        body: {
+          brokenUrl: url,
+          articleId: article.id,
           articleHeadline: article.headline,
           articleContent: article.detailed_content,
-          articleLanguage: article.language,
-          context: 'Citation replacement for broken link'
+          articleLanguage: article.language
         }
       });
-      
+
       if (error) throw error;
-      
-      // Save suggestions to dead_link_replacements table
-      if (data?.suggestions && data.suggestions.length > 0) {
-        const replacementsToInsert = data.suggestions.slice(0, 3).map((s: any) => ({
-          original_url: url,
-          original_source: 'Auto-detected broken link',
-          replacement_url: s.suggestedUrl,
-          replacement_source: s.sourceName,
-          replacement_reason: s.reason,
-          confidence_score: (s.relevanceScore + s.authorityScore * 10) / 2,
-          status: s.verified ? 'suggested' : 'pending',
-          suggested_by: 'ai'
-        }));
-        
-        const { error: insertError } = await supabase
-          .from('dead_link_replacements')
-          .insert(replacementsToInsert);
-        
-        if (insertError) throw insertError;
-        
-        toast.success(`Found ${data.suggestions.length} replacement suggestions!`);
-        queryClient.invalidateQueries({ queryKey: ["dead-link-replacements"] });
-      } else {
-        toast.warning("No suitable replacements found");
+
+      if (!data.success) {
+        throw new Error(data.error || 'Replacement failed');
       }
-      
+
+      // Show success with details
+      toast.success('Citation replaced automatically!', {
+        description: `Replaced with ${data.replacementDomain} (Trust: ${data.trustScore}/10, Score: ${data.finalScore})`,
+        duration: 6000
+      });
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['citation-health'] });
+      queryClient.invalidateQueries({ queryKey: ['domain-usage'] });
+
     } catch (error) {
-      console.error('Replacement search error:', error);
-      toast.error("Failed to find replacement: " + ((error as Error).message || 'Unknown error'));
+      console.error('Auto-replace failed:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to replace citation");
+    } finally {
+      setIsAutoFixing(false);
     }
   };
 
