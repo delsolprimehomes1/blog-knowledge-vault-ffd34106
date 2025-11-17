@@ -72,15 +72,24 @@ serve(async (req) => {
     );
 
     // Filter out overused domains (>20 uses) and enrich with usage data
+    // Tier 1 domains (trust 9-10) are exempt from usage limits
     const availableDomains: ApprovedDomain[] = (approvedDomains || [])
       .map(d => ({
         ...d,
         usage_count: usageMap.get(d.domain) || 0
       }))
-      .filter(d => d.usage_count < 20)
+      .filter(d => {
+        // Tier 1 domains (trust 9-10) are exempt from usage limits
+        if (d.tier === 'tier_1' && d.trust_score >= 9) {
+          return true;
+        }
+        // Other domains must have <20 uses
+        return d.usage_count < 20;
+      })
       .sort((a, b) => b.trust_score - a.trust_score);
 
-    console.log(`Whitelist: ${availableDomains.length} approved domains available`);
+    const tier1Count = availableDomains.filter(d => d.tier === 'tier_1' && d.trust_score >= 9).length;
+    console.log(`Whitelist: ${availableDomains.length} approved domains available (${tier1Count} tier_1 exempt from usage limits)`);
 
     // Step 2: Build strict whitelist prompt for Perplexity
     const domainList = availableDomains
