@@ -230,9 +230,26 @@ VALIDATION BEFORE RESPONDING:
       throw new Error('Could not parse AI suggestion');
     }
 
-    // Step 4: Validate suggestion is in approved whitelist
+    // Step 4: Validate suggestion is in approved whitelist (with subdomain support)
     const replacementDomain = new URL(suggestion.url).hostname.replace('www.', '');
-    const approvedDomain = availableDomains.find(d => d.domain === replacementDomain);
+    
+    // First try exact match
+    let approvedDomain = availableDomains.find(d => d.domain === replacementDomain);
+    
+    // If no exact match, check if parent domain is approved
+    if (!approvedDomain) {
+      // Extract parent domain (e.g., "educacionyfp.gob.es" -> "gob.es")
+      const domainParts = replacementDomain.split('.');
+      if (domainParts.length > 2) {
+        // Check if this is a subdomain (has more than 2 parts)
+        const parentDomain = domainParts.slice(-2).join('.'); // Get last 2 parts
+        approvedDomain = availableDomains.find(d => d.domain === parentDomain);
+        
+        if (approvedDomain) {
+          console.log(`✓ Subdomain match: ${replacementDomain} → approved via parent ${parentDomain}`);
+        }
+      }
+    }
 
     if (!approvedDomain) {
       console.error(`Rejected: ${replacementDomain} not in whitelist`);
