@@ -56,6 +56,13 @@ function generateOrganizationSchema() {
       {"@type": "City", "name": "Benalmádena"},
       {"@type": "City", "name": "Mijas"}
     ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Customer Service",
+      "availableLanguage": ["en", "es", "de", "nl", "fr", "pl", "sv", "da", "hu"],
+      "telephone": "+34-952-123-456",
+      "email": "info@delsolprimehomes.com"
+    },
     "sameAs": [
       "https://www.facebook.com/delsolprimehomes",
       "https://www.instagram.com/delsolprimehomes",
