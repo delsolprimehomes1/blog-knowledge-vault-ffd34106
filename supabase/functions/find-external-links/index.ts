@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,45 @@ async function verifyUrlWithRetry(url: string, retries = 2): Promise<boolean> {
   return false;
 }
 
+// ===== DOMAIN DIVERSITY ENFORCEMENT =====
+async function getOverusedDomains(supabase: any, limit: number = 20): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('domain_usage_stats')
+    .select('domain, total_uses')
+    .gte('total_uses', limit)
+    .order('total_uses', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching domain stats:', error);
+    return [];
+  }
+  
+  console.log(`🚫 Blocked ${data.length} overused domains (>${limit} uses)`);
+  return data.map((d: any) => d.domain);
+}
+
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
+}
+
+function checkUrlLanguage(url: string, language: string): boolean {
+  const languagePatterns: Record<string, string[]> = {
+    'es': ['.es', '.gob.es', 'spain', 'spanish', 'espana', 'espanol'],
+    'en': ['.com', '.org', '.gov', '.uk', 'english'],
+    'nl': ['.nl', 'dutch', 'netherlands', 'nederland'],
+    'de': ['.de', 'german', 'deutschland'],
+    'fr': ['.fr', 'french', 'france'],
+  };
+  
+  const patterns = languagePatterns[language] || languagePatterns['es'];
+  return patterns.some(pattern => url.includes(pattern));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -132,6 +172,14 @@ serve(async (req) => {
     if (!PERPLEXITY_API_KEY) {
       throw new Error('PERPLEXITY_API_KEY is not configured');
     }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get blocked domains
+    const blockedDomains = await getOverusedDomains(supabase, 20);
 
     // Language-specific configurations
     const languageConfig: Record<string, {
@@ -170,6 +218,10 @@ serve(async (req) => {
       ? `\n\nMANDATORY: At least ONE source MUST be from an official government domain (${config.domains.join(' or ')}). This is non-negotiable and CRITICAL for article validation.`
       : '';
 
+    const blockedDomainsText = blockedDomains.length > 0
+      ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 20-use limit. Select DIVERSE alternatives from 600+ approved domains.**`
+      : '';
+
     const prompt = `${config.instruction}:
 
 Article Topic: "${headline}"
@@ -184,7 +236,8 @@ CRITICAL REQUIREMENTS:
 - ALL sources must be HTTPS and currently active
 - Sources must be DIRECTLY RELEVANT to the article topic: "${headline}"
 - Authoritative sources only (government, educational, major institutions)
-- For each source, identify WHERE in the article it should be cited${governmentRequirement}
+- For each source, identify WHERE in the article it should be cited
+- **NEVER use blocked domains - select diverse, unused alternatives**${governmentRequirement}${blockedDomainsText}
 
 Return ONLY valid JSON in this exact format:
 [
@@ -213,7 +266,7 @@ Return only the JSON array, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: `You are a research expert finding authoritative ${config.languageName}-language sources for real estate articles. Always prioritize official government sources. Return only valid JSON arrays. ALL sources must be in ${config.languageName}.`
+            content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources. Select diverse, unused domains.`
           },
           {
             role: 'user',
@@ -254,11 +307,42 @@ Return only the JSON array, nothing else.`;
       throw new Error('No citations found');
     }
 
-    console.log(`Found ${citations.length} citations, verifying URLs...`);
+    console.log(`Found ${citations.length} citations from Perplexity`);
+
+    // ✅ Filter out blocked domains FIRST (before verification)
+    const allowedCitations = citations.filter((citation: Citation) => {
+      if (!citation.url || !citation.sourceName) return false;
+      if (!citation.url.startsWith('http')) return false;
+      
+      const domain = extractDomain(citation.url);
+      if (blockedDomains.includes(domain)) {
+        console.warn(`🚫 BLOCKED: ${domain} - exceeds 20-use limit`);
+        return false;
+      }
+      
+      // Verify language matches
+      const urlLower = citation.url.toLowerCase();
+      const isCorrectLanguage = checkUrlLanguage(urlLower, language);
+      
+      if (!isCorrectLanguage) {
+        console.warn(`Rejected ${citation.url} - language mismatch`);
+        return false;
+      }
+      
+      return true;
+    });
+
+    console.log(`${allowedCitations.length} citations passed filtering (${citations.length - allowedCitations.length} blocked)`);
+
+    if (allowedCitations.length === 0) {
+      throw new Error('All suggested citations were blocked or invalid');
+    }
+
+    console.log(`Verifying ${allowedCitations.length} URLs...`);
 
     // Verify each URL with retry logic
     const verifiedCitations = await Promise.all(
-      citations.map(async (citation: Citation) => {
+      allowedCitations.map(async (citation: Citation) => {
         const verified = await verifyUrlWithRetry(citation.url);
         return { ...citation, verified };
       })
