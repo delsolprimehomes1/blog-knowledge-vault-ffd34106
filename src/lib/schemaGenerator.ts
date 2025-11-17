@@ -117,9 +117,12 @@ export function generateArticleSchema(
     schema.author = generatePersonSchema(author);
   }
   
-  if (reviewer) {
-    schema.reviewedBy = generatePersonSchema(reviewer);
-  }
+  // REMOVED: reviewedBy is not a valid BlogPosting property per schema.org
+  // This was causing Google to misinterpret the markup as Review schema
+  // Reviewer information is still displayed in the UI via TrustSignals component
+  // if (reviewer) {
+  //   schema.reviewedBy = generatePersonSchema(reviewer);
+  // }
   
   if (article.external_citations && article.external_citations.length > 0) {
     schema.citation = article.external_citations.map(citation => ({
