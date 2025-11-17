@@ -204,6 +204,8 @@ const CitationHealth = () => {
       setBulkResults(data.results || []);
       setBulkProgress(100);
       queryClient.invalidateQueries({ queryKey: ["dead-link-replacements", "approved-replacements", "applied-replacements"] });
+      queryClient.invalidateQueries({ queryKey: ['blog-articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article-revisions'] });
       setSelectedReplacements([]);
     } catch (error) {
       toast.error("Bulk application failed");
@@ -243,6 +245,8 @@ const CitationHealth = () => {
       queryClient.invalidateQueries({ queryKey: ['citation-health'] });
       queryClient.invalidateQueries({ queryKey: ['dead-link-replacements'] });
       queryClient.invalidateQueries({ queryKey: ['approved-domains'] });
+      queryClient.invalidateQueries({ queryKey: ['blog-articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article-revisions'] });
     },
     onError: () => {
       toast.error("Auto-fix failed");
@@ -292,9 +296,11 @@ const CitationHealth = () => {
         duration: 6000
       });
 
-      // Refresh data
+      // Refresh data - including article content
       queryClient.invalidateQueries({ queryKey: ['citation-health'] });
       queryClient.invalidateQueries({ queryKey: ['domain-usage'] });
+      queryClient.invalidateQueries({ queryKey: ['blog-articles'] });
+      queryClient.invalidateQueries({ queryKey: ['article-revisions'] });
 
     } catch (error) {
       console.error('Auto-replace failed:', error);
