@@ -264,14 +264,21 @@ const CitationHealth = () => {
     try {
       toast.info("Searching for replacement...", { duration: 2000 });
       
-      // Find which article(s) use this citation
-      const { data: articles } = await supabase
+      // Find which article(s) use this citation (published only)
+      const { data: articles, error: queryError } = await supabase
         .from('blog_articles')
         .select('id, headline, detailed_content, language, external_citations')
-        .contains('external_citations', [{ url }]);
+        .eq('status', 'published')
+        .like('external_citations', `%"url":"${url}"%`);
+      
+      if (queryError) {
+        console.error("Query error:", queryError);
+        toast.error("Error searching for citation in articles");
+        return;
+      }
       
       if (!articles || articles.length === 0) {
-        toast.error("Citation not found in any article");
+        toast.error("Citation not found in any published article");
         return;
       }
       
