@@ -44,11 +44,7 @@ const BlogArticle = () => {
         staticContent.classList.add('opacity-0');
         setTimeout(() => {
           staticContent.remove();
-          
-          // Clean up static schemas from head to prevent duplicates
-          document.querySelectorAll('head script[type="application/ld+json"][data-schema]').forEach(script => {
-            script.remove();
-          });
+          // React handles schema updates naturally - no manual cleanup needed
         }, 300);
       }
 
