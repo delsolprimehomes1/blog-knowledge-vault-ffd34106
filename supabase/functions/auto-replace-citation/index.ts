@@ -97,9 +97,11 @@ serve(async (req) => {
       .map(d => `- ${d.domain} (Trust: ${d.trust_score}, Category: ${d.category})`)
       .join('\n');
 
-    const contextSnippet = articleContent
-      .split(brokenUrl)[0]
-      .slice(-300) + brokenUrl + articleContent.split(brokenUrl)[1].slice(0, 300);
+    // Build context snippet around the broken URL with safety checks
+    const parts = articleContent.split(brokenUrl);
+    const beforeUrl = (parts[0] || '').slice(-300);
+    const afterUrl = (parts[1] || '').slice(0, 300);
+    const contextSnippet = beforeUrl + brokenUrl + afterUrl;
 
     // Create a strict whitelist with domain-only list for validation
     const domainOnlyList = availableDomains
