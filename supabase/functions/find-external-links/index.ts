@@ -383,10 +383,15 @@ Return only the JSON array, nothing else.`;
     
     console.log(`Authority scores: ${citationsWithScores.map((c: any) => `${c.sourceName}: ${c.authorityScore}`).join(', ')}`);
 
-    // Ensure minimum 2 citations (relaxed due to SSL verification issues)
-    if (citationsWithScores.length < 2) {
-      console.warn(`Only found ${citationsWithScores.length} valid citations (minimum 2 required)`);
-      throw new Error(`Only found ${citationsWithScores.length} verified citations. Need at least 2.`);
+    // Ensure at least 1 citation (relaxed to allow single high-quality source)
+    if (citationsWithScores.length === 0) {
+      console.error('No valid citations found after filtering and verification');
+      throw new Error('Unable to find any verified citations that meet quality standards.');
+    }
+    
+    // Warn if only 1 citation (recommend 2+ for better E-E-A-T)
+    if (citationsWithScores.length === 1) {
+      console.warn('⚠️ Only 1 verified citation found (2+ recommended for stronger E-E-A-T)');
     }
 
     // Check if government source is present (warn instead of blocking)
