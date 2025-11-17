@@ -22,10 +22,6 @@ import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 const BlogArticle = () => {
   const { slug } = useParams<{ slug: string }>();
 
-  // Check if article is already pre-rendered in static HTML
-  const staticContent = document.querySelector('.static-content');
-  const isStaticPrerendered = staticContent?.getAttribute('data-article-id');
-
   const { data: article, isLoading, error } = useQuery({
     queryKey: ["article", slug],
     queryFn: async () => {
@@ -38,15 +34,6 @@ const BlogArticle = () => {
 
       if (error) throw error;
       if (!data) throw new Error("Article not found");
-
-      // Remove static content once React takes over
-      if (staticContent && data.id === isStaticPrerendered) {
-        staticContent.classList.add('opacity-0');
-        setTimeout(() => {
-          staticContent.remove();
-          // React handles schema updates naturally - no manual cleanup needed
-        }, 300);
-      }
 
       return data as unknown as BlogArticleType;
     },
@@ -162,6 +149,18 @@ const BlogArticle = () => {
 
   const schemas = generateAllSchemas(article, author || null, reviewer || null);
 
+  // Consolidate all schemas into single @graph structure for Helmet
+  const consolidatedSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      schemas.article,
+      schemas.speakable,
+      schemas.breadcrumb,
+      ...(schemas.faq ? [schemas.faq] : []),
+      schemas.organization
+    ]
+  };
+
   const baseUrl = window.location.origin;
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
 
@@ -254,73 +253,12 @@ const BlogArticle = () => {
         <meta name="robots" content="index, follow, max-image-preview:large" />
         {author && <meta name="author" content={author.name} />}
         <meta name="language" content={article.language} />
-      </Helmet>
-
-      {/* Manual DOM injection fallback for canonical + hreflang if Helmet fails */}
-      {(() => {
-        React.useEffect(() => {
-          const timeout = setTimeout(() => {
-            const canonicalExists = document.querySelector('link[rel="canonical"]');
-
-            if (!canonicalExists) {
-              console.warn('[BlogArticle] Helmet failed to inject canonical/hreflang - using manual fallback');
-              
-              // Manual canonical injection
-              const canonical = document.createElement('link');
-              canonical.rel = 'canonical';
-              canonical.href = article.canonical_url || currentUrl;
-              canonical.setAttribute('data-manual-inject', 'true');
-              document.head.appendChild(canonical);
-
-              // Manual hreflang injection
-              hreflangTags.forEach(tag => {
-                const existing = document.querySelector(`link[rel="alternate"][hreflang="${tag.hrefLang}"]`);
-                if (!existing) {
-                  const link = document.createElement('link');
-                  link.rel = 'alternate';
-                  link.setAttribute('hreflang', tag.hrefLang);
-                  link.href = tag.href;
-                  link.setAttribute('data-manual-inject', 'true');
-                  document.head.appendChild(link);
-                }
-              });
-            }
-          }, 500);
-
-          return () => clearTimeout(timeout);
-        }, [article, currentUrl, hreflangTags]);
         
-        return null;
-      })()}
-
-      {/* Synchronous JSON-LD Schema Injection - Always render */}
-      <script 
-        type="application/ld+json" 
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.article) }}
-        data-schema="article"
-      />
-      <script 
-        type="application/ld+json" 
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.speakable) }}
-        data-schema="speakable"
-      />
-      <script 
-        type="application/ld+json" 
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumb) }}
-        data-schema="breadcrumb"
-      />
-      {schemas.faq && (
-        <script 
-          type="application/ld+json" 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.faq) }}
-          data-schema="faq"
-        />
-      )}
-      <script 
-        type="application/ld+json" 
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.organization) }}
-        data-schema="organization"
-      />
+        {/* Consolidated JSON-LD Schema - Single @graph structure */}
+        <script type="application/ld+json">
+          {JSON.stringify(consolidatedSchema)}
+        </script>
+      </Helmet>
 
       <div className="min-h-screen py-8 md:py-12">
         <div className="flex flex-col">
