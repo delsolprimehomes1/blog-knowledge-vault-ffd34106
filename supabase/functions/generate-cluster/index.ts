@@ -6,6 +6,104 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to remove citation links from HTML for blocked domains
+function removeCitationLinks(content: string, blockedCitations: any[]): string {
+  let updatedContent = content;
+  
+  for (const blocked of blockedCitations) {
+    // Create regex to find and remove the citation link
+    // Pattern: According to the <a href="BLOCKED_URL"...>text</a>,
+    const escapedUrl = blocked.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const citationPattern = new RegExp(
+      `According to the <a[^>]*href="${escapedUrl}"[^>]*>[^<]+</a>,\\s*`,
+      'gi'
+    );
+    
+    updatedContent = updatedContent.replace(citationPattern, '');
+  }
+  
+  return updatedContent;
+}
+
+// Helper function to extract domain from URL
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+// Helper function to filter citations against approved domains
+async function filterCitations(
+  supabase: any,
+  citations: any[],
+  jobId: string,
+  articleNum: number,
+  htmlContent?: string
+): Promise<{ filtered: any[]; blocked: any[]; cleanedContent?: string }> {
+  if (!citations || citations.length === 0) {
+    return { filtered: citations, blocked: [], cleanedContent: htmlContent };
+  }
+
+  console.log(`[Job ${jobId}] 🔍 Filtering ${citations.length} citations for article ${articleNum}...`);
+
+  // Fetch approved domains (where is_allowed = true)
+  const { data: approvedDomains, error } = await supabase
+    .from('approved_domains')
+    .select('domain')
+    .eq('is_allowed', true);
+
+  if (error) {
+    console.error(`[Job ${jobId}] ❌ Error fetching approved domains:`, error);
+    return { filtered: citations, blocked: [], cleanedContent: htmlContent };
+  }
+
+  const approvedSet = new Set(
+    (approvedDomains || []).map((d: any) => d.domain.toLowerCase())
+  );
+
+  console.log(`[Job ${jobId}] ✅ Loaded ${approvedSet.size} approved domains`);
+
+  // Filter citations
+  const filtered: any[] = [];
+  const blocked: any[] = [];
+
+  for (const citation of citations) {
+    const domain = extractDomain(citation.url);
+    
+    if (approvedSet.has(domain.toLowerCase())) {
+      filtered.push(citation);
+    } else {
+      blocked.push({ 
+        domain, 
+        url: citation.url, 
+        source: citation.source || citation.sourceName 
+      });
+    }
+  }
+
+  // Log blocked citations
+  if (blocked.length > 0) {
+    console.warn(`[Job ${jobId}] 🚫 BLOCKED ${blocked.length} competitor citations for article ${articleNum}:`);
+    blocked.forEach(b => {
+      console.warn(`  - ${b.domain}: ${b.url} (${b.source})`);
+    });
+  }
+
+  console.log(`[Job ${jobId}] ✅ Citation filtering complete: ${filtered.length} approved, ${blocked.length} blocked`);
+
+  // Clean HTML content if provided
+  let cleanedContent = htmlContent;
+  if (htmlContent && blocked.length > 0) {
+    cleanedContent = removeCitationLinks(htmlContent, blocked);
+    console.log(`[Job ${jobId}] 🧹 Cleaned HTML content of ${blocked.length} blocked citation links`);
+  }
+
+  return { filtered, blocked, cleanedContent };
+}
+
 // Helper function to update job progress
 async function updateProgress(supabase: any, jobId: string, step: number, message: string, articleNum?: number) {
   await supabase
@@ -1382,13 +1480,26 @@ Return ONLY valid JSON:
             }
             
             article.detailed_content = updatedContent;
-            article.external_citations = citations.map((c: any) => ({
+            
+            // Filter citations against approved domains before saving
+            const rawCitations = citations.map((c: any) => ({
               text: c.anchorText,
               url: c.url,
               source: c.sourceName,
             }));
             
-            console.log(`[Job ${jobId}] 💾 Saved ${citations.length} citations to article`);
+            const filterResult = await filterCitations(
+              supabase,
+              rawCitations,
+              jobId,
+              i + 1,
+              updatedContent
+            );
+            
+            article.external_citations = filterResult.filtered;
+            article.detailed_content = filterResult.cleanedContent || updatedContent;
+            
+            console.log(`[Job ${jobId}] 💾 Saved ${filterResult.filtered.length} approved citations to article`);
           } else {
             article.external_citations = [];
             console.warn(`[Job ${jobId}] ⚠️ No citations found after ${citationAttempts} attempts`);
@@ -1456,7 +1567,17 @@ Return ONLY valid JSON:
               }
             });
             
-            article.external_citations = mergedCitations;
+            // Filter merged citations against approved domains
+            const filterResult = await filterCitations(
+              supabase,
+              mergedCitations,
+              jobId,
+              i + 1,
+              article.detailed_content
+            );
+            
+            article.external_citations = filterResult.filtered;
+            article.detailed_content = filterResult.cleanedContent || article.detailed_content;
           } else {
             console.log(`[Job ${jobId}] ⚠️ Could not replace all citation markers. ${replacementResponse.data?.failedCount || 0} markers failed.`);
           }
