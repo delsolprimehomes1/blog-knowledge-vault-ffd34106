@@ -14,6 +14,7 @@ import { RelatedArticles } from "@/components/blog-article/RelatedArticles";
 import { TrustSignals } from "@/components/blog-article/TrustSignals";
 import { AuthorBio } from "@/components/blog-article/AuthorBio";
 import { FunnelCTA } from "@/components/blog-article/FunnelCTA";
+import { ArticleFooter } from "@/components/blog-article/ArticleFooter";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import { generateAllSchemas } from "@/lib/schemaGenerator";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, FunnelStage, InternalLink } from "@/types/blog";
@@ -303,6 +304,8 @@ const BlogArticle = () => {
               funnelStage={article.funnel_stage as FunnelStage}
               ctaArticles={ctaArticles || []}
             />
+
+            <ArticleFooter />
           </div>
         </div>
       </div>
