@@ -162,78 +162,31 @@ function extractDomain(url: string): string {
 }
 
 /**
- * STRICT WHITELIST: Only these 250 domains can be used for citations
- * NO EXCEPTIONS - Even if Perplexity suggests others, they will be blocked
+ * Fetch approved domains from the database
+ * This replaces the hardcoded whitelist and allows dynamic management
  */
-const APPROVED_WHITELIST = [
-  // Government & Official (Tier 1)
-  'ree.es', 'miteco.gob.es', 'idae.es', 'aemet.es', 'cervantes.es', 'dele.org',
-  'fedgolf.com', 'padelfip.com', 'ual.es', 'uca.es', 'eoi.es', 'spain.info',
-  'andalucia.org', 'turespana.es', 'visitmalaga.com', 'visitcostadelsol.com',
-  'turismointerior.cmalaga.es',
+async function getApprovedDomains(supabase: any): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('approved_domains')
+    .select('domain')
+    .eq('is_allowed', true);
   
-  // Established Brands (Tier 2)
-  'ecologistasenaccion.org', 'greenpeace.org', 'endesagreen.com', 'repsol.com',
-  'iberdrola.com', 'guiarepsol.com', 'michelin.es', 'timeout.com', 'lonelyplanet.com',
-  'roughguides.com', 'booking.com', 'tripadvisor.com', 'viamichelin.com', 'wikiloc.com',
-  'worldpadeltour.com', 'rutadelvinomalaga.es', 'vinosdemalaga.es', 'wineroutesofspain.com',
-  'windy.com', 'accuweather.com', 'andaluciainterior.es',
+  if (error) {
+    console.error('❌ Error fetching approved domains:', error);
+    return [];
+  }
   
-  // Specialized Sources (Tier 3) + Local Businesses
-  'energias-renovables.com', 'sostenibilidad.com', 'andaluciagastronomia.com',
-  'lifestylemagazine.es', 'andaluciataste.com', 'spainholiday.com', 'deliciousmagazine.co.uk',
-  'costadelgolfofficial.com', 'realclubvalderrama.com', 'lareservaclub.com',
-  'santamariagolfclub.com', 'visitgolfspain.com', 'walkingbritain.co.uk', 'cyclingfriendly.com',
-  'studyinspain.info', 'languagecourse.net', 'thelocal.es', 'ericsson.es', 'spainbycar.es',
-  'padelschoolmarbella.com', 'clubdelpadelmarbella.es', 'raquetsclubestepona.com',
-  'novasportsclub.com', 'gymmarbella.com', 'puregym.es', 'anytimefitness.es', 'smartfit.es',
-  'bodegasbentomiz.com', 'bodegasmuste.com', 'bodegashinojosa.com', 'andaluciavinos.com',
-  'vinoseleccion.com', 'rutasdelvino.com', 'enoturismomalaga.com', 'eltiempo.es',
-  'malagahoy.es', 'weather-and-climate.com', 'worlddata.info', 'climatestotravel.com',
-  'ecotourismandalucia.com', 'malaga24h.com',
-  
-  // Local Services (170+ domains)
-  'inmobiliaria1.com', 'inmobiliaria2.com', 'inmobiliaria3.com', 'inmobiliaria4.com',
-  'inmobiliaria5.com', 'inmobiliaria6.com', 'inmobiliaria7.com', 'inmobiliaria8.com',
-  'inmobiliaria9.com', 'inmobiliaria10.com', 'propertyagency1.com', 'propertyagency2.com',
-  'propertyagency3.com', 'propertyagency4.com', 'propertyagency5.com', 'estateconsultants1.com',
-  'estateconsultants2.com', 'estateconsultants3.com', 'estateconsultants4.com', 'estateconsultants5.com',
-  'localservice1.com', 'localservice2.com', 'localservice3.com', 'localservice4.com',
-  'localservice5.com', 'localbusiness1.es', 'localbusiness2.es', 'localbusiness3.es',
-  'localbusiness4.es', 'localbusiness5.es', 'serviceprovider1.com', 'serviceprovider2.com',
-  'serviceprovider3.com', 'serviceprovider4.com', 'serviceprovider5.com', 'consultant1.es',
-  'consultant2.es', 'consultant3.es', 'consultant4.es', 'consultant5.es', 'restaurant1.com',
-  'restaurant2.com', 'restaurant3.com', 'restaurant4.com', 'restaurant5.com', 'cafe1.es',
-  'cafe2.es', 'cafe3.es', 'cafe4.es', 'cafe5.es', 'bistro1.com', 'bistro2.com', 'bistro3.com',
-  'bistro4.com', 'bistro5.com', 'tapasbar1.es', 'tapasbar2.es', 'tapasbar3.es', 'tapasbar4.es',
-  'tapasbar5.es', 'hotel1.com', 'hotel2.com', 'hotel3.com', 'hotel4.com', 'hotel5.com',
-  'resort1.es', 'resort2.es', 'resort3.es', 'resort4.es', 'resort5.es', 'boutique1.com',
-  'boutique2.com', 'boutique3.com', 'boutique4.com', 'boutique5.com', 'accommodation1.es',
-  'accommodation2.es', 'accommodation3.es', 'accommodation4.es', 'accommodation5.es',
-  'touractivity1.com', 'touractivity2.com', 'touractivity3.com', 'touractivity4.com',
-  'touractivity5.com', 'excursion1.es', 'excursion2.es', 'excursion3.es', 'excursion4.es',
-  'excursion5.es', 'adventure1.com', 'adventure2.com', 'adventure3.com', 'adventure4.com',
-  'adventure5.com', 'guidedtour1.es', 'guidedtour2.es', 'guidedtour3.es', 'guidedtour4.es',
-  'guidedtour5.es', 'carrental1.com', 'carrental2.com', 'carrental3.com', 'carrental4.com',
-  'carrental5.com', 'transport1.es', 'transport2.es', 'transport3.es', 'transport4.es',
-  'transport5.es', 'transfer1.com', 'transfer2.com', 'transfer3.com', 'transfer4.com',
-  'transfer5.com', 'taxi1.es', 'taxi2.es', 'taxi3.es', 'taxi4.es', 'taxi5.es', 'legalfirm1.com',
-  'legalfirm2.com', 'legalfirm3.com', 'lawyer1.es', 'lawyer2.es', 'financial1.com',
-  'financial2.com', 'financial3.com', 'accountant1.es', 'accountant2.es', 'taxadvisor1.com'
-];
+  const domains = data.map((d: any) => d.domain);
+  console.log(`✅ Loaded ${domains.length} approved domains from database`);
+  return domains;
+}
 
 /**
  * Check if a URL's domain is in the approved whitelist
  */
-function isApprovedDomain(url: string): boolean {
+function isApprovedDomain(url: string, approvedDomains: string[]): boolean {
   const domain = extractDomain(url);
-  const isApproved = APPROVED_WHITELIST.includes(domain);
-  
-  if (!isApproved) {
-    console.warn(`❌ WHITELIST REJECTION: ${domain} - Not in 250-domain whitelist`);
-  }
-  
-  return isApproved;
+  return approvedDomains.includes(domain) || isGovernmentDomain(url);
 }
 
 function checkUrlLanguage(url: string, language: string): boolean {
@@ -279,6 +232,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Load approved domains from database
+    const approvedDomains = await getApprovedDomains(supabase);
+    if (approvedDomains.length === 0) {
+      throw new Error('No approved domains found in database. Please configure approved_domains table.');
+    }
+
     // Get blocked domains
     const blockedDomains = await getOverusedDomains(supabase, 30);
 
@@ -320,26 +279,22 @@ serve(async (req) => {
       : '';
 
     const blockedDomainsText = blockedDomains.length > 0
-      ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 20-use limit. Select DIVERSE alternatives from 600+ approved domains.**`
+      ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 30-use limit. Select DIVERSE alternatives from approved domains.**`
       : '';
 
+    // Build domain list for Perplexity (show top 50 for brevity in prompt)
+    const topDomains = approvedDomains.slice(0, 50).join(', ');
+    const totalDomains = approvedDomains.length;
+
     const whitelistText = `
-🎯 CRITICAL WHITELIST RULE - ONLY THESE 250 DOMAINS ALLOWED:
+🎯 CRITICAL WHITELIST RULE - ONLY THESE ${totalDomains} DOMAINS ALLOWED:
 
-**Government/Official (Tier 1):**
-spain.info, andalucia.org, turespana.es, miteco.gob.es, aemet.es, cervantes.es, dele.org,
-fedgolf.com, idae.es, padelfip.com, ual.es, uca.es, eoi.es, visitmalaga.com, visitcostadelsol.com
+**Top Priority Domains (showing ${Math.min(50, totalDomains)} of ${totalDomains}):**
+${topDomains}
 
-**Established Brands (Tier 2):**
-lonelyplanet.com, roughguides.com, booking.com, tripadvisor.com, michelin.es, wikiloc.com,
-windy.com, accuweather.com, worldpadeltour.com, timeout.com, viamichelin.com
-
-**Specialized + Local (Tier 3):**
-Golf, wine, sports, gastronomy, weather, real estate, hotels, restaurants, services
-(170+ approved local businesses - see full whitelist in system)
-
-❌ ANY DOMAIN NOT IN THIS LIST WILL BE AUTOMATICALLY REJECTED
-❌ DO NOT suggest: idealista, kyero, propertyportal, airbnb, expedia (NOT approved)
+**Important:** There are ${totalDomains} total approved domains. Choose from this list ONLY.
+❌ ANY DOMAIN NOT IN THE APPROVED LIST WILL BE AUTOMATICALLY REJECTED
+❌ DO NOT suggest: idealista, kyero, propertyportal, airbnb, expedia, sunpropertiesmarbella, luxe-villa, directimo (NOT approved)
 `;
 
     const prompt = `${config.instruction}:
@@ -360,7 +315,7 @@ CRITICAL REQUIREMENTS:
 - ALL sources must be HTTPS and currently active
 - Sources must be DIRECTLY RELEVANT to the article topic: "${headline}"
 - For each source, identify WHERE in the article it should be cited
-- **Select from 250-domain whitelist ONLY**${governmentRequirement}${blockedDomainsText}
+- **Select from ${totalDomains}-domain whitelist ONLY**${governmentRequirement}${blockedDomainsText}
 
 Return ONLY valid JSON in this exact format:
 [
@@ -446,8 +401,8 @@ Return only the JSON array, nothing else.`;
       const domain = extractDomain(citation.url);
       
       // ✅ FIRST: Whitelist check (highest priority)
-      if (!isApprovedDomain(citation.url)) {
-        console.warn(`🚫 WHITELIST REJECTION: ${domain} - Not in approved 250 domains`);
+      if (!isApprovedDomain(citation.url, approvedDomains)) {
+        console.warn(`🚫 WHITELIST REJECTION: ${domain} - Not in approved domains`);
         return false;
       }
       
@@ -476,60 +431,38 @@ Return only the JSON array, nothing else.`;
 
     console.log(`${allowedCitations.length} citations passed strict filtering (${citations.length - allowedCitations.length} blocked)`);
 
-    // ✅ FALLBACK: If all citations blocked, try with RELAXED filters (skip language check)
+    // ✅ If no approved citations found, try a second targeted call with priority domains
     if (allowedCitations.length === 0) {
-      console.warn('⚠️ All citations blocked by strict filters - trying RELAXED mode (accepting all non-blocked domains)');
+      console.warn('⚠️ Zero approved citations found - attempting second call with priority domains');
       
-      allowedCitations = citations.filter((citation: Citation) => {
-        if (!citation.url || !citation.sourceName) return false;
-        if (!citation.url.startsWith('http')) return false;
-        
-        const domain = extractDomain(citation.url);
-        // Government domains always exempt from blocking
-        if (blockedDomains.includes(domain) && !isGovernmentDomain(citation.url)) {
-          return false;
-        }
-        
-        // Accept ALL domains in relaxed mode
-        return true;
-      });
+      // Use top 10 most authoritative approved domains
+      const priorityDomains = approvedDomains
+        .filter(d => isGovernmentDomain(`https://${d}`) || 
+                     ['booking.com', 'tripadvisor.com', 'lonelyplanet.com', 'timeout.com', 'spain.info', 'andalucia.org', 'visitcostadelsol.com'].includes(d))
+        .slice(0, 15);
       
-      console.log(`${allowedCitations.length} citations passed RELAXED filtering`);
-      
-    if (allowedCitations.length === 0) {
-      console.warn('⚠️ All citations blocked by filters - will attempt Perplexity retry');
-      // Continue execution - Perplexity retry and fallback mechanisms will handle this
-    }
-    
-    // ✅ PERPLEXITY RETRY: If all citations blocked, make second attempt with different parameters
-    if (allowedCitations.length === 0) {
-      console.log('🔄 PERPLEXITY RETRY: Making second attempt with alternative domain search...');
-      
-      // Build a more diverse prompt focusing on non-blocked domains
-      const retryPrompt = `
-        Find 5-8 authoritative external sources for an article about "${headline}".
-        
-        CONTEXT: ${content.slice(0, 500)}
-        
-        CRITICAL REQUIREMENTS:
-        - Focus on .org, .com, and .int domains (international organizations)
-        - Prioritize: WHO, UN agencies, OECD, academic journals (.edu), industry associations
-        - AVOID these overused domains: ${blockedDomains.join(', ')}
-        - Language: ${language}
-        - Each source must be highly authoritative and directly relevant
-        
-        Return JSON array only (no markdown):
-        [
-          {
-            "sourceName": "Organization Name",
-            "url": "https://full-url.com/page",
-            "anchorText": "descriptive anchor text",
-            "contextInArticle": "why this source supports the article",
-            "relevance": "how this relates to the topic"
-          }
-        ]
-      `;
-      
+      const jsonFormatInstructions = `
+Return ONLY valid JSON in this exact format:
+[
+  {
+    "sourceName": "Source Name",
+    "url": "https://example.com/article",
+    "anchorText": "descriptive anchor text",
+    "contextInArticle": "where in article to cite this",
+    "relevance": "why this source is relevant"
+  }
+]`;
+
+      const retryPrompt = `Find 3-5 citations for this article. You MUST ONLY use these ${priorityDomains.length} priority domains: ${priorityDomains.join(', ')}.
+
+Headline: "${headline}"
+Language: ${config.languageName}
+Content: ${content.substring(0, 1000)}
+
+Return ONLY citations from the ${priorityDomains.length} domains listed above. Be creative in finding relevant content from these high-authority sources.
+
+${jsonFormatInstructions}`;
+
       try {
         const retryResponse = await fetch('https://api.perplexity.ai/chat/completions', {
           method: 'POST',
@@ -538,43 +471,46 @@ Return only the JSON array, nothing else.`;
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'llama-3.1-sonar-large-128k-online',
+            model: 'sonar-pro',
             messages: [
-              { role: 'system', content: 'You are a research assistant finding diverse authoritative sources. Return only valid JSON.' },
-              { role: 'user', content: retryPrompt }
+              {
+                role: 'system',
+                content: `You are a research assistant finding citations from a specific list of ${priorityDomains.length} approved domains. ONLY suggest URLs from these domains: ${priorityDomains.join(', ')}`
+              },
+              {
+                role: 'user',
+                content: retryPrompt
+              }
             ],
             temperature: 0.3,
-            max_tokens: 2000,
+            max_tokens: 1500,
           }),
         });
-        
+
         if (retryResponse.ok) {
           const retryData = await retryResponse.json();
-          const retryText = retryData.choices[0].message.content;
-          const retryCitations = JSON.parse(retryText.replace(/```json\n?|\n?```/g, ''));
+          const retryAiResponse = retryData.choices[0].message.content;
           
-          console.log(`🔄 RETRY found ${retryCitations.length} alternative citations`);
-          
-          // Filter retry citations (no language check, only domain blocking)
-          allowedCitations = retryCitations.filter((citation: Citation) => {
-            if (!citation.url || !citation.sourceName) return false;
-            if (!citation.url.startsWith('http')) return false;
+          try {
+            const jsonMatch = retryAiResponse.match(/\[[\s\S]*\]/);
+            const retryCitations = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(retryAiResponse);
             
-            const domain = extractDomain(citation.url);
-            // Still block overused non-government domains
-            if (blockedDomains.includes(domain) && !isGovernmentDomain(citation.url)) {
-              return false;
-            }
-            return true;
-          });
-          
-          console.log(`✅ RETRY yielded ${allowedCitations.length} usable citations`);
+            // Filter retry citations through same strict process
+            allowedCitations = retryCitations.filter((citation: Citation) => {
+              if (!citation.url || !citation.sourceName) return false;
+              if (!citation.url.startsWith('http')) return false;
+              const domain = extractDomain(citation.url);
+              return isApprovedDomain(citation.url, approvedDomains);
+            });
+            
+            console.log(`✅ Second attempt found ${allowedCitations.length} approved citations`);
+          } catch (e) {
+            console.error('Failed to parse retry citations:', e);
+          }
         }
-      } catch (retryError) {
-        console.error('⚠️ Perplexity retry failed:', retryError);
-        // Continue with empty array - will use unverified fallback later
+      } catch (error) {
+        console.error('Retry attempt failed:', error);
       }
-    }
     }
 
     console.log(`Verifying ${allowedCitations.length} URLs...`);
