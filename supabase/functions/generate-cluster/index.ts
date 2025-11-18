@@ -292,7 +292,20 @@ Return ONLY valid JSON:
     // Send heartbeat after major operation
     await sendHeartbeat(supabase, jobId);
 
-    const structureData = await structureResponse.json();
+    let structureData;
+    try {
+      const rawText = await structureResponse.text();
+      console.log(`[Job ${jobId}] 📥 Structure response length: ${rawText.length} chars`);
+      structureData = JSON.parse(rawText);
+    } catch (parseError) {
+      const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+      console.error(`[Job ${jobId}] ❌ JSON parse error for article structure:`, errorMsg);
+      throw new Error(`Failed to parse AI structure response: ${errorMsg}`);
+    }
+
+    if (!structureData.choices?.[0]?.message?.content) {
+      throw new Error('Invalid article structure response from AI');
+    }
     const structureText = structureData.choices[0].message.content;
 
     console.log('Raw AI response:', structureText); // Debug logging
@@ -374,7 +387,19 @@ Return ONLY the category name exactly as shown above. No explanation, no JSON, j
           }
         }
 
-        const categoryData = await categoryResponse.json();
+        let categoryData;
+        try {
+          const rawText = await categoryResponse.text();
+          categoryData = JSON.parse(rawText);
+        } catch (parseError) {
+          const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+          console.error(`[Job ${jobId}] ❌ JSON parse error for category selection:`, errorMsg);
+          throw new Error(`Failed to parse category response: ${errorMsg}`);
+        }
+
+        if (!categoryData.choices?.[0]?.message?.content) {
+          throw new Error('Invalid category response from AI');
+        }
         const aiSelectedCategory = categoryData.choices[0].message.content.trim();
         
         // Validate AI response against database categories
@@ -455,7 +480,19 @@ Return ONLY valid JSON:
         throw new Error(`Lovable AI error: ${seoResponse.status}`);
       }
 
-      const seoData = await seoResponse.json();
+      let seoData;
+      try {
+        const rawText = await seoResponse.text();
+        seoData = JSON.parse(rawText);
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error(`[Job ${jobId}] ❌ JSON parse error for SEO meta:`, errorMsg);
+        throw new Error(`Failed to parse SEO response: ${errorMsg}`);
+      }
+
+      if (!seoData.choices?.[0]?.message?.content) {
+        throw new Error('Invalid SEO response from AI');
+      }
       const seoText = seoData.choices[0].message.content;
       const seoMeta = JSON.parse(seoText.replace(/```json\n?|\n?```/g, ''));
       
@@ -500,7 +537,19 @@ Return ONLY the speakable text, no JSON, no formatting, no quotes.`;
         throw new Error(`Lovable AI error: ${speakableResponse.status}`);
       }
 
-      const speakableData = await speakableResponse.json();
+      let speakableData;
+      try {
+        const rawText = await speakableResponse.text();
+        speakableData = JSON.parse(rawText);
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error(`[Job ${jobId}] ❌ JSON parse error for speakable answer:`, errorMsg);
+        throw new Error(`Failed to parse speakable response: ${errorMsg}`);
+      }
+
+      if (!speakableData.choices?.[0]?.message?.content) {
+        throw new Error('Invalid speakable response from AI');
+      }
       article.speakable_answer = speakableData.choices[0].message.content.trim();
 
       // 6. DETAILED CONTENT (1500-2500 words)
@@ -625,7 +674,21 @@ Return ONLY the HTML content, no JSON wrapper, no markdown code blocks.`;
         throw new Error(`Content generation failed: ${contentResponse.status}`);
       }
 
-      const contentData = await contentResponse.json();
+      let contentData;
+      try {
+        const rawText = await contentResponse.text();
+        console.log(`[Job ${jobId}] 📥 Content response length for article ${i + 1}: ${rawText.length} chars`);
+        contentData = JSON.parse(rawText);
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error(`[Job ${jobId}] ❌ JSON parse error for article ${i + 1} content:`, {
+          error: errorMsg,
+          responseStatus: contentResponse.status,
+          responseHeaders: Object.fromEntries(contentResponse.headers.entries())
+        });
+        throw new Error(`Failed to parse content response for article ${i + 1}: ${errorMsg}. The response may be too large or malformed.`);
+      }
+
       if (!contentData.choices?.[0]?.message?.content) {
         console.error(`[Job ${jobId}] Invalid content response for article ${i + 1}:`, contentData);
         throw new Error('Invalid content generation response');
@@ -1077,7 +1140,19 @@ Return only the alt text, no quotes, no JSON.`;
             throw new Error(`Lovable AI error: ${altResponse.status}`);
           }
 
-          const altData = await altResponse.json();
+          let altData;
+          try {
+            const rawText = await altResponse.text();
+            altData = JSON.parse(rawText);
+          } catch (parseError) {
+            const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+            console.error(`[Job ${jobId}] ❌ JSON parse error for image alt text:`, errorMsg);
+            throw new Error(`Failed to parse alt text response: ${errorMsg}`);
+          }
+
+          if (!altData.choices?.[0]?.message?.content) {
+            throw new Error('Invalid alt text response from AI');
+          }
           featuredImageAlt = altData.choices[0].message.content.trim();
           
           console.log(`✅ Contextual image generated:
@@ -1189,7 +1264,19 @@ Return ONLY valid JSON:
             throw new Error(`Lovable AI error: ${authorResponse.status}`);
           }
 
-          const authorData = await authorResponse.json();
+          let authorData;
+          try {
+            const rawText = await authorResponse.text();
+            authorData = JSON.parse(rawText);
+          } catch (parseError) {
+            const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+            console.error(`[Job ${jobId}] ❌ JSON parse error for author selection:`, errorMsg);
+            throw new Error(`Failed to parse author response: ${errorMsg}`);
+          }
+
+          if (!authorData.choices?.[0]?.message?.content) {
+            throw new Error('Invalid author response from AI');
+          }
           const authorText = authorData.choices[0].message.content;
           const authorSuggestion = JSON.parse(authorText.replace(/```json\n?|\n?```/g, ''));
 
@@ -1416,7 +1503,19 @@ Return ONLY valid JSON:
             throw new Error(`Lovable AI error: ${faqResponse.status}`);
           }
 
-          const faqData = await faqResponse.json();
+          let faqData;
+          try {
+            const rawText = await faqResponse.text();
+            faqData = JSON.parse(rawText);
+          } catch (parseError) {
+            const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+            console.error(`[Job ${jobId}] ❌ JSON parse error for FAQ generation:`, errorMsg);
+            throw new Error(`Failed to parse FAQ response: ${errorMsg}`);
+          }
+
+          if (!faqData.choices?.[0]?.message?.content) {
+            throw new Error('Invalid FAQ response from AI');
+          }
           const faqText = faqData.choices[0].message.content;
           const faqResult = JSON.parse(faqText.replace(/```json\n?|\n?```/g, ''));
           article.faq_entities = faqResult.faqs;
