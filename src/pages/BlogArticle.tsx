@@ -12,12 +12,13 @@ import { ArticleContent } from "@/components/blog-article/ArticleContent";
 import { InternalLinksSection } from "@/components/blog-article/InternalLinksSection";
 import { RelatedArticles } from "@/components/blog-article/RelatedArticles";
 import { TrustSignals } from "@/components/blog-article/TrustSignals";
+import { FAQSection } from "@/components/blog-article/FAQSection";
 import { AuthorBio } from "@/components/blog-article/AuthorBio";
 import { FunnelCTA } from "@/components/blog-article/FunnelCTA";
 import { ArticleFooter } from "@/components/blog-article/ArticleFooter";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import { generateAllSchemas } from "@/lib/schemaGenerator";
-import { BlogArticle as BlogArticleType, Author, ExternalCitation, FunnelStage, InternalLink } from "@/types/blog";
+import { BlogArticle as BlogArticleType, Author, ExternalCitation, FAQEntity, FunnelStage, InternalLink } from "@/types/blog";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 
 const BlogArticle = () => {
@@ -293,6 +294,10 @@ const BlogArticle = () => {
               dateModified={article.date_modified || undefined}
               citations={article.external_citations as ExternalCitation[]}
             />
+
+            {article.faq_entities && (
+              <FAQSection faqs={article.faq_entities as FAQEntity[]} />
+            )}
 
             {author && <AuthorBio author={author} />}
 
