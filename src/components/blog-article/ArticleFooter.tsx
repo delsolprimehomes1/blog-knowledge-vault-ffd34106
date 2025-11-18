@@ -1,18 +1,20 @@
-import { Mail, Phone, MapPin, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const COMPANY_INFO = {
   name: "Del Sol Prime Homes",
   tagline: "Premium real estate agency specializing in Costa del Sol properties",
-  phone: "+34-XXX-XXX-XXX",
-  email: "info@example.com",
-  serviceAreas: ["Marbella", "Estepona", "Fuengirola", "Benalmádena", "Mijas"],
-  languages: ["English", "Spanish", "German", "Dutch", "French", "Polish", "Swedish", "Danish", "Hungarian"],
-  social: {
-    facebook: "https://www.facebook.com/example",
-    instagram: "https://www.instagram.com/example",
-    linkedin: "https://www.linkedin.com/company/example"
-  }
+  phone: "+34 613 578 416",
+  email: "info@delsolprimehomes.com",
+  website: "https://delsolprimehomes.com",
+  address: {
+    street: "Calle Águila Real 8, Bajo C",
+    city: "Mijas",
+    postalCode: "29649",
+    country: "Spain"
+  },
+  serviceAreas: ["Marbella", "Estepona", "Fuengirola", "Benalmádena", "Mijas", "Sotogrande", "Casares", "Torremolinos", "Manilva"],
+  languages: ["English", "German", "Dutch", "French", "Polish", "Finnish", "Swedish", "Danish", "Norwegian", "Hungarian"]
 };
 
 export const ArticleFooter = () => {
@@ -47,37 +49,23 @@ export const ArticleFooter = () => {
                 <Mail className="h-4 w-4" />
                 <span>{COMPANY_INFO.email}</span>
               </a>
-            </div>
-
-            {/* Social Media Links */}
-            <div className="flex gap-3 pt-2">
-              <a
-                href={COMPANY_INFO.social.facebook}
+              <a 
+                href={COMPANY_INFO.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
-                aria-label="Facebook"
+                className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors"
               >
-                <Facebook className="h-4 w-4" />
+                <MapPin className="h-4 w-4" />
+                <span>{COMPANY_INFO.website.replace('https://', '')}</span>
               </a>
-              <a
-                href={COMPANY_INFO.social.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
-                aria-label="Instagram"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a
-                href={COMPANY_INFO.social.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-full bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="h-4 w-4" />
-              </a>
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <address className="not-italic">
+                  {COMPANY_INFO.address.street}<br />
+                  {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
+                  {COMPANY_INFO.address.country}
+                </address>
+              </div>
             </div>
           </div>
 

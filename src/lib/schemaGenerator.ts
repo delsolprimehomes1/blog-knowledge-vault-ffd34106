@@ -20,27 +20,33 @@ const ORGANIZATION_SCHEMA = {
   "@type": "RealEstateAgent",
   "name": "Del Sol Prime Homes",
   "description": "Premium real estate agency specializing in Costa del Sol properties",
-  "url": "https://example.com",
-  "logo": "https://example.com/logo.png",
+  "url": "https://delsolprimehomes.com",
+  "logo": "https://delsolprimehomes.com/logo.png",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Calle Águila Real 8, Bajo C",
+    "addressLocality": "Mijas",
+    "postalCode": "29649",
+    "addressCountry": "ES"
+  },
   "areaServed": [
     { "@type": "City", "name": "Marbella" },
     { "@type": "City", "name": "Estepona" },
     { "@type": "City", "name": "Fuengirola" },
     { "@type": "City", "name": "Benalmádena" },
-    { "@type": "City", "name": "Mijas" }
+    { "@type": "City", "name": "Mijas" },
+    { "@type": "City", "name": "Sotogrande" },
+    { "@type": "City", "name": "Casares" },
+    { "@type": "City", "name": "Torremolinos" },
+    { "@type": "City", "name": "Manilva" }
   ],
   "contactPoint": {
     "@type": "ContactPoint",
     "contactType": "Customer Service",
-    "availableLanguage": ["en", "es", "de", "nl", "fr", "pl", "sv", "da", "hu"],
-    "telephone": "+34-XXX-XXX-XXX",
-    "email": "info@example.com"
-  },
-  "sameAs": [
-    "https://www.facebook.com/example",
-    "https://www.instagram.com/example",
-    "https://www.linkedin.com/company/example"
-  ]
+    "availableLanguage": ["en", "de", "nl", "fr", "pl", "fi", "sv", "da", "no", "hu"],
+    "telephone": "+34 613 578 416",
+    "email": "info@delsolprimehomes.com"
+  }
 };
 
 export function generatePersonSchema(author: Author | null) {
