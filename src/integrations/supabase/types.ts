@@ -21,7 +21,10 @@ export type Database = {
           domain: string
           id: string
           is_allowed: boolean | null
+          language: string | null
           notes: string | null
+          region: string | null
+          source_type: string | null
           tier: string | null
           trust_score: number
           updated_at: string | null
@@ -32,7 +35,10 @@ export type Database = {
           domain: string
           id?: string
           is_allowed?: boolean | null
+          language?: string | null
           notes?: string | null
+          region?: string | null
+          source_type?: string | null
           tier?: string | null
           trust_score: number
           updated_at?: string | null
@@ -43,7 +49,10 @@ export type Database = {
           domain?: string
           id?: string
           is_allowed?: boolean | null
+          language?: string | null
           notes?: string | null
+          region?: string | null
+          source_type?: string | null
           tier?: string | null
           trust_score?: number
           updated_at?: string | null
