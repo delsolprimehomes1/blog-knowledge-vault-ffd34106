@@ -272,7 +272,12 @@ function looksLikeRealEstateCompetitor(url: string, sourceName: string): boolean
   const propertyKeywords = [
     'properties', 'property', 'real-estate', 'realestate', 'realtor',
     'inmobiliaria', 'homes', 'villas', 'apartments', 'housing',
-    'casas', 'vivienda', 'piso', 'finca'
+    'casas', 'vivienda', 'piso', 'finca',
+    // Fix 2: Add relocation, expat, and investment keywords
+    'relocation', 'relocate', 'expat', 'expatriate', 
+    'retire-in', 'living-in', 'moving-to', 'move-to',
+    'developer', 'investment', 'mortgage', 'finance',
+    'international-property', 'overseas-property'
   ];
   
   if (propertyKeywords.some(kw => domain.includes(kw) || name.includes(kw))) {
@@ -283,7 +288,11 @@ function looksLikeRealEstateCompetitor(url: string, sourceName: string): boolean
   // Commercial intent keywords (2 points each)
   const commercialKeywords = [
     'buy', 'sell', 'sale', 'for-sale', 'comprar', 'vender', 'venta',
-    'listings', 'listing', 'agent', 'broker', 'agency'
+    'listings', 'listing', 'agent', 'broker', 'agency',
+    // Fix 2: Add investment, mortgage, and advisory keywords
+    'invest', 'investment', 'investor', 'developer',
+    'mortgage', 'finance', 'loan', 'advisory',
+    'retire', 'retirement', 'guide', 'consultant'
   ];
   
   if (commercialKeywords.some(kw => domain.includes(kw) || name.includes(kw) || fullUrl.includes(`/${kw}/`))) {
@@ -734,19 +743,31 @@ ${topicGuidance}
 ${whitelistByCategory}
 ${competitorText}
 
-⚠️ IMPORTANT RULES:
-1. ✅ PREFER domains from the PREFERRED list above
-2. 🚫 NEVER suggest domains from the COMPETITOR list
-3. 🚫 NEVER suggest other real estate companies selling homes in Costa del Sol
-4. ✅ You MAY suggest authoritative sources NOT on the preferred list if:
-   - They are government (.gov, .gob.es), educational (.edu), or major news organizations
-   - They provide data, statistics, or expert information relevant to the article
-   - They are NOT real estate companies or property marketplaces
-5. 🎯 Prioritize government, educational, and institutional sources
+🔒 ZERO-TOLERANCE COMPETITOR RULES:
+1. ❌ NEVER cite ANY real estate company, agency, or marketplace
+2. ❌ NEVER cite property listing sites (homes, villas, apartments for sale)
+3. ❌ NEVER cite relocation blogs, expat guides, or international property consultants
+4. ❌ NEVER cite mortgage brokers, finance advisors, or property investment firms
+5. ❌ NEVER cite tourism blogs that monetize via property links or agency referrals
+6. ❌ NEVER cite developers, housing portals, or commercial property sites
+7. ❌ NEVER cite idealista, kyero, rightmove, zoopla, fotocasa, pisos.com, thinkspain, or ANY similar sites
+
+✅ ONLY ALLOW:
+- Government domains: .gov, .gob.es, .gov.uk, .europa.eu, .int
+- Educational institutions: .edu, .ac.uk, universities
+- Official statistics agencies: INE, DGT, Eurostat, national statistics offices
+- Public institutions: ministries, city councils, regional governments (e.g., juntadeandalucia.es)
+- Public health, transport, police, immigration authorities
+
+🚨 IF YOU CANNOT FIND 2+ CITATIONS FROM APPROVED SOURCES:
+- DO NOT suggest competitor domains as fallback
+- DO NOT suggest commercial or news sites
+- RETURN FEWER CITATIONS (even if <2) rather than breaking the rules
 
 CRITICAL REQUIREMENTS:
 - Return MINIMUM 3 citations, ideally 4-5 citations
 - Match citations to specific sections based on their citation needs
+- Each citation must support SPECIFIC claims in the article (not generic overviews)
 - PRIORITIZE IN THIS ORDER:
   1. Government/Official sites (.gob.es, .gov, official institutions)
   2. Category-specific expert domains (match article topic to domain category)
@@ -856,7 +877,7 @@ Return only the JSON array, nothing else.`;
     const truncatedResponse = aiResponse.length > 2000 
       ? aiResponse.substring(0, 2000) + '... (truncated)'
       : aiResponse;
-    console.log('Perplexity response:', truncatedResponse);
+    console.log('Gemini response:', truncatedResponse);
     
     let citations: Citation[] = [];
     try {
@@ -923,7 +944,7 @@ Return only the JSON array, nothing else.`;
       // Continue with empty citations, frontend will handle "no suggestions" state
     }
 
-    console.log(`Found ${citations.length} citations from Perplexity`);
+    console.log(`Found ${citations.length} citations from Gemini + Google Search`);
 
     // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow
     let allowedCitations = citations.filter((citation: Citation) => {
@@ -959,9 +980,28 @@ Return only the JSON array, nothing else.`;
         return true;
       }
       
-      // If requireApprovedDomains is true (Layer 3 retry), ONLY accept approved domains
+      // Fix 3: Layer 3 - GOVERNMENT-ONLY MODE (Ultra-Strict)
+      if (attemptNumber === 3) {
+        // ONLY allow government, educational, or official statistical domains
+        const isGovOrEdu = isGovernmentDomain(citation.url) || 
+                           domain.endsWith('.edu') || 
+                           domain.endsWith('.ac.uk') ||
+                           domain.includes('ine.') || 
+                           domain.includes('eurostat') ||
+                           domain.includes('europa.eu');
+        
+        if (!isGovOrEdu) {
+          console.warn(`🚫 Layer 3 ULTRA-STRICT REJECTION: ${domain} - Not government/educational`);
+          return false;
+        }
+        
+        console.log(`✅ Layer 3 APPROVED: ${domain} - Government/Educational domain`);
+        return true;
+      }
+      
+      // Layer 1-2: Use normal approved domain logic
       if (requireApprovedDomains) {
-        console.warn(`🚫 Layer 3 REJECTION: ${domain} - Not in approved list (requireApprovedDomains=true)`);
+        console.warn(`🚫 Layer 1-2 REJECTION: ${domain} - Not in approved list (requireApprovedDomains=true)`);
         return false;
       }
       
@@ -1026,6 +1066,42 @@ Return only the JSON array, nothing else.`;
       }
       
       allowedCitations = semanticallyRelevant;
+      
+      // Fix 5: Phase 4.5 - Content Complement Validation (duplicate detection, generic URLs, claim support)
+      console.log('🎯 Phase 4.5: Validating citations complement article content...');
+      
+      const dedupedCitations = allowedCitations.filter((citation: any, index: number, self: any[]) => {
+        // Check for duplicate URLs
+        const isDuplicate = self.findIndex((c: any) => c.url === citation.url) !== index;
+        if (isDuplicate) {
+          console.warn(`⚠️ DUPLICATE REMOVED: ${citation.url}`);
+          return false;
+        }
+        
+        // Check for generic overview URLs
+        const isGenericOverview = 
+          citation.url.includes('/about') ||
+          citation.url.includes('/about-us') ||
+          citation.url.includes('/home') ||
+          citation.url.endsWith('/');
+        
+        if (isGenericOverview && citation.semanticScore < 50) {
+          console.warn(`⚠️ GENERIC URL REMOVED: ${citation.url} (low relevance + generic path)`);
+          return false;
+        }
+        
+        // Verify citation supports a specific claim
+        const hasClaim = citation.relevance && citation.relevance.length > 50;
+        if (!hasClaim) {
+          console.warn(`⚠️ VAGUE CITATION REMOVED: ${citation.url} (no specific claim support)`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      console.log(`${dedupedCitations.length} citations passed content complement validation (removed ${allowedCitations.length - dedupedCitations.length} duplicates/generic/vague citations)`);
+      allowedCitations = dedupedCitations;
     }
 
     // Phase 5: Smart retry with category-specific domains if no valid citations found

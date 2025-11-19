@@ -1138,19 +1138,181 @@ export async function testPhase15(): Promise<TestResult[]> {
 export async function testPhase16(): Promise<TestResult[]> {
   const results: TestResult[] = [];
 
-  results.push({
-    name: '🔗 External Link Finder',
-    status: 'pass',
-    message: '✓ Citation discovery configured',
-    details: 'AI-powered citation discovery via Lovable AI Gateway.\n\nFeatures:\n✓ Finds authoritative sources\n✓ Discovers government citations\n✓ Suggests relevant links\n\nEdge function deployed and ready.'
-  });
-
-  results.push({
-    name: 'Edge Function Status',
-    status: 'pass',
-    message: '✓ find-external-links function deployed',
-    details: 'Function will activate on first use. May take 5-10 seconds to warm up on cold start.'
-  });
+  // Fix 4: Enhanced Citation System Validation with comprehensive tests
+  const testCases = [
+    {
+      name: 'Competitor Domain Blocking',
+      test: async () => {
+        const competitorDomains = [
+          'idealista.com', 'kyero.com', 'rightmove.co.uk', 
+          'fotocasa.es', 'thinkspain.com'
+        ];
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('find-external-links', {
+            body: {
+              content: 'Test article about Costa del Sol property market trends and real estate investment opportunities.',
+              headline: 'Costa del Sol Real Estate Guide',
+              language: 'es'
+            }
+          });
+          
+          if (error) return { pass: false, message: `Function error: ${error.message}` };
+          
+          const citations = data?.citations || [];
+          const hasCompetitor = citations.some((c: any) => 
+            competitorDomains.some(comp => c.url.includes(comp))
+          );
+          
+          if (hasCompetitor) {
+            return { pass: false, message: '❌ Competitor domain found in results' };
+          }
+          
+          return { pass: true, message: '✅ No competitor domains' };
+        } catch (err) {
+          return { pass: false, message: `❌ Test failed: ${err instanceof Error ? err.message : 'Unknown error'}` };
+        }
+      }
+    },
+    {
+      name: 'Minimum Citation Count',
+      test: async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('find-external-links', {
+            body: {
+              content: 'Article about Spanish healthcare system and social security benefits provided by the government.',
+              headline: 'Healthcare in Spain',
+              language: 'es'
+            }
+          });
+          
+          if (error) return { pass: false, message: `Function error: ${error.message}` };
+          
+          const citations = data?.citations || [];
+          
+          if (citations.length < 2) {
+            return { pass: false, message: `❌ Only ${citations.length} citations (need 2+)` };
+          }
+          
+          return { pass: true, message: `✅ ${citations.length} citations found` };
+        } catch (err) {
+          return { pass: false, message: `❌ Test failed: ${err instanceof Error ? err.message : 'Unknown error'}` };
+        }
+      }
+    },
+    {
+      name: 'Language Matching',
+      test: async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('find-external-links', {
+            body: {
+              content: 'Artículo sobre el sistema de salud español y beneficios de la seguridad social.',
+              headline: 'Sistema de Salud en España',
+              language: 'es'
+            }
+          });
+          
+          if (error) return { pass: false, message: `Function error: ${error.message}` };
+          
+          const citations = data?.citations || [];
+          
+          if (citations.length === 0) {
+            return { pass: false, message: '❌ No citations returned' };
+          }
+          
+          // Check if most citations are Spanish or government domains
+          const spanishOrGov = citations.filter((c: any) => {
+            const url = c.url.toLowerCase();
+            return url.includes('.es') || 
+                   url.includes('.gob.es') || 
+                   url.includes('.gov') ||
+                   url.includes('europa.eu');
+          });
+          
+          const matchRatio = spanishOrGov.length / citations.length;
+          
+          if (matchRatio < 0.7) {
+            return { pass: false, message: `❌ Only ${Math.round(matchRatio * 100)}% language match (need 70%+)` };
+          }
+          
+          return { pass: true, message: `✅ ${Math.round(matchRatio * 100)}% language match` };
+        } catch (err) {
+          return { pass: false, message: `❌ Test failed: ${err instanceof Error ? err.message : 'Unknown error'}` };
+        }
+      }
+    },
+    {
+      name: 'URL Accessibility',
+      test: async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('find-external-links', {
+            body: {
+              content: 'Article about Spanish statistics and economic data from official sources.',
+              headline: 'Spanish Economic Data',
+              language: 'es'
+            }
+          });
+          
+          if (error) return { pass: false, message: `Function error: ${error.message}` };
+          
+          const citations = data?.citations || [];
+          
+          if (citations.length === 0) {
+            return { pass: false, message: '❌ No citations to verify' };
+          }
+          
+          const sample = citations.slice(0, 3);
+          
+          // Verify sample URLs
+          const verifications = await Promise.all(
+            sample.map(async (c: any) => {
+              try {
+                const response = await fetch(c.url, { 
+                  method: 'HEAD', 
+                  signal: AbortSignal.timeout(5000) 
+                });
+                // 403 is acceptable for government sites with strict security
+                return response.ok || response.status === 403;
+              } catch {
+                return false;
+              }
+            })
+          );
+          
+          const accessible = verifications.filter(v => v).length;
+          
+          if (accessible < sample.length * 0.67) {
+            return { pass: false, message: `❌ Only ${accessible}/${sample.length} URLs accessible` };
+          }
+          
+          return { pass: true, message: `✅ ${accessible}/${sample.length} URLs verified` };
+        } catch (err) {
+          return { pass: false, message: `❌ Test failed: ${err instanceof Error ? err.message : 'Unknown error'}` };
+        }
+      }
+    }
+  ];
+  
+  // Run all test cases
+  const testResults = await Promise.all(testCases.map(tc => tc.test()));
+  
+  const failed = testResults.filter(r => !r.pass);
+  
+  if (failed.length > 0) {
+    results.push({
+      name: '🔗 External Citation Discovery & Competitor Blocking',
+      status: 'fail',
+      message: `❌ ${failed.length} test(s) failed:\n${failed.map(f => f.message).join('\n')}`,
+      details: failed.map(f => f.message).join(' | ')
+    });
+  } else {
+    results.push({
+      name: '🔗 External Citation Discovery & Competitor Blocking',
+      status: 'pass',
+      message: '✅ All citation system validations passed',
+      details: testResults.map(r => r.message).join(' | ')
+    });
+  }
 
   return results;
 }
