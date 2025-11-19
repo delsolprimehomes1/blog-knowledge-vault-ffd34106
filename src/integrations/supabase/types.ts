@@ -2114,6 +2114,20 @@ export type Database = {
           trigger_name: string
         }[]
       }
+      get_diversity_report: {
+        Args: never
+        Returns: {
+          category: string
+          diversity_score: number
+          domain: string
+          language: string
+          region: string
+          tier: string
+          total_uses: number
+          trust_score: number
+          usage_status: string
+        }[]
+      }
       get_missing_languages: {
         Args: { p_article_id: string }
         Returns: string[]
