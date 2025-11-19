@@ -796,18 +796,68 @@ Return only the JSON array, nothing else.`;
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    console.log('Perplexity response:', aiResponse);
+    // Log response (truncated to avoid massive logs from malformed URLs)
+    const truncatedResponse = aiResponse.length > 2000 
+      ? aiResponse.substring(0, 2000) + '... (truncated)'
+      : aiResponse;
+    console.log('Perplexity response:', truncatedResponse);
     
     let citations: Citation[] = [];
     try {
-      const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        citations = JSON.parse(jsonMatch[0]);
-      } else {
-        citations = JSON.parse(aiResponse);
+      // Clean up the response before parsing
+      let cleanedResponse = aiResponse;
+      
+      // Remove markdown code blocks if present
+      cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      
+      // Extract JSON array
+      const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.error('No JSON array found in response');
+        throw new Error('Failed to parse AI response into citations');
       }
+      
+      // Try to parse and validate
+      let parsedCitations = JSON.parse(jsonMatch[0]);
+      
+      // Validate and clean citations
+      if (!Array.isArray(parsedCitations)) {
+        throw new Error('Response is not an array');
+      }
+      
+      // Filter out citations with invalid/malformed URLs
+      citations = parsedCitations.filter((citation: any) => {
+        if (!citation.url || typeof citation.url !== 'string') {
+          console.warn(`❌ Invalid citation: missing or invalid URL`);
+          return false;
+        }
+        
+        // Reject URLs that are suspiciously long (likely malformed)
+        if (citation.url.length > 500) {
+          console.warn(`❌ Rejecting malformed URL (too long): ${citation.url.substring(0, 100)}...`);
+          return false;
+        }
+        
+        // Reject URLs with repeated patterns (common in malformed responses)
+        const repeatedPattern = /(.{20,})\1{3,}/;
+        if (repeatedPattern.test(citation.url)) {
+          console.warn(`❌ Rejecting malformed URL (repeated pattern): ${citation.url.substring(0, 100)}...`);
+          return false;
+        }
+        
+        // Basic URL validation
+        try {
+          new URL(citation.url);
+          return true;
+        } catch {
+          console.warn(`❌ Invalid URL format: ${citation.url}`);
+          return false;
+        }
+      });
+      
     } catch (parseError) {
       console.error('Failed to parse citations JSON:', parseError);
+      console.error('Raw response:', aiResponse.substring(0, 500));
       throw new Error('Failed to parse AI response into citations');
     }
 
