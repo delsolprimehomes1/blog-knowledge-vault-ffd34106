@@ -1218,6 +1218,60 @@ export type Database = {
         }
         Relationships: []
       }
+      discovered_domains: {
+        Row: {
+          article_topics: Json | null
+          created_at: string | null
+          domain: string
+          example_urls: Json | null
+          first_suggested_at: string | null
+          id: string
+          last_suggested_at: string | null
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_name: string | null
+          status: string | null
+          times_suggested: number | null
+          times_used: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          article_topics?: Json | null
+          created_at?: string | null
+          domain: string
+          example_urls?: Json | null
+          first_suggested_at?: string | null
+          id?: string
+          last_suggested_at?: string | null
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name?: string | null
+          status?: string | null
+          times_suggested?: number | null
+          times_used?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          article_topics?: Json | null
+          created_at?: string | null
+          domain?: string
+          example_urls?: Json | null
+          first_suggested_at?: string | null
+          id?: string
+          last_suggested_at?: string | null
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name?: string | null
+          status?: string | null
+          times_suggested?: number | null
+          times_used?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       domain_usage_stats: {
         Row: {
           articles_used_in: number | null
