@@ -770,37 +770,61 @@ Return ONLY valid JSON in this exact format:
 
 Return only the JSON array, nothing else.`;
 
-    console.log('Calling Perplexity API to find authoritative sources...');
+    console.log('🤖 Calling Gemini 2.5 Flash with Google Search Grounding...');
     
-    // Wrap Perplexity call in timeout (25 seconds)
-    const PERPLEXITY_TIMEOUT = 25000;
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
+    // Build domain filter for Google Search Grounding
+    const searchDomains = approvedDomains.map((d: {domain: string}) => d.domain);
+    console.log(`🔍 Searching ${searchDomains.length} approved domains with Gemini + Google Search`);
+
+    const GEMINI_TIMEOUT = attemptNumber === 3 ? 45000 : 35000; // Longer timeout for strict mode
     const startTime = Date.now();
     
     let response: Response;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), PERPLEXITY_TIMEOUT);
+      const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT);
       
-      response = await fetch('https://api.perplexity.ai/chat/completions', {
+      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'sonar-pro',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'system',
-              content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources. Select diverse, unused domains.`
+              content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources using Google Search. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources.`
             },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.2,
-          max_tokens: 2000,
+          tools: [
+            {
+              type: 'google_search_retrieval',
+              google_search_retrieval: {
+                dynamic_retrieval_config: {
+                  mode: 'MODE_DYNAMIC',
+                  dynamic_threshold: 0.7
+                }
+              }
+            }
+          ],
+          tool_config: {
+            google_search_retrieval: {
+              search_domain_filter: searchDomains
+            }
+          },
+          temperature: 0.3,
+          max_tokens: 2000
         }),
         signal: controller.signal
       });
@@ -808,21 +832,21 @@ Return only the JSON array, nothing else.`;
       clearTimeout(timeoutId);
       
       const elapsed = Date.now() - startTime;
-      console.log(`⏱️ Perplexity call completed in ${elapsed}ms`);
+      console.log(`⏱️ Gemini call completed in ${elapsed}ms`);
       
     } catch (error) {
       const elapsed = Date.now() - startTime;
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`⏱️ Perplexity call timed out after ${elapsed}ms (limit: ${PERPLEXITY_TIMEOUT}ms)`);
-        throw new Error(`Perplexity API timeout after ${elapsed}ms`);
+        console.warn(`⏱️ Gemini call timed out after ${elapsed}ms (limit: ${GEMINI_TIMEOUT}ms)`);
+        throw new Error(`Gemini API timeout after ${elapsed}ms`);
       }
       throw error;
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Perplexity API error:', response.status, errorText);
-      throw new Error(`Perplexity API error: ${response.status}`);
+      console.error('Gemini API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();

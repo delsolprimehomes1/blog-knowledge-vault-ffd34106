@@ -123,60 +123,50 @@ function extractDomain(url: string): string {
   }
 }
 
-// ===== DIVERSITY SCORING =====
+// ===== SIMPLE AUTHORITY SCORING (No Usage Tracking) =====
 interface DomainScore {
   domain: string;
   category: string;
-  usageCount: number;
-  diversityScore: number; // Higher = better for selection
+  authorityScore: number;
 }
 
-async function calculateDomainDiversityScores(
-  approvedDomains: Array<{domain: string, category: string}>,
-  language: string
-): Promise<DomainScore[]> {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+/**
+ * Calculate simple authority scores for approved domains
+ * No usage tracking - rely on Gemini's natural diversity via Google Search
+ */
+function calculateSimpleAuthorityScores(
+  approvedDomains: Array<{ domain: string; category: string }>
+): Map<string, number> {
+  const scores = new Map<string, number>();
+  
+  for (const { domain, category } of approvedDomains) {
+    let score = 50; // Base score
     
-    // Fetch usage stats for all approved domains
-    const { data: usageData, error } = await supabase
-      .from('domain_usage_stats')
-      .select('domain, total_uses')
-      .in('domain', approvedDomains.map(d => d.domain));
-    
-    if (error) {
-      console.error('Error fetching usage stats:', error);
+    // Government domains: highest priority
+    if (domain.includes('.gob.') || domain.includes('.gov') || domain.includes('ministerio')) {
+      score = 100;
+    }
+    // Educational institutions
+    else if (domain.includes('.edu') || domain.includes('university')) {
+      score = 90;
+    }
+    // Official statistics bodies
+    else if (domain.includes('ine.') || domain.includes('eurostat') || category.toLowerCase().includes('statistics')) {
+      score = 95;
+    }
+    // EU institutions
+    else if (domain.includes('europa.eu') || category.toLowerCase().includes('eu')) {
+      score = 85;
+    }
+    // News organizations
+    else if (category.toLowerCase().includes('news')) {
+      score = 70;
     }
     
-    const usageMap = new Map(usageData?.map(d => [d.domain, d.total_uses]) || []);
-    
-    return approvedDomains.map(d => {
-      const usageCount = usageMap.get(d.domain) || 0;
-      
-      // Diversity score formula:
-      // - Unused domains get 100 points
-      // - Each use reduces score by 5 points
-      // - Max penalty at 20 uses (hard block)
-      const diversityScore = Math.max(0, 100 - (usageCount * 5));
-      
-      return {
-        domain: d.domain,
-        category: d.category,
-        usageCount,
-        diversityScore
-      };
-    });
-  } catch (error) {
-    console.error('Failed to calculate diversity scores:', error);
-    return approvedDomains.map(d => ({
-      domain: d.domain,
-      category: d.category,
-      usageCount: 0,
-      diversityScore: 100
-    }));
+    scores.set(domain, score);
   }
+  
+  return scores;
 }
 
 /**
@@ -197,14 +187,19 @@ export async function findBetterCitations(
   const blockedDomains = await getOverusedDomains(20);
   const approvedDomains = await getApprovedDomainsForLanguage(articleLanguage);
   
-  // ✅ Calculate diversity scores for prioritization
-  const domainScores = await calculateDomainDiversityScores(approvedDomains, articleLanguage);
-  
-  // Sort by diversity score and take top 100 for the prompt
-  const prioritizedDomains = domainScores
-    .filter(d => d.diversityScore > 0) // Exclude blocked domains
-    .sort((a, b) => b.diversityScore - a.diversityScore)
-    .slice(0, 100);
+  // ✅ Calculate simple authority scores (no usage tracking)
+  const authorityScores = calculateSimpleAuthorityScores(approvedDomains);
+  const highPriorityDomains = approvedDomains
+    .map(d => ({
+      domain: d.domain,
+      category: d.category,
+      score: authorityScores.get(d.domain) || 50
+    }))
+    .filter(d => d.score >= 70)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 50);
+
+  console.log(`🎯 Prioritizing ${highPriorityDomains.length} high-authority domains`);
 
   const focusContext = focusArea 
     ? `\n**Special Focus:** ${focusArea} - prioritize sources specific to this region/topic`
@@ -215,40 +210,21 @@ export async function findBetterCitations(
     : '';
 
   const blockedDomainsText = blockedDomains.length > 0
-    ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 20-use limit. Find DIVERSE alternatives from our approved domains.**`
+    ? `\n\n🚫 **CRITICAL: NEVER use these blocked domains:**\n${blockedDomains.map(d => `- ${d}`).join('\n')}`
     : '';
 
-  // ✅ DIVERSITY-PRIORITIZED WHITELIST
-  const priority1 = prioritizedDomains.filter(d => d.usageCount === 0);
-  const priority2 = prioritizedDomains.filter(d => d.usageCount > 0 && d.usageCount < 5);
-  const priority3 = prioritizedDomains.filter(d => d.usageCount >= 5 && d.usageCount < 10);
-
-  const diversityWhitelistText = `\n\n✅ **DIVERSITY-PRIORITIZED ${articleLanguage.toUpperCase()} SOURCES (USE IN ORDER):**
-
-**PRIORITY 1 - NEVER USED (diversityScore: 100):**
-${priority1.slice(0, 20).map(d => `- ${d.domain} (${d.category})`).join('\n')}
-${priority1.length > 20 ? `...and ${priority1.length - 20} more unused domains\n` : ''}
-
-**PRIORITY 2 - LIGHTLY USED (diversityScore: 75-95):**
-${priority2.slice(0, 15).map(d => `- ${d.domain} (${d.category}, used ${d.usageCount}x)`).join('\n')}
-
-**PRIORITY 3 - MODERATELY USED (diversityScore: 50-70):**
-${priority3.slice(0, 10).map(d => `- ${d.domain} (used ${d.usageCount}x)`).join('\n')}
-
-**⚠️ INSTRUCTIONS:**
-1. ALWAYS prefer domains with diversityScore > 80 (unused/rarely used)
-2. If suggesting 5 citations, use 5 DIFFERENT domains
-3. Prioritize government (.gov, .gob) and EU institutions over news
-4. Only use tier_2 sources if no tier_1 alternatives exist`;
-
-  const prompt = `You are an expert research assistant finding authoritative external sources for a ${config.name} language article.
+  const prompt = `You are an expert research assistant finding authoritative external sources for a ${config.name} language article using Google Search.
 
 **Article Topic:** "${articleTopic}"
 **Language Required:** ${config.name}
 **Article Content Preview:**
 ${articleContent.substring(0, 1000)}
 ${focusContext}
-${currentCitationsText}${blockedDomainsText}${diversityWhitelistText}
+${currentCitationsText}
+${blockedDomainsText}
+
+**HIGH-PRIORITY APPROVED DOMAINS (prioritize these):**
+${highPriorityDomains.slice(0, 20).map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\n')}
 
 **CRITICAL REQUIREMENTS:**
 1. ALL sources MUST be in ${config.name} language
@@ -323,7 +299,7 @@ Return only the JSON array, nothing else.`;
 
     // ✅ Filter out blocked domains AND enforce language matching
     const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
-    const domainScoresMap = new Map(domainScores.map(d => [d.domain, d]));
+    const authorityScoresMap = calculateSimpleAuthorityScores(approvedDomains);
     
     const validCitations = citations.filter(citation => {
       const domain = extractDomain(citation.url);
@@ -349,23 +325,22 @@ Return only the JSON array, nothing else.`;
 
     console.log(`Filtered ${citations.length} → ${validCitations.length} citations (removed ${citations.length - validCitations.length} blocked/wrong-language)`);
 
-    // ✅ POST-SELECTION DIVERSITY SCORING
+    // ✅ Add authority scores and sort
     const scoredCitations = validCitations.map((citation) => {
       const domain = extractDomain(citation.url);
-      const domainScore = domainScoresMap.get(domain);
+      const authorityScore = authorityScoresMap.get(domain) || 50;
       
       return {
         ...citation,
-        diversityScore: domainScore?.diversityScore || 0,
-        usageCount: domainScore?.usageCount || 0,
-        finalScore: citation.authorityScore + (domainScore?.diversityScore || 0) / 10
+        authorityScore: citation.authorityScore || authorityScore,
+        finalScore: citation.authorityScore || authorityScore
       };
     });
 
-    // Sort by final score (authority + diversity bonus)
+    // Sort by authority score
     scoredCitations.sort((a: any, b: any) => b.finalScore - a.finalScore);
 
-    console.log(`🎯 Diversity-sorted citations. Top domain usage counts: ${scoredCitations.slice(0, 5).map((c: any) => `${extractDomain(c.url)}(${c.usageCount})`).join(', ')}`);
+    console.log(`🎯 Authority-sorted citations. Top domains: ${scoredCitations.slice(0, 5).map((c: any) => extractDomain(c.url)).join(', ')}`);
 
     return scoredCitations.slice(0, 10);
   } catch (parseError) {
