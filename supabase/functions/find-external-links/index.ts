@@ -593,10 +593,18 @@ serve(async (req) => {
   }
 
   try {
-    const { content, headline, language = 'es', requireGovernmentSource = false } = await req.json();
+    const { 
+      content, 
+      headline, 
+      language = 'es', 
+      requireGovernmentSource = false,
+      attemptNumber = 1,
+      requireApprovedDomains = false
+    } = await req.json();
     
-    console.log('🔍 Finding external citations for:', headline);
+    console.log(`🔍 Finding external citations for: ${headline} (attempt ${attemptNumber})`);
     console.log('📖 Language:', language, '| Content length:', content?.length || 0);
+    console.log('🔧 Options:', { requireGovernmentSource, requireApprovedDomains });
 
     const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
     if (!PERPLEXITY_API_KEY) {
@@ -764,28 +772,52 @@ Return only the JSON array, nothing else.`;
 
     console.log('Calling Perplexity API to find authoritative sources...');
     
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar-pro',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources. Select diverse, unused domains.`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 2000,
-      }),
-    });
+    // Wrap Perplexity call in timeout (25 seconds)
+    const PERPLEXITY_TIMEOUT = 25000;
+    const startTime = Date.now();
+    
+    let response: Response;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), PERPLEXITY_TIMEOUT);
+      
+      response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sonar-pro',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources. Select diverse, unused domains.`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.2,
+          max_tokens: 2000,
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`⏱️ Perplexity call completed in ${elapsed}ms`);
+      
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`⏱️ Perplexity call timed out after ${elapsed}ms (limit: ${PERPLEXITY_TIMEOUT}ms)`);
+        throw new Error(`Perplexity API timeout after ${elapsed}ms`);
+      }
+      throw error;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -889,7 +921,9 @@ Return only the JSON array, nothing else.`;
       }
       
       // ✅ SECOND: Check whitelist (fast approval for known good domains)
-      if (isApprovedDomain(citation.url, approvedDomains)) {
+      const isApproved = isApprovedDomain(citation.url, approvedDomains);
+      
+      if (isApproved) {
         console.log(`✅ WHITELIST APPROVED: ${domain}`);
         
         // Check usage limits for whitelisted domains
@@ -901,7 +935,13 @@ Return only the JSON array, nothing else.`;
         return true;
       }
       
-      // 🔍 THIRD: Unknown domain - apply heuristic checks
+      // If requireApprovedDomains is true (Layer 3 retry), ONLY accept approved domains
+      if (requireApprovedDomains) {
+        console.warn(`🚫 Layer 3 REJECTION: ${domain} - Not in approved list (requireApprovedDomains=true)`);
+        return false;
+      }
+      
+      // 🔍 THIRD: Unknown domain - apply heuristic checks (only when not forcing approved domains)
       console.log(`🔍 Unknown domain detected: ${domain} - Running competitor detection...`);
       
       // Check if it looks like a real estate competitor
@@ -1211,19 +1251,20 @@ Return ONLY valid JSON:
     );
   } catch (error) {
     console.error('Error in find-external-links function:', error);
-    // Return success with empty citations to make this truly non-fatal
+    const errorMessage = error instanceof Error ? error.message : 'Citation lookup failed';
+    
+    // Return 500 error so generate-cluster can retry
     return new Response(
       JSON.stringify({ 
-        success: true,
+        success: false,
+        error: errorMessage,
         citations: [],
         totalFound: 0,
         totalVerified: 0,
-        hasGovernmentSource: false,
-        warning: error instanceof Error ? error.message : 'Citation lookup failed',
-        details: 'Failed to find external links but continuing generation'
+        hasGovernmentSource: false
       }),
       { 
-        status: 200, // Return 200 to avoid breaking the pipeline
+        status: 500,
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json' 
