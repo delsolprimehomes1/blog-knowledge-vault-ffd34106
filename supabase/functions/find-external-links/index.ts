@@ -724,7 +724,52 @@ Citation Needs: ${section.citationNeeds}
 REMEMBER: Quality > Quantity. We need MINIMUM 2, but all 2+ must be perfect.
 `;
 
+    // 🔄 PERSISTENT RETRY WITH FEEDBACK LOOP
+    const maxAttempts = 5;
+    let currentAttempt = 0;
+    const rejectedDomains: Map<string, string> = new Map(); // domain -> rejection reason
+    let allowedCitations: Citation[] = [];
+    
+    // Helper function to build rejection feedback for Gemini
+    const buildRejectionFeedback = (rejectedDomains: Map<string, string>, attemptNumber: number): string => {
+      if (rejectedDomains.size === 0) return '';
+      
+      const rejectionList = Array.from(rejectedDomains.entries())
+        .map(([domain, reason]) => `- ${domain}: ${reason}`)
+        .join('\n');
+      
+      return `
+🚫 PREVIOUS ATTEMPT FEEDBACK (Attempt ${attemptNumber}):
+These domains were REJECTED in previous attempts. DO NOT use them again:
+
+${rejectionList}
+
+Total rejected: ${rejectedDomains.size}
+You have ${approvedDomains.length - rejectedDomains.size} other approved domains to choose from.
+IMPORTANT: Try completely different domains from the approved list.
+Focus on government (.gov, .gob.es), educational (.edu, .ac.uk), and official statistics domains first.
+`;
+    };
+    
+    console.log(`\n🔄 Starting persistent retry loop (max ${maxAttempts} attempts)`);
+    console.log(`📊 Available approved domains: ${approvedDomains.length}`);
+    
+    while (currentAttempt < maxAttempts && allowedCitations.length < 2) {
+      currentAttempt++;
+      console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🔄 ATTEMPT ${currentAttempt}/${maxAttempts}`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      
+      if (currentAttempt > 1) {
+        console.log(`📊 Status: ${allowedCitations.length} citations found so far`);
+        console.log(`❌ Rejected domains: ${rejectedDomains.size}`);
+      }
+      
+      const feedbackText = buildRejectionFeedback(rejectedDomains, currentAttempt);
+
     const prompt = `${strictEnforcementNotice}
+
+${feedbackText}
 
 ${config.instruction}:
 
@@ -1009,8 +1054,8 @@ Return only the JSON array, nothing else.`;
     
     console.log(`[Citation Quality Check] ${languageValidatedCitations.length} → ${citations.length} citations passed quality check`);
 
-    // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow
-    let allowedCitations = citations.filter((citation: Citation) => {
+    // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow (WITH REJECTION TRACKING)
+    let currentAttemptCitations = citations.filter((citation: Citation) => {
       if (!citation.url || !citation.sourceName) {
         console.warn(`❌ Invalid citation structure: ${JSON.stringify(citation)}`);
         return false;
@@ -1025,6 +1070,7 @@ Return only the JSON array, nothing else.`;
       // 🚫 FIRST: Check blacklist (highest priority rejection)
       if (isCompetitorDomain(citation.url, blacklistDomains)) {
         console.warn(`🚫 BLACKLIST REJECTION: ${domain} - Competitor domain`);
+        rejectedDomains.set(domain, 'Competitor/blacklisted domain');
         return false;
       }
       
@@ -1048,6 +1094,7 @@ Return only the JSON array, nothing else.`;
         
         if (!isGovOrOfficial) {
           console.warn(`🚫 Layer 3 BLOCKED: ${domain} - Not government/official domain`);
+          rejectedDomains.set(domain, 'Not government/official (Layer 3 strict mode)');
           return false;
         }
         
@@ -1057,6 +1104,7 @@ Return only the JSON array, nothing else.`;
       // Layer 1-2: Use normal approved domain logic
       if (requireApprovedDomains) {
         console.warn(`🚫 Layer 1-2 REJECTION: ${domain} - Not in approved list (requireApprovedDomains=true)`);
+        rejectedDomains.set(domain, 'Not in approved domains list');
         return false;
       }
       
@@ -1066,6 +1114,7 @@ Return only the JSON array, nothing else.`;
       // Check if it looks like a real estate competitor
       if (looksLikeRealEstateCompetitor(citation.url, citation.sourceName)) {
         console.warn(`🚫 HEURISTIC REJECTION: ${domain} - Appears to be real estate competitor`);
+        rejectedDomains.set(domain, 'Looks like real estate competitor (heuristic)');
         return false;
       }
       
@@ -1073,6 +1122,7 @@ Return only the JSON array, nothing else.`;
       const isCorrectLanguage = checkUrlLanguage(citation.url.toLowerCase(), language);
       if (!isCorrectLanguage) {
         console.warn(`⚠️ LANGUAGE MISMATCH: ${domain}`);
+        rejectedDomains.set(domain, 'Language mismatch');
         return false;
       }
       
@@ -1085,12 +1135,30 @@ Return only the JSON array, nothing else.`;
       return true;
     });
 
-    console.log(`${allowedCitations.length} citations passed hybrid filtering (${citations.length - allowedCitations.length} blocked)`);
-
-    // Phase 4: Semantic validation - ensure citations truly match their target sections
-    if (allowedCitations.length > 0 && sections.length > 0) {
-      console.log('🧠 Phase 4: Running semantic validation...');
-      allowedCitations = allowedCitations.map((citation: Citation) => {
+    console.log(`${currentAttemptCitations.length} citations passed hybrid filtering in this attempt`);
+    
+    // 🛡️ Phase 3: URL verification for this attempt only
+    console.log(`Phase 3: Verifying ${currentAttemptCitations.length} URLs for this attempt...`);
+    
+    const verifiedCitations = await Promise.all(
+      currentAttemptCitations.map(async (citation: Citation) => {
+        const isWorking = await verifyUrl(citation.url);
+        if (!isWorking) {
+          const domain = extractDomain(citation.url);
+          rejectedDomains.set(domain, 'URL verification failed (not accessible)');
+        }
+        return isWorking ? citation : null;
+      })
+    );
+    
+    const verifiedFromThisAttempt = verifiedCitations.filter(c => c !== null) as Citation[];
+    console.log(`${verifiedFromThisAttempt.length} citations verified successfully in this attempt`);
+    
+    // 🧠 Phase 4: Semantic validation for this attempt's verified citations only
+    let semanticallyValidated = verifiedFromThisAttempt;
+    if (semanticallyValidated.length > 0 && sections.length > 0) {
+      console.log('🧠 Running semantic validation on this attempt...');
+      semanticallyValidated = semanticallyValidated.map((citation: Citation) => {
         // Find the best matching section for this citation
         let bestMatch = sections[0];
         let bestScore = 0;
@@ -1113,19 +1181,24 @@ Return only the JSON array, nothing else.`;
       });
       
       // Filter out citations with very low semantic relevance (< 30%)
-      const semanticallyRelevant = allowedCitations.filter((c: any) => c.semanticScore >= 30);
-      const removedCount = allowedCitations.length - semanticallyRelevant.length;
+      const semanticallyRelevant = semanticallyValidated.filter((c: any) => c.semanticScore >= 30);
+      const removedCount = semanticallyValidated.length - semanticallyRelevant.length;
       
       if (removedCount > 0) {
         console.log(`🎯 Removed ${removedCount} citations with low semantic relevance`);
+        // Track rejected domains
+        semanticallyValidated.filter((c: any) => c.semanticScore < 30).forEach((c: any) => {
+          const domain = extractDomain(c.url);
+          rejectedDomains.set(domain, 'Low semantic relevance (<30%)');
+        });
       }
       
-      allowedCitations = semanticallyRelevant;
+      semanticallyValidated = semanticallyRelevant;
       
       // Fix 5: Phase 4.5 - Content Complement Validation (duplicate detection, generic URLs, claim support)
       console.log('🎯 Phase 4.5: Validating citations complement article content...');
       
-      const dedupedCitations = allowedCitations.filter((citation: any, index: number, self: any[]) => {
+      const dedupedCitations = semanticallyValidated.filter((citation: any, index: number, self: any[]) => {
         // Check for duplicate URLs
         const isDuplicate = self.findIndex((c: any) => c.url === citation.url) !== index;
         if (isDuplicate) {
@@ -1155,16 +1228,57 @@ Return only the JSON array, nothing else.`;
         return true;
       });
       
-      console.log(`${dedupedCitations.length} citations passed content complement validation (removed ${allowedCitations.length - dedupedCitations.length} duplicates/generic/vague citations)`);
-      allowedCitations = dedupedCitations;
+      console.log(`${dedupedCitations.length} citations passed content complement validation (removed ${semanticallyValidated.length - dedupedCitations.length} duplicates/generic/vague citations)`);
+      semanticallyValidated = dedupedCitations;
     }
+    
+    // Add this attempt's validated citations to cumulative list
+    allowedCitations.push(...semanticallyValidated);
 
-    console.log(`\n📊 FINAL CITATION COUNT: ${allowedCitations.length} approved citations`);
-    if (allowedCitations.length < 2) {
-      console.warn(`⚠️ INSUFFICIENT CITATIONS: Only ${allowedCitations.length}/2 found`);
-      console.warn(`📊 Available approved domains: ${approvedDomains.length}`);
-      console.warn(`🔄 Caller should retry with different approach`);
+    // 🔄 CHECK EXIT CONDITIONS
+    console.log(`\n📊 ATTEMPT ${currentAttempt} RESULTS: ${allowedCitations.length} valid citations (added ${semanticallyValidated.length} this attempt)`);
+    
+    if (allowedCitations.length >= 2) {
+      console.log(`✅ SUCCESS: Minimum citations met (${allowedCitations.length}/2)`);
+      break; // Exit retry loop - we have enough citations
     }
+    
+    if (rejectedDomains.size >= approvedDomains.length - 10) {
+      console.warn(`⚠️ EXHAUSTED: Tried ${rejectedDomains.size}/${approvedDomains.length} approved domains`);
+      console.warn(`No more domains to try - exiting retry loop`);
+      break; // Exit - nearly all domains have been rejected
+    }
+    
+    if (currentAttempt < maxAttempts) {
+      console.log(`🔄 Retrying with feedback about ${rejectedDomains.size} rejected domains...`);
+    }
+  } // End of while loop
+
+  // 🎯 FINAL RESULTS AFTER ALL ATTEMPTS
+  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`📊 FINAL RESULTS AFTER ${currentAttempt} ATTEMPTS`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`✅ Valid citations found: ${allowedCitations.length}`);
+  console.log(`❌ Rejected domains: ${rejectedDomains.size}`);
+  
+  if (allowedCitations.length + rejectedDomains.size > 0) {
+    const successRate = (allowedCitations.length / (allowedCitations.length + rejectedDomains.size) * 100).toFixed(1);
+    console.log(`📈 Success rate: ${successRate}%`);
+  }
+  
+  if (allowedCitations.length < 2) {
+    console.error(`\n🚨 FAILED: Could not find 2+ citations after ${currentAttempt} attempts`);
+    console.error(`Rejection breakdown:`);
+    
+    const reasons = new Map<string, number>();
+    rejectedDomains.forEach(reason => {
+      reasons.set(reason, (reasons.get(reason) || 0) + 1);
+    });
+    
+    reasons.forEach((count, reason) => {
+      console.error(`  - ${reason}: ${count} domains`);
+    });
+  }
 
     // Phase 5: Smart retry with category-specific domains if no valid citations found
     if (allowedCitations.length === 0) {
@@ -1289,35 +1403,26 @@ Return ONLY valid JSON:
       }
     }
 
-    console.log(`Verifying ${allowedCitations.length} URLs...`);
-
-    // Verify each URL with retry logic (with detailed logging)
-    const verifiedCitations = await Promise.all(
-      allowedCitations.map(async (citation: Citation, index: number) => {
-        console.log(`[${index + 1}/${allowedCitations.length}] Verifying: ${citation.url}`);
-        const verified = await verifyUrlWithRetry(citation.url);
-        console.log(`[${index + 1}/${allowedCitations.length}] ${verified ? '✅ Verified' : '❌ Failed'}: ${citation.url}`);
-        return { ...citation, verified };
-      })
-    );
-
-    let validCitations = verifiedCitations.filter(c => c.verified);
-    console.log(`${validCitations.length} of ${allowedCitations.length} citations verified successfully`);
+    // ✅ URL verification is now handled inside the main retry loop above
+    // This legacy verification code has been removed
     
-    // ✅ FALLBACK: If no citations verified, use unverified high-authority citations
-    if (validCitations.length === 0) {
-      console.warn('⚠️ No citations verified successfully - using unverified citations as fallback');
-      // Prioritize official/government domains even if unverified
-      const officialCitations = verifiedCitations.filter(c => {
+    // Skip directly to authority scoring
+    let validCitations = allowedCitations;
+    
+    // ✅ FALLBACK: If no citations found, use best available from allowedCitations
+    if (validCitations.length === 0 && allowedCitations.length > 0) {
+      console.warn('⚠️ No verified citations - using best available citations as fallback');
+      // Prioritize official/government domains
+      const officialCitations = allowedCitations.filter((c: any) => {
         const url = c.url.toLowerCase();
         return url.includes('.gov') || url.includes('.gob.') || url.includes('.edu') || url.includes('europa.eu');
       });
       if (officialCitations.length > 0) {
-        console.log(`Using ${officialCitations.length} unverified official citations`);
+        console.log(`Using ${officialCitations.length} official citations`);
         validCitations = officialCitations.slice(0, 3);
       } else {
-        console.log(`Using top ${Math.min(3, verifiedCitations.length)} unverified citations`);
-        validCitations = verifiedCitations.slice(0, 3);
+        console.log(`Using top ${Math.min(3, allowedCitations.length)} available citations`);
+        validCitations = allowedCitations.slice(0, 3);
       }
     }
 
@@ -1374,7 +1479,7 @@ Return ONLY valid JSON:
       return new Response(
         JSON.stringify({ 
           citations: [],
-          totalFound: citations.length,
+          totalFound: 0, // No citations found after all attempts
           totalVerified: 0,
           hasGovernmentSource: false,
           warning: 'No suitable citations found - manual review required'
@@ -1408,7 +1513,7 @@ Return ONLY valid JSON:
     return new Response(
       JSON.stringify({ 
         citations: citationsWithScores,
-        totalFound: citations.length,
+        totalFound: allowedCitations.length, // Total citations found across all attempts
         totalVerified: citationsWithScores.length,
         hasGovernmentSource: hasGovSource,
         averageAuthorityScore: citationsWithScores.reduce((acc: number, c: any) => acc + c.authorityScore, 0) / citationsWithScores.length
