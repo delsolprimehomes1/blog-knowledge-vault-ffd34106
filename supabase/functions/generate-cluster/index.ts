@@ -130,6 +130,23 @@ async function sendHeartbeat(supabase: any, jobId: string) {
     .eq('id', jobId);
 }
 
+// Start continuous heartbeat (returns interval ID to clear later)
+function startHeartbeat(jobId: string, supabaseClient: any) {
+  const intervalId = setInterval(async () => {
+    try {
+      await supabaseClient
+        .from('cluster_generations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', jobId);
+      console.log(`[Heartbeat] Job ${jobId} still processing...`);
+    } catch (error) {
+      console.error('[Heartbeat] Failed to update timestamp:', error);
+    }
+  }, 60000); // Update every 60 seconds
+
+  return intervalId;
+}
+
 // Timeout wrapper for promises
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -260,6 +277,9 @@ async function generateCluster(jobId: string, topic: string, language: string, t
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+  // Start continuous heartbeat to prevent timeout detection
+  const heartbeat = startHeartbeat(jobId, supabase);
 
   try {
     // Check for stuck jobs and clean them up before starting
@@ -1444,7 +1464,7 @@ Return ONLY valid JSON:
       console.log(`[Job ${jobId}] 📚 Finding REQUIRED external citations for article ${i+1}: "${plan.headline}" (${language})`);
 
       let citationsAttempt = 0;
-      const MAX_CITATION_ATTEMPTS = 3;
+      const MAX_CITATION_ATTEMPTS = 1; // Reduced from 3 to 1 for speed - can fix citations later
       let citations: any[] = [];
       let citationError: Error | null = null;
 
@@ -1501,13 +1521,21 @@ Return ONLY valid JSON:
 
       // CRITICAL CHECK: Did we get minimum 2 citations?
       if (citations.length < 2) {
-        console.error(`[Job ${jobId}] ❌ FAILED citation requirement for article ${i+1}: ${citations.length}/2 found`);
+        console.warn(`[Job ${jobId}] ⚠️ Partial citations for article ${i+1}: ${citations.length}/2 found`);
         
-        article.citation_status = 'failed';
-        article.external_citations = citations;
-        article.citation_failure_reason = `Only found ${citations.length} citations after ${MAX_CITATION_ATTEMPTS} attempts. ${citationError ? `Error: ${citationError.message}` : 'Timeout or insufficient results'}`;
-        
-        console.log(`[Job ${jobId}] ⚠️ Article ${i+1} marked as citation_status='failed'`);
+        if (citations.length > 0) {
+          // Has at least 1 citation - allow cluster to proceed but flag for review
+          article.citation_status = 'needs_review';
+          article.external_citations = citations;
+          article.citation_failure_reason = `Found ${citations.length}/2 citations - needs more`;
+          console.log(`[Job ${jobId}] ✓ Article ${i+1} proceeding with partial citations (status='needs_review')`);
+        } else {
+          // No citations at all - mark as failed
+          article.citation_status = 'failed';
+          article.external_citations = citations;
+          article.citation_failure_reason = `No valid citations found after ${MAX_CITATION_ATTEMPTS} attempt(s). ${citationError ? `Error: ${citationError.message}` : 'Timeout or insufficient results'}`;
+          console.log(`[Job ${jobId}] ❌ Article ${i+1} marked as citation_status='failed'`);
+        }
         
       } else {
         article.citation_status = 'verified';
@@ -1893,6 +1921,10 @@ Return ONLY valid JSON:
         updated_at: new Date().toISOString()
       })
       .eq('id', jobId);
+  } finally {
+    // Always stop the heartbeat when done (success or failure)
+    clearInterval(heartbeat);
+    console.log(`[Heartbeat] Stopped for job ${jobId}`);
   }
 }
 
