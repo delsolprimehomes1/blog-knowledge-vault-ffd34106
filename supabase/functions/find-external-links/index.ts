@@ -1032,15 +1032,8 @@ Return only the JSON array, nothing else.`;
       const isApproved = isApprovedDomain(citation.url, approvedDomains);
       
       if (isApproved) {
-        console.log(`✅ WHITELIST APPROVED: ${domain}`);
-        
-        // Check usage limits for whitelisted domains
-        if (blockedDomains.includes(domain)) {
-          console.warn(`⚠️ USAGE LIMIT: ${domain} - Used 30+ times`);
-          return false;
-        }
-        
-        return true;
+        console.log(`✅ APPROVED DOMAIN: ${domain} - TRUSTED SOURCE (no usage limits)`);
+        return true; // IMMEDIATE APPROVAL - approved domains are always trusted
       }
       
       // Layer 3: GOVERNMENT-ONLY MODE - Requires BOTH gov/official domain AND correct language
@@ -1164,6 +1157,13 @@ Return only the JSON array, nothing else.`;
       
       console.log(`${dedupedCitations.length} citations passed content complement validation (removed ${allowedCitations.length - dedupedCitations.length} duplicates/generic/vague citations)`);
       allowedCitations = dedupedCitations;
+    }
+
+    console.log(`\n📊 FINAL CITATION COUNT: ${allowedCitations.length} approved citations`);
+    if (allowedCitations.length < 2) {
+      console.warn(`⚠️ INSUFFICIENT CITATIONS: Only ${allowedCitations.length}/2 found`);
+      console.warn(`📊 Available approved domains: ${approvedDomains.length}`);
+      console.warn(`🔄 Caller should retry with different approach`);
     }
 
     // Phase 5: Smart retry with category-specific domains if no valid citations found
