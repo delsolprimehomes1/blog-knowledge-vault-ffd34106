@@ -158,8 +158,8 @@ const ClusterGenerator = () => {
 
         setLastBackendUpdate(lastUpdate);
 
-        // If backend hasn't updated in 20 minutes, mark as timed out (allows 6 articles × 4 min each)
-        if (minutesSinceUpdate > 20) {
+        // If backend hasn't updated in 50 minutes, mark as timed out (allows 6 articles × 7 min timeout + overhead)
+        if (minutesSinceUpdate > 50) {
           console.error(`Job ${currentJobId} appears stuck. Last update: ${minutesSinceUpdate.toFixed(1)} minutes ago`);
           
           if (pollingInterval) {

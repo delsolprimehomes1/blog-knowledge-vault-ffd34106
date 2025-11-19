@@ -724,8 +724,9 @@ Citation Needs: ${section.citationNeeds}
 REMEMBER: Quality > Quantity. We need MINIMUM 2, but all 2+ must be perfect.
 `;
 
-    // 🔄 PERSISTENT RETRY WITH FEEDBACK LOOP
-    const maxAttempts = 5;
+    // 🔄 PERSISTENT RETRY WITH FEEDBACK LOOP (EXTENDED TO 7 ATTEMPTS)
+    const maxAttempts = 7;
+    const requireFullDomainPass = true; // Force full domain coverage before giving up
     let currentAttempt = 0;
     const rejectedDomains: Map<string, string> = new Map(); // domain -> rejection reason
     let allowedCitations: Citation[] = [];
@@ -767,6 +768,43 @@ Focus on government (.gov, .gob.es), educational (.edu, .ac.uk), and official st
       
       const feedbackText = buildRejectionFeedback(rejectedDomains, currentAttempt);
 
+    // Build comprehensive domain statistics for Gemini
+    const articleWordCount = fullArticleText.split(/\s+/).length;
+    const domainStats = {
+      total: totalDomains,
+      byLanguage: {
+        [language]: approvedDomains.filter((d: any) => d.language === language).length,
+        'EU': approvedDomains.filter((d: any) => d.language === 'EU').length,
+        'GLOBAL': approvedDomains.filter((d: any) => d.language === 'GLOBAL').length
+      },
+      byTier: {
+        'Tier 1 (Gov)': approvedDomains.filter((d: any) => d.tier === 'Tier 1').length,
+        'Tier 2 (Edu)': approvedDomains.filter((d: any) => d.tier === 'Tier 2').length,
+        'Tier 3 (Stats)': approvedDomains.filter((d: any) => d.tier === 'Tier 3').length,
+        'Tier 4 (Other)': approvedDomains.filter((d: any) => d.tier === 'Tier 4').length
+      }
+    };
+
+    const domainStatsText = `
+📊 DOMAIN INVENTORY (You have ${totalDomains} approved domains to search):
+
+BY LANGUAGE:
+- ${language.toUpperCase()}: ${domainStats.byLanguage[language]} domains
+- EU/GLOBAL: ${(domainStats.byLanguage['EU'] || 0) + (domainStats.byLanguage['GLOBAL'] || 0)} domains
+
+BY AUTHORITY TIER:
+- ${Object.entries(domainStats.byTier).map(([tier, count]) => `${tier}: ${count}`).join('\n- ')}
+
+🎯 SEARCH STRATEGY:
+1. Start with Tier 1 (Government) domains: ${domainStats.byTier['Tier 1 (Gov)']} options
+2. Then try Tier 2 (Educational): ${domainStats.byTier['Tier 2 (Edu)']} options
+3. Then Tier 3 (Statistics): ${domainStats.byTier['Tier 3 (Stats)']} options
+4. Finally Tier 4 (Category-specific): ${domainStats.byTier['Tier 4 (Other)']} options
+
+🚨 CRITICAL: Search through ALL ${totalDomains} domains systematically. DO NOT stop after checking only 10-20 domains.
+You have access to hundreds of approved sources across all categories.
+`;
+
     const prompt = `${strictEnforcementNotice}
 
 ${feedbackText}
@@ -777,7 +815,13 @@ Article Topic: "${headline}"
 Article Category: ${articleCategory}
 Article Language: ${config.languageName}
 
-📄 FULL ARTICLE CONTENT (Read completely from top to bottom to find the most relevant external citations):
+📖 FULL ARTICLE ANALYSIS REQUIRED:
+- Article length: ${articleWordCount} words across ${sections.length} sections
+- YOU MUST read and understand the ENTIRE article before suggesting citations
+- Base semantic relevance on the COMPLETE article context, not just headlines or first paragraphs
+- Match citations to specific paragraphs within their target sections
+
+📄 COMPLETE ARTICLE CONTENT (Read from start to finish):
 ${fullArticleText}
 
 📖 ARTICLE STRUCTURE & CITATION NEEDS BY SECTION:
@@ -785,7 +829,9 @@ ${sectionContext}
 
 ${topicGuidance}
 
-✅ PREFERRED DOMAINS (use these when possible - ${totalDomains} total):
+${domainStatsText}
+
+✅ APPROVED DOMAINS BY CATEGORY (${totalDomains} total):
 ${whitelistByCategory}
 ${competitorText}
 
@@ -861,7 +907,8 @@ Return only the JSON array, nothing else.`;
     const searchDomains = approvedDomains.map((d: {domain: string}) => d.domain);
     console.log(`🔍 Searching ${searchDomains.length} approved domains with Gemini + Google Search`);
 
-    const GEMINI_TIMEOUT = attemptNumber === 3 ? 45000 : 35000; // Longer timeout for strict mode
+    // Extended timeout: 7 minutes (420,000ms) to allow full domain scanning with 7 retry attempts
+    const GEMINI_TIMEOUT = 420000;
     const startTime = Date.now();
     
     let response: Response;
@@ -1235,6 +1282,66 @@ Return only the JSON array, nothing else.`;
     // Add this attempt's validated citations to cumulative list
     allowedCitations.push(...semanticallyValidated);
 
+    // 📊 LOG DETAILED ATTEMPT STATISTICS
+    const attemptStats = {
+      citationsAccepted: semanticallyValidated.length,
+      rejectionReasons: {
+        competitor: 0,
+        languageMismatch: 0,
+        semanticLow: 0,
+        notApproved: 0,
+        realEstateHeuristic: 0,
+        urlVerificationFailed: 0,
+        other: 0
+      }
+    };
+
+    // Count new rejections from this attempt
+    const newRejections = new Map<string, string>();
+    rejectedDomains.forEach((reason, domain) => {
+      newRejections.set(domain, reason);
+      
+      // Categorize rejection
+      const lowerReason = reason.toLowerCase();
+      if (lowerReason.includes('competitor') || lowerReason.includes('blacklist')) {
+        attemptStats.rejectionReasons.competitor++;
+      } else if (lowerReason.includes('language')) {
+        attemptStats.rejectionReasons.languageMismatch++;
+      } else if (lowerReason.includes('semantic') || lowerReason.includes('relevance')) {
+        attemptStats.rejectionReasons.semanticLow++;
+      } else if (lowerReason.includes('approved')) {
+        attemptStats.rejectionReasons.notApproved++;
+      } else if (lowerReason.includes('real estate') || lowerReason.includes('heuristic')) {
+        attemptStats.rejectionReasons.realEstateHeuristic++;
+      } else if (lowerReason.includes('verification') || lowerReason.includes('accessible')) {
+        attemptStats.rejectionReasons.urlVerificationFailed++;
+      } else {
+        attemptStats.rejectionReasons.other++;
+      }
+    });
+
+    if (currentAttempt === 1 || attemptStats.citationsAccepted > 0 || Object.values(attemptStats.rejectionReasons).some(v => v > 0)) {
+      console.log(`\n📊 ATTEMPT ${currentAttempt} DETAILED STATISTICS:`);
+      console.log(`  ✅ Accepted: ${attemptStats.citationsAccepted} citations`);
+      if (Object.values(attemptStats.rejectionReasons).some(v => v > 0)) {
+        console.log(`  ❌ Rejection Breakdown:`);
+        Object.entries(attemptStats.rejectionReasons).forEach(([reason, count]) => {
+          if (count > 0) {
+            const reasonLabels: Record<string, string> = {
+              competitor: 'Competitor/Blacklist',
+              languageMismatch: 'Language Mismatch',
+              semanticLow: 'Low Semantic Relevance',
+              notApproved: 'Not in Approved List',
+              realEstateHeuristic: 'Real Estate Heuristic',
+              urlVerificationFailed: 'URL Verification Failed',
+              other: 'Other'
+            };
+            console.log(`    - ${reasonLabels[reason]}: ${count}`);
+          }
+        });
+      }
+    }
+
     // 🔄 CHECK EXIT CONDITIONS
     console.log(`\n📊 ATTEMPT ${currentAttempt} RESULTS: ${allowedCitations.length} valid citations (added ${semanticallyValidated.length} this attempt)`);
     
@@ -1243,9 +1350,17 @@ Return only the JSON array, nothing else.`;
       break; // Exit retry loop - we have enough citations
     }
     
-    if (rejectedDomains.size >= approvedDomains.length - 10) {
-      console.warn(`⚠️ EXHAUSTED: Tried ${rejectedDomains.size}/${approvedDomains.length} approved domains`);
-      console.warn(`No more domains to try - exiting retry loop`);
+    // Full-domain pass requirement: must try 695+ out of 700 domains
+    const domainExhaustionThreshold = requireFullDomainPass 
+      ? approvedDomains.length - 5  // Must try all but 5 domains
+      : approvedDomains.length - 50; // Old behavior
+    
+    const domainCoveragePercent = (rejectedDomains.size / approvedDomains.length * 100).toFixed(1);
+    console.log(`🔍 Domain coverage: ${rejectedDomains.size}/${approvedDomains.length} (${domainCoveragePercent}%)`);
+    
+    if (rejectedDomains.size >= domainExhaustionThreshold) {
+      console.warn(`⚠️ DOMAIN EXHAUSTION: Tried ${rejectedDomains.size}/${approvedDomains.length} approved domains (${domainCoveragePercent}%)`);
+      console.warn(`Full domain list has been exhausted - exiting retry loop`);
       break; // Exit - nearly all domains have been rejected
     }
     
@@ -1260,10 +1375,29 @@ Return only the JSON array, nothing else.`;
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`✅ Valid citations found: ${allowedCitations.length}`);
   console.log(`❌ Rejected domains: ${rejectedDomains.size}`);
+  console.log(`📍 Domain coverage: ${(rejectedDomains.size / approvedDomains.length * 100).toFixed(1)}%`);
+  
+  // Build detailed rejection breakdown
+  const rejectionBreakdown = new Map<string, number>();
+  rejectedDomains.forEach(reason => {
+    rejectionBreakdown.set(reason, (rejectionBreakdown.get(reason) || 0) + 1);
+  });
+  
+  // Sort by frequency
+  const sortedReasons = Array.from(rejectionBreakdown.entries())
+    .sort((a, b) => b[1] - a[1]);
   
   if (allowedCitations.length + rejectedDomains.size > 0) {
     const successRate = (allowedCitations.length / (allowedCitations.length + rejectedDomains.size) * 100).toFixed(1);
     console.log(`📈 Success rate: ${successRate}%`);
+  }
+  
+  // Log rejection breakdown
+  if (sortedReasons.length > 0) {
+    console.log(`\n📊 REJECTION BREAKDOWN:`);
+    sortedReasons.slice(0, 10).forEach(([reason, count]) => {
+      console.log(`  ${count}× ${reason}`);
+    });
   }
   
   if (allowedCitations.length < 2) {
@@ -1475,14 +1609,30 @@ Return ONLY valid JSON:
 
     // Ensure at least 1 citation (relaxed to allow single high-quality source)
     if (citationsWithScores.length === 0) {
-      console.error('⚠️ No citations found after all attempts - returning empty result for manual review');
+      console.error(`\n🚨 CITATION DISCOVERY FAILED - NO VALID CITATIONS FOUND`);
+      console.error(`\nRejection Analysis:`);
+      sortedReasons.forEach(([reason, count]) => {
+        console.error(`  ${count}× ${reason}`);
+      });
+      
+      // Return detailed failure diagnostics
       return new Response(
         JSON.stringify({ 
           citations: [],
-          totalFound: 0, // No citations found after all attempts
+          totalFound: 0,
           totalVerified: 0,
           hasGovernmentSource: false,
-          warning: 'No suitable citations found - manual review required'
+          error: 'No valid citations found after full domain scan',
+          diagnostics: {
+            attemptsUsed: currentAttempt,
+            maxAttempts: maxAttempts,
+            domainsEvaluated: rejectedDomains.size,
+            totalDomainsAvailable: approvedDomains.length,
+            domainCoveragePercent: (rejectedDomains.size / approvedDomains.length * 100).toFixed(1),
+            rejectionBreakdown: Object.fromEntries(sortedReasons),
+            articleLength: fullArticleText.split(/\s+/).length,
+            sectionsAnalyzed: sections.length
+          }
         }),
         { 
           headers: { 
@@ -1510,13 +1660,46 @@ Return ONLY valid JSON:
       console.log('✓ Government source found');
     }
 
+    // 📊 LOG SUCCESSFUL DOMAIN CATEGORIES
+    if (citationsWithScores.length > 0) {
+      const categoriesUsed = new Set<string>();
+      const tiersUsed = new Set<string>();
+      
+      citationsWithScores.forEach((citation: any) => {
+        const domain = extractDomain(citation.url);
+        const approvedDomain = approvedDomains.find((d: any) => d.domain === domain);
+        
+        if (approvedDomain) {
+          if (approvedDomain.category) categoriesUsed.add(approvedDomain.category);
+          if (approvedDomain.tier) tiersUsed.add(approvedDomain.tier);
+        }
+      });
+      
+      if (categoriesUsed.size > 0) {
+        console.log(`\n✅ SUCCESSFUL DOMAIN CATEGORIES:`);
+        categoriesUsed.forEach(cat => console.log(`  - ${cat}`));
+      }
+      
+      if (tiersUsed.size > 0) {
+        console.log(`\n✅ AUTHORITY TIERS USED:`);
+        tiersUsed.forEach(tier => console.log(`  - ${tier}`));
+      }
+    }
+
+    // Success case: return citations with comprehensive diagnostics
     return new Response(
       JSON.stringify({ 
         citations: citationsWithScores,
         totalFound: allowedCitations.length, // Total citations found across all attempts
         totalVerified: citationsWithScores.length,
         hasGovernmentSource: hasGovSource,
-        averageAuthorityScore: citationsWithScores.reduce((acc: number, c: any) => acc + c.authorityScore, 0) / citationsWithScores.length
+        averageAuthorityScore: citationsWithScores.reduce((acc: number, c: any) => acc + c.authorityScore, 0) / citationsWithScores.length,
+        diagnostics: {
+          attemptsUsed: currentAttempt,
+          domainsEvaluated: rejectedDomains.size,
+          domainCoveragePercent: (rejectedDomains.size / approvedDomains.length * 100).toFixed(1),
+          successRate: ((citationsWithScores.length / (citationsWithScores.length + rejectedDomains.size)) * 100).toFixed(1)
+        }
       }),
       { 
         headers: { 
