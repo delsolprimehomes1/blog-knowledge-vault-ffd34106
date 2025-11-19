@@ -14,6 +14,21 @@ interface Citation {
   insertAfterHeading?: string;
   relevance: string;
   verified?: boolean;
+  semanticScore?: number;
+  targetSection?: string;
+}
+
+interface ArticleSection {
+  heading: string;
+  content: string;
+  keywords: string[];
+  citationNeeds: string;
+}
+
+interface DomainCategory {
+  name: string;
+  domains: string[];
+  topics: string[];
 }
 
 // Helper function to identify government/educational domains
@@ -162,8 +177,65 @@ function extractDomain(url: string): string {
 }
 
 /**
- * Fetch approved domains from the database
- * This replaces the hardcoded whitelist and allows dynamic management
+ * Fetch approved domains from the database organized by category
+ * Phase 1: Return ALL domains with category information
+ */
+async function getApprovedDomainsByCategory(supabase: any): Promise<DomainCategory[]> {
+  const { data, error } = await supabase
+    .from('approved_domains')
+    .select('domain, category, tier')
+    .eq('is_allowed', true)
+    .order('category');
+  
+  if (error) {
+    console.error('❌ Error fetching approved domains:', error);
+    return [];
+  }
+  
+  // Group domains by category
+  const categoryMap = new Map<string, Set<string>>();
+  data.forEach((d: any) => {
+    const category = d.category || 'General';
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, new Set());
+    }
+    categoryMap.get(category)!.add(d.domain);
+  });
+  
+  // Phase 2: Map categories to relevant topics
+  const topicMapping: Record<string, string[]> = {
+    'Government & Legal': ['legal requirements', 'regulations', 'permits', 'official procedures', 'government policy', 'compliance', 'licensing'],
+    'Real Estate & Property': ['property market', 'real estate', 'housing prices', 'property investment', 'buying property', 'rental market'],
+    'Finance & Banking': ['mortgages', 'financial planning', 'banking', 'investment', 'tax', 'financial advice'],
+    'Tourism & Travel': ['tourism', 'travel', 'attractions', 'destinations', 'vacation', 'accommodation', 'activities'],
+    'Climate & Weather': ['weather', 'climate', 'temperature', 'rainfall', 'seasons', 'meteorology'],
+    'Education & Language': ['education', 'language learning', 'schools', 'universities', 'courses', 'certifications'],
+    'Healthcare & Insurance': ['healthcare', 'medical', 'insurance', 'health system', 'doctors', 'hospitals'],
+    'Sports & Recreation': ['golf', 'padel', 'sports', 'fitness', 'outdoor activities', 'recreation'],
+    'Gastronomy & Lifestyle': ['restaurants', 'cuisine', 'food', 'dining', 'culinary', 'lifestyle'],
+    'Transportation': ['transport', 'roads', 'public transport', 'driving', 'infrastructure', 'connectivity'],
+    'Sustainability & Energy': ['sustainability', 'renewable energy', 'environment', 'green energy', 'ecology'],
+    'Culture & Heritage': ['culture', 'heritage', 'history', 'museums', 'arts', 'traditions'],
+    'Business & Economy': ['business', 'economy', 'commerce', 'trade', 'employment', 'economic data']
+  };
+  
+  const categories: DomainCategory[] = [];
+  categoryMap.forEach((domains, categoryName) => {
+    categories.push({
+      name: categoryName,
+      domains: Array.from(domains),
+      topics: topicMapping[categoryName] || []
+    });
+  });
+  
+  const totalDomains = data.length;
+  console.log(`✅ Loaded ${totalDomains} approved domains across ${categories.length} categories`);
+  
+  return categories;
+}
+
+/**
+ * Legacy function for backward compatibility
  */
 async function getApprovedDomains(supabase: any): Promise<string[]> {
   const { data, error } = await supabase
@@ -214,6 +286,135 @@ function checkUrlLanguage(url: string, language: string): boolean {
   return matches;
 }
 
+/**
+ * Phase 3: Parse article into sections for paragraph-level context
+ */
+function parseArticleSections(content: string, headline: string): ArticleSection[] {
+  const sections: ArticleSection[] = [];
+  
+  // Split by h2/h3 headings
+  const headingPattern = /<h[23][^>]*>(.*?)<\/h[23]>/gi;
+  const parts = content.split(headingPattern);
+  
+  // First section (intro before any heading)
+  if (parts[0] && parts[0].trim()) {
+    const text = parts[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    sections.push({
+      heading: 'Introduction',
+      content: text.substring(0, 500),
+      keywords: extractKeywords(text),
+      citationNeeds: identifyCitationNeeds(text, headline)
+    });
+  }
+  
+  // Process remaining sections
+  for (let i = 1; i < parts.length; i += 2) {
+    const heading = parts[i];
+    const sectionContent = parts[i + 1] || '';
+    const text = sectionContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    if (text.length > 50) {
+      sections.push({
+        heading: heading.trim(),
+        content: text.substring(0, 500),
+        keywords: extractKeywords(text),
+        citationNeeds: identifyCitationNeeds(text, heading)
+      });
+    }
+  }
+  
+  console.log(`📑 Parsed article into ${sections.length} sections`);
+  return sections;
+}
+
+function extractKeywords(text: string): string[] {
+  const words = text.toLowerCase().match(/\b\w{4,}\b/g) || [];
+  const frequency = new Map<string, number>();
+  
+  words.forEach(word => {
+    frequency.set(word, (frequency.get(word) || 0) + 1);
+  });
+  
+  return Array.from(frequency.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word]) => word);
+}
+
+function identifyCitationNeeds(text: string, heading: string): string {
+  const lowerText = text.toLowerCase();
+  const lowerHeading = heading.toLowerCase();
+  
+  // Identify what type of citation this section needs
+  if (lowerText.includes('law') || lowerText.includes('legal') || lowerText.includes('regulation') || lowerHeading.includes('legal')) {
+    return 'Legal/regulatory authority';
+  }
+  if (lowerText.includes('price') || lowerText.includes('cost') || lowerText.includes('market') || lowerHeading.includes('market')) {
+    return 'Market data/statistics';
+  }
+  if (lowerText.includes('weather') || lowerText.includes('climate') || lowerText.includes('temperature')) {
+    return 'Weather/climate data';
+  }
+  if (lowerText.includes('tourism') || lowerText.includes('attraction') || lowerText.includes('visit')) {
+    return 'Tourism information';
+  }
+  if (lowerText.includes('process') || lowerText.includes('procedure') || lowerText.includes('how to')) {
+    return 'Official procedures/guides';
+  }
+  
+  return 'Expert opinion or authoritative source';
+}
+
+/**
+ * Phase 4: Calculate semantic relevance between citation and paragraph
+ */
+function calculateSemanticMatch(citation: Citation, section: ArticleSection): number {
+  let score = 0;
+  
+  // Check if citation relevance mentions section keywords
+  const relevanceLower = citation.relevance.toLowerCase();
+  const sectionText = (section.heading + ' ' + section.content).toLowerCase();
+  
+  // Keyword overlap
+  const matchedKeywords = section.keywords.filter(keyword => 
+    relevanceLower.includes(keyword) || citation.sourceName.toLowerCase().includes(keyword)
+  );
+  score += matchedKeywords.length * 10;
+  
+  // Citation needs alignment
+  if (relevanceLower.includes('government') && section.citationNeeds.includes('authority')) score += 20;
+  if (relevanceLower.includes('official') && section.citationNeeds.includes('Official')) score += 20;
+  if (relevanceLower.includes('market') && section.citationNeeds.includes('Market')) score += 20;
+  if (relevanceLower.includes('statistics') && section.citationNeeds.includes('statistics')) score += 20;
+  if (relevanceLower.includes('weather') && section.citationNeeds.includes('Weather')) score += 20;
+  
+  // Context match
+  const contextLower = citation.contextInArticle.toLowerCase();
+  if (contextLower.includes(section.heading.toLowerCase().substring(0, 20))) score += 15;
+  
+  // Normalize to 0-100
+  return Math.min(100, score);
+}
+
+/**
+ * Phase 5: Identify article category for smart retry
+ */
+function identifyArticleCategory(headline: string, content: string): string {
+  const text = (headline + ' ' + content.substring(0, 1000)).toLowerCase();
+  
+  if (text.match(/legal|law|regulation|permit|license|compliance/i)) return 'Government & Legal';
+  if (text.match(/property|real estate|housing|buy.*home|villa|apartment/i)) return 'Real Estate & Property';
+  if (text.match(/mortgage|bank|finance|invest|tax|financial/i)) return 'Finance & Banking';
+  if (text.match(/tourism|travel|visit|attraction|destination|vacation/i)) return 'Tourism & Travel';
+  if (text.match(/weather|climate|temperature|rain|season/i)) return 'Climate & Weather';
+  if (text.match(/education|school|university|language|learn|study/i)) return 'Education & Language';
+  if (text.match(/health|medical|insurance|doctor|hospital/i)) return 'Healthcare & Insurance';
+  if (text.match(/golf|padel|sport|fitness|recreation/i)) return 'Sports & Recreation';
+  if (text.match(/restaurant|food|cuisine|dining|gastronomy/i)) return 'Gastronomy & Lifestyle';
+  
+  return 'General';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -222,6 +423,9 @@ serve(async (req) => {
   try {
     const { content, headline, language = 'es', requireGovernmentSource = false } = await req.json();
     
+    console.log('🔍 Finding external citations for:', headline);
+    console.log('📖 Language:', language, '| Content length:', content?.length || 0);
+
     const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
     if (!PERPLEXITY_API_KEY) {
       throw new Error('PERPLEXITY_API_KEY is not configured');
@@ -232,12 +436,23 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Load approved domains from database
+    // Phase 1 & 2: Load ALL approved domains organized by category with topic mapping
+    const domainCategories = await getApprovedDomainsByCategory(supabase);
     const approvedDomains = await getApprovedDomains(supabase);
+    const totalDomains = approvedDomains.length;
+    
     if (approvedDomains.length === 0) {
       throw new Error('No approved domains found in database. Please configure approved_domains table.');
     }
-
+    
+    // Phase 3: Parse article into sections for paragraph-level context
+    const sections = parseArticleSections(content, headline);
+    console.log(`📑 Parsed into ${sections.length} sections`);
+    
+    // Phase 5: Identify article category for smart retry
+    const articleCategory = identifyArticleCategory(headline, content);
+    console.log(`📊 Article category: ${articleCategory}`);
+    
     // Get blocked domains
     const blockedDomains = await getOverusedDomains(supabase, 30);
 
@@ -250,72 +465,91 @@ serve(async (req) => {
       exampleDomain: string;
     }> = {
       es: {
-        instruction: 'Find 3-5 authoritative sources for this Spanish real estate article',
+        instruction: 'Find 3-5 authoritative sources for this Spanish article',
         domains: ['.gob.es', '.es official domains'],
-        sources: ['Spanish government ministries (Ministerios)', 'Property registry (Registradores de España)', 'Financial sources (Banco de España)', 'Legal and regulatory sources'],
+        sources: ['Spanish government ministries', 'Official institutions', 'Authoritative sources'],
         languageName: 'Spanish',
         exampleDomain: 'https://www.inclusion.gob.es/...'
       },
       en: {
-        instruction: 'Find 3-5 authoritative sources for this English real estate article',
+        instruction: 'Find 3-5 authoritative sources for this English article',
         domains: ['.gov', '.gov.uk', '.org official domains'],
-        sources: ['Government housing agencies', 'Property registries', 'Financial authorities (SEC, Federal Reserve)', 'Legal and regulatory sources'],
+        sources: ['Government agencies', 'Official institutions', 'Authoritative sources'],
         languageName: 'English',
-        exampleDomain: 'https://www.hud.gov/...'
+        exampleDomain: 'https://www.gov.uk/...'
       },
       nl: {
-        instruction: 'Find 3-5 authoritative sources for this Dutch real estate article',
+        instruction: 'Find 3-5 authoritative sources for this Dutch article',
         domains: ['.nl', '.overheid.nl', '.gov.nl official domains'],
-        sources: ['Dutch government sources (Nederlandse overheid)', 'Land registry (Kadaster)', 'Financial authorities (De Nederlandsche Bank)', 'Legal and regulatory sources'],
+        sources: ['Dutch government sources', 'Official institutions', 'Authoritative sources'],
         languageName: 'Dutch',
-        exampleDomain: 'https://www.kadaster.nl/...'
+        exampleDomain: 'https://www.overheid.nl/...'
       }
     };
 
     const config = languageConfig[language] || languageConfig.es;
 
+    // Phase 1: Build comprehensive domain whitelist (ALL domains, organized by category)
+    const whitelistByCategory = domainCategories.map(cat => {
+      return `**${cat.name}** (${cat.domains.length} domains, best for: ${cat.topics.slice(0, 3).join(', ')}):\n${cat.domains.join(', ')}`;
+    }).join('\n\n');
+
+    // Phase 2: Build topic-to-domain guidance
+    const relevantCategory = domainCategories.find(c => c.name === articleCategory);
+    const topicGuidance = `
+🎯 DOMAIN SELECTION GUIDANCE BY TOPIC:
+${domainCategories.map(cat => 
+  `• ${cat.name} → Use for: ${cat.topics.join(', ')}`
+).join('\n')}
+
+📍 FOR THIS SPECIFIC ARTICLE:
+Topic Category: ${articleCategory}
+${relevantCategory ? 
+  `🎯 Priority Domains: ${relevantCategory.domains.slice(0, 10).join(', ')}` : 
+  '🎯 Use most relevant category domains'
+}`;
+
+    // Phase 3: Build section-specific context for targeted citations
+    const sectionContext = sections.map((section, i) => `
+Section ${i + 1}: "${section.heading}"
+Content: ${section.content.substring(0, 300)}...
+Keywords: ${section.keywords.slice(0, 5).join(', ')}
+Citation Needs: ${section.citationNeeds}
+`).join('\n');
+
     const governmentRequirement = requireGovernmentSource 
-      ? `\n\nMANDATORY: At least ONE source MUST be from an official government domain (${config.domains.join(' or ')}). This is non-negotiable and CRITICAL for article validation.`
+      ? `\n- ⚠️ MANDATORY: At least ONE source MUST be from official government domains (${config.domains.join(' or ')})`
       : '';
 
     const blockedDomainsText = blockedDomains.length > 0
-      ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 30-use limit. Select DIVERSE alternatives from approved domains.**`
+      ? `\n- 🚫 AVOID overused domains: ${blockedDomains.slice(0, 15).join(', ')}`
       : '';
-
-    // Build domain list for Perplexity (show top 50 for brevity in prompt)
-    const topDomains = approvedDomains.slice(0, 50).join(', ');
-    const totalDomains = approvedDomains.length;
-
-    const whitelistText = `
-🎯 CRITICAL WHITELIST RULE - ONLY THESE ${totalDomains} DOMAINS ALLOWED:
-
-**Top Priority Domains (showing ${Math.min(50, totalDomains)} of ${totalDomains}):**
-${topDomains}
-
-**Important:** There are ${totalDomains} total approved domains. Choose from this list ONLY.
-❌ ANY DOMAIN NOT IN THE APPROVED LIST WILL BE AUTOMATICALLY REJECTED
-❌ DO NOT suggest: idealista, kyero, propertyportal, airbnb, expedia, sunpropertiesmarbella, luxe-villa, directimo (NOT approved)
-`;
 
     const prompt = `${config.instruction}:
 
 Article Topic: "${headline}"
+Article Category: ${articleCategory}
 Article Language: ${config.languageName}
-Content Preview: ${content.substring(0, 2000)}
 
-${whitelistText}
+📖 ARTICLE STRUCTURE & CITATION NEEDS:
+${sectionContext}
+
+${topicGuidance}
+
+📚 APPROVED DOMAIN WHITELIST (${totalDomains} TOTAL):
+${whitelistByCategory}
 
 CRITICAL REQUIREMENTS:
-- Return MINIMUM 2 citations, ideally 3-5 citations
+- Return MINIMUM 3 citations, ideally 4-5 citations
+- Match citations to specific sections based on their citation needs
 - PRIORITIZE IN THIS ORDER:
-  1. Government/Official sites (.gob.es, spain.info, aemet.es, cervantes.es)
-  2. Tier 2 brands (lonelyplanet, roughguides, booking.com, tripadvisor)
-  3. Specialized sources relevant to article topic
-- ALL sources MUST be in ${config.languageName} language (no translations, no foreign sites)
+  1. Government/Official sites (.gob.es, .gov, official institutions)
+  2. Category-specific expert domains (match article topic to domain category)
+  3. Established brands with high authority
+- ALL sources MUST be in ${config.languageName} language
 - ALL sources must be HTTPS and currently active
-- Sources must be DIRECTLY RELEVANT to the article topic: "${headline}"
-- For each source, identify WHERE in the article it should be cited
-- **Select from ${totalDomains}-domain whitelist ONLY**${governmentRequirement}${blockedDomainsText}
+- Each citation must specify which section it belongs to
+- Citations must DIRECTLY support claims in their target section${governmentRequirement}${blockedDomainsText}
 
 Return ONLY valid JSON in this exact format:
 [
@@ -323,9 +557,9 @@ Return ONLY valid JSON in this exact format:
     "sourceName": "Example Government Agency",
     "url": "${config.exampleDomain}",
     "anchorText": "official regulatory procedures",
-    "contextInArticle": "When discussing legal requirements",
-    "insertAfterHeading": "Legal Requirements",
-    "relevance": "Authoritative government source providing official data on [specific topic]"
+    "contextInArticle": "When discussing legal requirements in [Section Name]",
+    "insertAfterHeading": "Section heading where this citation belongs",
+    "relevance": "Authoritative government source providing official data on [specific topic]. Directly supports the claim about [specific claim in that section]"
   }
 ]
 
@@ -431,37 +665,87 @@ Return only the JSON array, nothing else.`;
 
     console.log(`${allowedCitations.length} citations passed strict filtering (${citations.length - allowedCitations.length} blocked)`);
 
-    // ✅ If no approved citations found, try a second targeted call with priority domains
+    // Phase 4: Semantic validation - ensure citations truly match their target sections
+    if (allowedCitations.length > 0 && sections.length > 0) {
+      console.log('🧠 Phase 4: Running semantic validation...');
+      allowedCitations = allowedCitations.map((citation: Citation) => {
+        // Find the best matching section for this citation
+        let bestMatch = sections[0];
+        let bestScore = 0;
+        
+        sections.forEach(section => {
+          const score = calculateSemanticMatch(citation, section);
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = section;
+          }
+        });
+        
+        console.log(`📊 Citation "${citation.sourceName}" → Section "${bestMatch.heading}": ${bestScore}% match`);
+        
+        return {
+          ...citation,
+          semanticScore: bestScore,
+          targetSection: bestMatch.heading
+        };
+      });
+      
+      // Filter out citations with very low semantic relevance (< 30%)
+      const semanticallyRelevant = allowedCitations.filter((c: any) => c.semanticScore >= 30);
+      const removedCount = allowedCitations.length - semanticallyRelevant.length;
+      
+      if (removedCount > 0) {
+        console.log(`🎯 Removed ${removedCount} citations with low semantic relevance`);
+      }
+      
+      allowedCitations = semanticallyRelevant;
+    }
+
+    // Phase 5: Smart retry with category-specific domains if no valid citations found
     if (allowedCitations.length === 0) {
-      console.warn('⚠️ Zero approved citations found - attempting second call with priority domains');
+      console.warn('⚠️ Zero approved citations found - attempting Phase 5 smart retry');
       
-      // Use top 10 most authoritative approved domains
-      const priorityDomains = approvedDomains
-        .filter(d => isGovernmentDomain(`https://${d}`) || 
-                     ['booking.com', 'tripadvisor.com', 'lonelyplanet.com', 'timeout.com', 'spain.info', 'andalucia.org', 'visitcostadelsol.com'].includes(d))
-        .slice(0, 15);
+      // Get domains specific to the article category
+      const categoryDomains = relevantCategory ? relevantCategory.domains : approvedDomains;
+      const priorityDomains = categoryDomains.slice(0, 20);
       
-      const jsonFormatInstructions = `
-Return ONLY valid JSON in this exact format:
+      console.log(`🎯 Retrying with ${priorityDomains.length} category-specific domains for: ${articleCategory}`);
+      
+      const categoryGuidance = relevantCategory ? `
+This article is about: ${articleCategory}
+Key topics: ${relevantCategory.topics.join(', ')}
+Use domains that are EXPERTS in these specific topics.
+` : '';
+      
+      const retryPrompt = `Find 3-4 HIGH-QUALITY citations for this ${config.languageName} article.
+
+Article Topic: "${headline}"
+Article Category: ${articleCategory}
+${categoryGuidance}
+
+📚 APPROVED DOMAINS FOR THIS CATEGORY:
+${priorityDomains.join(', ')}
+
+📖 ARTICLE SECTIONS (match citations to these):
+${sectionContext.substring(0, 1000)}
+
+REQUIREMENTS:
+- Use ONLY the ${priorityDomains.length} domains listed above
+- Match each citation to a specific section
+- Focus on government and authoritative sources
+- Each citation must directly support a claim in its target section
+
+Return ONLY valid JSON:
 [
   {
     "sourceName": "Source Name",
-    "url": "https://example.com/article",
-    "anchorText": "descriptive anchor text",
-    "contextInArticle": "where in article to cite this",
-    "relevance": "why this source is relevant"
+    "url": "https://example.com/...",
+    "anchorText": "descriptive anchor",
+    "contextInArticle": "Section context",
+    "insertAfterHeading": "Section heading",
+    "relevance": "Why this source supports the section's claim"
   }
 ]`;
-
-      const retryPrompt = `Find 3-5 citations for this article. You MUST ONLY use these ${priorityDomains.length} priority domains: ${priorityDomains.join(', ')}.
-
-Headline: "${headline}"
-Language: ${config.languageName}
-Content: ${content.substring(0, 1000)}
-
-Return ONLY citations from the ${priorityDomains.length} domains listed above. Be creative in finding relevant content from these high-authority sources.
-
-${jsonFormatInstructions}`;
 
       try {
         const retryResponse = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -503,7 +787,34 @@ ${jsonFormatInstructions}`;
               return isApprovedDomain(citation.url, approvedDomains);
             });
             
-            console.log(`✅ Second attempt found ${allowedCitations.length} approved citations`);
+            console.log(`✅ Retry found ${allowedCitations.length} approved citations`);
+            
+            // Phase 4: Apply semantic validation to retry citations
+            if (allowedCitations.length > 0 && sections.length > 0) {
+              console.log('🧠 Phase 4: Running semantic validation on retry citations...');
+              allowedCitations = allowedCitations.map((citation: Citation) => {
+                let bestMatch = sections[0];
+                let bestScore = 0;
+                
+                sections.forEach(section => {
+                  const score = calculateSemanticMatch(citation, section);
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = section;
+                  }
+                });
+                
+                return {
+                  ...citation,
+                  semanticScore: bestScore,
+                  targetSection: bestMatch.heading
+                };
+              });
+              
+              // Filter out low-relevance citations
+              allowedCitations = allowedCitations.filter((c: any) => c.semanticScore >= 30);
+              console.log(`✅ ${allowedCitations.length} citations passed semantic validation`);
+            }
           } catch (e) {
             console.error('Failed to parse retry citations:', e);
           }
