@@ -858,12 +858,13 @@ Return only the JSON array, nothing else.`;
     } catch (parseError) {
       console.error('Failed to parse citations JSON:', parseError);
       console.error('Raw response:', aiResponse.substring(0, 500));
-      throw new Error('Failed to parse AI response into citations');
+      // Gracefully fall back to empty citations instead of throwing
+      citations = [];
     }
 
     if (!Array.isArray(citations) || citations.length === 0) {
-      console.error('No valid citations found in response');
-      throw new Error('No citations found');
+      console.warn('No valid citations found in response');
+      // Continue with empty citations, frontend will handle "no suggestions" state
     }
 
     console.log(`Found ${citations.length} citations from Perplexity`);
