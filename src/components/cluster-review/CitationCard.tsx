@@ -12,6 +12,21 @@ interface CitationCardProps {
 
 export const CitationCard = ({ citation, onRemove }: CitationCardProps) => {
   const isOfficial = citation.url.includes('.gov') || citation.url.includes('.gob');
+  const verified = citation.verified;
+  
+  // Determine verification badge
+  const getVerificationBadge = () => {
+    if (verified === true) {
+      return <Badge variant="secondary" className="text-green-600">✅ Verified</Badge>;
+    }
+    if (verified === false) {
+      return <Badge variant="destructive">❌ Failed</Badge>;
+    }
+    if (isOfficial) {
+      return <Badge variant="secondary">⚠️ Gov Source</Badge>;
+    }
+    return null;
+  };
   
   return (
     <Card className="p-4">
@@ -20,6 +35,7 @@ export const CitationCard = ({ citation, onRemove }: CitationCardProps) => {
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-semibold">{citation.source}</h4>
             {isOfficial && <Badge variant="secondary">🔒 Official</Badge>}
+            {getVerificationBadge()}
           </div>
           <a 
             href={citation.url} 

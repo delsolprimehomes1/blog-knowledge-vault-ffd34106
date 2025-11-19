@@ -249,12 +249,24 @@ export const ClusterReviewInterface = ({
 
   const handleAutoFixLinks = async () => {
     setIsFixingLinks(true);
-    let fixedArticlesCount = 0;
-    let articlesWithNoCitations = 0;
-    let articlesWithNoLinks = 0;
+    let totalCitationsAdded = 0;
+    let totalLinksAdded = 0;
+    let articlesFixed = 0;
+    let articlesFailed: string[] = [];
 
     try {
-      toast.info('Auto-fixing links for all articles...');
+      const articlesToFix = articles.filter(article => {
+        const validation = validationResults.get(article.slug!);
+        return validation && !validation.isValid;
+      });
+
+      if (articlesToFix.length === 0) {
+        toast.info('All articles already have sufficient links');
+        setIsFixingLinks(false);
+        return;
+      }
+
+      toast.info(`🔄 Processing ${articlesToFix.length} article${articlesToFix.length !== 1 ? 's' : ''}...`);
 
       for (let i = 0; i < articles.length; i++) {
         const article = articles[i];
@@ -262,7 +274,8 @@ export const ClusterReviewInterface = ({
         
         if (!validation || validation.isValid) continue;
 
-        console.log(`Fixing links for article ${i + 1}: ${article.headline}`);
+        console.log(`Fixing links for article ${i + 1}/${articles.length}: ${article.headline}`);
+        let articleSuccess = false;
 
         // Fix internal links if needed
         if (validation.missingInternalLinks) {
@@ -287,19 +300,16 @@ export const ClusterReviewInterface = ({
               }
             });
 
-            if (error) {
-              console.error(`Failed to find internal links for article ${i}:`, error);
-              articlesWithNoLinks++;
-            } else if (data.links && data.links.length > 0) {
+            if (!error && data.links && data.links.length > 0) {
               updateArticle(i, { internal_links: data.links });
-              console.log(`✅ Added ${data.links.length} internal links to article ${i + 1}`);
+              totalLinksAdded += data.links.length;
+              articleSuccess = true;
+              console.log(`✅ Added ${data.links.length} internal links to: ${article.headline}`);
             } else {
               console.warn(`⚠️ No internal links found for: ${article.headline}`);
-              articlesWithNoLinks++;
             }
           } catch (error) {
             console.error(`Error fixing internal links for article ${i}:`, error);
-            articlesWithNoLinks++;
           }
         }
 
@@ -311,15 +321,11 @@ export const ClusterReviewInterface = ({
                 content: article.detailed_content,
                 headline: article.headline,
                 language: article.language || language,
-                requireGovernmentSource: false // Don't require government sources for auto-fix
+                requireGovernmentSource: false
               }
             });
 
-            if (error) {
-              console.error(`Failed to find external links for article ${i}:`, error);
-              articlesWithNoCitations++;
-            } else if (data.citations && data.citations.length > 0) {
-              // Merge with existing citations instead of replacing
+            if (!error && data.citations && data.citations.length > 0) {
               const existingCitations = article.external_citations || [];
               const newCitations = data.citations.filter((newCit: any) => 
                 !existingCitations.some((existing: any) => existing.url === newCit.url)
@@ -327,33 +333,47 @@ export const ClusterReviewInterface = ({
               const mergedCitations = [...existingCitations, ...newCitations];
               
               updateArticle(i, { external_citations: mergedCitations });
-              console.log(`✅ Added ${newCitations.length} new external citations to article ${i + 1} (total: ${mergedCitations.length})`);
+              totalCitationsAdded += newCitations.length;
+              articleSuccess = true;
+              console.log(`✅ Added ${newCitations.length} citations to: ${article.headline} (${data.verified || 0}/${data.citations.length} verified)`);
             } else {
               console.warn(`⚠️ No suitable citations found for: ${article.headline}`);
-              articlesWithNoCitations++;
+              articlesFailed.push(article.headline || `Article ${i + 1}`);
             }
           } catch (error) {
             console.error(`Error fixing external citations for article ${i}:`, error);
-            articlesWithNoCitations++;
+            articlesFailed.push(article.headline || `Article ${i + 1}`);
           }
         }
 
-        fixedArticlesCount++;
+        if (articleSuccess) {
+          articlesFixed++;
+          toast.success(`✅ Fixed: ${article.headline?.substring(0, 50)}...`, { duration: 2000 });
+        }
       }
 
-      // Show detailed feedback
-      if (fixedArticlesCount > 0) {
-        toast.success(`Auto-fixed links for ${fixedArticlesCount} article${fixedArticlesCount !== 1 ? 's' : ''}!`);
-      } else {
-        toast.info('All articles already have sufficient links');
+      // Force refresh validation results
+      setTimeout(() => {
+        const results = validateAllArticles(articles);
+        setValidationResults(results);
+      }, 500);
+
+      // Show comprehensive summary
+      if (articlesFixed > 0) {
+        const summary = [];
+        if (totalCitationsAdded > 0) summary.push(`${totalCitationsAdded} citation${totalCitationsAdded !== 1 ? 's' : ''}`);
+        if (totalLinksAdded > 0) summary.push(`${totalLinksAdded} internal link${totalLinksAdded !== 1 ? 's' : ''}`);
+        
+        toast.success(`🎉 Successfully added ${summary.join(' and ')} across ${articlesFixed} article${articlesFixed !== 1 ? 's' : ''}!`, { 
+          duration: 5000 
+        });
       }
       
-      if (articlesWithNoCitations > 0) {
-        toast.warning(`⚠️ ${articlesWithNoCitations} article${articlesWithNoCitations !== 1 ? 's' : ''} still need external citations - no suitable sources found. Try adding citations manually or adjust topic.`);
-      }
-      
-      if (articlesWithNoLinks > 0) {
-        toast.warning(`⚠️ ${articlesWithNoLinks} article${articlesWithNoLinks !== 1 ? 's' : ''} still need internal links.`);
+      if (articlesFailed.length > 0) {
+        toast.warning(`⚠️ ${articlesFailed.length} article${articlesFailed.length !== 1 ? 's' : ''} need manual review. Could not find suitable sources.`, {
+          duration: 6000,
+          description: 'Try adjusting topics or add citations manually'
+        });
       }
     } catch (error) {
       console.error('Error auto-fixing links:', error);

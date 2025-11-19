@@ -36,6 +36,7 @@ export interface ExternalCitation {
   text: string;
   url: string;
   source: string;
+  verified?: boolean;
 }
 
 export interface FAQEntity {

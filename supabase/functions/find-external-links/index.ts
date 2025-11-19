@@ -76,8 +76,12 @@ function isGovernmentDomain(url: string): boolean {
 }
 
 // Resilient URL verification with fallback strategies
-async function verifyUrl(url: string): Promise<boolean> {
+async function verifyUrl(url: string, retryCount = 0, maxRetries = 2): Promise<boolean> {
   const isGov = isGovernmentDomain(url);
+  const isPDF = url.toLowerCase().endsWith('.pdf');
+  
+  // Increase timeout for government domains and PDFs (they're often slower)
+  const timeout = (isGov || isPDF) ? 15000 : 10000;
   
   try {
     // Try HEAD request first (fastest)
@@ -85,9 +89,10 @@ async function verifyUrl(url: string): Promise<boolean> {
       method: 'HEAD',
       redirect: 'follow',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; CitationBot/1.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        ...(isPDF && { 'Accept': 'application/pdf' })
       },
-      signal: AbortSignal.timeout(10000) // Increased to 10 seconds
+      signal: AbortSignal.timeout(timeout)
     });
     
     // Accept 2xx and 3xx status codes (more lenient)
@@ -95,38 +100,52 @@ async function verifyUrl(url: string): Promise<boolean> {
       return true;
     }
     
-    // 403 is also acceptable (site blocks bots but exists)
-    if (response.status === 403) {
-      console.log(`403 but accepting: ${url}`);
+    // 403 is acceptable for known authority domains (site blocks bots but exists)
+    if (response.status === 403 && (isGov || isPDF)) {
+      console.log(`403 but accepting authority domain: ${url}`);
       return true;
     }
     
-    // For government domains, try GET request as fallback
-    if (isGov && (response.status === 400 || response.status >= 500)) {
-      console.log(`HEAD failed for gov site ${url}, trying GET...`);
+    // For government domains and PDFs, try GET request as fallback
+    if ((isGov || isPDF) && (response.status === 400 || response.status >= 500)) {
+      console.log(`HEAD failed for ${isGov ? 'gov site' : 'PDF'} ${url}, trying GET...`);
       const getResponse = await fetch(url, {
         method: 'GET',
         redirect: 'follow',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; CitationBot/1.0)'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          ...(isPDF && { 'Accept': 'application/pdf' })
         },
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(timeout)
       });
-      // Accept 2xx, 3xx, and 403 for government sites
-      return (getResponse.status >= 200 && getResponse.status < 400) || getResponse.status === 403;
+      
+      if (getResponse.status >= 200 && getResponse.status < 400) {
+        return true;
+      }
+      
+      if (getResponse.status === 403 && (isGov || isPDF)) {
+        console.log(`GET returned 403 but accepting authority domain: ${url}`);
+        return true;
+      }
     }
     
     return false;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.log(`⚠️ Verification error for ${url}: ${errorMsg}`);
-    
-    // For government domains, be more lenient with SSL/network errors
-    if (isGov) {
-      console.warn(`✅ Accepting government URL despite verification error: ${url}`);
-      return true; // ✅ Accept government sources even with SSL issues
+  } catch (err) {
+    const error = err as Error;
+    // Retry on timeout or network errors
+    if (retryCount < maxRetries && (error.name === 'TimeoutError' || error.name === 'TypeError')) {
+      console.log(`Retry ${retryCount + 1}/${maxRetries} for ${url}`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+      return verifyUrl(url, retryCount + 1, maxRetries);
     }
     
+    // Accept government and PDF sources even on network errors (they often have strict bot protection)
+    if ((isGov || isPDF) && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      console.log(`Network error for authority domain ${url}, but accepting as valid`);
+      return true;
+    }
+    
+    console.error(`Failed to verify ${url} after ${retryCount + 1} attempts:`, error);
     return false;
   }
 }
