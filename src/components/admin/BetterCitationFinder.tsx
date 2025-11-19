@@ -176,6 +176,14 @@ export const BetterCitationFinder = ({
                       <Badge variant={getAuthorityBadgeColor(citation.authorityScore)}>
                         Authority: {citation.authorityScore}/10
                       </Badge>
+                      {citation.diversityScore !== undefined && (
+                        <Badge 
+                          variant={citation.diversityScore >= 80 ? "default" : citation.diversityScore >= 50 ? "secondary" : "outline"}
+                          className={citation.diversityScore >= 80 ? "bg-green-600" : ""}
+                        >
+                          {citation.usageCount === 0 ? '✨ Unused' : `${citation.usageCount}× used`}
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
