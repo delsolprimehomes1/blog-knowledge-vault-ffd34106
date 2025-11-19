@@ -83,7 +83,7 @@ export const ValidationSummary = ({ validationResults, onAutoFix, isFixing }: Va
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle className="text-sm">Missing External Citations</AlertTitle>
                 <AlertDescription className="text-xs">
-                  {articlesWithMissingCitations} article{articlesWithMissingCitations !== 1 ? 's need' : ' needs'} more external citations (min. 3)
+                  {articlesWithMissingCitations} article{articlesWithMissingCitations !== 1 ? 's need' : ' needs'} more external citations (min. 2)
                 </AlertDescription>
               </Alert>
             )}

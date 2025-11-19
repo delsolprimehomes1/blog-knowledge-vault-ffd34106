@@ -47,6 +47,25 @@ export const ClusterReviewInterface = ({
     setValidationResults(results);
   }, [articles]);
 
+  // Auto-run citation discovery for new articles (only once on first load)
+  const [hasAutoRun, setHasAutoRun] = useState(false);
+  useEffect(() => {
+    if (hasAutoRun || articles.length === 0 || isFixingLinks) return;
+    
+    // Check if any articles need external citations
+    const needsCitations = articles.some(article => {
+      const externalCitations = article.external_citations || [];
+      return externalCitations.length < 2; // MIN_EXTERNAL_CITATIONS
+    });
+
+    if (needsCitations) {
+      console.log('Auto-running citation discovery for new cluster...');
+      setHasAutoRun(true);
+      // Run auto-fix in background without blocking UI
+      setTimeout(() => handleAutoFixLinks(), 1000);
+    }
+  }, [articles.length, hasAutoRun]);
+
   // Count articles needing citations
   const citationsNeeded = articles.reduce((count, article) => {
     const markerCount = (article.detailed_content?.match(/\[CITATION_NEEDED\]/g) || []).length;
@@ -219,6 +238,8 @@ export const ClusterReviewInterface = ({
   const handleAutoFixLinks = async () => {
     setIsFixingLinks(true);
     let fixedArticlesCount = 0;
+    let articlesWithNoCitations = 0;
+    let articlesWithNoLinks = 0;
 
     try {
       toast.info('Auto-fixing links for all articles...');
@@ -256,12 +277,17 @@ export const ClusterReviewInterface = ({
 
             if (error) {
               console.error(`Failed to find internal links for article ${i}:`, error);
+              articlesWithNoLinks++;
             } else if (data.links && data.links.length > 0) {
               updateArticle(i, { internal_links: data.links });
               console.log(`✅ Added ${data.links.length} internal links to article ${i + 1}`);
+            } else {
+              console.warn(`⚠️ No internal links found for: ${article.headline}`);
+              articlesWithNoLinks++;
             }
           } catch (error) {
             console.error(`Error fixing internal links for article ${i}:`, error);
+            articlesWithNoLinks++;
           }
         }
 
@@ -279,6 +305,7 @@ export const ClusterReviewInterface = ({
 
             if (error) {
               console.error(`Failed to find external links for article ${i}:`, error);
+              articlesWithNoCitations++;
             } else if (data.citations && data.citations.length > 0) {
               // Merge with existing citations instead of replacing
               const existingCitations = article.external_citations || [];
@@ -289,19 +316,32 @@ export const ClusterReviewInterface = ({
               
               updateArticle(i, { external_citations: mergedCitations });
               console.log(`✅ Added ${newCitations.length} new external citations to article ${i + 1} (total: ${mergedCitations.length})`);
+            } else {
+              console.warn(`⚠️ No suitable citations found for: ${article.headline}`);
+              articlesWithNoCitations++;
             }
           } catch (error) {
             console.error(`Error fixing external citations for article ${i}:`, error);
+            articlesWithNoCitations++;
           }
         }
 
         fixedArticlesCount++;
       }
 
+      // Show detailed feedback
       if (fixedArticlesCount > 0) {
         toast.success(`Auto-fixed links for ${fixedArticlesCount} article${fixedArticlesCount !== 1 ? 's' : ''}!`);
       } else {
         toast.info('All articles already have sufficient links');
+      }
+      
+      if (articlesWithNoCitations > 0) {
+        toast.warning(`⚠️ ${articlesWithNoCitations} article${articlesWithNoCitations !== 1 ? 's' : ''} still need external citations - no suitable sources found. Try adding citations manually or adjust topic.`);
+      }
+      
+      if (articlesWithNoLinks > 0) {
+        toast.warning(`⚠️ ${articlesWithNoLinks} article${articlesWithNoLinks !== 1 ? 's' : ''} still need internal links.`);
       }
     } catch (error) {
       console.error('Error auto-fixing links:', error);
