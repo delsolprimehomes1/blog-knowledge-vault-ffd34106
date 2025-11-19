@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
+import { validateDomainLanguage } from '../shared/domainLanguageValidator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,57 +32,15 @@ interface DomainCategory {
   topics: string[];
 }
 
-// Helper function to identify government/educational domains
-function isGovernmentDomain(url: string): boolean {
-  const govPatterns = [
-    // Generic government domains
-    '.gov',                    // US federal/state government
-    '.edu',                    // Educational institutions (US)
-    '.ac.uk',                  // Academic institutions (UK)
-    
-    // UK government
-    '.gov.uk',                 // UK government departments
-    '.nhs.uk',                 // National Health Service
-    'ofcom.org.uk',           // Ofcom (Communications regulator)
-    'fca.org.uk',             // Financial Conduct Authority
-    'cqc.org.uk',             // Care Quality Commission
-    'ons.gov.uk',             // Office for National Statistics
-    
-    // Spanish government (expanded patterns)
-    '.gob.es',                 // Spanish government
-    '.gob.',                   // Generic Spanish-speaking countries
-    'ine.es',                  // Instituto Nacional de Estadística
-    'bde.es',                  // Banco de España
-    'boe.es',                  // Boletín Oficial del Estado
-    'agenciatributaria.es',    // Spanish Tax Agency
-    'registradores.org',       // Spanish Land Registry
-    'mitma.gob.es',            // Ministry of Transport
-    'inclusion.gob.es',        // Ministry of Inclusion
-    'mjusticia.gob.es',        // Ministry of Justice
-    'exteriores.gob.es',       // Ministry of Foreign Affairs
-    
-    // European Union
-    'europa.eu',               // EU institutions
-    'eurostat.ec.europa.eu',  // Eurostat
-    
-    // Other countries
-    '.gouv.',                  // French-speaking governments (gouv.fr, etc.)
-    '.overheid.nl',            // Netherlands government
-    '.gc.ca',                  // Government of Canada
-    '.gov.au',                 // Australian government
-    '.govt.nz'                 // New Zealand government
-  ];
-  const lowerUrl = url.toLowerCase();
-  return govPatterns.some(pattern => lowerUrl.includes(pattern));
-}
+// Government domain checking removed - now handled by approved_domains table with language validation
 
 // Resilient URL verification with fallback strategies
 async function verifyUrl(url: string, retryCount = 0, maxRetries = 2): Promise<boolean> {
-  const isGov = isGovernmentDomain(url);
   const isPDF = url.toLowerCase().endsWith('.pdf');
   
-  // Increase timeout for government domains and PDFs (they're often slower)
-  const timeout = (isGov || isPDF) ? 15000 : 10000;
+  // Increase timeout for PDFs and official domains (they're often slower)
+  const isOfficialDomain = url.includes('.gov') || url.includes('.gob.') || url.includes('.edu') || url.includes('europa.eu');
+  const timeout = (isOfficialDomain || isPDF) ? 15000 : 10000;
   
   try {
     // Try HEAD request first (fastest)
@@ -101,14 +60,14 @@ async function verifyUrl(url: string, retryCount = 0, maxRetries = 2): Promise<b
     }
     
     // 403 is acceptable for known authority domains (site blocks bots but exists)
-    if (response.status === 403 && (isGov || isPDF)) {
+    if (response.status === 403 && (isOfficialDomain || isPDF)) {
       console.log(`403 but accepting authority domain: ${url}`);
       return true;
     }
     
-    // For government domains and PDFs, try GET request as fallback
-    if ((isGov || isPDF) && (response.status === 400 || response.status >= 500)) {
-      console.log(`HEAD failed for ${isGov ? 'gov site' : 'PDF'} ${url}, trying GET...`);
+    // For official domains and PDFs, try GET request as fallback
+    if ((isOfficialDomain || isPDF) && (response.status === 400 || response.status >= 500)) {
+      console.log(`HEAD failed for ${isOfficialDomain ? 'official site' : 'PDF'} ${url}, trying GET...`);
       const getResponse = await fetch(url, {
         method: 'GET',
         redirect: 'follow',
@@ -123,7 +82,7 @@ async function verifyUrl(url: string, retryCount = 0, maxRetries = 2): Promise<b
         return true;
       }
       
-      if (getResponse.status === 403 && (isGov || isPDF)) {
+      if (getResponse.status === 403 && (isOfficialDomain || isPDF)) {
         console.log(`GET returned 403 but accepting authority domain: ${url}`);
         return true;
       }
@@ -139,8 +98,8 @@ async function verifyUrl(url: string, retryCount = 0, maxRetries = 2): Promise<b
       return verifyUrl(url, retryCount + 1, maxRetries);
     }
     
-    // Accept government and PDF sources even on network errors (they often have strict bot protection)
-    if ((isGov || isPDF) && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+    // Accept official and PDF sources even on network errors (they often have strict bot protection)
+    if ((isOfficialDomain || isPDF) && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
       console.log(`Network error for authority domain ${url}, but accepting as valid`);
       return true;
     }
@@ -439,15 +398,11 @@ async function getApprovedDomains(supabase: any): Promise<string[]> {
  */
 function isApprovedDomain(url: string, approvedDomains: string[]): boolean {
   const domain = extractDomain(url);
-  return approvedDomains.includes(domain) || isGovernmentDomain(url);
+  return approvedDomains.includes(domain);
 }
 
 function checkUrlLanguage(url: string, language: string): boolean {
-  // ✅ Government and educational domains are ALWAYS accepted (authoritative regardless of TLD)
-  if (isGovernmentDomain(url)) {
-    console.log(`✅ Accepting government/educational domain: ${url}`);
-    return true;
-  }
+  // Language checking now handled by domainLanguageValidator with approved_domains table
   
   const languagePatterns: Record<string, string[]> = {
     'es': ['.es', '.gob.es', 'spain', 'spanish', 'espana', 'espanol', '.eu', 'europa.eu'],
@@ -793,6 +748,19 @@ Return only the JSON array, nothing else.`;
 
     console.log('🤖 Calling Gemini 2.5 Flash with Google Search Grounding...');
     
+    // Language code mapping for Google Search Grounding
+    const languageCodeMap: Record<string, string> = {
+      'en': 'en',
+      'es': 'es',
+      'de': 'de',
+      'nl': 'nl',
+      'fr': 'fr',
+      'pl': 'pl',
+      'sv': 'sv',
+      'da': 'da',
+      'hu': 'hu'
+    };
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -834,7 +802,9 @@ Return only the JSON array, nothing else.`;
               google_search_retrieval: {
                 dynamic_retrieval_config: {
                   mode: 'MODE_DYNAMIC',
-                  dynamic_threshold: 0.7
+                  dynamic_threshold: 0.7,
+                  // CRITICAL: Filter Google results by language
+                  language_codes: [languageCodeMap[language] || 'en']
                 }
               }
             }
@@ -946,6 +916,25 @@ Return only the JSON array, nothing else.`;
 
     console.log(`Found ${citations.length} citations from Gemini + Google Search`);
 
+    // 🛡️ CRITICAL: Language validation checkpoint (post-Gemini)
+    console.log(`[Language Validation] Checking all ${citations.length} citations for language match...`);
+    const languageValidatedCitations: Citation[] = [];
+
+    for (const citation of citations) {
+      const validation = await validateDomainLanguage(supabase, citation.url, language);
+      
+      if (!validation.isValid) {
+        console.warn(`[Language Validation] ❌ REJECTED (${citation.url}): Expected ${language}, Got ${validation.actualLanguage || 'unknown'}`);
+        continue;
+      }
+      
+      console.log(`[Language Validation] ✅ PASSED (${citation.url}): Language ${validation.actualLanguage}`);
+      languageValidatedCitations.push(citation);
+    }
+
+    console.log(`[Language Validation] ${citations.length} → ${languageValidatedCitations.length} citations passed language check`);
+    citations = languageValidatedCitations;
+
     // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow
     let allowedCitations = citations.filter((citation: Citation) => {
       if (!citation.url || !citation.sourceName) {
@@ -972,7 +961,7 @@ Return only the JSON array, nothing else.`;
         console.log(`✅ WHITELIST APPROVED: ${domain}`);
         
         // Check usage limits for whitelisted domains
-        if (blockedDomains.includes(domain) && !isGovernmentDomain(citation.url)) {
+        if (blockedDomains.includes(domain)) {
           console.warn(`⚠️ USAGE LIMIT: ${domain} - Used 30+ times`);
           return false;
         }
@@ -980,23 +969,22 @@ Return only the JSON array, nothing else.`;
         return true;
       }
       
-      // Fix 3: Layer 3 - GOVERNMENT-ONLY MODE (Ultra-Strict)
+      // Layer 3: GOVERNMENT-ONLY MODE - Requires BOTH gov/official domain AND correct language
       if (attemptNumber === 3) {
-        // ONLY allow government, educational, or official statistical domains
-        const isGovOrEdu = isGovernmentDomain(citation.url) || 
-                           domain.endsWith('.edu') || 
-                           domain.endsWith('.ac.uk') ||
-                           domain.includes('ine.') || 
-                           domain.includes('eurostat') ||
-                           domain.includes('europa.eu');
+        const isGovOrOfficial = domain.includes('.gov') || 
+                                domain.includes('.gob.') || 
+                                domain.includes('.edu') ||
+                                domain.includes('.ac.uk') ||
+                                domain.includes('eurostat') ||
+                                domain.includes('europa.eu') ||
+                                domain.includes('ine.');
         
-        if (!isGovOrEdu) {
-          console.warn(`🚫 Layer 3 ULTRA-STRICT REJECTION: ${domain} - Not government/educational`);
+        if (!isGovOrOfficial) {
+          console.warn(`🚫 Layer 3 BLOCKED: ${domain} - Not government/official domain`);
           return false;
         }
         
-        console.log(`✅ Layer 3 APPROVED: ${domain} - Government/Educational domain`);
-        return true;
+        console.log(`✅ Layer 3 APPROVED: ${domain} - Government/official with correct language`);
       }
       
       // Layer 1-2: Use normal approved domain logic
@@ -1245,11 +1233,14 @@ Return ONLY valid JSON:
     // ✅ FALLBACK: If no citations verified, use unverified high-authority citations
     if (validCitations.length === 0) {
       console.warn('⚠️ No citations verified successfully - using unverified citations as fallback');
-      // Prioritize government/educational domains even if unverified
-      const govCitations = verifiedCitations.filter(c => isGovernmentDomain(c.url));
-      if (govCitations.length > 0) {
-        console.log(`Using ${govCitations.length} unverified government citations`);
-        validCitations = govCitations.slice(0, 3);
+      // Prioritize official/government domains even if unverified
+      const officialCitations = verifiedCitations.filter(c => {
+        const url = c.url.toLowerCase();
+        return url.includes('.gov') || url.includes('.gob.') || url.includes('.edu') || url.includes('europa.eu');
+      });
+      if (officialCitations.length > 0) {
+        console.log(`Using ${officialCitations.length} unverified official citations`);
+        validCitations = officialCitations.slice(0, 3);
       } else {
         console.log(`Using top ${Math.min(3, verifiedCitations.length)} unverified citations`);
         validCitations = verifiedCitations.slice(0, 3);
@@ -1262,9 +1253,12 @@ Return ONLY valid JSON:
       const domain = extractDomain(citation.url);
       
       // Government/official sources (highest authority)
-      if (isGovernmentDomain(citation.url)) {
+      const url = citation.url.toLowerCase();
+      const isOfficial = url.includes('.gov') || url.includes('.gob.') || url.includes('.edu') || 
+                        url.includes('europa.eu') || url.includes('eurostat');
+      if (isOfficial) {
         authorityScore += 5;
-        console.log(`🏛️ Government boost: ${domain} (+5)`);
+        console.log(`🏛️ Official source boost: ${domain} (+5)`);
       }
       
       // Tier 1 domains (Official federations, Universities)
@@ -1326,7 +1320,10 @@ Return ONLY valid JSON:
     }
 
     // Check if government source is present (warn instead of blocking)
-    const hasGovSource = citationsWithScores.some((c: any) => isGovernmentDomain(c.url));
+    const hasGovSource = citationsWithScores.some((c: any) => {
+      const url = c.url.toLowerCase();
+      return url.includes('.gov') || url.includes('.gob.') || url.includes('.edu') || url.includes('europa.eu');
+    });
     
     if (requireGovernmentSource && !hasGovSource) {
       console.warn('⚠️ No government source found (requirement enabled but not blocking results)');
