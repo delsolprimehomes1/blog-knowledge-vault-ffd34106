@@ -12,7 +12,7 @@ import { AuthorSuggestionCard } from "./AuthorSuggestionCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Check } from "lucide-react";
+import { RefreshCw, Check, AlertCircle, CheckCircle2 } from "lucide-react";
 import { countWords } from "@/lib/articleUtils";
 import { LazyRichTextEditor } from "@/components/LazyRichTextEditor";
 import { AIImageGenerator } from "@/components/AIImageGenerator";
@@ -96,8 +96,45 @@ export const ArticleReviewCard = ({
     return 'text-destructive';
   };
 
+  const citationStatus = (article as any).citation_status;
+  const citationFailureReason = (article as any).citation_failure_reason;
+
   return (
     <div className="space-y-6">
+      {/* Citation Status Banner */}
+      {citationStatus === 'failed' && (
+        <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+            <div className="flex-1">
+              <h4 className="font-semibold text-destructive mb-1">Missing Required Citations</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                This article failed citation requirements and cannot be published until fixed.
+              </p>
+              {citationFailureReason && (
+                <p className="text-xs text-muted-foreground italic">
+                  Reason: {citationFailureReason}
+                </p>
+              )}
+              <p className="text-sm font-medium mt-2">
+                ⚠️ Manually add at least 2 verified, non-competitor citations before publishing.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {citationStatus === 'verified' && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-900">
+              Citations Verified ✓
+            </span>
+          </div>
+        </div>
+      )}
+      
       <Accordion type="multiple" defaultValue={["seo", "image", "content", "links"]} className="space-y-4">
         {/* SEO Section */}
         <AccordionItem value="seo" className="border rounded-lg">

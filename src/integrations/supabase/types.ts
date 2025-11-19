@@ -233,7 +233,9 @@ export type Database = {
           author_id: string | null
           canonical_url: string | null
           category: string
+          citation_failure_reason: string | null
           citation_health_score: number | null
+          citation_status: string | null
           cluster_id: string | null
           cluster_number: number | null
           cluster_theme: string | null
@@ -278,7 +280,9 @@ export type Database = {
           author_id?: string | null
           canonical_url?: string | null
           category: string
+          citation_failure_reason?: string | null
           citation_health_score?: number | null
+          citation_status?: string | null
           cluster_id?: string | null
           cluster_number?: number | null
           cluster_theme?: string | null
@@ -323,7 +327,9 @@ export type Database = {
           author_id?: string | null
           canonical_url?: string | null
           category?: string
+          citation_failure_reason?: string | null
           citation_health_score?: number | null
+          citation_status?: string | null
           cluster_id?: string | null
           cluster_number?: number | null
           cluster_theme?: string | null

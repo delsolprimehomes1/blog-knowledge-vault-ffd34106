@@ -5,6 +5,7 @@ export interface CitationValidationResult {
   hasUnreplacedMarkers: boolean;
   officialSourceCount: number;
   totalCitations: number;
+  authorityGrade: number;
 }
 
 export interface CitationIssue {
@@ -105,14 +106,45 @@ export function validateCitations(
   // Ensure score stays in 0-100 range
   score = Math.max(0, Math.min(100, score));
 
+  // Calculate authority grade
+  const authorityGrade = calculateAuthorityGrade(externalCitations);
+  
   return {
-    isValid: score >= 70 && !hasUnreplacedMarkers,
+    isValid: score >= 70 && !hasUnreplacedMarkers && totalCitations >= 2,
     score,
     issues,
     hasUnreplacedMarkers,
     officialSourceCount,
-    totalCitations
+    totalCitations,
+    authorityGrade
   };
+}
+
+export function calculateAuthorityGrade(externalCitations: any[]): number {
+  if (!externalCitations || externalCitations.length === 0) return 0;
+  
+  let grade = 0;
+  
+  for (const citation of externalCitations) {
+    const url = citation.url || '';
+    const domain = url.toLowerCase();
+    
+    // Government/edu = 10 points
+    if (domain.includes('.gov') || domain.includes('.edu')) {
+      grade += 10;
+    }
+    // .org = 8 points
+    else if (domain.includes('.org')) {
+      grade += 8;
+    }
+    // Other verified = 6 points
+    else {
+      grade += 6;
+    }
+  }
+  
+  // Average across citations
+  return Math.round(grade / externalCitations.length);
 }
 
 /**

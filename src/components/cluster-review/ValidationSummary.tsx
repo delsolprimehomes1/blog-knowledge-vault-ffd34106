@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, Zap, AlertCircle } from "lucide-react";
 import { LinkValidationResult } from "@/lib/linkValidation";
 
 interface ValidationSummaryProps {
@@ -9,9 +9,10 @@ interface ValidationSummaryProps {
   onAutoFix: () => Promise<void>;
   isFixing: boolean;
   onRefreshValidation?: () => void;
+  articles?: any[];
 }
 
-export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRefreshValidation }: ValidationSummaryProps) => {
+export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRefreshValidation, articles = [] }: ValidationSummaryProps) => {
   const results = Array.from(validationResults.values());
   const validArticles = results.filter(r => r.isValid).length;
   const invalidArticles = results.filter(r => !r.isValid).length;
@@ -20,7 +21,11 @@ export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRe
   const articlesWithMissingCitations = results.filter(r => r.missingExternalCitations).length;
   const totalLanguageMismatches = results.reduce((sum, r) => sum + r.languageMismatches, 0);
   
-  const isClusterValid = results.every(r => r.isValid);
+  // Check for failed citation status
+  const hasFailedCitations = articles.some((a: any) => a.citation_status === 'failed');
+  const failedCitationCount = articles.filter((a: any) => a.citation_status === 'failed').length;
+  
+  const isClusterValid = results.every(r => r.isValid) && !hasFailedCitations;
 
   if (isClusterValid) {
     return (
@@ -44,7 +49,9 @@ export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRe
               Validation Failed - Cannot Publish
             </CardTitle>
             <CardDescription className="mt-2">
-              {invalidArticles} of {results.length} articles need fixes before publishing
+              {hasFailedCitations 
+                ? `${failedCitationCount} article(s) have failed citation requirements`
+                : `${invalidArticles} of ${results.length} articles need fixes before publishing`}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -83,6 +90,18 @@ export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRe
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
+          {/* Citation Status Alert */}
+          {hasFailedCitations && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Blocking Issue: Failed Citations</AlertTitle>
+              <AlertDescription>
+                {failedCitationCount} article(s) failed to meet minimum citation requirements (2 verified, non-competitor sources).
+                You must manually add proper citations before these articles can be published.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Error Summary */}
           <div className="grid grid-cols-2 gap-4">
             {articlesWithMissingLinks > 0 && (
