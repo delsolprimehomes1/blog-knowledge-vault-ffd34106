@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle, Language, FunnelStage } from "@/types/blog";
@@ -47,9 +47,21 @@ export const ClusterReviewInterface = ({
     setValidationResults(results);
   }, [articles]);
 
-  // Auto-run citation discovery for new articles (only once on first load)
+  // Auto-run citation discovery for new articles (resets for each new cluster)
   const [hasAutoRun, setHasAutoRun] = useState(false);
+  const previousArticleSlugsRef = useRef<string>('');
+  
   useEffect(() => {
+    // Create a unique identifier for the current cluster
+    const currentClusterKey = articles.map(a => a.slug).sort().join('|');
+    
+    // Detect if this is a new cluster (different articles than before)
+    if (currentClusterKey !== previousArticleSlugsRef.current) {
+      console.log('🆕 New cluster detected, resetting auto-run flag');
+      previousArticleSlugsRef.current = currentClusterKey;
+      setHasAutoRun(false); // Reset for new cluster
+    }
+    
     if (hasAutoRun || articles.length === 0 || isFixingLinks) return;
     
     // Check if any articles need external citations
@@ -59,12 +71,12 @@ export const ClusterReviewInterface = ({
     });
 
     if (needsCitations) {
-      console.log('Auto-running citation discovery for new cluster...');
+      console.log('🚀 Auto-running citation discovery for new cluster...');
       setHasAutoRun(true);
       // Run auto-fix in background without blocking UI
       setTimeout(() => handleAutoFixLinks(), 1000);
     }
-  }, [articles.length, hasAutoRun]);
+  }, [articles, hasAutoRun, isFixingLinks]);
 
   // Count articles needing citations
   const citationsNeeded = articles.reduce((count, article) => {
