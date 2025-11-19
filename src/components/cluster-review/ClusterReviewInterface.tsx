@@ -249,12 +249,16 @@ export const ClusterReviewInterface = ({
 
   const handleAutoFixLinks = async () => {
     setIsFixingLinks(true);
-    let totalCitationsAdded = 0;
-    let totalLinksAdded = 0;
-    let articlesFixed = 0;
-    let articlesFailed: string[] = [];
-
+    console.log('🔧 Starting auto-fix for links and citations...');
+    
     try {
+      let articlesFixed = 0;
+      let totalLinksAdded = 0;
+      let totalCitationsAdded = 0;
+      const articlesFailed: string[] = [];
+      const articlesWithUpdates: string[] = [];
+      
+      // Check if there's anything to fix
       const articlesToFix = articles.filter(article => {
         const validation = validationResults.get(article.slug!);
         return validation && !validation.isValid;
@@ -267,15 +271,17 @@ export const ClusterReviewInterface = ({
       }
 
       toast.info(`🔄 Processing ${articlesToFix.length} article${articlesToFix.length !== 1 ? 's' : ''}...`);
+      
+      // Build updated articles array with all changes
+      const updatedArticles = [...articles];
 
       for (let i = 0; i < articles.length; i++) {
         const article = articles[i];
-        const validation = validationResults.get(article.slug!);
-        
+        const validation = validationResults.get(article.slug || '');
         if (!validation || validation.isValid) continue;
 
-        console.log(`Fixing links for article ${i + 1}/${articles.length}: ${article.headline}`);
         let articleSuccess = false;
+        let articleChanges: string[] = [];
 
         // Fix internal links if needed
         if (validation.missingInternalLinks) {
@@ -301,9 +307,10 @@ export const ClusterReviewInterface = ({
             });
 
             if (!error && data.links && data.links.length > 0) {
-              updateArticle(i, { internal_links: data.links });
+              updatedArticles[i] = { ...updatedArticles[i], internal_links: data.links };
               totalLinksAdded += data.links.length;
               articleSuccess = true;
+              articleChanges.push(`${data.links.length} internal link${data.links.length !== 1 ? 's' : ''}`);
               console.log(`✅ Added ${data.links.length} internal links to: ${article.headline}`);
             } else {
               console.warn(`⚠️ No internal links found for: ${article.headline}`);
@@ -332,9 +339,10 @@ export const ClusterReviewInterface = ({
               );
               const mergedCitations = [...existingCitations, ...newCitations];
               
-              updateArticle(i, { external_citations: mergedCitations });
+              updatedArticles[i] = { ...updatedArticles[i], external_citations: mergedCitations };
               totalCitationsAdded += newCitations.length;
               articleSuccess = true;
+              articleChanges.push(`${newCitations.length} citation${newCitations.length !== 1 ? 's' : ''}`);
               console.log(`✅ Added ${newCitations.length} citations to: ${article.headline} (${data.verified || 0}/${data.citations.length} verified)`);
             } else {
               console.warn(`⚠️ No suitable citations found for: ${article.headline}`);
@@ -348,15 +356,16 @@ export const ClusterReviewInterface = ({
 
         if (articleSuccess) {
           articlesFixed++;
-          toast.success(`✅ Fixed: ${article.headline?.substring(0, 50)}...`, { duration: 2000 });
+          articlesWithUpdates.push(`${article.headline?.substring(0, 40)}...`);
+          toast.success(`✅ ${article.headline?.substring(0, 50)}... - Added ${articleChanges.join(' and ')}`, { duration: 3000 });
         }
       }
 
-      // Force refresh validation results
-      setTimeout(() => {
-        const results = validateAllArticles(articles);
-        setValidationResults(results);
-      }, 500);
+      // Apply all updates in a single batch - this will trigger the useEffect validation
+      if (articlesFixed > 0) {
+        console.log('📦 Applying batch updates to trigger validation...');
+        onArticlesChange(updatedArticles);
+      }
 
       // Show comprehensive summary
       if (articlesFixed > 0) {
@@ -364,7 +373,7 @@ export const ClusterReviewInterface = ({
         if (totalCitationsAdded > 0) summary.push(`${totalCitationsAdded} citation${totalCitationsAdded !== 1 ? 's' : ''}`);
         if (totalLinksAdded > 0) summary.push(`${totalLinksAdded} internal link${totalLinksAdded !== 1 ? 's' : ''}`);
         
-        toast.success(`🎉 Successfully added ${summary.join(' and ')} across ${articlesFixed} article${articlesFixed !== 1 ? 's' : ''}!`, { 
+        toast.success(`🎉 Added ${summary.join(' and ')} across ${articlesFixed} article${articlesFixed !== 1 ? 's' : ''} - Validating...`, { 
           duration: 5000 
         });
       }
@@ -458,9 +467,14 @@ export const ClusterReviewInterface = ({
       {/* Validation Summary */}
       {validationResults.size > 0 && Array.from(validationResults.values()).some(r => !r.isValid) && (
         <ValidationSummary 
-          validationResults={validationResults}
+          validationResults={validationResults} 
           onAutoFix={handleAutoFixLinks}
           isFixing={isFixingLinks}
+          onRefreshValidation={() => {
+            const results = validateAllArticles(articles);
+            setValidationResults(results);
+            toast.info('Validation refreshed');
+          }}
         />
       )}
 

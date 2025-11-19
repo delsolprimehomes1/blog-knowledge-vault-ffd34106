@@ -8,9 +8,10 @@ interface ValidationSummaryProps {
   validationResults: Map<string, LinkValidationResult>;
   onAutoFix: () => Promise<void>;
   isFixing: boolean;
+  onRefreshValidation?: () => void;
 }
 
-export const ValidationSummary = ({ validationResults, onAutoFix, isFixing }: ValidationSummaryProps) => {
+export const ValidationSummary = ({ validationResults, onAutoFix, isFixing, onRefreshValidation }: ValidationSummaryProps) => {
   const results = Array.from(validationResults.values());
   const validArticles = results.filter(r => r.isValid).length;
   const invalidArticles = results.filter(r => !r.isValid).length;
@@ -46,24 +47,38 @@ export const ValidationSummary = ({ validationResults, onAutoFix, isFixing }: Va
               {invalidArticles} of {results.length} articles need fixes before publishing
             </CardDescription>
           </div>
-          <Button 
-            onClick={onAutoFix}
-            disabled={isFixing}
-            variant="default"
-            className="gap-2"
-          >
-            {isFixing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Fixing...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4" />
-                Auto-Fix All Links
-              </>
+          <div className="flex gap-2">
+            {onRefreshValidation && (
+              <Button 
+                onClick={onRefreshValidation}
+                disabled={isFixing}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Refresh Validation
+              </Button>
             )}
-          </Button>
+            <Button 
+              onClick={onAutoFix}
+              disabled={isFixing}
+              variant="default"
+              className="gap-2"
+            >
+              {isFixing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Fixing...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Auto-Fix All Links
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
