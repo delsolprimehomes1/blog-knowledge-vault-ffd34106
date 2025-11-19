@@ -301,7 +301,7 @@ function parseArticleSections(content: string, headline: string): ArticleSection
     const text = parts[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     sections.push({
       heading: 'Introduction',
-      content: text.substring(0, 500),
+      content: text, // Keep full section content for Perplexity
       keywords: extractKeywords(text),
       citationNeeds: identifyCitationNeeds(text, headline)
     });
@@ -316,7 +316,7 @@ function parseArticleSections(content: string, headline: string): ArticleSection
     if (text.length > 50) {
       sections.push({
         heading: heading.trim(),
-        content: text.substring(0, 500),
+        content: text, // Keep full section content for Perplexity
         keywords: extractKeywords(text),
         citationNeeds: identifyCitationNeeds(text, heading)
       });
@@ -512,7 +512,7 @@ ${relevantCategory ?
     // Phase 3: Build section-specific context for targeted citations
     const sectionContext = sections.map((section, i) => `
 Section ${i + 1}: "${section.heading}"
-Content: ${section.content.substring(0, 300)}...
+Content: ${section.content}
 Keywords: ${section.keywords.slice(0, 5).join(', ')}
 Citation Needs: ${section.citationNeeds}
 `).join('\n');
@@ -525,13 +525,19 @@ Citation Needs: ${section.citationNeeds}
       ? `\n- 🚫 AVOID overused domains: ${blockedDomains.slice(0, 15).join(', ')}`
       : '';
 
+    // Strip HTML but preserve structure for full article context
+    const fullArticleText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    
     const prompt = `${config.instruction}:
 
 Article Topic: "${headline}"
 Article Category: ${articleCategory}
 Article Language: ${config.languageName}
 
-📖 ARTICLE STRUCTURE & CITATION NEEDS:
+📄 FULL ARTICLE CONTENT (Read completely from top to bottom to find the most relevant external citations):
+${fullArticleText}
+
+📖 ARTICLE STRUCTURE & CITATION NEEDS BY SECTION:
 ${sectionContext}
 
 ${topicGuidance}
