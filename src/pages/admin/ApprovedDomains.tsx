@@ -6,22 +6,55 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { XCircle, Shield, TrendingUp, AlertCircle } from "lucide-react";
+import { XCircle, Shield, Clock } from "lucide-react";
+import { PendingDomainsManager } from "@/components/admin/PendingDomainsManager";
+import { DomainReviewAlert } from "@/components/admin/DomainReviewAlert";
 
 export default function ApprovedDomains() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('pending');
 
-  // Fetch approved domains
-  const { data: domains, isLoading } = useQuery({
-    queryKey: ['approved-domains'],
+  // Fetch pending domains count
+  const { data: pendingCount } = useQuery({
+    queryKey: ['pending-domains-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('discovered_domains')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
+  // Fetch approved domains (whitelist)
+  const { data: approvedDomains, isLoading: isLoadingApproved } = useQuery({
+    queryKey: ['approved-whitelist-domains'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('approved_domains')
         .select('*')
-        .eq('is_allowed', false) // BLACKLIST: Show blocked domains
+        .eq('is_allowed', true)
+        .order('domain', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch blocked domains (blacklist)
+  const { data: blockedDomains, isLoading: isLoadingBlocked } = useQuery({
+    queryKey: ['blocked-domains'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('approved_domains')
+        .select('*')
+        .eq('is_allowed', false)
         .order('domain', { ascending: true });
       
       if (error) throw error;
@@ -49,18 +82,25 @@ export default function ApprovedDomains() {
     return new Map(usageStats.map(stat => [stat.domain, stat.total_uses]));
   }, [usageStats]);
 
-  // Get unique categories
-  const categories = useMemo(() => {
-    if (!domains) return [];
-    const unique = Array.from(new Set(domains.map(d => d.category)));
+  // Get unique categories for approved domains
+  const approvedCategories = useMemo(() => {
+    if (!approvedDomains) return [];
+    const unique = Array.from(new Set(approvedDomains.map(d => d.category)));
     return unique.sort();
-  }, [domains]);
+  }, [approvedDomains]);
 
-  // Filter domains
-  const filteredDomains = useMemo(() => {
-    if (!domains) return [];
+  // Get unique categories for blocked domains
+  const blockedCategories = useMemo(() => {
+    if (!blockedDomains) return [];
+    const unique = Array.from(new Set(blockedDomains.map(d => d.category)));
+    return unique.sort();
+  }, [blockedDomains]);
+
+  // Filter approved domains
+  const filteredApproved = useMemo(() => {
+    if (!approvedDomains) return [];
     
-    let filtered = domains;
+    let filtered = approvedDomains;
     
     if (searchQuery) {
       filtered = filtered.filter(d => 
@@ -74,13 +114,33 @@ export default function ApprovedDomains() {
     }
     
     return filtered;
-  }, [domains, searchQuery, categoryFilter]);
+  }, [approvedDomains, searchQuery, categoryFilter]);
+
+  // Filter blocked domains
+  const filteredBlocked = useMemo(() => {
+    if (!blockedDomains) return [];
+    
+    let filtered = blockedDomains;
+    
+    if (searchQuery) {
+      filtered = filtered.filter(d => 
+        d.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(d => d.category === categoryFilter);
+    }
+    
+    return filtered;
+  }, [blockedDomains, searchQuery, categoryFilter]);
 
   const getTierColor = (tier: string | null) => {
     if (!tier) return 'bg-muted text-muted-foreground';
     switch (tier) {
       case '1': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
-      case '2': return 'bg-blue-500/10 text-blue-600 border-emerald-500/20';
+      case '2': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
       case '3': return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -93,92 +153,148 @@ export default function ApprovedDomains() {
     return 'text-muted-foreground';
   };
 
-  if (isLoading) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  const tier1Count = domains?.filter(d => d.tier === '1').length || 0;
-  const totalUsage = Array.from(usageMap.values()).reduce((sum, uses) => sum + uses, 0);
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-red-600">🚫 Blocked Competitor Domains</h1>
+          <h1 className="text-3xl font-bold mb-2">Domain Management</h1>
           <p className="text-muted-foreground">
-            This is a <strong>BLACKLIST</strong> of competitor domains that are automatically blocked from all citations. 
-            These 296 real estate competitor websites will never appear in AI-suggested citations.
+            Review and approve discovered domains, manage whitelist, and block competitors
           </p>
         </div>
-        
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Blocked Competitor Domains
-              </CardTitle>
-              <XCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{domains?.length || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Blacklisted competitors
-              </p>
-            </CardContent>
-          </Card>
 
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Real Estate Competitors
-              </CardTitle>
-              <Shield className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {domains?.filter(d => d.category === 'Real Estate Competitors').length || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Direct property competitors
-              </p>
-            </CardContent>
-          </Card>
+        {/* Alert Banner */}
+        <DomainReviewAlert onReviewClick={() => setActiveTab('pending')} />
 
-          <Card className="border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Protection Status
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">Active</div>
-              <p className="text-xs text-muted-foreground">
-                All competitor citations blocked
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="pending" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Pending Review
+              {pendingCount && pendingCount > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {pendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="approved" className="gap-2">
+              <Shield className="w-4 h-4" />
+              Approved Whitelist
+              <Badge variant="secondary" className="ml-1">
+                {approvedDomains?.length || 0}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="blocked" className="gap-2">
+              <XCircle className="w-4 h-4" />
+              Blocked Competitors
+              <Badge variant="secondary" className="ml-1">
+                {blockedDomains?.length || 0}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
+          {/* Pending Domains Tab */}
+          <TabsContent value="pending">
+            <PendingDomainsManager />
+          </TabsContent>
+
+          {/* Approved Whitelist Tab */}
+          <TabsContent value="approved">
+            {isLoadingApproved ? (
+              <Skeleton className="h-96 w-full" />
+            ) : (
+              <ApprovedDomainsTable 
+                domains={filteredApproved}
+                categories={approvedCategories}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                usageMap={usageMap}
+                getTierColor={getTierColor}
+                getUsageColor={getUsageColor}
+                type="approved"
+              />
+            )}
+          </TabsContent>
+
+          {/* Blocked Competitors Tab */}
+          <TabsContent value="blocked">
+            {isLoadingBlocked ? (
+              <Skeleton className="h-96 w-full" />
+            ) : (
+              <ApprovedDomainsTable 
+                domains={filteredBlocked}
+                categories={blockedCategories}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                usageMap={usageMap}
+                getTierColor={getTierColor}
+                getUsageColor={getUsageColor}
+                type="blocked"
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </AdminLayout>
+  );
+}
+
+// Shared table component for approved/blocked domains
+interface ApprovedDomainsTableProps {
+  domains: any[];
+  categories: string[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  categoryFilter: string;
+  setCategoryFilter: (filter: string) => void;
+  usageMap: Map<string, number>;
+  getTierColor: (tier: string | null) => string;
+  getUsageColor: (uses: number) => string;
+  type: 'approved' | 'blocked';
+}
+
+function ApprovedDomainsTable({
+  domains,
+  categories,
+  searchQuery,
+  setSearchQuery,
+  categoryFilter,
+  setCategoryFilter,
+  usageMap,
+  getTierColor,
+  getUsageColor,
+  type
+}: ApprovedDomainsTableProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {type === 'approved' ? '✅ Approved Whitelist' : '🚫 Competitor Blacklist'}
+        </CardTitle>
+        <CardDescription>
+          {type === 'approved' 
+            ? 'Authoritative sources approved for citation discovery'
+            : 'Real estate competitors automatically excluded from citation discovery'
+          }
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
         {/* Filters */}
         <div className="flex gap-4">
-          <Input 
-            placeholder="Search domains..."
+          <Input
+            placeholder={`Search ${type} domains...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-sm"
           />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="All Categories" />
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
@@ -189,67 +305,64 @@ export default function ApprovedDomains() {
           </Select>
         </div>
 
-        {/* Domains Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Approved Domains ({filteredDomains.length})</CardTitle>
-            <CardDescription>
-              Only these domains can be used for external citations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-[600px] overflow-y-auto">
-              <Table>
-                <TableHeader>
+        {/* Table */}
+        <div className="border rounded-lg overflow-hidden">
+          <div className="max-h-[600px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead>Trust Score</TableHead>
+                  <TableHead>Usage</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {domains.length === 0 ? (
                   <TableRow>
-                    <TableHead>Domain</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Tier</TableHead>
-                    <TableHead>Trust Score</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No {type} domains found
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredDomains.map((domain) => (
+                ) : (
+                  domains.map((domain) => (
                     <TableRow key={domain.id}>
                       <TableCell className="font-mono text-sm">{domain.domain}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{domain.category}</Badge>
                       </TableCell>
                       <TableCell>
-                        {domain.tier ? (
-                          <Badge className={getTierColor(domain.tier)}>
-                            Tier {domain.tier}
+                        <Badge className={getTierColor(domain.tier)}>
+                          Tier {domain.tier || 'N/A'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{domain.trust_score}</TableCell>
+                      <TableCell className={getUsageColor(usageMap.get(domain.domain) || 0)}>
+                        {usageMap.get(domain.domain) || 0}
+                      </TableCell>
+                      <TableCell>
+                        {type === 'approved' ? (
+                          <Badge className="gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                            <Shield className="w-3 h-3" />
+                            APPROVED
                           </Badge>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="w-3 h-3" />
+                            BLOCKED
+                          </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{domain.trust_score}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={getUsageColor(usageMap.get(domain.domain) || 0)}>
-                          {usageMap.get(domain.domain) || 0}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                      <Badge 
-                        variant="destructive"
-                        className="whitespace-nowrap bg-red-600 hover:bg-red-700"
-                      >
-                        🚫 BLOCKED
-                      </Badge>
-                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AdminLayout>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
