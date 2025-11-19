@@ -680,7 +680,53 @@ Citation Needs: ${section.citationNeeds}
       ? `\n\n🚫 NEVER USE THESE COMPETITOR DOMAINS:\n${blacklistDomains.slice(0, 20).join(', ')}`
       : '';
     
-    const prompt = `${config.instruction}:
+    const strictEnforcementNotice = `
+🚨 CRITICAL ENFORCEMENT RULES (NON-NEGOTIABLE):
+
+1. LANGUAGE MATCHING IS MANDATORY:
+   - Article language: ${config.languageName} (${language.toUpperCase()})
+   - ALL citations MUST be in ${config.languageName} language ONLY
+   - ❌ NO English fallbacks if article is non-English
+   - ❌ NO multilingual pages unless primary language matches
+   - ❌ NO auto-translated pages
+   - ✅ ONLY native ${config.languageName} content
+
+2. COMPETITOR BLOCKING IS ABSOLUTE:
+   - ❌ ZERO TOLERANCE for real estate companies, agencies, marketplaces
+   - ❌ NO property listing sites (homes, apartments, villas for sale/rent)
+   - ❌ NO relocation services, expat blogs, property consultants
+   - ❌ NO mortgage brokers, investment advisors
+   - ❌ NO tourism sites that link to property services
+   - 🚫 Blacklisted forever: idealista, kyero, rightmove, zoopla, fotocasa, pisos.com, thinkspain
+   - If unsure about a domain → DO NOT use it
+
+3. RELEVANCE THRESHOLD ≥ 30%:
+   - Each citation must DIRECTLY support a specific claim in the target section
+   - ❌ NO generic overviews or tangentially related content
+   - ❌ NO shallow resource pages
+   - ❌ NO filler citations just to meet the count
+   - ✅ ONLY citations that add authoritative evidence to specific statements
+
+4. AUTHORITY HIERARCHY (Priority Order):
+   - Tier 1: Government (.gov, .gob.es, .gov.uk, .europa.eu)
+   - Tier 2: Educational (.edu, .ac.uk, universities)
+   - Tier 3: Official statistics (INE, Eurostat, national stats offices)
+   - Tier 4: Category-specific approved domains (from whitelist)
+   - ❌ NEVER use news sites, blogs, or commercial sources unless explicitly approved
+
+5. IF YOU CANNOT FIND 2+ VALID CITATIONS:
+   - ❌ DO NOT suggest competitors as fallback
+   - ❌ DO NOT suggest lower-quality sources
+   - ❌ DO NOT suggest wrong-language sources
+   - ✅ RETURN FEWER CITATIONS (even 0) - we will retry
+   - Better to return 0 citations than 1 bad citation
+
+REMEMBER: Quality > Quantity. We need MINIMUM 2, but all 2+ must be perfect.
+`;
+
+    const prompt = `${strictEnforcementNotice}
+
+${config.instruction}:
 
 Article Topic: "${headline}"
 Article Category: ${articleCategory}
@@ -934,6 +980,34 @@ Return only the JSON array, nothing else.`;
 
     console.log(`[Language Validation] ${citations.length} → ${languageValidatedCitations.length} citations passed language check`);
     citations = languageValidatedCitations;
+
+    // Quality validation: semantic relevance and context
+    console.log(`[Citation Quality Check] Running semantic relevance validation...`);
+    
+    citations = citations.filter((citation: Citation) => {
+      // Check if citation has semantic score
+      if (citation.semanticScore !== undefined && citation.semanticScore < 30) {
+        console.warn(`❌ LOW RELEVANCE REJECTED: ${citation.url} (score: ${citation.semanticScore}%)`);
+        return false;
+      }
+      
+      // Check if citation has proper context
+      if (!citation.contextInArticle || citation.contextInArticle.length < 20) {
+        console.warn(`❌ INSUFFICIENT CONTEXT: ${citation.url}`);
+        return false;
+      }
+      
+      // Check if citation specifies target section
+      if (!citation.insertAfterHeading) {
+        console.warn(`❌ NO TARGET SECTION: ${citation.url}`);
+        return false;
+      }
+      
+      console.log(`✅ QUALITY PASSED: ${citation.url} (${citation.sourceName})`);
+      return true;
+    });
+    
+    console.log(`[Citation Quality Check] ${languageValidatedCitations.length} → ${citations.length} citations passed quality check`);
 
     // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow
     let allowedCitations = citations.filter((citation: Citation) => {

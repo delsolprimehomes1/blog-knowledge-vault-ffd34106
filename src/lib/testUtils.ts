@@ -1738,3 +1738,213 @@ export async function testPhase19(): Promise<TestResult[]> {
 
   return results;
 }
+
+// Phase 20: Citation Enforcement Rules
+export async function testPhase20(): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+
+  // Test 1: Check for articles with <2 citations that are published
+  try {
+    const { data: weakArticles, error } = await supabase
+      .from('blog_articles')
+      .select('id, headline, external_citations, language')
+      .eq('status', 'published');
+    
+    if (error) throw error;
+    
+    const violators = weakArticles?.filter(article => {
+      const citations = article.external_citations as any[] | null;
+      const citationCount = citations?.length || 0;
+      return citationCount < 2;
+    }) || [];
+    
+    if (violators.length > 0) {
+      results.push({
+        name: 'Minimum Citation Requirement',
+        status: 'fail',
+        message: `❌ CRITICAL: ${violators.length} published article(s) have <2 citations`,
+        details: violators.slice(0, 5).map(v => {
+          const citations = v.external_citations as any[] | null;
+          return `• "${v.headline}" (${citations?.length || 0} citations)`;
+        }).join('\n')
+      });
+    } else {
+      results.push({
+        name: 'Minimum Citation Requirement',
+        status: 'pass',
+        message: '✓ All published articles have ≥2 citations',
+        details: `Checked ${weakArticles?.length || 0} published articles`
+      });
+    }
+  } catch (error: any) {
+    results.push({
+      name: 'Minimum Citation Requirement',
+      status: 'fail',
+      message: '✗ Failed to check citation requirements',
+      details: error.message
+    });
+  }
+
+  // Test 2: Check approved_domains table for language coverage
+  try {
+    const { data: approvedDomains, error } = await supabase
+      .from('approved_domains')
+      .select('language, domain')
+      .eq('is_allowed', true);
+    
+    if (error) throw error;
+    
+    const languageCounts = (approvedDomains || []).reduce((acc, d) => {
+      acc[d.language || 'unknown'] = (acc[d.language || 'unknown'] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const coverageDetails = Object.entries(languageCounts)
+      .map(([lang, count]) => `  • ${lang.toUpperCase()}: ${count} domains`)
+      .join('\n');
+    
+    const lowCoverageLangs = Object.entries(languageCounts)
+      .filter(([_, count]) => count < 50)
+      .map(([lang, count]) => `${lang.toUpperCase()} (${count})`);
+    
+    if (lowCoverageLangs.length > 0) {
+      results.push({
+        name: 'Domain Language Coverage',
+        status: 'warning',
+        message: `⚠ ${lowCoverageLangs.length} language(s) have <50 approved domains`,
+        details: `${coverageDetails}\n\n⚠️ Low coverage: ${lowCoverageLangs.join(', ')}`
+      });
+    } else {
+      results.push({
+        name: 'Domain Language Coverage',
+        status: 'pass',
+        message: '✓ All languages have adequate domain coverage',
+        details: coverageDetails
+      });
+    }
+  } catch (error: any) {
+    results.push({
+      name: 'Domain Language Coverage',
+      status: 'fail',
+      message: '✗ Failed to check domain coverage',
+      details: error.message
+    });
+  }
+
+  // Test 3: Check for competitor domains in published articles
+  try {
+    const { data: competitorDomains, error: competitorError } = await supabase
+      .from('approved_domains')
+      .select('domain')
+      .eq('is_allowed', false);
+    
+    if (competitorError) throw competitorError;
+    
+    const { data: publishedArticles, error: articlesError } = await supabase
+      .from('blog_articles')
+      .select('id, headline, external_citations')
+      .eq('status', 'published');
+    
+    if (articlesError) throw articlesError;
+    
+    const competitorSet = new Set((competitorDomains || []).map(d => d.domain));
+    const violations: string[] = [];
+    
+    (publishedArticles || []).forEach(article => {
+      const citations = (article.external_citations as any[]) || [];
+      citations.forEach((citation: any) => {
+        try {
+          const domain = new URL(citation.url).hostname.replace('www.', '');
+          if (competitorSet.has(domain)) {
+            violations.push(`• "${article.headline}" uses ${domain}`);
+          }
+        } catch (e) {
+          // Invalid URL, skip
+        }
+      });
+    });
+    
+    if (violations.length > 0) {
+      results.push({
+        name: 'Competitor Blocking',
+        status: 'fail',
+        message: `❌ CRITICAL: ${violations.length} competitor domain violation(s) found`,
+        details: violations.slice(0, 10).join('\n')
+      });
+    } else {
+      results.push({
+        name: 'Competitor Blocking',
+        status: 'pass',
+        message: '✓ No competitor domains found in published articles',
+        details: `Checked ${publishedArticles?.length || 0} articles against ${competitorDomains?.length || 0} blocked domains`
+      });
+    }
+  } catch (error: any) {
+    results.push({
+      name: 'Competitor Blocking',
+      status: 'fail',
+      message: '✗ Failed to check competitor domains',
+      details: error.message
+    });
+  }
+
+  // Test 4: Check citation language matching
+  try {
+    const { data: articles, error } = await supabase
+      .from('blog_articles')
+      .select('id, headline, language, external_citations')
+      .eq('status', 'published')
+      .limit(10); // Sample 10 articles
+    
+    if (error) throw error;
+    
+    const mismatches: string[] = [];
+    
+    for (const article of articles || []) {
+      const citations = (article.external_citations as any[]) || [];
+      for (const citation of citations) {
+        try {
+          const domain = new URL(citation.url).hostname.replace('www.', '');
+          const { data: domainData } = await supabase
+            .from('approved_domains')
+            .select('language')
+            .eq('domain', domain)
+            .single();
+          
+          if (domainData && domainData.language !== article.language && 
+              domainData.language?.toUpperCase() !== 'EU' && 
+              domainData.language?.toUpperCase() !== 'GLOBAL') {
+            mismatches.push(`• "${article.headline}" (${article.language}) uses ${domain} (${domainData.language})`);
+          }
+        } catch (e) {
+          // Skip domains not in approved list or invalid URLs
+        }
+      }
+    }
+    
+    if (mismatches.length > 0) {
+      results.push({
+        name: 'Language Matching',
+        status: 'warning',
+        message: `⚠ ${mismatches.length} language mismatch(es) found in sample`,
+        details: mismatches.slice(0, 5).join('\n')
+      });
+    } else {
+      results.push({
+        name: 'Language Matching',
+        status: 'pass',
+        message: '✓ All sampled citations match article language',
+        details: `Checked ${articles?.length || 0} articles`
+      });
+    }
+  } catch (error: any) {
+    results.push({
+      name: 'Language Matching',
+      status: 'fail',
+      message: '✗ Failed to check language matching',
+      details: error.message
+    });
+  }
+
+  return results;
+}

@@ -1464,7 +1464,7 @@ Return ONLY valid JSON:
       console.log(`[Job ${jobId}] 📚 Finding REQUIRED external citations for article ${i+1}: "${plan.headline}" (${language})`);
 
       let citationsAttempt = 0;
-      const MAX_CITATION_ATTEMPTS = 1; // Reduced from 3 to 1 for speed - can fix citations later
+      const MAX_CITATION_ATTEMPTS = 3; // Strict enforcement: 3 attempts to find 2+ valid citations
       let citations: any[] = [];
       let citationError: Error | null = null;
 
@@ -1521,21 +1521,19 @@ Return ONLY valid JSON:
 
       // CRITICAL CHECK: Did we get minimum 2 citations?
       if (citations.length < 2) {
-        console.warn(`[Job ${jobId}] ⚠️ Partial citations for article ${i+1}: ${citations.length}/2 found`);
+        console.error(`[Job ${jobId}] ❌ FAILED citation requirement for article ${i+1}: ${citations.length}/2 found after ${MAX_CITATION_ATTEMPTS} attempts`);
         
-        if (citations.length > 0) {
-          // Has at least 1 citation - allow cluster to proceed but flag for review
-          article.citation_status = 'needs_review';
-          article.external_citations = citations;
-          article.citation_failure_reason = `Found ${citations.length}/2 citations - needs more`;
-          console.log(`[Job ${jobId}] ✓ Article ${i+1} proceeding with partial citations (status='needs_review')`);
-        } else {
-          // No citations at all - mark as failed
-          article.citation_status = 'failed';
-          article.external_citations = citations;
-          article.citation_failure_reason = `No valid citations found after ${MAX_CITATION_ATTEMPTS} attempt(s). ${citationError ? `Error: ${citationError.message}` : 'Timeout or insufficient results'}`;
-          console.log(`[Job ${jobId}] ❌ Article ${i+1} marked as citation_status='failed'`);
-        }
+        article.citation_status = 'failed';
+        article.external_citations = citations;
+        article.citation_failure_reason = [
+          `Only found ${citations.length}/2 valid citations after ${MAX_CITATION_ATTEMPTS} attempts.`,
+          citationError ? `Error: ${citationError.message}` : 'Insufficient approved sources found.',
+          'All citations must be from approved, non-competitor domains in the correct language.',
+          `Language required: ${language.toUpperCase()}`,
+          'Retry cluster generation or manually add citations in the article editor.'
+        ].join(' ');
+        
+        console.log(`[Job ${jobId}] 🚫 Article ${i+1} BLOCKED - citation_status='failed'`);
         
       } else {
         article.citation_status = 'verified';
