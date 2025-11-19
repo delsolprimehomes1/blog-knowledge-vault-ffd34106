@@ -1464,7 +1464,7 @@ Return ONLY valid JSON:
       console.log(`[Job ${jobId}] 📚 Finding REQUIRED external citations for article ${i+1}: "${plan.headline}" (${language})`);
 
       let citationsAttempt = 0;
-      const MAX_CITATION_ATTEMPTS = 3; // Strict enforcement: 3 attempts to find 2+ valid citations
+      const MAX_CITATION_ATTEMPTS = 7; // Extended: 7 attempts with full domain scanning
       let citations: any[] = [];
       let citationError: Error | null = null;
 
@@ -1475,8 +1475,8 @@ Return ONLY valid JSON:
         console.log(`[Job ${jobId}] Citation attempt ${citationsAttempt}/${MAX_CITATION_ATTEMPTS}`);
         
         try {
-          // Extended timeout: 4 minutes to allow full 5-attempt retry cycle with feedback
-          const citationTimeout = 240000;
+          // Extended timeout: 7 minutes (420,000ms) to allow full 7-attempt retry cycle with feedback and full domain scanning
+          const citationTimeout = 420000;
           
           const citationsResponse = await withTimeout(
             supabase.functions.invoke('find-external-links', {
