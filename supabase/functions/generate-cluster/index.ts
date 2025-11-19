@@ -262,6 +262,10 @@ async function generateCluster(jobId: string, topic: string, language: string, t
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
   try {
+    // Check for stuck jobs and clean them up before starting
+    console.log(`[Job ${jobId}] 🔍 Checking for stuck jobs...`);
+    await supabase.rpc('check_stuck_cluster_jobs');
+    
     console.log(`[Job ${jobId}] Starting generation for:`, { topic, language, targetAudience, primaryKeyword });
     await updateProgress(supabase, jobId, 0, 'Starting generation...');
 
