@@ -17,6 +17,8 @@ interface BetterCitation {
   suggestedContext: string;
   verified?: boolean;
   statusCode?: number;
+  diversityScore?: number;
+  usageCount?: number;
 }
 
 interface BetterCitationFinderProps {

@@ -9,6 +9,9 @@ export interface BetterCitation {
   authorityScore: number;
   language: string;
   suggestedContext: string;
+  diversityScore?: number;
+  usageCount?: number;
+  finalScore?: number;
 }
 
 const languageConfig = {
@@ -120,6 +123,62 @@ function extractDomain(url: string): string {
   }
 }
 
+// ===== DIVERSITY SCORING =====
+interface DomainScore {
+  domain: string;
+  category: string;
+  usageCount: number;
+  diversityScore: number; // Higher = better for selection
+}
+
+async function calculateDomainDiversityScores(
+  approvedDomains: Array<{domain: string, category: string}>,
+  language: string
+): Promise<DomainScore[]> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch usage stats for all approved domains
+    const { data: usageData, error } = await supabase
+      .from('domain_usage_stats')
+      .select('domain, total_uses')
+      .in('domain', approvedDomains.map(d => d.domain));
+    
+    if (error) {
+      console.error('Error fetching usage stats:', error);
+    }
+    
+    const usageMap = new Map(usageData?.map(d => [d.domain, d.total_uses]) || []);
+    
+    return approvedDomains.map(d => {
+      const usageCount = usageMap.get(d.domain) || 0;
+      
+      // Diversity score formula:
+      // - Unused domains get 100 points
+      // - Each use reduces score by 5 points
+      // - Max penalty at 20 uses (hard block)
+      const diversityScore = Math.max(0, 100 - (usageCount * 5));
+      
+      return {
+        domain: d.domain,
+        category: d.category,
+        usageCount,
+        diversityScore
+      };
+    });
+  } catch (error) {
+    console.error('Failed to calculate diversity scores:', error);
+    return approvedDomains.map(d => ({
+      domain: d.domain,
+      category: d.category,
+      usageCount: 0,
+      diversityScore: 100
+    }));
+  }
+}
+
 /**
  * Find better, more authoritative citations for an article
  */
@@ -138,6 +197,15 @@ export async function findBetterCitations(
   const blockedDomains = await getOverusedDomains(20);
   const approvedDomains = await getApprovedDomainsForLanguage(articleLanguage);
   
+  // ✅ Calculate diversity scores for prioritization
+  const domainScores = await calculateDomainDiversityScores(approvedDomains, articleLanguage);
+  
+  // Sort by diversity score and take top 100 for the prompt
+  const prioritizedDomains = domainScores
+    .filter(d => d.diversityScore > 0) // Exclude blocked domains
+    .sort((a, b) => b.diversityScore - a.diversityScore)
+    .slice(0, 100);
+
   const focusContext = focusArea 
     ? `\n**Special Focus:** ${focusArea} - prioritize sources specific to this region/topic`
     : '';
@@ -150,10 +218,28 @@ export async function findBetterCitations(
     ? `\n\n🚫 **CRITICAL: HARD-BLOCKED DOMAINS (NEVER use these):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n**These domains exceed the 20-use limit. Find DIVERSE alternatives from our approved domains.**`
     : '';
 
-  // ✅ LANGUAGE WHITELIST - ONLY these domains are allowed
-  const languageWhitelistText = approvedDomains.length > 0
-    ? `\n\n✅ **MANDATORY LANGUAGE WHITELIST - ONLY USE THESE ${articleLanguage.toUpperCase()} SOURCES:**\n${approvedDomains.slice(0, 30).map(d => `- ${d.domain} (${d.category})`).join('\n')}\n${approvedDomains.length > 30 ? `...and ${approvedDomains.length - 30} more approved ${articleLanguage.toUpperCase()} domains\n` : ''}\n**⚠️ DO NOT suggest domains outside this whitelist. Language matching is MANDATORY.**`
-    : '';
+  // ✅ DIVERSITY-PRIORITIZED WHITELIST
+  const priority1 = prioritizedDomains.filter(d => d.usageCount === 0);
+  const priority2 = prioritizedDomains.filter(d => d.usageCount > 0 && d.usageCount < 5);
+  const priority3 = prioritizedDomains.filter(d => d.usageCount >= 5 && d.usageCount < 10);
+
+  const diversityWhitelistText = `\n\n✅ **DIVERSITY-PRIORITIZED ${articleLanguage.toUpperCase()} SOURCES (USE IN ORDER):**
+
+**PRIORITY 1 - NEVER USED (diversityScore: 100):**
+${priority1.slice(0, 20).map(d => `- ${d.domain} (${d.category})`).join('\n')}
+${priority1.length > 20 ? `...and ${priority1.length - 20} more unused domains\n` : ''}
+
+**PRIORITY 2 - LIGHTLY USED (diversityScore: 75-95):**
+${priority2.slice(0, 15).map(d => `- ${d.domain} (${d.category}, used ${d.usageCount}x)`).join('\n')}
+
+**PRIORITY 3 - MODERATELY USED (diversityScore: 50-70):**
+${priority3.slice(0, 10).map(d => `- ${d.domain} (used ${d.usageCount}x)`).join('\n')}
+
+**⚠️ INSTRUCTIONS:**
+1. ALWAYS prefer domains with diversityScore > 80 (unused/rarely used)
+2. If suggesting 5 citations, use 5 DIFFERENT domains
+3. Prioritize government (.gov, .gob) and EU institutions over news
+4. Only use tier_2 sources if no tier_1 alternatives exist`;
 
   const prompt = `You are an expert research assistant finding authoritative external sources for a ${config.name} language article.
 
@@ -162,20 +248,18 @@ export async function findBetterCitations(
 **Article Content Preview:**
 ${articleContent.substring(0, 1000)}
 ${focusContext}
-${currentCitationsText}${blockedDomainsText}
+${currentCitationsText}${blockedDomainsText}${diversityWhitelistText}
 
 **CRITICAL REQUIREMENTS:**
 1. ALL sources MUST be in ${config.name} language
-2. Prioritize these domains: ${config.domains}
+2. Prioritize domains from PRIORITY 1 (unused) and PRIORITY 2 (lightly used)
 3. Sources must be HIGH AUTHORITY (government, educational, official organizations)
 4. Content must DIRECTLY relate to the article topic
 5. Sources must be currently accessible (HTTPS, active)
 6. Avoid duplicating current citations listed above
-7. Find 5-8 diverse, authoritative sources
-8. **NEVER use blocked domains listed above - select from diverse, unused alternatives**
-
-**Examples of Quality Sources:**
-${config.examples}
+7. Find 5-8 diverse, authoritative sources **FROM DIFFERENT DOMAINS**
+8. **NEVER use blocked domains - select from diverse, unused alternatives**
+9. **MAXIMIZE DIVERSITY: Use different domains for each suggestion**
 
 **Return ONLY valid JSON array in this EXACT format:**
 [
@@ -239,6 +323,7 @@ Return only the JSON array, nothing else.`;
 
     // ✅ Filter out blocked domains AND enforce language matching
     const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
+    const domainScoresMap = new Map(domainScores.map(d => [d.domain, d]));
     
     const validCitations = citations.filter(citation => {
       const domain = extractDomain(citation.url);
@@ -264,7 +349,25 @@ Return only the JSON array, nothing else.`;
 
     console.log(`Filtered ${citations.length} → ${validCitations.length} citations (removed ${citations.length - validCitations.length} blocked/wrong-language)`);
 
-    return validCitations;
+    // ✅ POST-SELECTION DIVERSITY SCORING
+    const scoredCitations = validCitations.map((citation) => {
+      const domain = extractDomain(citation.url);
+      const domainScore = domainScoresMap.get(domain);
+      
+      return {
+        ...citation,
+        diversityScore: domainScore?.diversityScore || 0,
+        usageCount: domainScore?.usageCount || 0,
+        finalScore: citation.authorityScore + (domainScore?.diversityScore || 0) / 10
+      };
+    });
+
+    // Sort by final score (authority + diversity bonus)
+    scoredCitations.sort((a: any, b: any) => b.finalScore - a.finalScore);
+
+    console.log(`🎯 Diversity-sorted citations. Top domain usage counts: ${scoredCitations.slice(0, 5).map((c: any) => `${extractDomain(c.url)}(${c.usageCount})`).join(', ')}`);
+
+    return scoredCitations.slice(0, 10);
   } catch (parseError) {
     console.error('Failed to parse citations:', parseError);
     console.error('Raw response:', citationsText);
@@ -308,14 +411,14 @@ export async function verifyCitations(citations: BetterCitation[]): Promise<Bett
     })
   );
 
-  // Sort: verified first, then by authority score
+  // Sort: verified first, then by finalScore (authority + diversity)
   verifiedCitations.sort((a: any, b: any) => {
     if (a.verified !== b.verified) return a.verified ? -1 : 1;
-    return b.authorityScore - a.authorityScore;
+    return (b.finalScore || b.authorityScore) - (a.finalScore || a.authorityScore);
   });
 
   const verifiedCount = verifiedCitations.filter((c: any) => c.verified).length;
-  console.log(`${verifiedCount}/${citations.length} citations verified`);
+  console.log(`✅ Verified ${verifiedCount}/${citations.length} citations (sorted by diversity + authority)`);
 
   return verifiedCitations;
 }
