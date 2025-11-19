@@ -176,6 +176,106 @@ function extractDomain(url: string): string {
   }
 }
 
+// Fetch approved AND blacklisted domains from Supabase
+async function getApprovedAndBlockedDomains(supabase: any) {
+  const { data: approved, error: approvedError } = await supabase
+    .from('approved_domains')
+    .select('domain, category, tier, trust_score')
+    .eq('is_allowed', true);
+  
+  const { data: blocked, error: blockedError } = await supabase
+    .from('approved_domains')
+    .select('domain, category, notes')
+    .eq('is_allowed', false);
+  
+  if (approvedError) {
+    console.error('Error fetching approved domains:', approvedError);
+    throw approvedError;
+  }
+  if (blockedError) {
+    console.error('Error fetching blocked domains:', blockedError);
+    throw blockedError;
+  }
+  
+  return {
+    whitelistDomains: approved?.map((d: any) => d.domain) || [],
+    blacklistDomains: blocked?.map((d: any) => d.domain) || [],
+    approvedByCategory: approved || []
+  };
+}
+
+// Check if domain is a competitor
+function isCompetitorDomain(url: string, blacklist: string[]): boolean {
+  const domain = extractDomain(url);
+  return blacklist.includes(domain);
+}
+
+// Check if domain looks like a real estate company
+function looksLikeRealEstateCompetitor(url: string, sourceName: string): boolean {
+  const domain = extractDomain(url).toLowerCase();
+  const name = sourceName.toLowerCase();
+  
+  // Patterns that indicate real estate company
+  const realEstatePatterns = [
+    'properties', 'property', 'real-estate', 'realestate', 'realtor',
+    'inmobiliaria', 'homes', 'villas', 'apartments', 'housing',
+    'marbella', 'estepona', 'sotogrande', 'costa-del-sol',
+    'casas', 'vivienda', 'piso', 'finca', 'urbanization'
+  ];
+  
+  // Check if domain or source name contains real estate keywords
+  return realEstatePatterns.some(pattern => 
+    domain.includes(pattern) || name.includes(pattern)
+  );
+}
+
+// Log discovered domain for review
+async function logDiscoveredDomain(
+  supabase: any, 
+  domain: string, 
+  sourceName: string, 
+  articleTopic: string, 
+  url: string
+) {
+  try {
+    // Check if domain already exists
+    const { data: existing } = await supabase
+      .from('discovered_domains')
+      .select('*')
+      .eq('domain', domain)
+      .single();
+    
+    if (existing) {
+      // Update existing entry
+      const topics = existing.article_topics || [];
+      const urls = existing.example_urls || [];
+      
+      await supabase
+        .from('discovered_domains')
+        .update({
+          times_suggested: existing.times_suggested + 1,
+          last_suggested_at: new Date().toISOString(),
+          article_topics: [...new Set([...topics, articleTopic])],
+          example_urls: [...new Set([...urls, url])].slice(0, 10) // Keep max 10 examples
+        })
+        .eq('domain', domain);
+    } else {
+      // Insert new entry
+      await supabase
+        .from('discovered_domains')
+        .insert({
+          domain,
+          source_name: sourceName,
+          article_topics: [articleTopic],
+          example_urls: [url]
+        });
+    }
+  } catch (error) {
+    console.error('Error logging discovered domain:', error);
+    // Don't throw - this is non-critical
+  }
+}
+
 /**
  * Fetch approved domains from the database organized by category
  * Phase 1: Return ALL domains with category information
@@ -238,19 +338,8 @@ async function getApprovedDomainsByCategory(supabase: any): Promise<DomainCatego
  * Legacy function for backward compatibility
  */
 async function getApprovedDomains(supabase: any): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('approved_domains')
-    .select('domain')
-    .eq('is_allowed', true);
-  
-  if (error) {
-    console.error('❌ Error fetching approved domains:', error);
-    return [];
-  }
-  
-  const domains = data.map((d: any) => d.domain);
-  console.log(`✅ Loaded ${domains.length} approved domains from database`);
-  return domains;
+  const { whitelistDomains } = await getApprovedAndBlockedDomains(supabase);
+  return whitelistDomains;
 }
 
 /**
@@ -438,8 +527,11 @@ serve(async (req) => {
 
     // Phase 1 & 2: Load ALL approved domains organized by category with topic mapping
     const domainCategories = await getApprovedDomainsByCategory(supabase);
-    const approvedDomains = await getApprovedDomains(supabase);
+    const { whitelistDomains: approvedDomains, blacklistDomains } = await getApprovedAndBlockedDomains(supabase);
     const totalDomains = approvedDomains.length;
+    
+    console.log(`✅ Loaded ${totalDomains} whitelisted domains`);
+    console.log(`🚫 Loaded ${blacklistDomains.length} blacklisted competitor domains`);
     
     if (approvedDomains.length === 0) {
       throw new Error('No approved domains found in database. Please configure approved_domains table.');
@@ -528,6 +620,11 @@ Citation Needs: ${section.citationNeeds}
     // Strip HTML but preserve structure for full article context
     const fullArticleText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     
+    // Create blacklist text for prompt
+    const competitorText = blacklistDomains.length > 0
+      ? `\n\n🚫 NEVER USE THESE COMPETITOR DOMAINS:\n${blacklistDomains.slice(0, 20).join(', ')}`
+      : '';
+    
     const prompt = `${config.instruction}:
 
 Article Topic: "${headline}"
@@ -542,8 +639,19 @@ ${sectionContext}
 
 ${topicGuidance}
 
-📚 APPROVED DOMAIN WHITELIST (${totalDomains} TOTAL):
+✅ PREFERRED DOMAINS (use these when possible - ${totalDomains} total):
 ${whitelistByCategory}
+${competitorText}
+
+⚠️ IMPORTANT RULES:
+1. ✅ PREFER domains from the PREFERRED list above
+2. 🚫 NEVER suggest domains from the COMPETITOR list
+3. 🚫 NEVER suggest other real estate companies selling homes in Costa del Sol
+4. ✅ You MAY suggest authoritative sources NOT on the preferred list if:
+   - They are government (.gov, .gob.es), educational (.edu), or major news organizations
+   - They provide data, statistics, or expert information relevant to the article
+   - They are NOT real estate companies or property marketplaces
+5. 🎯 Prioritize government, educational, and institutional sources
 
 CRITICAL REQUIREMENTS:
 - Return MINIMUM 3 citations, ideally 4-5 citations
@@ -627,7 +735,7 @@ Return only the JSON array, nothing else.`;
 
     console.log(`Found ${citations.length} citations from Perplexity`);
 
-    // ✅ Filter citations with whitelist as FIRST priority
+    // 🔀 HYBRID FILTERING: Blacklist → Whitelist → Conditional Allow
     let allowedCitations = citations.filter((citation: Citation) => {
       if (!citation.url || !citation.sourceName) {
         console.warn(`❌ Invalid citation structure: ${JSON.stringify(citation)}`);
@@ -640,36 +748,51 @@ Return only the JSON array, nothing else.`;
       
       const domain = extractDomain(citation.url);
       
-      // ✅ FIRST: Whitelist check (highest priority)
-      if (!isApprovedDomain(citation.url, approvedDomains)) {
-        console.warn(`🚫 WHITELIST REJECTION: ${domain} - Not in approved domains`);
+      // 🚫 FIRST: Check blacklist (highest priority rejection)
+      if (isCompetitorDomain(citation.url, blacklistDomains)) {
+        console.warn(`🚫 BLACKLIST REJECTION: ${domain} - Competitor domain`);
         return false;
       }
       
-      // ✅ SECOND: Check overused domains (but exempt government/educational)
-      if (blockedDomains.includes(domain) && !isGovernmentDomain(citation.url)) {
-        console.warn(`⚠️ USAGE LIMIT: ${domain} - Used 30+ times in 30 days`);
+      // ✅ SECOND: Check whitelist (fast approval for known good domains)
+      if (isApprovedDomain(citation.url, approvedDomains)) {
+        console.log(`✅ WHITELIST APPROVED: ${domain}`);
+        
+        // Check usage limits for whitelisted domains
+        if (blockedDomains.includes(domain) && !isGovernmentDomain(citation.url)) {
+          console.warn(`⚠️ USAGE LIMIT: ${domain} - Used 30+ times`);
+          return false;
+        }
+        
+        return true;
+      }
+      
+      // 🔍 THIRD: Unknown domain - apply heuristic checks
+      console.log(`🔍 Unknown domain detected: ${domain} - Running competitor detection...`);
+      
+      // Check if it looks like a real estate competitor
+      if (looksLikeRealEstateCompetitor(citation.url, citation.sourceName)) {
+        console.warn(`🚫 HEURISTIC REJECTION: ${domain} - Appears to be real estate competitor`);
         return false;
       }
       
-      // Government domains bypass blocking
-      if (isGovernmentDomain(citation.url)) {
-        console.log(`✅ Government domain accepted (bypass usage limit): ${domain}`);
-      }
-      
-      // Verify language matches (with government domain exemption)
-      const urlLower = citation.url.toLowerCase();
-      const isCorrectLanguage = checkUrlLanguage(urlLower, language);
-      
+      // Check language match
+      const isCorrectLanguage = checkUrlLanguage(citation.url.toLowerCase(), language);
       if (!isCorrectLanguage) {
-        console.warn(`⚠️ Language filter: ${citation.url}`);
+        console.warn(`⚠️ LANGUAGE MISMATCH: ${domain}`);
         return false;
       }
+      
+      // ✅ ALLOW: Unknown domain that passed all checks
+      console.log(`✅ UNKNOWN DOMAIN APPROVED: ${domain} - Not a competitor, correct language`);
+      
+      // Log this discovered domain for admin review
+      logDiscoveredDomain(supabase, domain, citation.sourceName, headline, citation.url);
       
       return true;
     });
 
-    console.log(`${allowedCitations.length} citations passed strict filtering (${citations.length - allowedCitations.length} blocked)`);
+    console.log(`${allowedCitations.length} citations passed hybrid filtering (${citations.length - allowedCitations.length} blocked)`);
 
     // Phase 4: Semantic validation - ensure citations truly match their target sections
     if (allowedCitations.length > 0 && sections.length > 0) {
