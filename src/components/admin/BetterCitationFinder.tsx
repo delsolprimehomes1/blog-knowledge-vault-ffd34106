@@ -110,7 +110,7 @@ export const BetterCitationFinder = ({
           AI Citation Finder
         </CardTitle>
         <CardDescription>
-          Discover high-authority sources with Perplexity AI
+          Searches <strong>677 approved domains</strong> using AI + Google Search to find authoritative sources matching your article content. Automatically blocks 81 competitor domains.
         </CardDescription>
         <Alert variant="destructive" className="mt-3 border-red-500 bg-red-50">
           <AlertCircle className="h-4 w-4" />
