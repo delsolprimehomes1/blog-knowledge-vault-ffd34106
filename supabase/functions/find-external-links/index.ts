@@ -925,7 +925,7 @@ Return only the JSON array, nothing else.`;
     const searchDomains = getDomainsByTier(currentAttempt);
     console.log(`🔍 Attempt ${currentAttempt}: Searching ${searchDomains.length} domains (Tier ${currentAttempt <= 2 ? '1' : currentAttempt <= 4 ? '1+2' : 'All'})`);
 
-    // Balanced timeout: 45 seconds per attempt (safe for edge function limits, 7 attempts = 5.25 min total)
+    // Note: Timeout is now managed by generate-cluster (adaptive: 90s→60s→45s based on attempt)
     const GEMINI_TIMEOUT = 45000;
     const startTime = Date.now();
     

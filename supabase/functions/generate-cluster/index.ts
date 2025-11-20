@@ -1466,8 +1466,15 @@ Return ONLY valid JSON:
       // 10. EXTERNAL CITATIONS (MANDATORY - BLOCKING)
       console.log(`[Job ${jobId}] 📚 Finding REQUIRED external citations for article ${i+1}: "${plan.headline}" (${language})`);
 
+      // Adaptive timeout: prioritize early attempts (most likely to succeed with Tier 1 domains)
+      const getCitationTimeout = (attemptNumber: number): number => {
+        if (attemptNumber <= 2) return 90000;  // 90s for attempts 1-2 (Tier 1 government domains)
+        if (attemptNumber <= 4) return 60000;  // 60s for attempts 3-4 (Tier 1+2 expansion)
+        return 45000;                          // 45s for attempts 5+ (full domain set)
+      };
+
       let citationsAttempt = 0;
-      const MAX_CITATION_ATTEMPTS = 7; // Extended: 7 attempts with full domain scanning
+      const MAX_CITATION_ATTEMPTS = 4; // Optimized: 4 attempts with adaptive timeouts (fits within 13-min limit)
       let citations: any[] = [];
       let citationError: Error | null = null;
 
@@ -1491,21 +1498,21 @@ Return ONLY valid JSON:
         
         citationsAttempt++;
         
+        // Dynamic timeout based on attempt number
+        const citationTimeout = getCitationTimeout(citationsAttempt);
+        
         // Send heartbeat update before each citation attempt
         await updateProgress(
           supabase, 
           jobId, 
           2 + i, 
-          `Article ${i + 1}/${articleStructures.length} - Citations: Attempt ${citationsAttempt}/${MAX_CITATION_ATTEMPTS} (${elapsedMinutes} min elapsed)`, 
+          `Article ${i + 1}/${articleStructures.length} - Citations: Attempt ${citationsAttempt}/4 (${Math.round(citationTimeout/1000)}s timeout, ${elapsedMinutes} min elapsed)`, 
           i + 1
         );
         
-        console.log(`[Job ${jobId}] Citation attempt ${citationsAttempt}/${MAX_CITATION_ATTEMPTS}`);
+        console.log(`[Job ${jobId}] Citation attempt ${citationsAttempt}/4 (timeout: ${citationTimeout}ms)`);
         
         try {
-          // Balanced timeout: 45 seconds per attempt (safe for edge function limits, 7 attempts = 5.25 min total)
-          const citationTimeout = 45000;
-          
           const citationsResponse = await withTimeout(
             supabase.functions.invoke('find-external-links', {
               body: {
