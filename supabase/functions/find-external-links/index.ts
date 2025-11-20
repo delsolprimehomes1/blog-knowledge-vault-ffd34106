@@ -995,8 +995,15 @@ Return only the JSON array, nothing else.`;
     } catch (error) {
       const elapsed = Date.now() - startTime;
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`⏱️ Gemini call timed out after ${elapsed}ms (limit: ${GEMINI_TIMEOUT}ms)`);
-        throw new Error(`Gemini API timeout after ${elapsed}ms`);
+        console.warn(`⏱️ Gemini citation discovery timed out after ${elapsed}ms (limit: ${GEMINI_TIMEOUT}ms) - returning empty citations (NON-FATAL)`);
+        // Return empty citations instead of throwing - allows generate-cluster to continue gracefully
+        return new Response(
+          JSON.stringify({ citations: [] }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          }
+        );
       }
       throw error;
     }

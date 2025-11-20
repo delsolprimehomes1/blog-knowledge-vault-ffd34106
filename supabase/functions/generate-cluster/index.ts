@@ -1599,7 +1599,7 @@ Return ONLY valid JSON:
       console.log(`========================================\n`);
       
       // 10. EXTERNAL CITATIONS (MANDATORY - BLOCKING)
-      console.log(`[Job ${jobId}] 📚 Finding REQUIRED external citations for article ${i+1}: "${plan.headline}" (${language})`);
+      console.log(`🔍 [Job ${jobId}] Article ${i + 1} - STARTING CITATIONS PHASE for: "${plan.headline}" (${language})`);
 
       // Adaptive timeout: prioritize early attempts (most likely to succeed with Tier 1 domains)
       const getCitationTimeout = (attemptNumber: number): number => {
@@ -1613,16 +1613,18 @@ Return ONLY valid JSON:
       let citations: any[] = [];
       let citationError: Error | null = null;
 
-      // Fix #5: Per-article timeout safety
-      const ARTICLE_START_TIME = Date.now();
-      const MAX_CITATION_TIME_PER_ARTICLE = 8 * 60 * 1000; // 8 minutes max per article
+      // Per-article timeout safety - specifically for citations phase
+      const CITATION_PHASE_START = Date.now();
+      const MAX_CITATION_TIME_PER_ARTICLE = 8 * 60 * 1000; // 8 minutes max for citations phase
 
       // 3-LAYER FALLBACK SYSTEM
       while (citationsAttempt < MAX_CITATION_ATTEMPTS && citations.length < 2) {
-        // Fix #5: Check per-article timeout
-        if (Date.now() - ARTICLE_START_TIME > MAX_CITATION_TIME_PER_ARTICLE) {
-          console.warn(`⏱️ Article ${i + 1} citation search exceeded 8 minutes - moving to next article`);
-          break; // Exit citation loop, flag article for manual review
+        // Hard wall: Check per-article citation timeout
+        if (Date.now() - CITATION_PHASE_START > MAX_CITATION_TIME_PER_ARTICLE) {
+          console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Citation phase exceeded 8-minute limit, continuing without sufficient citations`);
+          article.citation_status = 'failed';
+          article.citation_failure_reason = 'Citation phase exceeded 8-minute timeout limit';
+          break; // Exit citation loop, continue with article
         }
         
         // Function-level timeout guard: abort if approaching edge function limit
@@ -1691,19 +1693,19 @@ Return ONLY valid JSON:
 
       // CRITICAL CHECK: Did we get minimum 2 citations?
       if (citations.length < 2) {
-        console.error(`[Job ${jobId}] ❌ FAILED citation requirement for article ${i+1}: ${citations.length}/2 found after ${MAX_CITATION_ATTEMPTS} attempts`);
+        console.error(`❌ [Job ${jobId}] Article ${i + 1} - FAILED citation requirement: ${citations.length}/2 found after ${citationsAttempt} attempts`);
         
         article.citation_status = 'failed';
         article.external_citations = citations;
         article.citation_failure_reason = [
-          `Only found ${citations.length}/2 valid citations after ${MAX_CITATION_ATTEMPTS} attempts.`,
+          `Only found ${citations.length}/2 valid citations after ${citationsAttempt} attempts.`,
           citationError ? `Error: ${citationError.message}` : 'Insufficient approved sources found.',
           'All citations must be from approved, non-competitor domains in the correct language.',
           `Language required: ${language.toUpperCase()}`,
           'Retry cluster generation or manually add citations in the article editor.'
         ].join(' ');
         
-        console.log(`[Job ${jobId}] 🚫 Article ${i+1} BLOCKED - citation_status='failed'`);
+        console.warn(`🚫 [Job ${jobId}] Article ${i + 1} - Proceeding with article despite insufficient citations (NON-FATAL)`);
         
       } else {
         article.citation_status = 'verified';
@@ -1745,8 +1747,10 @@ Return ONLY valid JSON:
           relevance: citation.relevance
         }));
         
-        console.log(`[Job ${jobId}] ✅ Article ${i+1} citations VERIFIED (${citations.length} citations inserted)`);
+        console.log(`✅ [Job ${jobId}] Article ${i + 1} - Citations VERIFIED (${citations.length} citations inserted)`);
       }
+      
+      console.log(`🔚 [Job ${jobId}] Article ${i + 1} - FINISHED CITATIONS PHASE (${citations.length} citations, status: ${article.citation_status})`);
 
       // Post-process: Replace any remaining [CITATION_NEEDED] markers
       const remainingMarkers = (article.detailed_content?.match(/\[CITATION_NEEDED\]/g) || []).length;
