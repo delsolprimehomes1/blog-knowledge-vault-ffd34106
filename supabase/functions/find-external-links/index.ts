@@ -752,39 +752,18 @@ Focus on government (.gov, .gob.es), educational (.edu, .ac.uk), and official st
 `;
     };
     
-    // Helper function for tiered domain batching (Fix #1)
+    // Helper function for domain access - Always return ALL domains for maximum coverage
     const getDomainsByTier = (attemptNumber: number): string[] => {
-      const tier1 = approvedDomains.filter((d: any) => d.tier === 'tier_1');
-      const tier2 = approvedDomains.filter((d: any) => d.tier === 'tier_2');
-      
-      // Verify tier filtering is working correctly
-      console.log(`🎯 Domain tier distribution: Tier 1 = ${tier1.length} domains, Tier 2 = ${tier2.length} domains, Total available = ${approvedDomains.length} domains`);
-      
-      // Validate tier filtering results
-      if (tier1.length === 0 && attemptNumber <= 2) {
-        console.error(`⚠️ WARNING: Tier 1 filtering failed! Using all ${approvedDomains.length} domains as fallback`);
-      }
-      if (tier1.length + tier2.length === 0 && attemptNumber <= 4) {
-        console.error(`⚠️ WARNING: Tier 1+2 filtering failed! Using all ${approvedDomains.length} domains as fallback`);
-      }
-      
-      // Progressive expansion:
-      // Attempts 1-2: Tier 1 only (government/official)
-      // Attempts 3-4: Tiers 1+2 (add educational)
-      // Attempts 5-7: All tiers (full domain coverage)
-      if (attemptNumber <= 2) {
-        return tier1.map((d: any) => d.domain);
-      } else if (attemptNumber <= 4) {
-        return [...tier1, ...tier2].map((d: any) => d.domain);
-      } else {
-        return approvedDomains.map((d: any) => d.domain);
-      }
+      // Always return ALL approved domains from attempt 1
+      // This gives AI maximum context to find the BEST matches from the start
+      console.log(`🔍 Attempt ${attemptNumber}: Searching ALL ${approvedDomains.length} approved domains for best match`);
+      return approvedDomains.map((d: any) => d.domain);
     };
     
     console.log(`\n🔄 Starting persistent retry loop (max ${maxAttempts} attempts)`);
     console.log(`📊 Available approved domains: ${approvedDomains.length}`);
     
-    while (currentAttempt < maxAttempts && allowedCitations.length < 2) {
+    while (currentAttempt < maxAttempts && allowedCitations.length < 3) {
       currentAttempt++;
       console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       console.log(`🔄 ATTEMPT ${currentAttempt}/${maxAttempts}`);
@@ -880,13 +859,14 @@ ${competitorText}
 - Public institutions: ministries, city councils, regional governments (e.g., juntadeandalucia.es)
 - Public health, transport, police, immigration authorities
 
-🚨 IF YOU CANNOT FIND 2+ CITATIONS FROM APPROVED SOURCES:
+🚨 IF YOU CANNOT FIND 3+ CITATIONS FROM APPROVED SOURCES:
 - DO NOT suggest competitor domains as fallback
 - DO NOT suggest commercial or news sites
-- RETURN FEWER CITATIONS (even if <2) rather than breaking the rules
+- RETURN FEWER CITATIONS (even if <3) rather than breaking the rules
 
 CRITICAL REQUIREMENTS:
-- Return MINIMUM 3 citations, ideally 4-5 citations
+- Return MINIMUM 3 citations (MANDATORY) - DO NOT stop until you find at least 3 approved-domain citations
+- Ideally 4-5 citations for comprehensive coverage
 - Match citations to specific sections based on their citation needs
 - Each citation must support SPECIFIC claims in the article (not generic overviews)
 - PRIORITIZE IN THIS ORDER:
@@ -1436,8 +1416,23 @@ Return only the JSON array, nothing else.`;
     });
   }
   
-  if (allowedCitations.length < 2) {
-    console.error(`\n🚨 FAILED: Could not find 2+ citations after ${currentAttempt} attempts`);
+  // Final result logging
+  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`✅ FINAL RESULT: ${allowedCitations.length} citations found`);
+  console.log(`📊 Search coverage: ${approvedDomains.length} domains searched across ${currentAttempt} attempts`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  
+  if (allowedCitations.length < 3) {
+    console.warn(`⚠️ WARNING: Only ${allowedCitations.length} citations found (requirement: 3 minimum)`);
+    console.warn(`📊 Despite searching ${approvedDomains.length} approved domains across ${currentAttempt} attempts`);
+  }
+  
+  if (allowedCitations.length === 0) {
+    console.error(`❌ CRITICAL: Zero citations found after ${currentAttempt} attempts searching ${approvedDomains.length} domains`);
+  }
+  
+  if (allowedCitations.length < 3) {
+    console.error(`\n🚨 FAILED: Could not find 3+ citations after ${currentAttempt} attempts`);
     console.error(`Rejection breakdown:`);
     
     const reasons = new Map<string, number>();
