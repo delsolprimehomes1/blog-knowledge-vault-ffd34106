@@ -1822,23 +1822,31 @@ Return ONLY valid JSON:
   ]
 }`;
 
+        // Create AbortController for FAQ generation with 45s timeout
+        const faqAbortController = new AbortController();
+        const faqTimeoutId = setTimeout(() => {
+          console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Aborting FAQ request after 45s timeout`);
+          faqAbortController.abort();
+        }, 45000);
+
         try {
-          const faqResponse = await withTimeout(
-            fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
-                max_tokens: 2048,
-                messages: [{ role: 'user', content: faqPrompt }],
-              }),
+          console.log(`📋 [Job ${jobId}] Article ${i + 1} - Generating FAQs (timeout: 45s)...`);
+          
+          const faqResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              max_tokens: 2048,
+              messages: [{ role: 'user', content: faqPrompt }],
             }),
-            45000,
-            'FAQ generation timeout after 45 seconds'
-          );
+            signal: faqAbortController.signal  // ✅ CRITICAL: Cancels request on timeout
+          });
+          
+          clearTimeout(faqTimeoutId);
 
           if (!faqResponse.ok && (faqResponse.status === 429 || faqResponse.status === 402)) {
             throw new Error(`Lovable AI error: ${faqResponse.status}`);
@@ -1850,18 +1858,31 @@ Return ONLY valid JSON:
             faqData = JSON.parse(rawText);
           } catch (parseError) {
             const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
-            console.error(`[Job ${jobId}] ❌ JSON parse error for FAQ generation:`, errorMsg);
+            console.error(`❌ [Job ${jobId}] Article ${i + 1} - FAQ JSON parse error:`, errorMsg);
             throw new Error(`Failed to parse FAQ response: ${errorMsg}`);
           }
 
           if (!faqData.choices?.[0]?.message?.content) {
-            throw new Error('Invalid FAQ response from AI');
+            throw new Error('Invalid FAQ response structure from AI');
           }
+          
           const faqText = faqData.choices[0].message.content;
           const faqResult = JSON.parse(faqText.replace(/```json\n?|\n?```/g, ''));
           article.faq_entities = faqResult.faqs;
-        } catch (error) {
-          console.error(`[Job ${jobId}] FAQ generation failed for article ${i+1}:`, error);
+          console.log(`✅ [Job ${jobId}] Article ${i + 1} - Generated ${faqResult.faqs.length} FAQs successfully`);
+          
+        } catch (faqError) {
+          clearTimeout(faqTimeoutId);
+          
+          const error = faqError as Error;
+          
+          if (error.name === 'AbortError') {
+            console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - FAQ generation TIMEOUT (45s), continuing without FAQs`);
+          } else {
+            console.error(`❌ [Job ${jobId}] Article ${i + 1} - FAQ generation failed:`, error.message);
+          }
+          
+          // NON-FATAL: Continue without FAQs rather than crashing entire cluster
           article.faq_entities = [];
         }
       } else {
