@@ -1503,8 +1503,8 @@ Return ONLY valid JSON:
         console.log(`[Job ${jobId}] Citation attempt ${citationsAttempt}/${MAX_CITATION_ATTEMPTS}`);
         
         try {
-          // Fix #2: Increased timeout: 3 minutes (180,000ms) per attempt for thorough evaluation (7 attempts = 21 min total)
-          const citationTimeout = 180000;
+          // Balanced timeout: 45 seconds per attempt (safe for edge function limits, 7 attempts = 5.25 min total)
+          const citationTimeout = 45000;
           
           const citationsResponse = await withTimeout(
             supabase.functions.invoke('find-external-links', {
