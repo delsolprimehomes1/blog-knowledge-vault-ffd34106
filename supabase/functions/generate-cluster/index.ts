@@ -1615,15 +1615,17 @@ Return ONLY valid JSON:
 
       // Per-article timeout safety - specifically for citations phase
       const CITATION_PHASE_START = Date.now();
-      const MAX_CITATION_TIME_PER_ARTICLE = 8 * 60 * 1000; // 8 minutes max for citations phase
+      const MAX_CITATION_TIME_PER_ARTICLE = 4 * 60 * 1000; // 4 minutes max for citations phase (tightened to prevent stalls)
 
       // 3-LAYER FALLBACK SYSTEM
       while (citationsAttempt < MAX_CITATION_ATTEMPTS && citations.length < 2) {
         // Hard wall: Check per-article citation timeout
-        if (Date.now() - CITATION_PHASE_START > MAX_CITATION_TIME_PER_ARTICLE) {
-          console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Citation phase exceeded 8-minute limit, continuing without sufficient citations`);
+        const citationPhaseElapsed = Date.now() - CITATION_PHASE_START;
+        if (citationPhaseElapsed > MAX_CITATION_TIME_PER_ARTICLE) {
+          const elapsedMinutes = (citationPhaseElapsed / 60000).toFixed(1);
+          console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Citations phase TIMEOUT after ${elapsedMinutes} min (4-min limit), continuing with ${citations.length} citations (NON-FATAL)`);
           article.citation_status = 'failed';
-          article.citation_failure_reason = 'Citation phase exceeded 8-minute timeout limit';
+          article.citation_failure_reason = `Citation phase exceeded 4-minute timeout limit (${elapsedMinutes} min elapsed, ${citations.length} citations found)`;
           break; // Exit citation loop, continue with article
         }
         
