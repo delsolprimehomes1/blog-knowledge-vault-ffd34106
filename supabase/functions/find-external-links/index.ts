@@ -754,8 +754,19 @@ Focus on government (.gov, .gob.es), educational (.edu, .ac.uk), and official st
     
     // Helper function for tiered domain batching (Fix #1)
     const getDomainsByTier = (attemptNumber: number): string[] => {
-      const tier1 = approvedDomains.filter((d: any) => d.tier === 'Tier 1');
-      const tier2 = approvedDomains.filter((d: any) => d.tier === 'Tier 2');
+      const tier1 = approvedDomains.filter((d: any) => d.tier === 'tier_1');
+      const tier2 = approvedDomains.filter((d: any) => d.tier === 'tier_2');
+      
+      // Verify tier filtering is working correctly
+      console.log(`🎯 Domain tier distribution: Tier 1 = ${tier1.length} domains, Tier 2 = ${tier2.length} domains, Total available = ${approvedDomains.length} domains`);
+      
+      // Validate tier filtering results
+      if (tier1.length === 0 && attemptNumber <= 2) {
+        console.error(`⚠️ WARNING: Tier 1 filtering failed! Using all ${approvedDomains.length} domains as fallback`);
+      }
+      if (tier1.length + tier2.length === 0 && attemptNumber <= 4) {
+        console.error(`⚠️ WARNING: Tier 1+2 filtering failed! Using all ${approvedDomains.length} domains as fallback`);
+      }
       
       // Progressive expansion:
       // Attempts 1-2: Tier 1 only (government/official)
