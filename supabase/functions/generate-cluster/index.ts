@@ -147,16 +147,34 @@ function startHeartbeat(jobId: string, supabaseClient: any) {
   return intervalId;
 }
 
-// Timeout wrapper for promises
+// Timeout wrapper for promises with proper cleanup
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
   errorMessage: string
 ): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-  );
-  return Promise.race([promise, timeout]);
+  let timeoutHandle: number | undefined;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      const error = new Error(`⏱️ TIMEOUT: ${errorMessage} (${timeoutMs}ms)`);
+      console.error(error.message);
+      reject(error);
+    }, timeoutMs) as unknown as number;
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    if (timeoutHandle !== undefined) {
+      clearTimeout(timeoutHandle);
+    }
+    return result;
+  } catch (error) {
+    if (timeoutHandle !== undefined) {
+      clearTimeout(timeoutHandle);
+    }
+    throw error;
+  }
 }
 
 // Retry logic with exponential backoff
@@ -828,29 +846,72 @@ Return ONLY the HTML content, no JSON wrapper, no markdown code blocks.`;
       console.log(`   Expected words: 1,500-2,500`);
       console.log(`========================================\n`);
 
-      // FIX #2: Comprehensive error handling for AI calls
+      // FIX #2: Comprehensive error handling for AI calls with AbortController
       let contentResponse;
+      
+      // Create AbortController to cancel request at network level
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Aborting AI request after ${contentTimeout}ms`);
+        abortController.abort();
+      }, contentTimeout);
+
       try {
-        console.log(`🤖 [Job ${jobId}] Article ${i + 1} - Calling Lovable AI...`);
+        console.log(`🤖 [Job ${jobId}] Article ${i + 1} - Calling Lovable AI (timeout: ${contentTimeout/1000}s)...`);
         
         contentResponse = await withHeartbeat(
           supabase,
           jobId,
-          withTimeout(
-            fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY!}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(aiRequestBody),
-            }),
-            contentTimeout,
-            `Content generation timeout (${contentTimeout/1000}s) for ${plan.funnelStage} Article ${i + 1}`
-          )
+          fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY!}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(aiRequestBody),
+            signal: abortController.signal  // ✅ This cancels the request
+          })
         );
+        
+        // Success - clear the timeout
+        clearTimeout(timeoutId);
+        
       } catch (aiError) {
+        clearTimeout(timeoutId);
+        
         const error = aiError as Error;
+        
+        // Handle abort specifically
+        if (error.name === 'AbortError') {
+          const timeoutError = new Error(`Article ${i + 1} AI content generation TIMEOUT after ${contentTimeout}ms (${contentTimeout/1000}s)`);
+          console.error(`❌ [Job ${jobId}] Article ${i + 1} - AI request ABORTED due to timeout`, {
+            timeout: contentTimeout,
+            funnel: plan.funnelStage,
+            headline: plan.headline
+          });
+          
+          await supabase
+            .from('cluster_generations')
+            .update({
+              progress: {
+                message: `Article ${i + 1} AI timeout: ${contentTimeout/1000}s exceeded`,
+                phase: 'content_generation',
+                article_number: i + 1
+              },
+              error: JSON.stringify({
+                phase: 'content_generation',
+                article: i + 1,
+                headline: plan.headline,
+                error: `Timeout after ${contentTimeout}ms`,
+                timestamp: new Date().toISOString()
+              })
+            })
+            .eq('id', jobId);
+          
+          throw timeoutError;
+        }
+        
+        // Handle other errors
         console.error(`❌ [Job ${jobId}] Article ${i + 1} - AI call FAILED:`, {
           error: error.message,
           stack: error.stack?.substring(0, 500),
