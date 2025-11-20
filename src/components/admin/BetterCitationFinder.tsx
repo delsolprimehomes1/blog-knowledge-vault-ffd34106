@@ -47,7 +47,7 @@ export const BetterCitationFinder = ({
         body: {
           articleTopic,
           articleLanguage,
-          articleContent: articleContent.substring(0, 2000),
+          articleContent: articleContent, // Send full content for contextual relevance
           currentCitations,
           focusArea: articleTopic.toLowerCase().includes('costa del sol')
             ? 'Costa del Sol real estate'
@@ -115,7 +115,7 @@ export const BetterCitationFinder = ({
         <Alert variant="destructive" className="mt-3 border-red-500 bg-red-50">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            <strong>Competitor Blacklist:</strong> ~296 competitor domains are automatically blocked from suggestions.
+            <strong>Competitor Blacklist:</strong> 81 competitor domains are automatically blocked from suggestions.
           </AlertDescription>
         </Alert>
       </CardHeader>

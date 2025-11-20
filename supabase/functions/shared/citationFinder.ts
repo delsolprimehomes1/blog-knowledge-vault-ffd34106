@@ -183,8 +183,24 @@ export async function findBetterCitations(
   
   const config = languageConfig[articleLanguage as keyof typeof languageConfig] || languageConfig.es;
   
-  // ✅ Get blocked domains AND language-filtered approved domains
-  const blockedDomains = await getOverusedDomains(20);
+  // ✅ Get blocked domains: competitors (is_allowed=false) + overused domains
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  const { data: competitorDomains } = await supabase
+    .from('approved_domains')
+    .select('domain')
+    .eq('is_allowed', false);
+  
+  const overusedDomains = await getOverusedDomains(20);
+  const blockedDomains = [
+    ...competitorDomains?.map(d => d.domain) || [],
+    ...overusedDomains
+  ];
+  
+  console.log(`🚫 Blocking ${blockedDomains.length} domains (${competitorDomains?.length || 0} competitors + ${overusedDomains.length} overused)`);
+  
   const approvedDomains = await getApprovedDomainsForLanguage(articleLanguage);
   
   // ✅ Calculate simple authority scores (no usage tracking)
@@ -254,41 +270,49 @@ Return only the JSON array, nothing else.`;
 
   console.log('Requesting better citations from Perplexity...');
 
-  const response = await fetch('https://api.perplexity.ai/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${perplexityApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'sonar-pro',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert research assistant finding authoritative ${config.name}-language sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}Return ONLY valid JSON arrays. Never duplicate provided citations. Prioritize diverse, unused domains.`
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 3000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Perplexity API error:', response.status, errorText);
-    throw new Error(`Perplexity API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const citationsText = data.choices[0].message.content;
-
-  console.log('Perplexity response:', citationsText.substring(0, 300));
+  // Add 90-second timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s
 
   try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      signal: controller.signal,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar-pro',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert research assistant finding authoritative ${config.name}-language sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}Return ONLY valid JSON arrays. Never duplicate provided citations. Prioritize diverse, unused domains.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 3000,
+      }),
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Perplexity API error:', response.status, errorText);
+      throw new Error(`Perplexity API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const citationsText = data.choices[0].message.content;
+
+    console.log('Perplexity response:', citationsText.substring(0, 300));
+
+    try {
     // Extract JSON from response
     const jsonMatch = citationsText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
@@ -342,11 +366,35 @@ Return only the JSON array, nothing else.`;
 
     console.log(`🎯 Authority-sorted citations. Top domains: ${scoredCitations.slice(0, 5).map((c: any) => extractDomain(c.url)).join(', ')}`);
 
+    // ✅ Validate government source presence
+    const govCitations = scoredCitations.filter((c: any) => 
+      c.url.includes('.gov') || 
+      c.url.includes('.gob.es') || 
+      c.url.includes('.europa.eu') ||
+      c.url.includes('.overheid.nl')
+    );
+
+    console.log(`✅ Found ${govCitations.length} government citations out of ${scoredCitations.length} total`);
+
+    // If no government sources found, log warning but don't fail
+    if (govCitations.length === 0) {
+      console.warn('⚠️  No government sources found - consider manual review');
+    }
+
     return scoredCitations.slice(0, 10);
-  } catch (parseError) {
-    console.error('Failed to parse citations:', parseError);
-    console.error('Raw response:', citationsText);
-    throw new Error('Failed to parse citation recommendations');
+    } catch (parseError) {
+      clearTimeout(timeoutId);
+      console.error('Failed to parse citations:', parseError);
+      console.error('Raw response:', citationsText);
+      throw new Error('Failed to parse citation recommendations');
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error('Perplexity API timeout after 90 seconds');
+      throw new Error('Citation search timed out - try again or add citations manually');
+    }
+    throw error;
   }
 }
 
