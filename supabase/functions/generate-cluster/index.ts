@@ -2145,8 +2145,10 @@ Return ONLY valid JSON:
     console.log(`   Status: ${finalStatus}`);
     console.log(`========================================\n`);
 
-    // Save final status to job record
-    await supabase
+    // Save final status to job record with error handling and verification
+    console.log(`[Job ${jobId}] 💾 Updating job status to: ${finalStatus}`);
+    
+    const { data: updateData, error: updateError } = await supabase
       .from('cluster_generations')
       .update({
         status: finalStatus,
@@ -2166,9 +2168,44 @@ Return ONLY valid JSON:
         },
         updated_at: new Date().toISOString()
       })
-      .eq('id', jobId);
+      .eq('id', jobId)
+      .select();
 
-    console.log(`✅ [Job ${jobId}] Job ${finalStatus} - ${savedArticleIds.length} articles saved to database`);
+    if (updateError) {
+      console.error(`[Job ${jobId}] ❌ CRITICAL: Failed to update job status:`, updateError);
+      // Try one more time with minimal data
+      const { error: retryError } = await supabase
+        .from('cluster_generations')
+        .update({
+          status: finalStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+      
+      if (retryError) {
+        console.error(`[Job ${jobId}] ❌ CRITICAL: Retry failed:`, retryError);
+      } else {
+        console.log(`[Job ${jobId}] ✅ Status update succeeded on retry`);
+      }
+    } else {
+      console.log(`[Job ${jobId}] ✅ Job status successfully updated to: ${finalStatus}`);
+      console.log(`[Job ${jobId}] ✅ Job ${finalStatus} - ${savedArticleIds.length} articles saved to database`);
+    }
+    
+    // Verify the update succeeded
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('cluster_generations')
+      .select('status')
+      .eq('id', jobId)
+      .single();
+    
+    if (verifyError) {
+      console.error(`[Job ${jobId}] ⚠️  Could not verify status update:`, verifyError);
+    } else if (verifyData?.status !== finalStatus) {
+      console.error(`[Job ${jobId}] ⚠️  Status mismatch! Expected: ${finalStatus}, Got: ${verifyData?.status}`);
+    } else {
+      console.log(`[Job ${jobId}] ✅ Status verified in database: ${verifyData.status}`);
+    }
 
   } catch (error) {
     console.error(`[Job ${jobId}] ❌ Generation failed:`, error);
