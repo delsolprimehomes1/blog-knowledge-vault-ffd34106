@@ -1598,159 +1598,30 @@ Return ONLY valid JSON:
       console.log(`   Language: ${language}`);
       console.log(`========================================\n`);
       
-      // 10. EXTERNAL CITATIONS (MANDATORY - BLOCKING)
-      console.log(`🔍 [Job ${jobId}] Article ${i + 1} - STARTING CITATIONS PHASE for: "${plan.headline}" (${language})`);
+      // 10. EXTERNAL CITATIONS - SKIPPED (POST-GENERATION WORKFLOW)
+      console.log(`\n========================================`);
+      console.log(`📋 [Job ${jobId}] Article ${i + 1} - SKIPPING CITATIONS PHASE`);
+      console.log(`   Workflow: Citations will be added manually during review`);
+      console.log(`   Status: Article will be saved as DRAFT with citation_status='pending'`);
+      console.log(`========================================\n`);
 
-      // Adaptive timeout: prioritize early attempts (most likely to succeed with Tier 1 domains)
-      const getCitationTimeout = (attemptNumber: number): number => {
-        return 30000; // Fixed 30s timeout - quick attempt, move on
-      };
+      // Set citation metadata for post-generation workflow
+      article.external_citations = [];
+      article.citation_status = 'pending';
+      article.citation_failure_reason = 'Citations to be added during post-generation review process';
 
-      let citationsAttempt = 0;
-      const MAX_CITATION_ATTEMPTS = 1; // Try once, move on (emergency simplification)
-      let citations: any[] = [];
-      let citationError: Error | null = null;
+      // Update progress
+      await updateProgress(
+        supabase,
+        jobId,
+        2 + i,
+        `Article ${i + 1}/${articleStructures.length} - Content, image, and FAQs complete (citations pending)`,
+        i + 1
+      );
 
-      // Per-article timeout safety - specifically for citations phase
-      const CITATION_PHASE_START = Date.now();
-      const MAX_CITATION_TIME_PER_ARTICLE = 4 * 60 * 1000; // 4 minutes max for citations phase (tightened to prevent stalls)
-
-      // 3-LAYER FALLBACK SYSTEM
-      while (citationsAttempt < MAX_CITATION_ATTEMPTS && citations.length < 2) {
-        // Hard wall: Check per-article citation timeout
-        const citationPhaseElapsed = Date.now() - CITATION_PHASE_START;
-        if (citationPhaseElapsed > MAX_CITATION_TIME_PER_ARTICLE) {
-          const elapsedMinutes = (citationPhaseElapsed / 60000).toFixed(1);
-          console.warn(`⏱️ [Job ${jobId}] Article ${i + 1} - Citations phase TIMEOUT after ${elapsedMinutes} min (4-min limit), continuing with ${citations.length} citations (NON-FATAL)`);
-          article.citation_status = 'none';
-          article.citation_failure_reason = `Citation phase exceeded 4-minute timeout limit (${elapsedMinutes} min elapsed, ${citations.length} citations found)`;
-          break; // Exit citation loop, continue with article
-        }
-        
-        // Function-level timeout guard: abort if approaching edge function limit
-        const elapsedMinutes = ((Date.now() - FUNCTION_START_TIME) / 60000).toFixed(1);
-        if (Date.now() - FUNCTION_START_TIME > MAX_FUNCTION_RUNTIME) {
-          throw new Error(`Approaching edge function timeout limit (${elapsedMinutes} min) - aborting gracefully`);
-        }
-        
-        citationsAttempt++;
-        
-        // Dynamic timeout based on attempt number
-        const citationTimeout = getCitationTimeout(citationsAttempt);
-        
-        // Send heartbeat update before each citation attempt
-        await updateProgress(
-          supabase, 
-          jobId, 
-          2 + i, 
-          `Article ${i + 1}/${articleStructures.length} - Citations: Attempt ${citationsAttempt}/4 (${Math.round(citationTimeout/1000)}s timeout, ${elapsedMinutes} min elapsed)`, 
-          i + 1
-        );
-        
-        console.log(`[Job ${jobId}] Citation attempt ${citationsAttempt}/4 (timeout: ${citationTimeout}ms)`);
-        
-        try {
-          const citationsResponse = await withTimeout(
-            supabase.functions.invoke('find-external-links', {
-              body: {
-                content: article.detailed_content,
-                headline: plan.headline,
-                language: language,
-                attemptNumber: citationsAttempt,
-                requireApprovedDomains: citationsAttempt === 3,
-              },
-            }),
-            citationTimeout,
-            `Citation discovery timeout (Gemini + Google Search) on attempt ${citationsAttempt}`
-          );
-
-          if (citationsResponse.error) {
-            throw new Error(citationsResponse.error.message);
-          }
-
-          const fetchedCitations = citationsResponse.data?.citations || [];
-          
-          if (fetchedCitations.length >= 2) {
-            citations = fetchedCitations;
-            console.log(`[Job ${jobId}] ✅ Found ${citations.length} verified citations on attempt ${citationsAttempt}`);
-            break;
-          } else {
-            console.warn(`[Job ${jobId}] ⚠️ Only found ${fetchedCitations.length} citations on attempt ${citationsAttempt}, retrying...`);
-            citations = fetchedCitations; // Save partial results
-          }
-          
-        } catch (error) {
-          citationError = error instanceof Error ? error : new Error(String(error));
-          console.error(`[Job ${jobId}] Citation attempt ${citationsAttempt} failed:`, citationError.message);
-          
-          if (citationsAttempt < MAX_CITATION_ATTEMPTS) {
-            const waitTime = 2000 * citationsAttempt;
-            console.log(`[Job ${jobId}] Waiting ${waitTime}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-          }
-        }
-      }
-
-      // CRITICAL CHECK: Did we get minimum 2 citations?
-      if (citations.length < 2) {
-        console.error(`❌ [Job ${jobId}] Article ${i + 1} - FAILED citation requirement: ${citations.length}/2 found after ${citationsAttempt} attempts`);
-        
-        article.citation_status = 'none';
-        article.external_citations = citations;
-        article.citation_failure_reason = [
-          `Only found ${citations.length}/2 valid citations after ${citationsAttempt} attempts.`,
-          citationError ? `Error: ${citationError.message}` : 'Insufficient approved sources found.',
-          'All citations must be from approved, non-competitor domains in the correct language.',
-          `Language required: ${language.toUpperCase()}`,
-          'Retry cluster generation or manually add citations in the article editor.'
-        ].join(' ');
-        
-        console.warn(`🚫 [Job ${jobId}] Article ${i + 1} - Proceeding with article despite insufficient citations (NON-FATAL)`);
-        
-      } else {
-        article.citation_status = 'verified';
-        
-        let updatedContent = article.detailed_content;
-        
-        for (const citation of citations) {
-          if (citation.insertAfterHeading) {
-            const headingRegex = new RegExp(
-              `<h2[^>]*>\\s*${citation.insertAfterHeading}\\s*</h2>`,
-              'i'
-            );
-            
-            const match = updatedContent.match(headingRegex);
-            if (match && match.index !== undefined) {
-              const headingIndex = match.index + match[0].length;
-              const afterHeading = updatedContent.substring(headingIndex);
-              const nextParagraphMatch = afterHeading.match(/<p>/);
-              
-              if (nextParagraphMatch && nextParagraphMatch.index !== undefined) {
-                const insertPoint = headingIndex + nextParagraphMatch.index + 3;
-                
-                const citationLink = `According to the <a href="${citation.url}" target="_blank" rel="noopener" title="${citation.sourceName}">${citation.anchorText}</a>, `;
-                
-                updatedContent = updatedContent.substring(0, insertPoint) + 
-                               citationLink + 
-                               updatedContent.substring(insertPoint);
-              }
-            }
-          }
-        }
-        
-        article.detailed_content = updatedContent;
-        article.external_citations = citations.map((citation: any) => ({
-          source: citation.sourceName,
-          url: citation.url,
-          text: citation.anchorText,
-          context: citation.contextInArticle,
-          relevance: citation.relevance
-        }));
-        
-        console.log(`✅ [Job ${jobId}] Article ${i + 1} - Citations VERIFIED (${citations.length} citations inserted)`);
-      }
-      
-      console.log(`🔚 [Job ${jobId}] Article ${i + 1} - FINISHED CITATIONS PHASE (${citations.length} citations, status: ${article.citation_status})`);
+      console.log(`✅ [Job ${jobId}] Article ${i + 1} - Citations phase SKIPPED (will be added before publishing)`);
+      console.log(`🏁 [Job ${jobId}] Article ${i + 1} - FINISHED CITATIONS PHASE (skipped for post-generation)`);
+      // END CITATIONS PHASE
 
       // Post-process: Replace any remaining [CITATION_NEEDED] markers
       const remainingMarkers = (article.detailed_content?.match(/\[CITATION_NEEDED\]/g) || []).length;
@@ -2045,25 +1916,19 @@ Return ONLY valid JSON:
       throw new Error(`Failed to validate articles: ${fetchError.message}`);
     }
     
-    // FINAL VALIDATION: Only block on actual citation errors, not 'none' or 'skipped'
-    const failedCitationArticles = (savedArticles || []).filter((a: any) => 
-      a.citation_status === 'failed' || a.citation_status === 'error'
-    );
+    // FINAL VALIDATION: No longer blocking on citation status
+    // All articles are saved as drafts with citation_status='pending'
+    // Citations will be added in post-generation review process
+    console.log(`[Job ${jobId}] ℹ️  Citation validation skipped - all articles saved as drafts pending citation review`);
 
-    if (failedCitationArticles.length > 0) {
-      const failedHeadlines = failedCitationArticles.map((a: any) => a.headline).join(', ');
-      
-      console.error(`[Job ${jobId}] ❌ CLUSTER GENERATION BLOCKED: ${failedCitationArticles.length} article(s) failed citation requirements`);
-      
-      throw new Error(
-        `Cluster generation incomplete: ${failedCitationArticles.length} article(s) failed citation requirements. ` +
-        `Articles: ${failedHeadlines}. ` +
-        `Each article must have at least 2 verified, non-competitor external citations. ` +
-        `Please review the citation requirements and retry generation.`
-      );
-    }
+    const articleSummary = (savedArticles || []).map((a: any) => ({
+      headline: a.headline,
+      citation_status: a.citation_status
+    }));
 
-    console.log(`[Job ${jobId}] ✅ All articles passed citation requirements`);
+    console.log(`[Job ${jobId}] 📊 Article summary:`, JSON.stringify(articleSummary, null, 2));
+
+    console.log(`[Job ${jobId}] ✅ All articles passed validation`);
 
     await updateProgress(supabase, jobId, 8, 'Finding internal links...');
     console.log(`[Job ${jobId}] Fetching saved articles for internal linking...`);
@@ -2286,6 +2151,7 @@ Return ONLY valid JSON:
       .update({
         status: finalStatus,
         articles: savedArticleIds, // Only store article IDs
+        completion_note: `${savedArticleIds.length}/${articleStructures.length} articles generated as drafts. Citations to be added during review process before publishing.`,
         progress: {
           current_step: 11,
           total_steps: 11,
@@ -2294,8 +2160,8 @@ Return ONLY valid JSON:
           saved_articles: savedArticleIds.length,
           failed_articles: failedArticleCount,
           message: finalStatus === 'completed' 
-            ? `Cluster complete: ${savedArticleIds.length}/${articleStructures.length} articles saved`
-            : `Partial completion: ${savedArticleIds.length}/${articleStructures.length} articles saved`,
+            ? `✅ Cluster complete: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS. Citations pending - add before publishing.`
+            : `⚠️  Partial completion: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS. Citations pending - add before publishing.`,
           success_rate: successRate
         },
         updated_at: new Date().toISOString()
