@@ -43,26 +43,26 @@ export const BetterCitationFinder = ({
   const handleFindCitations = async () => {
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('find-better-citations', {
+      const { data, error } = await supabase.functions.invoke('find-citations-gemini', {
         body: {
           articleTopic,
           articleLanguage,
-          articleContent: articleContent, // Send full content for contextual relevance
+          articleContent: articleContent,
           currentCitations,
-          focusArea: articleTopic.toLowerCase().includes('costa del sol')
-            ? 'Costa del Sol real estate'
-            : undefined,
-          verifyUrls: true,
         }
       });
 
       if (error) throw error;
 
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to find citations');
+      }
+
       setCitations(data.citations);
       
       toast({
         title: "Citations Found!",
-        description: `Found ${data.verifiedCount}/${data.totalFound} verified authoritative sources`,
+        description: `Found ${data.totalFound} authoritative sources using Gemini AI`,
       });
     } catch (error: any) {
       console.error('Citation search error:', error);
@@ -110,14 +110,8 @@ export const BetterCitationFinder = ({
           AI Citation Finder
         </CardTitle>
         <CardDescription>
-          Searches <strong>677 approved domains</strong> using AI + Google Search to find authoritative sources matching your article content. Automatically blocks 81 competitor domains.
+          Powered by <strong>Gemini AI</strong> to find authoritative sources from approved domains matching your article content.
         </CardDescription>
-        <Alert variant="destructive" className="mt-3 border-red-500 bg-red-50">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            <strong>Competitor Blacklist:</strong> 81 competitor domains are automatically blocked from suggestions.
-          </AlertDescription>
-        </Alert>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button

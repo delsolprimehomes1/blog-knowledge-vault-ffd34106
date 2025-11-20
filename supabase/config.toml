@@ -3,6 +3,9 @@ project_id = "kazggnufaoicopvmwhdl"
 [functions.generate-image]
 verify_jwt = false
 
+[functions.find-citations-gemini]
+verify_jwt = false
+
 [functions.sync-citation-health]
 verify_jwt = false
 
