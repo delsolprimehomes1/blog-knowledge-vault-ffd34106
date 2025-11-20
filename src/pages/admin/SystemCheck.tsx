@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Play, Download, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
+import { TranslationSyncTool } from "@/components/admin/TranslationSyncTool";
 import {
   PhaseTest,
   testPhase1,
@@ -137,6 +138,18 @@ export default function SystemCheck() {
           <h1 className="text-3xl font-bold mb-2">🔍 System Validation Dashboard</h1>
           <p className="text-muted-foreground">
             Comprehensive testing for all 19 implementation phases
+          </p>
+        </header>
+
+        {/* Translation Sync Tool */}
+        <div className="mb-8">
+          <TranslationSyncTool />
+        </div>
+
+        <header className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Automated Tests</h2>
+          <p className="text-muted-foreground">
+            Run comprehensive validation tests across all system components
           </p>
           
           <div className="flex gap-3 mt-4">

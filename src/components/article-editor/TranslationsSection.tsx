@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Languages, Code, Copy, Check, AlertCircle, Plus } from "lucide-react";
 import { Language } from "@/types/blog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Article {
   id: string;
@@ -59,10 +60,42 @@ export const TranslationsSection = ({
   const translationCount = Object.keys(translations).length;
   const totalLanguages = LANGUAGES.length;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // 1. Save current article translations
     onTranslationsChange(tempTranslations);
-    setOpen(false);
-    toast.success("Translations updated");
+    
+    // 2. Build the full translation network
+    const translationNetwork: Record<string, string> = {
+      [currentLanguage]: currentSlug,
+      ...tempTranslations
+    };
+    
+    // 3. Update all linked articles to reference each other bidirectionally
+    const updatePromises = Object.entries(tempTranslations).map(async ([lang, slug]) => {
+      // Build the translations object for this linked article
+      const linkedArticleTranslations: Record<string, string> = {};
+      
+      Object.entries(translationNetwork).forEach(([l, s]) => {
+        if (l !== lang) { // Don't include self
+          linkedArticleTranslations[l] = s;
+        }
+      });
+      
+      // Update the linked article
+      return supabase
+        .from('blog_articles')
+        .update({ translations: linkedArticleTranslations })
+        .eq('slug', slug);
+    });
+    
+    try {
+      await Promise.all(updatePromises);
+      setOpen(false);
+      toast.success("Translations synced bidirectionally across all articles");
+    } catch (error) {
+      console.error('Error syncing translations:', error);
+      toast.error("Failed to sync translations");
+    }
   };
 
   const handleLinkArticle = (language: Language, slug: string) => {
