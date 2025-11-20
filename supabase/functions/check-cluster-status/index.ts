@@ -50,6 +50,25 @@ serve(async (req) => {
     const generatedCount = existingArticles?.length || 0;
     const totalTarget = job.total_articles || 6;
 
+    // Fetch full article objects if completed
+    let articleObjects = null;
+    if (job.status === 'completed' && job.articles && job.articles.length > 0) {
+      const { data: fullArticles, error: articlesError } = await supabase
+        .from('blog_articles')
+        .select('*')
+        .in('id', job.articles)
+        .order('cluster_number', { ascending: true });
+      
+      if (!articlesError && fullArticles) {
+        articleObjects = fullArticles;
+        console.log(`Fetched ${fullArticles.length} full article objects`);
+      } else {
+        console.error('Failed to fetch full articles:', articlesError);
+        // Fallback to just IDs
+        articleObjects = job.articles;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -60,7 +79,7 @@ serve(async (req) => {
           generated_articles: generatedCount,
           total_articles: totalTarget
         },
-        articles: job.status === 'completed' ? job.articles : null,
+        articles: articleObjects,
         error: job.error
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
