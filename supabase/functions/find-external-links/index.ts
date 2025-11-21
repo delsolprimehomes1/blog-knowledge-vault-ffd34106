@@ -961,6 +961,27 @@ Return only the JSON array, nothing else.`;
           }
         );
       }
+      
+      // Handle 429 rate limit errors specifically
+      if (error instanceof Error && (error.message.includes('429') || error.message.includes('quota'))) {
+        console.error('⚠️ Gemini API quota exhausted - 429 rate limit');
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'QUOTA_EXHAUSTED',
+            userMessage: 'Gemini API quota exhausted. Please check your quota at https://aistudio.google.com/app/apikey or wait a few minutes before trying again.',
+            citations: [],
+            totalFound: 0,
+            totalVerified: 0,
+            hasGovernmentSource: false
+          }),
+          { 
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
       throw error;
     }
     

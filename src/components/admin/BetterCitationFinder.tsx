@@ -52,7 +52,18 @@ export const BetterCitationFinder = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle rate limit errors specifically
+        if (error.message?.includes('429') || data?.error === 'QUOTA_EXHAUSTED') {
+          toast({
+            title: "API Quota Exhausted",
+            description: data?.userMessage || "Gemini API quota exhausted. Please wait a few minutes or check your API key quota.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to find citations');

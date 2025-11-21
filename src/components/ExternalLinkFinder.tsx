@@ -57,7 +57,15 @@ export const ExternalLinkFinder = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle rate limit errors specifically
+        if (error.message?.includes('429') || data?.error === 'QUOTA_EXHAUSTED') {
+          toast.error(data?.userMessage || "API quota exhausted. Please wait a few minutes or check your API key quota.");
+          setFoundLinks([]);
+          return;
+        }
+        throw error;
+      }
 
       if (data?.citations && data.citations.length > 0) {
         setFoundLinks(data.citations);

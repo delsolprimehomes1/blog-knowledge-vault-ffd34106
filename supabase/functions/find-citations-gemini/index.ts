@@ -449,6 +449,12 @@ ${approvedDomains.slice(0, 40).join(', ')}
     return citation;
     
   } catch (error) {
+    // Check for rate limit errors and propagate them
+    if (error instanceof Error && (error.message.includes('429') || error.message.includes('quota'))) {
+      console.error(`   ⚠️ Gemini API quota exhausted (429)`);
+      throw new Error('QUOTA_EXHAUSTED: Gemini API rate limit reached');
+    }
+    
     console.error(`   ❌ Error finding citation:`, error);
     return null;
   }
@@ -632,6 +638,22 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('\n❌ CITATION FINDER FAILED:', error);
+
+    // Handle quota exhaustion specifically
+    if (error instanceof Error && (error.message.includes('QUOTA_EXHAUSTED') || error.message.includes('429') || error.message.includes('quota'))) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'QUOTA_EXHAUSTED',
+          userMessage: 'Gemini API quota exhausted. Please check your quota at https://aistudio.google.com/app/apikey or wait before trying again.',
+          citations: [],
+        }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
