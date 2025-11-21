@@ -283,6 +283,11 @@ const BlogArticle = () => {
               externalCitations={article.external_citations as ExternalCitation[]}
             />
 
+            <FunnelCTA
+              funnelStage={article.funnel_stage as FunnelStage}
+              ctaArticles={ctaArticles || []}
+            />
+
             <SpeakableBox answer={article.speakable_answer} />
 
             <TableOfContents content={article.detailed_content} />
@@ -304,11 +309,6 @@ const BlogArticle = () => {
             {relatedArticles && relatedArticles.length > 0 && (
               <RelatedArticles articles={relatedArticles} />
             )}
-
-            <FunnelCTA
-              funnelStage={article.funnel_stage as FunnelStage}
-              ctaArticles={ctaArticles || []}
-            />
 
             <ArticleFooter />
           </div>
