@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.10";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -285,10 +286,19 @@ async function findCitationForClaim(
   approvedDomains: string[]
 ): Promise<Citation | null> {
   
-  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-  if (!lovableApiKey) {
-    throw new Error('LOVABLE_API_KEY not configured');
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY not configured');
   }
+  
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemini-2.0-flash-exp',
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: 'application/json'
+    }
+  });
   
   const languageMap: Record<string, string> = {
     'en': 'English',
@@ -395,52 +405,23 @@ ${approvedDomains.slice(0, 40).join(', ')}
 ⚠️ CRITICAL: Return ONLY the JSON object. No markdown. No code blocks. No explanations. Start with { and end with }`;
 
   try {
-    console.log(`   📡 Calling Lovable AI (Gemini)...`);
+    console.log(`   📡 Calling direct Gemini API...`);
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2, // Low temperature for factual accuracy
-      }),
-    });
-    
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error(`   ❌ AI Gateway error: ${aiResponse.status}`);
-      return null;
-    }
-    
-    const aiData = await aiResponse.json();
-    const responseText = aiData.choices[0].message.content;
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const responseText = response.text();
     
     console.log(`   ✅ Gemini response received (${responseText.length} chars)`);
     
-    // Parse JSON from response (multiple methods)
+    // Parse JSON from response
     let citation = null;
     
-    // Method 1: Direct parse
     try {
       citation = JSON.parse(responseText);
     } catch (e) {
-      // Method 2: Extract from code blocks
-      const codeMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (codeMatch) {
-        citation = JSON.parse(codeMatch[1]);
-      } else {
-        // Method 3: Find JSON object
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          citation = JSON.parse(jsonMatch[0]);
-        }
-      }
+      console.error(`   ❌ Failed to parse JSON response:`, e);
+      console.log(`   Raw response: ${responseText.substring(0, 200)}`);
+      return null;
     }
     
     if (!citation || !citation.url || !citation.sourceName) {

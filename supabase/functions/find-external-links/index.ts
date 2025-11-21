@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 import { validateDomainLanguage } from '../shared/domainLanguageValidator.ts';
 
 const corsHeaders = {
@@ -907,76 +908,51 @@ Return only the JSON array, nothing else.`;
       'hu': 'hu'
     };
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not configured');
     }
 
-    // Build domain filter for Google Search Grounding with tiered batching (Fix #1)
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+    // Build domain filter for Google Search Grounding with tiered batching
     const searchDomains = getDomainsByTier(currentAttempt);
     console.log(`🔍 Attempt ${currentAttempt}: Searching ${searchDomains.length} domains (Tier ${currentAttempt <= 2 ? '1' : currentAttempt <= 4 ? '1+2' : 'All'})`);
 
-    // Note: Timeout is now managed by generate-cluster (adaptive: 90s→60s→45s based on attempt)
     const GEMINI_TIMEOUT = 45000;
     const startTime = Date.now();
     
-    let response: Response;
+    let aiResponse: string;
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT);
-      
-      response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a research assistant specialized in finding authoritative ${config.languageName} sources using Google Search. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources.`
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          tools: [
-            {
-              type: 'google_search_retrieval',
-              google_search_retrieval: {
-                dynamic_retrieval_config: {
-                  mode: 'MODE_DYNAMIC',
-                  dynamic_threshold: 0.4, // Fix #4: Lower threshold for more active search grounding
-                  // CRITICAL: Filter Google results by language
-                  language_codes: [languageCodeMap[language] || 'en']
-                }
-              }
-            }
-          ],
-          tool_config: {
-            google_search_retrieval: {
-              search_domain_filter: searchDomains
-            }
-          },
-          temperature: 0.6, // Fix #3: More exploration while staying factual
-          max_tokens: 3500 // Fix #3: Room for more citations with full context
-        }),
-        signal: controller.signal
+      const model = genAI.getGenerativeModel({ 
+        model: 'gemini-2.0-flash-exp',
+        generationConfig: {
+          temperature: 0.6,
+          responseMimeType: 'application/json'
+        }
       });
+
+      const systemPrompt = `You are a research assistant specialized in finding authoritative ${config.languageName} sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}CRITICAL: Return ONLY valid JSON arrays. All URLs must be in ${config.languageName} language. Prioritize government and educational sources from these approved domains: ${searchDomains.slice(0, 50).join(', ')}`;
       
-      clearTimeout(timeoutId);
+      const fullPrompt = `${systemPrompt}\n\n${prompt}`;
+      
+      const result = await Promise.race([
+        model.generateContent(fullPrompt),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), GEMINI_TIMEOUT)
+        )
+      ]);
+      
+      const response = result.response;
+      aiResponse = response.text();
       
       const elapsed = Date.now() - startTime;
       console.log(`⏱️ Gemini call completed in ${elapsed}ms`);
       
     } catch (error) {
       const elapsed = Date.now() - startTime;
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.message === 'Timeout') {
         console.warn(`⏱️ Gemini citation discovery timed out after ${elapsed}ms (limit: ${GEMINI_TIMEOUT}ms) - returning empty citations (NON-FATAL)`);
-        // Return empty citations instead of throwing - allows generate-cluster to continue gracefully
         return new Response(
           JSON.stringify({ citations: [] }),
           { 
@@ -987,15 +963,6 @@ Return only the JSON array, nothing else.`;
       }
       throw error;
     }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
     
     // Log response (truncated to avoid massive logs from malformed URLs)
     const truncatedResponse = aiResponse.length > 2000 
