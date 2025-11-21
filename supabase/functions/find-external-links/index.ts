@@ -916,7 +916,7 @@ Return only the JSON array, nothing else.`;
     const searchDomains = getDomainsByTier(currentAttempt);
     console.log(`🔍 Attempt ${currentAttempt}: Searching ${searchDomains.length} domains (Tier ${currentAttempt <= 2 ? '1' : currentAttempt <= 4 ? '1+2' : 'All'})`);
 
-    const API_TIMEOUT = 45000;
+    const API_TIMEOUT = 90000; // Increased from 45s to 90s for GPT-5-mini
     const startTime = Date.now();
     
     let aiResponse: string;
@@ -937,7 +937,7 @@ Return only the JSON array, nothing else.`;
               { role: 'user', content: prompt }
             ],
             response_format: { type: "json_object" },
-            max_completion_tokens: 4000
+            max_completion_tokens: 8000 // Increased from 4000 to prevent truncation
           })
         }),
         new Promise<never>((_, reject) => 
@@ -951,6 +951,14 @@ Return only the JSON array, nothing else.`;
       }
       
       const data = await response.json();
+      
+      // Check for response truncation
+      const finishReason = data.choices[0].finish_reason;
+      if (finishReason === 'length') {
+        console.warn(`⚠️ OpenAI response was truncated (finish_reason: length). Response may be incomplete.`);
+        console.warn(`   Consider reducing article size or splitting into multiple requests.`);
+      }
+      
       aiResponse = data.choices[0].message.content;
       
       const elapsed = Date.now() - startTime;

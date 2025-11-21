@@ -409,7 +409,7 @@ ${approvedDomains.slice(0, 40).join(', ')}
           { role: 'user', content: prompt }
         ],
         response_format: { type: "json_object" },
-        max_completion_tokens: 2000
+        max_completion_tokens: 4000 // Increased from 2000 to prevent truncation
       })
     });
     
@@ -419,9 +419,17 @@ ${approvedDomains.slice(0, 40).join(', ')}
     }
     
     const data = await response.json();
+    
+    // Check for response truncation
+    const finishReason = data.choices[0].finish_reason;
+    if (finishReason === 'length') {
+      console.warn(`   ⚠️ OpenAI response was truncated (finish_reason: length)`);
+      console.warn(`   Claim may not have received complete citation analysis`);
+    }
+    
     const responseText = data.choices[0].message.content;
     
-    console.log(`   ✅ OpenAI response received (${responseText.length} chars)`);
+    console.log(`   ✅ OpenAI response received (${responseText.length} chars, finish_reason: ${finishReason})`);
     
     // Parse JSON from response
     let citation = null;
@@ -431,6 +439,12 @@ ${approvedDomains.slice(0, 40).join(', ')}
     } catch (e) {
       console.error(`   ❌ Failed to parse JSON response:`, e);
       console.log(`   Raw response: ${responseText.substring(0, 200)}`);
+      
+      // Check if error is due to truncation
+      if (finishReason === 'length') {
+        console.error(`   ⚠️ Parse failure likely caused by response truncation`);
+      }
+      
       return null;
     }
     
