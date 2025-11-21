@@ -233,25 +233,39 @@ export async function findBetterCitations(
 
 **Article Topic:** "${articleTopic}"
 **Language Required:** ${config.name}
-**Article Content Preview:**
-${articleContent.substring(0, 1000)}
+**Article Content Preview (First 4000 chars):**
+${articleContent.substring(0, 4000)}
 ${focusContext}
 ${currentCitationsText}
 ${blockedDomainsText}
+
+**CRITICAL GUIDANCE FOR ${articleLanguage.toUpperCase()} ARTICLES ABOUT NON-${articleLanguage.toUpperCase()} TOPICS:**
+- Prioritize INTERNATIONAL sources in ${config.name} language
+- For topics about specific regions: Find international analysis rather than local government sites
+- AVOID: Real estate agency websites, property portals, real estate brokerages, listing sites
+- PREFER: Research institutions, statistical agencies, market analysis firms, academic studies, international organizations
+
+**PREFERRED SOURCE TYPES (in order of priority):**
+1. International statistical/economic agencies (EU, OECD, World Bank, Eurostat)
+2. Academic research and university studies
+3. International business/financial publications (Bloomberg, Financial Times, Reuters)
+4. Market research and analysis firms
+5. Official international organizations (UN, IMF, etc.)
 
 **HIGH-PRIORITY APPROVED DOMAINS (prioritize these):**
 ${highPriorityDomains.slice(0, 20).map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\n')}
 
 **CRITICAL REQUIREMENTS:**
 1. ALL sources MUST be in ${config.name} language
-2. Prioritize domains from PRIORITY 1 (unused) and PRIORITY 2 (lightly used)
-3. Sources must be HIGH AUTHORITY (government, educational, official organizations)
+2. Prioritize INTERNATIONAL sources over local/regional ones
+3. Sources must be HIGH AUTHORITY (research, statistical, international organizations)
 4. Content must DIRECTLY relate to the article topic
 5. Sources must be currently accessible (HTTPS, active)
 6. Avoid duplicating current citations listed above
 7. Find 5-8 diverse, authoritative sources **FROM DIFFERENT DOMAINS**
 8. **NEVER use blocked domains - select from diverse, unused alternatives**
 9. **MAXIMIZE DIVERSITY: Use different domains for each suggestion**
+10. **AVOID all real estate agencies, brokerages, and property listing sites**
 
 **Return ONLY valid JSON array in this EXACT format:**
 [
@@ -287,7 +301,7 @@ Return only the JSON array, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: `You are an expert research assistant finding authoritative ${config.name}-language sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}Return ONLY valid JSON arrays. Never duplicate provided citations. Prioritize diverse, unused domains.`
+            content: `You are an expert research assistant finding authoritative ${config.name}-language INTERNATIONAL sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}NEVER suggest real estate agencies, brokerages, or property listing sites. Prioritize international research, statistics, and academic sources. Return ONLY valid JSON arrays. Never duplicate provided citations. Prioritize diverse, unused domains.`
           },
           {
             role: 'user',
