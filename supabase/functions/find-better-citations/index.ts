@@ -43,7 +43,23 @@ serve(async (req) => {
     );
 
     if (citations.length === 0) {
-      throw new Error('No suitable citations found');
+      console.warn('No suitable citations found by Perplexity');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'No suitable citations found',
+          citations: [],
+          totalFound: 0,
+          verifiedCount: 0,
+          language: articleLanguage,
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     // Optionally verify URLs are accessible
