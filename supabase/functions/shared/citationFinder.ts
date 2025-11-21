@@ -321,41 +321,30 @@ Return only the JSON array, nothing else.`;
 
     const citations = JSON.parse(jsonMatch[0]) as BetterCitation[];
 
-    // ✅ Filter out blocked domains (but allow new domains not yet in approved list)
+    // ✅ STRICT WHITELISTING: Only allow explicitly approved domains
     const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
     const authorityScoresMap = calculateSimpleAuthorityScores(approvedDomains);
-    
-    // Build a map of domains explicitly approved for OTHER languages
-    const wrongLanguageDomains = new Set(
-      approvedDomains
-        .filter(d => d.language && d.language !== articleLanguage && d.language !== 'GLOBAL' && d.language !== 'EU')
-        .map(d => d.domain)
-    );
     
     const validCitations = citations.filter(citation => {
       const domain = extractDomain(citation.url);
       
-      // Check if blocked (overused/competitor)
+      // 1. Check if explicitly blocked (competitor or overused)
       if (blockedDomains.includes(domain)) {
-        console.warn(`🚫 REJECTED overused domain: ${domain}`);
+        console.warn(`🚫 REJECTED blocked domain: ${domain}`);
         return false;
       }
       
-      // Only reject if domain is explicitly approved for a DIFFERENT language
-      if (wrongLanguageDomains.has(domain)) {
-        console.warn(`❌ REJECTED wrong language domain: ${domain} (approved for different language)`);
+      // 2. STRICT WHITELIST: Must be in approved list for this language
+      if (!allowedDomainSet.has(domain)) {
+        console.warn(`❌ REJECTED uncategorized domain: ${domain} (not in ${articleLanguage.toUpperCase()} approved list)`);
         return false;
       }
       
-      // Allow if: (1) in approved list for this language, OR (2) not yet categorized
-      if (allowedDomainSet.has(domain) || !wrongLanguageDomains.has(domain)) {
-        return citation.url && 
-               citation.sourceName && 
-               citation.url.startsWith('http') &&
-               !currentCitations.includes(citation.url);
-      }
-      
-      return false;
+      // 3. Basic validation
+      return citation.url && 
+             citation.sourceName && 
+             citation.url.startsWith('http') &&
+             !currentCitations.includes(citation.url);
     });
 
     console.log(`Filtered ${citations.length} → ${validCitations.length} citations (removed ${citations.length - validCitations.length} blocked/wrong-language)`);
