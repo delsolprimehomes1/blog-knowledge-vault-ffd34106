@@ -408,7 +408,7 @@ ${approvedDomains.slice(0, 40).join(', ')}
         messages: [
           { role: 'user', content: prompt }
         ],
-        response_format: { type: "json_object" },
+        // REMOVED response_format to allow more flexible JSON responses
         max_completion_tokens: 4000 // Increased from 2000 to prevent truncation
       })
     });
