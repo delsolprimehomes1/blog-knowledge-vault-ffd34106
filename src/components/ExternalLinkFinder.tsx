@@ -48,12 +48,13 @@ export const ExternalLinkFinder = ({
     try {
       console.log('Searching for authoritative sources...');
       
-      const { data, error } = await supabase.functions.invoke('find-external-links', {
+      const { data, error } = await supabase.functions.invoke('find-better-citations', {
         body: {
-          content: articleContent,
-          headline: headline,
-          language: language,
-          requireGovernmentSource: requireGovSource
+          articleTopic: headline,
+          articleLanguage: language,
+          articleContent: articleContent,
+          currentCitations: currentCitations.map(c => c.url),
+          verifyUrls: true
         }
       });
 
@@ -68,12 +69,29 @@ export const ExternalLinkFinder = ({
       }
 
       if (data?.citations && data.citations.length > 0) {
-        setFoundLinks(data.citations);
-        setHasGovernmentSource(data.hasGovernmentSource || false);
-        toast.success(`Found ${data.citations.length} authoritative sources!`);
+        // Map Perplexity format to component format
+        const mappedCitations = data.citations.map(c => ({
+          sourceName: c.sourceName,
+          url: c.url,
+          anchorText: c.suggestedContext || c.description,
+          relevance: c.relevance,
+          verified: c.verified !== false
+        }));
+        
+        setFoundLinks(mappedCitations);
+        
+        // Check if any citations are from government sources
+        const hasGov = mappedCitations.some(c => 
+          c.url.includes('.gov') || 
+          c.url.includes('.gob.es') || 
+          c.url.includes('.overheid.nl')
+        );
+        setHasGovernmentSource(hasGov);
+        
+        toast.success(`Found ${mappedCitations.length} authoritative sources!`);
         
         // Show warning if government source was required but not found
-        if (requireGovSource && !data.hasGovernmentSource) {
+        if (requireGovSource && !hasGov) {
           toast.warning("No government sources found. Consider adding one manually for better authority.");
         }
       } else {
@@ -82,8 +100,8 @@ export const ExternalLinkFinder = ({
         setHasGovernmentSource(false);
       }
     } catch (error) {
-      console.error('Error finding external links:', error);
-      toast.error("Failed to find sources. Please try again.");
+      console.error('Perplexity API error:', error);
+      toast.error("Failed to find sources with Perplexity. Please try again.");
       setFoundLinks([]);
     } finally {
       setIsSearching(false);
