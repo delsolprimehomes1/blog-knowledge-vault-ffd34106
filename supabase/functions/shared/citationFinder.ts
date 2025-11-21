@@ -170,53 +170,20 @@ function calculateSimpleAuthorityScores(
 }
 
 /**
- * Find better, more authoritative citations for an article
+ * Call Perplexity API for a specific batch of domains
  */
-export async function findBetterCitations(
+async function callPerplexityForBatch(
+  batch: Array<{ domain: string; category: string; score: number }>,
   articleTopic: string,
   articleLanguage: string,
   articleContent: string,
   currentCitations: string[],
+  blockedDomains: string[],
   perplexityApiKey: string,
-  focusArea?: string // e.g., "Costa del Sol real estate"
+  focusArea?: string
 ): Promise<BetterCitation[]> {
-  
   const config = languageConfig[articleLanguage as keyof typeof languageConfig] || languageConfig.es;
   
-  // ✅ Get blocked domains: competitors (is_allowed=false) + overused domains
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  
-  const { data: competitorDomains } = await supabase
-    .from('approved_domains')
-    .select('domain')
-    .eq('is_allowed', false);
-  
-  const overusedDomains = await getOverusedDomains(20);
-  const blockedDomains = [
-    ...competitorDomains?.map(d => d.domain) || [],
-    ...overusedDomains
-  ];
-  
-  console.log(`🚫 Blocking ${blockedDomains.length} domains (${competitorDomains?.length || 0} competitors + ${overusedDomains.length} overused)`);
-  
-  const approvedDomains = await getApprovedDomainsForLanguage(articleLanguage);
-  
-  // ✅ Calculate simple authority scores (no usage tracking)
-  const authorityScores = calculateSimpleAuthorityScores(approvedDomains);
-  const highPriorityDomains = approvedDomains
-    .map(d => ({
-      domain: d.domain,
-      category: d.category,
-      score: authorityScores.get(d.domain) || 50
-    }))
-    .filter(d => d.score >= 70)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 50);
-
-  console.log(`🎯 Prioritizing ${highPriorityDomains.length} high-authority domains`);
-
   const focusContext = focusArea 
     ? `\n**Special Focus:** ${focusArea} - prioritize sources specific to this region/topic`
     : '';
@@ -233,8 +200,8 @@ export async function findBetterCitations(
 
 **Article Topic:** "${articleTopic}"
 **Language Required:** ${config.name}
-**Article Content Preview (First 4000 chars):**
-${articleContent.substring(0, 4000)}
+**Full Article Content:**
+${articleContent}
 ${focusContext}
 ${currentCitationsText}
 ${blockedDomainsText}
@@ -252,41 +219,44 @@ ${blockedDomainsText}
 4. Market research and analysis firms
 5. Official international organizations (UN, IMF, etc.)
 
-**HIGH-PRIORITY APPROVED DOMAINS (prioritize these):**
-${highPriorityDomains.slice(0, 20).map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\n')}
+**TARGET DOMAINS FOR THIS SEARCH (prioritize these ${batch.length} domains):**
+${batch.map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\n')}
+
+**SEARCH INSTRUCTIONS:**
+1. Focus ONLY on these ${batch.length} domains listed above
+2. Search for content that matches the article topic and claims made in the article
+3. Find 2-4 high-quality citations from DIFFERENT domains in this list
+4. Ensure all sources are in ${config.name} language
+5. Match citations to specific claims, statistics, or statements in the article
 
 **CRITICAL REQUIREMENTS:**
 1. ALL sources MUST be in ${config.name} language
 2. Prioritize INTERNATIONAL sources over local/regional ones
 3. Sources must be HIGH AUTHORITY (research, statistical, international organizations)
-4. Content must DIRECTLY relate to the article topic
+4. Content must DIRECTLY relate to specific claims in the article
 5. Sources must be currently accessible (HTTPS, active)
 6. Avoid duplicating current citations listed above
-7. Find 5-8 diverse, authoritative sources **FROM DIFFERENT DOMAINS**
-8. **NEVER use blocked domains - select from diverse, unused alternatives**
-9. **MAXIMIZE DIVERSITY: Use different domains for each suggestion**
-10. **AVOID all real estate agencies, brokerages, and property listing sites**
+7. Find diverse sources **FROM DIFFERENT DOMAINS**
+8. **NEVER use blocked domains - only use domains from the target list**
+9. **AVOID all real estate agencies, brokerages, and property listing sites**
 
 **Return ONLY valid JSON array in this EXACT format:**
 [
   {
-    "url": "https://example.gob.es/...",
+    "url": "https://example.com/...",
     "sourceName": "Official Source Name",
     "description": "Brief description of what this source contains (1-2 sentences)",
-    "relevance": "Why this source is relevant to the article topic",
+    "relevance": "Specific claim or statement in the article this source supports",
     "authorityScore": 9,
     "language": "${articleLanguage}",
-    "suggestedContext": "Where in the article this citation should appear (e.g., 'Legal requirements section', 'Market statistics')"
+    "suggestedContext": "Exact section or paragraph in the article where this citation should appear"
   }
 ]
 
 Return only the JSON array, nothing else.`;
 
-  console.log('Requesting better citations from Perplexity...');
-
-  // Add 90-second timeout to prevent hanging
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s per batch
 
   try {
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -301,7 +271,7 @@ Return only the JSON array, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: `You are an expert research assistant finding authoritative ${config.name}-language INTERNATIONAL sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}NEVER suggest real estate agencies, brokerages, or property listing sites. Prioritize international research, statistics, and academic sources. Return ONLY valid JSON arrays. Never duplicate provided citations. Prioritize diverse, unused domains.`
+            content: `You are an expert research assistant finding authoritative ${config.name}-language INTERNATIONAL sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}NEVER suggest real estate agencies, brokerages, or property listing sites. Focus ONLY on the provided target domains. Return ONLY valid JSON arrays. Never duplicate provided citations.`
           },
           {
             role: 'user',
@@ -324,49 +294,120 @@ Return only the JSON array, nothing else.`;
     const data = await response.json();
     const citationsText = data.choices[0].message.content;
 
-    console.log('Perplexity response:', citationsText.substring(0, 300));
-
-    try {
     // Extract JSON from response
     const jsonMatch = citationsText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      throw new Error('No JSON array found in response');
+      console.warn('No JSON array found in batch response');
+      return [];
     }
 
     const citations = JSON.parse(jsonMatch[0]) as BetterCitation[];
-
-    // ✅ STRICT WHITELISTING: Only allow explicitly approved domains
-    const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
-    const authorityScoresMap = calculateSimpleAuthorityScores(approvedDomains);
+    return citations;
     
-    const validCitations = citations.filter(citation => {
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error('Batch search timed out after 30 seconds');
+      return [];
+    }
+    console.error('Batch search error:', error);
+    return [];
+  }
+}
+
+/**
+ * Search citations in sequential batches with delays
+ */
+async function searchCitationsInBatches(
+  approvedDomains: Array<{ domain: string; category: string; language: string | null }>,
+  blockedDomains: string[],
+  articleTopic: string,
+  articleLanguage: string,
+  articleContent: string,
+  currentCitations: string[],
+  perplexityApiKey: string,
+  focusArea?: string
+): Promise<BetterCitation[]> {
+  
+  const BATCH_SIZE = 20;
+  const MIN_CITATIONS_NEEDED = 3;
+  const DELAY_BETWEEN_BATCHES = 3000; // 3 seconds
+  
+  // Calculate authority scores and sort domains by score (highest first)
+  const authorityScores = calculateSimpleAuthorityScores(approvedDomains);
+  const sortedDomains = approvedDomains
+    .map(d => ({
+      domain: d.domain,
+      category: d.category,
+      score: authorityScores.get(d.domain) || 50
+    }))
+    .sort((a, b) => b.score - a.score);
+  
+  // Divide into batches
+  const batches: Array<Array<{ domain: string; category: string; score: number }>> = [];
+  for (let i = 0; i < sortedDomains.length; i += BATCH_SIZE) {
+    batches.push(sortedDomains.slice(i, i + BATCH_SIZE));
+  }
+  
+  console.log(`🔍 Searching ${batches.length} batches of up to ${BATCH_SIZE} domains each`);
+  console.log(`📊 Total approved domains: ${sortedDomains.length}`);
+  
+  const allCitations: BetterCitation[] = [];
+  const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
+  const blockedDomainSet = new Set(blockedDomains);
+  
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    
+    console.log(`\n📦 Batch ${batchIndex + 1}/${batches.length}: Searching ${batch.length} domains`);
+    console.log(`   Top domains: ${batch.slice(0, 5).map(d => d.domain).join(', ')}...`);
+    
+    // Call Perplexity for this batch
+    const batchCitations = await callPerplexityForBatch(
+      batch,
+      articleTopic,
+      articleLanguage,
+      articleContent,
+      currentCitations,
+      blockedDomains,
+      perplexityApiKey,
+      focusArea
+    );
+    
+    // Filter and validate citations
+    const validCitations = batchCitations.filter(citation => {
       const domain = extractDomain(citation.url);
       
-      // 1. Check if explicitly blocked (competitor or overused)
-      if (blockedDomains.includes(domain)) {
-        console.warn(`🚫 REJECTED blocked domain: ${domain}`);
+      // Check if blocked
+      if (blockedDomainSet.has(domain)) {
+        console.warn(`   🚫 REJECTED blocked domain: ${domain}`);
         return false;
       }
       
-      // 2. STRICT WHITELIST: Must be in approved list for this language
+      // Check if in approved list
       if (!allowedDomainSet.has(domain)) {
-        console.warn(`❌ REJECTED uncategorized domain: ${domain} (not in ${articleLanguage.toUpperCase()} approved list)`);
+        console.warn(`   ❌ REJECTED uncategorized domain: ${domain}`);
         return false;
       }
       
-      // 3. Basic validation
-      return citation.url && 
-             citation.sourceName && 
-             citation.url.startsWith('http') &&
-             !currentCitations.includes(citation.url);
+      // Basic validation
+      if (!citation.url || !citation.sourceName || !citation.url.startsWith('http')) {
+        return false;
+      }
+      
+      // Check for duplicates
+      if (currentCitations.includes(citation.url) || 
+          allCitations.some(c => c.url === citation.url)) {
+        return false;
+      }
+      
+      return true;
     });
-
-    console.log(`Filtered ${citations.length} → ${validCitations.length} citations (removed ${citations.length - validCitations.length} blocked/wrong-language)`);
-
-    // ✅ Add authority scores and sort
-    const scoredCitations = validCitations.map((citation) => {
+    
+    // Add authority scores
+    const scoredCitations = validCitations.map(citation => {
       const domain = extractDomain(citation.url);
-      const authorityScore = authorityScoresMap.get(domain) || 50;
+      const authorityScore = authorityScores.get(domain) || 50;
       
       return {
         ...citation,
@@ -374,42 +415,105 @@ Return only the JSON array, nothing else.`;
         finalScore: citation.authorityScore || authorityScore
       };
     });
-
-    // Sort by authority score
-    scoredCitations.sort((a: any, b: any) => b.finalScore - a.finalScore);
-
-    console.log(`🎯 Authority-sorted citations. Top domains: ${scoredCitations.slice(0, 5).map((c: any) => extractDomain(c.url)).join(', ')}`);
-
-    // ✅ Validate government source presence
-    const govCitations = scoredCitations.filter((c: any) => 
-      c.url.includes('.gov') || 
-      c.url.includes('.gob.es') || 
-      c.url.includes('.europa.eu') ||
-      c.url.includes('.overheid.nl')
-    );
-
-    console.log(`✅ Found ${govCitations.length} government citations out of ${scoredCitations.length} total`);
-
-    // If no government sources found, log warning but don't fail
-    if (govCitations.length === 0) {
-      console.warn('⚠️  No government sources found - consider manual review');
+    
+    console.log(`   ✅ Found ${scoredCitations.length} valid citations in batch ${batchIndex + 1}`);
+    if (scoredCitations.length > 0) {
+      console.log(`   🎯 Domains: ${scoredCitations.map(c => extractDomain(c.url)).join(', ')}`);
     }
-
-    return scoredCitations.slice(0, 10);
-    } catch (parseError) {
-      clearTimeout(timeoutId);
-      console.error('Failed to parse citations:', parseError);
-      console.error('Raw response:', citationsText);
-      throw new Error('Failed to parse citation recommendations');
+    
+    allCitations.push(...scoredCitations);
+    
+    // If we found enough citations, stop searching
+    if (allCitations.length >= MIN_CITATIONS_NEEDED) {
+      console.log(`\n🎯 SUCCESS: Found ${allCitations.length} citations after ${batchIndex + 1} batches`);
+      break;
     }
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      console.error('Perplexity API timeout after 90 seconds');
-      throw new Error('Citation search timed out - try again or add citations manually');
+    
+    // If more batches remain, wait before next search
+    if (batchIndex < batches.length - 1) {
+      console.log(`   ⏳ Waiting ${DELAY_BETWEEN_BATCHES / 1000}s before next batch...`);
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
-    throw error;
   }
+  
+  // Sort by authority score
+  allCitations.sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0));
+  
+  console.log(`\n📊 Final results: ${allCitations.length} total citations`);
+  if (allCitations.length > 0) {
+    console.log(`🏆 Top 5 domains: ${allCitations.slice(0, 5).map(c => extractDomain(c.url)).join(', ')}`);
+  }
+  
+  return allCitations;
+}
+
+/**
+ * Find better, more authoritative citations for an article using batch search strategy
+ */
+export async function findBetterCitations(
+  articleTopic: string,
+  articleLanguage: string,
+  articleContent: string,
+  currentCitations: string[],
+  perplexityApiKey: string,
+  focusArea?: string
+): Promise<BetterCitation[]> {
+  
+  console.log('\n🚀 Starting batch citation search...');
+  console.log(`📝 Article topic: ${articleTopic}`);
+  console.log(`🌍 Language: ${articleLanguage}`);
+  console.log(`📄 Article length: ${articleContent.length} characters`);
+  
+  // Get blocked domains: competitors (is_allowed=false) + overused domains
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  const { data: competitorDomains } = await supabase
+    .from('approved_domains')
+    .select('domain')
+    .eq('is_allowed', false);
+  
+  const overusedDomains = await getOverusedDomains(20);
+  const blockedDomains = [
+    ...competitorDomains?.map(d => d.domain) || [],
+    ...overusedDomains
+  ];
+  
+  console.log(`🚫 Blocking ${blockedDomains.length} domains (${competitorDomains?.length || 0} competitors + ${overusedDomains.length} overused)`);
+  
+  const approvedDomains = await getApprovedDomainsForLanguage(articleLanguage);
+  console.log(`✅ Loaded ${approvedDomains.length} approved domains for ${articleLanguage.toUpperCase()}`);
+  
+  // Use batch search strategy
+  const citations = await searchCitationsInBatches(
+    approvedDomains,
+    blockedDomains,
+    articleTopic,
+    articleLanguage,
+    articleContent,
+    currentCitations,
+    perplexityApiKey,
+    focusArea
+  );
+  
+  // Validate government source presence
+  const govCitations = citations.filter(c => 
+    c.url.includes('.gov') || 
+    c.url.includes('.gob.es') || 
+    c.url.includes('.europa.eu') ||
+    c.url.includes('.overheid.nl')
+  );
+
+  console.log(`\n🏛️  Found ${govCitations.length} government citations out of ${citations.length} total`);
+  
+  if (citations.length === 0) {
+    console.warn('⚠️  No citations found after searching all batches');
+  } else if (govCitations.length === 0) {
+    console.warn('⚠️  No government sources found - consider manual review');
+  }
+  
+  return citations.slice(0, 10);
 }
 
 /**
