@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle, ArticleStatus, FunnelStage, Language } from "@/types/blog";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -8,8 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { Search, Edit, Eye, Trash2, Plus, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Articles = () => {
   const navigate = useNavigate();
@@ -20,6 +32,9 @@ const Articles = () => {
   const [funnelFilter, setFunnelFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+  const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
+  const [articleToDelete, setArticleToDelete] = useState<string | null>(null);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   const { data: articles, isLoading, error } = useQuery({
     queryKey: ["articles"],
@@ -46,6 +61,50 @@ const Articles = () => {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  // Single article deletion
+  const deleteMutation = useMutation({
+    mutationFn: async (articleId: string) => {
+      const { error } = await supabase
+        .from("blog_articles")
+        .delete()
+        .eq("id", articleId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      toast.success("Article deleted successfully");
+      setArticleToDelete(null);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete article: ${error.message}`);
+    },
+  });
+
+  // Bulk article deletion
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (articleIds: string[]) => {
+      const { error } = await supabase
+        .from("blog_articles")
+        .delete()
+        .in("id", articleIds);
+      
+      if (error) throw error;
+      return articleIds.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      toast.success(`Successfully deleted ${count} article${count > 1 ? 's' : ''}`);
+      setSelectedArticles([]);
+      setShowBulkDeleteDialog(false);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete articles: ${error.message}`);
     },
   });
 
@@ -93,6 +152,26 @@ const Articles = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedArticles = filteredArticles.slice(startIndex, startIndex + itemsPerPage);
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedArticles(paginatedArticles.map(a => a.id));
+    } else {
+      setSelectedArticles([]);
+    }
+  };
+
+  const handleSelectArticle = (articleId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedArticles([...selectedArticles, articleId]);
+    } else {
+      setSelectedArticles(selectedArticles.filter(id => id !== articleId));
+    }
+  };
+
+  const isAllSelected = paginatedArticles.length > 0 && 
+    paginatedArticles.every(a => selectedArticles.includes(a.id));
+  const isSomeSelected = selectedArticles.length > 0 && !isAllSelected;
+
   const getStatusColor = (status: ArticleStatus) => {
     switch (status) {
       case 'published': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
@@ -125,6 +204,37 @@ const Articles = () => {
             Create Article
           </Button>
         </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedArticles.length > 0 && (
+          <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <p className="text-sm font-medium">
+                    {selectedArticles.length} article{selectedArticles.length > 1 ? 's' : ''} selected
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedArticles([])}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card>
@@ -209,6 +319,14 @@ const Articles = () => {
               <table className="w-full">
                 <thead className="border-b bg-muted/50">
                   <tr>
+                    <th className="px-4 py-3 text-left">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all articles"
+                        className={isSomeSelected ? "data-[state=checked]:bg-amber-500" : ""}
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Headline</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Category</th>
@@ -221,19 +339,28 @@ const Articles = () => {
                 <tbody className="divide-y">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                         Loading articles...
                       </td>
                     </tr>
                   ) : paginatedArticles.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                         No articles found
                       </td>
                     </tr>
                   ) : (
                     paginatedArticles.map((article) => (
                       <tr key={article.id} className="hover:bg-muted/50">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedArticles.includes(article.id)}
+                            onCheckedChange={(checked) => 
+                              handleSelectArticle(article.id, checked as boolean)
+                            }
+                            aria-label={`Select ${article.headline}`}
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <Badge className={`capitalize ${getStatusColor(article.status)}`}>
                             {article.status}
@@ -270,10 +397,20 @@ const Articles = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="ghost">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => navigate(`/blog/${article.language}/${article.slug}`)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="ghost">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setArticleToDelete(article.id)}
+                              disabled={deleteMutation.isPending}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -315,6 +452,51 @@ const Articles = () => {
             </Button>
           </div>
         )}
+
+        {/* Single Delete Confirmation Dialog */}
+        <AlertDialog open={!!articleToDelete} onOpenChange={() => setArticleToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Article?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the article
+                and all its associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => articleToDelete && deleteMutation.mutate(articleToDelete)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedArticles.length} Articles?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete{" "}
+                {selectedArticles.length} article{selectedArticles.length > 1 ? 's' : ''}{" "}
+                and all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => bulkDeleteMutation.mutate(selectedArticles)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {bulkDeleteMutation.isPending ? "Deleting..." : "Delete All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
