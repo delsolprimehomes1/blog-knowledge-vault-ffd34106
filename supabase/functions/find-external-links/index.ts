@@ -141,8 +141,32 @@ async function getOverusedDomains(supabase: any, limit: number = 30): Promise<st
     return [];
   }
   
-  console.log(`🚫 Blocked ${data.length} overused domains (>${limit} uses in last 30 days)`);
-  return data.map((d: any) => d.domain);
+  // ✅ CRITICAL FIX: Exclude government/official domains from overuse blocking
+  // These domains should ALWAYS be available for authoritative citations
+  const governmentTLDs = ['.gov', '.gob.es', '.gob.', '.edu', '.ac.uk', '.eu', 'europa.eu', '.int'];
+  const officialKeywords = ['gobierno', 'ministerio', 'ayuntamiento', 'junta', 'diputacion', 'ine.es', 'boe.es', 'bde.es'];
+  
+  const filteredData = data.filter((d: any) => {
+    const domain = d.domain.toLowerCase();
+    
+    // Check if it's a government TLD
+    const isGovernmentTLD = governmentTLDs.some(tld => domain.endsWith(tld) || domain.includes(tld));
+    
+    // Check if it contains official keywords
+    const isOfficialDomain = officialKeywords.some(keyword => domain.includes(keyword));
+    
+    if (isGovernmentTLD || isOfficialDomain) {
+      console.log(`✅ EXCLUDED from overuse blocking: ${domain} (${d.total_uses} uses) - Government/Official source`);
+      return false; // Exclude from blocklist
+    }
+    
+    return true; // Keep in blocklist
+  });
+  
+  console.log(`🚫 Blocked ${filteredData.length} overused domains (>${limit} uses in last 30 days)`);
+  console.log(`✅ Exempted ${data.length - filteredData.length} government/official domains from blocking`);
+  
+  return filteredData.map((d: any) => d.domain);
 }
 
 function extractDomain(url: string): string {
@@ -878,7 +902,23 @@ CRITICAL REQUIREMENTS:
 - Each citation must specify which section it belongs to
 - Citations must DIRECTLY support claims in their target section${governmentRequirement}${blockedDomainsText}
 
-Return ONLY valid JSON in this exact format:
+⚠️ CRITICAL RESPONSE FORMAT RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Return ONLY a JSON ARRAY - even if you find only 1 citation
+2. Start with [ and end with ]
+3. MINIMUM 3 citations required (MANDATORY unless impossible)
+4. If you can only find 1-2 quality citations, that's acceptable - return what you have
+5. NEVER return a JSON object {} - ALWAYS return an array []
+
+📋 FALLBACK RULES FOR DIFFICULT CASES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- If approved domains conflict with overused domains: PRIORITIZE GOVERNMENT SOURCES
+- Government/official sources (.gov, .gob.es, .edu, europa.eu) are NEVER overused
+- If you can only find 1-2 citations: RETURN THEM (don't refuse completely)
+- Quality over quantity: Better 1 excellent citation than 3 mediocre ones
+
+📋 REQUIRED JSON FORMAT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [
   {
     "sourceName": "Example Government Agency",
@@ -890,7 +930,15 @@ Return ONLY valid JSON in this exact format:
   }
 ]
 
-Return only the JSON array, nothing else.`;
+✅ EXAMPLE VALID RESPONSES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Single citation (acceptable):
+[{"sourceName":"INE","url":"https://ine.es/data","anchorText":"official statistics","contextInArticle":"housing data","insertAfterHeading":"Market Overview","relevance":"Government data"}]
+
+Multiple citations (ideal):
+[{"sourceName":"INE",...},{"sourceName":"BOE",...},{"sourceName":"Ministerio",...}]
+
+Return ONLY the JSON array - no markdown, no code blocks, no explanations.`;
 
     console.log('🤖 Calling OpenAI GPT-5 Mini...');
     
@@ -936,7 +984,7 @@ Return only the JSON array, nothing else.`;
               { role: 'system', content: systemPrompt },
               { role: 'user', content: prompt }
             ],
-            response_format: { type: "json_object" },
+            // REMOVED response_format to allow OpenAI to return the array format we request in prompt
             max_completion_tokens: 8000 // Increased from 4000 to prevent truncation
           })
         }),
@@ -1017,8 +1065,21 @@ Return only the JSON array, nothing else.`;
       // Extract JSON array
       const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        console.error('No JSON array found in response');
-        throw new Error('Failed to parse AI response into citations');
+        console.error('❌ No JSON array found in OpenAI response');
+        
+        // Try to parse as JSON object and extract error message
+        try {
+          const errorObj = JSON.parse(cleanedResponse);
+          if (errorObj.error || errorObj.message) {
+            console.error('OpenAI returned error:', errorObj.error || errorObj.message);
+            throw new Error(`OpenAI error: ${errorObj.error || errorObj.message}`);
+          }
+        } catch (parseErr) {
+          // Not a valid JSON object either
+        }
+        
+        console.error('Raw response preview:', cleanedResponse.substring(0, 500));
+        throw new Error('Failed to parse AI response into citations - no array found');
       }
       
       // Try to parse and validate
@@ -1026,6 +1087,7 @@ Return only the JSON array, nothing else.`;
       
       // Validate and clean citations
       if (!Array.isArray(parsedCitations)) {
+        console.error('❌ Response is not an array, got:', typeof parsedCitations);
         throw new Error('Response is not an array');
       }
       
