@@ -89,7 +89,7 @@ async function getOverusedDomains(limit: number = 20): Promise<string[]> {
 }
 
 // ===== STRICT LANGUAGE MATCHING =====
-async function getApprovedDomainsForLanguage(language: string): Promise<Array<{domain: string, category: string}>> {
+async function getApprovedDomainsForLanguage(language: string): Promise<Array<{domain: string, category: string, language: string | null}>> {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -107,7 +107,7 @@ async function getApprovedDomainsForLanguage(language: string): Promise<Array<{d
     }
     
     console.log(`✅ Loaded ${data.length} approved domains for language: ${language.toUpperCase()}`);
-    return data.map((d: any) => ({ domain: d.domain, category: d.category || d.domain }));
+    return data.map((d: any) => ({ domain: d.domain, category: d.category || d.domain, language: d.language }));
   } catch (error) {
     console.error('Failed to fetch approved domains:', error);
     return [];
@@ -135,7 +135,7 @@ interface DomainScore {
  * No usage tracking - rely on Gemini's natural diversity via Google Search
  */
 function calculateSimpleAuthorityScores(
-  approvedDomains: Array<{ domain: string; category: string }>
+  approvedDomains: Array<{ domain: string; category: string; language: string | null }>
 ): Map<string, number> {
   const scores = new Map<string, number>();
   
@@ -321,30 +321,41 @@ Return only the JSON array, nothing else.`;
 
     const citations = JSON.parse(jsonMatch[0]) as BetterCitation[];
 
-    // ✅ Filter out blocked domains AND enforce language matching
+    // ✅ Filter out blocked domains (but allow new domains not yet in approved list)
     const allowedDomainSet = new Set(approvedDomains.map(d => d.domain));
     const authorityScoresMap = calculateSimpleAuthorityScores(approvedDomains);
+    
+    // Build a map of domains explicitly approved for OTHER languages
+    const wrongLanguageDomains = new Set(
+      approvedDomains
+        .filter(d => d.language && d.language !== articleLanguage && d.language !== 'GLOBAL' && d.language !== 'EU')
+        .map(d => d.domain)
+    );
     
     const validCitations = citations.filter(citation => {
       const domain = extractDomain(citation.url);
       
-      // Check if blocked
+      // Check if blocked (overused/competitor)
       if (blockedDomains.includes(domain)) {
         console.warn(`🚫 REJECTED overused domain: ${domain}`);
         return false;
       }
       
-      // Check if in language whitelist
-      if (!allowedDomainSet.has(domain)) {
-        console.warn(`❌ REJECTED wrong language domain: ${domain} (not in ${articleLanguage.toUpperCase()} whitelist)`);
+      // Only reject if domain is explicitly approved for a DIFFERENT language
+      if (wrongLanguageDomains.has(domain)) {
+        console.warn(`❌ REJECTED wrong language domain: ${domain} (approved for different language)`);
         return false;
       }
       
-      // Basic validation
-      return citation.url && 
-             citation.sourceName && 
-             citation.url.startsWith('http') &&
-             !currentCitations.includes(citation.url);
+      // Allow if: (1) in approved list for this language, OR (2) not yet categorized
+      if (allowedDomainSet.has(domain) || !wrongLanguageDomains.has(domain)) {
+        return citation.url && 
+               citation.sourceName && 
+               citation.url.startsWith('http') &&
+               !currentCitations.includes(citation.url);
+      }
+      
+      return false;
     });
 
     console.log(`Filtered ${citations.length} → ${validCitations.length} citations (removed ${citations.length - validCitations.length} blocked/wrong-language)`);
