@@ -408,7 +408,6 @@ ${approvedDomains.slice(0, 40).join(', ')}
         messages: [
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2,
         response_format: { type: "json_object" },
         max_completion_tokens: 2000
       })

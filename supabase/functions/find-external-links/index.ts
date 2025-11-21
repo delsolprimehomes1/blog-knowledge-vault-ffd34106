@@ -936,7 +936,6 @@ Return only the JSON array, nothing else.`;
               { role: 'system', content: systemPrompt },
               { role: 'user', content: prompt }
             ],
-            temperature: 0.6,
             response_format: { type: "json_object" },
             max_completion_tokens: 4000
           })
