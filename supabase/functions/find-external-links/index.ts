@@ -925,7 +925,7 @@ Return only the JSON array, nothing else.`;
     let aiResponse: string;
     try {
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         generationConfig: {
           temperature: 0.6,
           responseMimeType: 'application/json'
