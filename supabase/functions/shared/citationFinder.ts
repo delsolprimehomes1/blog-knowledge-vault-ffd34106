@@ -91,6 +91,9 @@ async function getOverusedDomains(limit: number = 20): Promise<string[]> {
 // ===== STRICT LANGUAGE MATCHING =====
 async function getApprovedDomainsForLanguage(language: string): Promise<Array<{domain: string, category: string, language: string | null}>> {
   try {
+    // Normalize language to lowercase for case-insensitive matching
+    const normalizedLang = language.toLowerCase();
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -99,14 +102,14 @@ async function getApprovedDomainsForLanguage(language: string): Promise<Array<{d
       .from('approved_domains')
       .select('domain, category, language')
       .eq('is_allowed', true)
-      .or(`language.eq.${language},language.eq.EU,language.eq.GLOBAL,language.eq.EU/GLOBAL`);
+      .or(`language.ilike.${normalizedLang},language.ilike.EU,language.ilike.GLOBAL,language.ilike.EU/GLOBAL`);
       
     if (error) {
       console.error('Error fetching approved domains:', error);
       return [];
     }
     
-    console.log(`✅ Loaded ${data.length} approved domains for language: ${language.toUpperCase()}`);
+    console.log(`✅ Loaded ${data.length} approved domains for ${language.toUpperCase()} (normalized: ${normalizedLang})`);
     return data.map((d: any) => ({ domain: d.domain, category: d.category || d.domain, language: d.language }));
   } catch (error) {
     console.error('Failed to fetch approved domains:', error);
