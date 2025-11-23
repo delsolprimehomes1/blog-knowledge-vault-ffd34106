@@ -27,7 +27,16 @@ serve(async (req) => {
   }
 
   try {
-    const { content, headline, currentArticleId, language = 'en', funnelStage, availableArticles } = await req.json();
+    const requestData = await req.json();
+    const { mode = 'single' } = requestData;
+
+    // Batch mode for processing multiple articles
+    if (mode === 'batch') {
+      return await handleBatchMode(requestData);
+    }
+
+    // Single mode (existing functionality)
+    const { content, headline, currentArticleId, language = 'en', funnelStage, availableArticles } = requestData;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -212,3 +221,157 @@ Return ONLY valid JSON in this exact format:
     );
   }
 });
+
+async function handleBatchMode(requestData: any) {
+  const { articleIds } = requestData;
+  
+  if (!articleIds || !Array.isArray(articleIds) || articleIds.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'articleIds array is required for batch mode' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Fetch all articles
+  const { data: articlesToProcess, error: fetchError } = await supabase
+    .from('blog_articles')
+    .select('*')
+    .in('id', articleIds)
+    .eq('status', 'published');
+
+  if (fetchError) {
+    return new Response(
+      JSON.stringify({ error: fetchError.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
+  }
+
+  const results = [];
+  const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+
+  for (const article of articlesToProcess || []) {
+    try {
+      // Fetch available articles in same language
+      const { data: availableArticles } = await supabase
+        .from('blog_articles')
+        .select('id, slug, headline, funnel_stage, language, category, speakable_answer')
+        .eq('status', 'published')
+        .eq('language', article.language)
+        .neq('id', article.id)
+        .limit(100);
+
+      if (!availableArticles || availableArticles.length === 0) {
+        results.push({
+          articleId: article.id,
+          success: false,
+          error: 'No available articles to link to',
+          linkCount: 0
+        });
+        continue;
+      }
+
+      const languageName = getLanguageName(article.language);
+      const prompt = `Find the 5-8 most relevant internal links for this ${languageName} article:
+
+Current Article:
+Headline: ${article.headline}
+Funnel Stage: ${article.funnel_stage}
+Content: ${article.detailed_content.substring(0, 2000)}...
+
+Available Articles (ALL in ${article.language.toUpperCase()}):
+${availableArticles.map((a: any, i: number) => 
+  `${i+1}. "${a.headline}" (${a.funnel_stage}) - ${a.speakable_answer?.substring(0, 100) || ''}`
+).join('\n')}
+
+Return ONLY valid JSON:
+{
+  "links": [
+    {
+      "articleNumber": 5,
+      "anchorText": "[anchor text in ${languageName}]",
+      "relevanceScore": 9
+    }
+  ]
+}`;
+
+      const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${perplexityApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sonar-pro',
+          messages: [
+            { role: 'system', content: `You are an SEO expert. Return only valid JSON.` },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+        }),
+      });
+
+      const aiData = await aiResponse.json();
+      const aiContent = aiData.choices[0].message.content;
+      
+      let suggestions = [];
+      try {
+        const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { links: [] };
+        suggestions = parsed.links || [];
+      } catch {
+        suggestions = [];
+      }
+
+      const enrichedLinks = suggestions
+        .filter((s: any) => {
+          const index = s.articleNumber - 1;
+          return index >= 0 && index < availableArticles.length;
+        })
+        .map((s: any) => {
+          const targetArticle = availableArticles[s.articleNumber - 1];
+          return {
+            text: s.anchorText,
+            url: `/blog/${targetArticle.slug}`,
+            title: targetArticle.headline
+          };
+        })
+        .slice(0, 8);
+
+      const confidenceScore = enrichedLinks.length >= 5 ? 85 : 60;
+
+      // Store in database
+      await supabase.from('internal_link_suggestions').insert({
+        article_id: article.id,
+        suggested_links: enrichedLinks,
+        status: 'pending',
+        confidence_score: confidenceScore
+      });
+
+      results.push({
+        articleId: article.id,
+        success: true,
+        links: enrichedLinks,
+        linkCount: enrichedLinks.length,
+        confidenceScore
+      });
+
+    } catch (error: any) {
+      results.push({
+        articleId: article.id,
+        success: false,
+        error: error.message,
+        linkCount: 0
+      });
+    }
+  }
+
+  return new Response(
+    JSON.stringify({ mode: 'batch', results }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}

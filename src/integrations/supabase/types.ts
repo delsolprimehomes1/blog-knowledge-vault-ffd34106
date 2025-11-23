@@ -1437,6 +1437,60 @@ export type Database = {
         }
         Relationships: []
       }
+      internal_link_suggestions: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          article_id: string
+          confidence_score: number | null
+          created_at: string | null
+          generated_at: string
+          id: string
+          status: string
+          suggested_links: Json
+          updated_at: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          article_id: string
+          confidence_score?: number | null
+          created_at?: string | null
+          generated_at?: string
+          id?: string
+          status?: string
+          suggested_links?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          article_id?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          generated_at?: string
+          id?: string
+          status?: string
+          suggested_links?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_link_suggestions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "blog_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_link_suggestions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "content_freshness_report"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       link_suggestions: {
         Row: {
           applied_at: string | null

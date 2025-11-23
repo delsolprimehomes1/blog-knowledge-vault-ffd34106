@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle } from "@/types/blog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, TrendingUp, Globe, Plus, AlertCircle, CheckCircle2, Shield, RefreshCw, Rocket } from "lucide-react";
+import { FileText, TrendingUp, Globe, Plus, AlertCircle, CheckCircle2, Shield, RefreshCw, Rocket, Link2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/AdminLayout";
 import { validateSchemaRequirements } from "@/lib/schemaGenerator";
@@ -26,6 +26,29 @@ const Dashboard = () => {
 
       return data as unknown as BlogArticle[];
     },
+  });
+
+  const { data: linkingStats } = useQuery({
+    queryKey: ["linking-stats"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("blog_articles")
+        .select("id, language, internal_links, status")
+        .eq("status", "published");
+      
+      const needsLinks = data?.filter((a: any) => 
+        !a.internal_links || 
+        (Array.isArray(a.internal_links) && a.internal_links.length < 5)
+      ) || [];
+      
+      return {
+        total: needsLinks.length,
+        byLanguage: needsLinks.reduce((acc: Record<string, number>, a: any) => {
+          acc[a.language] = (acc[a.language] || 0) + 1;
+          return acc;
+        }, {})
+      };
+    }
   });
 
   if (isLoading) {
@@ -322,6 +345,49 @@ const Dashboard = () => {
               {(!languageCounts || Object.keys(languageCounts).length === 0) && (
                 <p className="text-sm text-muted-foreground col-span-3">No articles yet</p>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Internal Linking Health */}
+        <Card className="border-2 border-amber-500/20 bg-gradient-to-br from-amber-50/50 to-orange-50/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Internal Linking Health</CardTitle>
+            <Link2 className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-baseline gap-2">
+                <div className={`text-2xl font-bold ${
+                  (linkingStats?.total || 0) === 0 ? 'text-green-600' : 
+                  (linkingStats?.total || 0) <= 10 ? 'text-amber-600' : 
+                  'text-red-600'
+                }`}>
+                  {linkingStats?.total || 0}
+                </div>
+                <span className="text-xs text-muted-foreground">articles need links</span>
+              </div>
+              
+              {linkingStats && linkingStats.total > 0 && (
+                <div className="space-y-1">
+                  {Object.entries(linkingStats.byLanguage).map(([lang, count]) => (
+                    <div key={lang} className="flex justify-between text-xs">
+                      <span>{lang.toUpperCase()}: {count} articles</span>
+                      {count > 10 && <span className="text-red-600 font-medium">🔴 Critical</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <Button 
+                onClick={() => navigate('/admin/bulk-internal-links')}
+                size="sm"
+                className="w-full"
+                variant={(linkingStats?.total || 0) > 0 ? "default" : "outline"}
+              >
+                <Link2 className="mr-2 h-4 w-4" />
+                {(linkingStats?.total || 0) > 0 ? 'Fix Linking Issues' : 'Manage Links'}
+              </Button>
             </div>
           </CardContent>
         </Card>
