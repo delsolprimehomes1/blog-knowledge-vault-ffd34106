@@ -10,7 +10,7 @@
  * - Automatic placement suggestions with confidence scoring
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle, Shield, XCircle, Loader2, ChevronDown, MapPin } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle, Shield, XCircle, Loader2, ChevronDown, MapPin, BarChart3, TrendingUp, Clock, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { trackCitationSuggested, trackCitationUsed } from "@/lib/domainUsageTracking";
 import { analyzeCitationPlacement, getPlacementDescription, getPlacementConfidenceColor } from "@/lib/citationPlacement";
@@ -52,6 +53,13 @@ interface BetterCitation {
   placementReasoning?: string;
 }
 
+interface SearchHistoryItem {
+  timestamp: number;
+  articleTopic: string;
+  targetContext?: string;
+  resultCount: number;
+}
+
 interface BetterCitationFinderProps {
   articleTopic: string;
   articleLanguage: string;
@@ -72,81 +80,93 @@ export const BetterCitationFinder = ({
   const [isSearching, setIsSearching] = useState(false);
   const [citations, setCitations] = useState<BetterCitation[]>([]);
   const [validatingUrls, setValidatingUrls] = useState<Set<string>>(new Set());
+  const [suggestedUrls, setSuggestedUrls] = useState<Set<string>>(new Set());
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+  const [citationsAdded, setCitationsAdded] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const { toast } = useToast();
 
-  const validateCitation = async (citation: BetterCitation) => {
-    if (!targetContext) {
-      toast({
-        title: "No Target Claim",
-        description: "Please specify a target claim to validate citations",
-        variant: "destructive",
-      });
-      return;
+  // Enhancement 5: Auto-sync every 10 citations
+  useEffect(() => {
+    if (citationsAdded > 0 && citationsAdded % 10 === 0) {
+      handleAutoSync();
     }
+  }, [citationsAdded]);
 
-    setValidatingUrls(prev => new Set(prev).add(citation.url));
+  // Enhancement 1: Parallel batch validation
+  const validateCitations = async (citationsToValidate: BetterCitation[]) => {
+    if (!targetContext) return;
+
+    const validationPromises = citationsToValidate.map(async (citation) => {
+      setValidatingUrls(prev => new Set(prev).add(citation.url));
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('validate-citation-content', {
+          body: {
+            citationUrl: citation.url,
+            targetClaim: targetContext,
+            articleLanguage,
+            sourceName: citation.sourceName,
+          }
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error || 'Validation failed');
+
+        return {
+          url: citation.url,
+          validation: data.validation,
+          validationStatus: 'validated' as const,
+        };
+      } catch (error: any) {
+        console.error('Validation error:', error);
+        return {
+          url: citation.url,
+          validationStatus: 'failed' as const,
+        };
+      } finally {
+        setValidatingUrls(prev => {
+          const next = new Set(prev);
+          next.delete(citation.url);
+          return next;
+        });
+      }
+    });
+
+    const results = await Promise.all(validationPromises);
     
-    try {
-      const { data, error } = await supabase.functions.invoke('validate-citation-content', {
-        body: {
-          citationUrl: citation.url,
-          targetClaim: targetContext,
-          articleLanguage,
-          sourceName: citation.sourceName,
-        }
-      });
+    // Update all citations with validation results
+    setCitations(prev => prev.map(c => {
+      const result = results.find(r => r.url === c.url);
+      if (!result) return c;
+      return { ...c, ...result };
+    }));
 
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error || 'Validation failed');
-
-      // Update citation with validation result
-      setCitations(prev => prev.map(c => 
-        c.url === citation.url 
-          ? { 
-              ...c, 
-              validation: data.validation,
-              validationStatus: 'validated' as const
-            }
-          : c
-      ));
-
-      const validation = data.validation;
-      toast({
-        title: validation.isValid ? "Citation Validated ✓" : "Citation Invalid ✗",
-        description: `Score: ${validation.validationScore}/100 - ${validation.explanation.substring(0, 100)}`,
-        variant: validation.isValid ? "default" : "destructive",
-      });
-    } catch (error: any) {
-      console.error('Validation error:', error);
-      setCitations(prev => prev.map(c => 
-        c.url === citation.url 
-          ? { ...c, validationStatus: 'failed' as const }
-          : c
-      ));
-      toast({
-        title: "Validation Failed",
-        description: error.message || "Could not validate citation",
-        variant: "destructive",
-      });
-    } finally {
-      setValidatingUrls(prev => {
-        const next = new Set(prev);
-        next.delete(citation.url);
-        return next;
-      });
-    }
+    const validCount = results.filter(r => r.validation?.isValid).length;
+    toast({
+      title: "Batch Validation Complete",
+      description: `${validCount}/${results.length} citations validated successfully`,
+    });
   };
 
-  const handleFindCitations = async () => {
+  const validateCitation = async (citation: BetterCitation) => {
+    await validateCitations([citation]);
+  };
+
+  const handleFindCitations = async (retrySearch?: SearchHistoryItem) => {
     setIsSearching(true);
     try {
+      const searchTopic = retrySearch?.articleTopic || articleTopic;
+      const searchContext = retrySearch?.targetContext || targetContext;
+
       const { data, error } = await supabase.functions.invoke('find-citations-gemini', {
         body: {
-          articleTopic,
+          articleTopic: searchTopic,
           articleLanguage,
           articleContent: articleContent,
           currentCitations,
-          targetContext,
+          targetContext: searchContext,
         }
       });
 
@@ -166,21 +186,35 @@ export const BetterCitationFinder = ({
         throw new Error(data.error || 'Failed to find citations');
       }
 
-      // PHASE 2: Track citation suggestions
-      data.citations.forEach((citation: BetterCitation) => {
-        trackCitationSuggested(citation.url);
-      });
+      // PHASE 2: Track citation suggestions + Enhancement 2: Deduplication
+      const newCitations: BetterCitation[] = [];
+      const duplicateCount = data.citations.filter((citation: BetterCitation) => {
+        const isDuplicate = suggestedUrls.has(citation.url);
+        if (!isDuplicate) {
+          trackCitationSuggested(citation.url);
+          setSuggestedUrls(prev => new Set(prev).add(citation.url));
+          newCitations.push(citation);
+        }
+        return isDuplicate;
+      }).length;
+
+      if (duplicateCount > 0) {
+        toast({
+          title: "Duplicates Filtered",
+          description: `${duplicateCount} previously suggested citation(s) removed`,
+        });
+      }
 
       // PHASE 3: Analyze placement for each citation
-      const citationsWithPlacement = data.citations.map((citation: BetterCitation) => {
+      const citationsWithPlacement = newCitations.map((citation: BetterCitation) => {
         let citationWithStatus = {
           ...citation,
           validationStatus: targetContext ? 'pending' as const : undefined
         };
 
         // Add placement analysis if target context exists
-        if (targetContext && articleContent) {
-          const placement = analyzeCitationPlacement(articleContent, targetContext);
+        if (searchContext && articleContent) {
+          const placement = analyzeCitationPlacement(articleContent, searchContext);
           if (placement) {
             citationWithStatus = {
               ...citationWithStatus,
@@ -197,24 +231,27 @@ export const BetterCitationFinder = ({
       
       setCitations(citationsWithPlacement);
       
+      // Enhancement 3: Add to search history
+      setSearchHistory(prev => [{
+        timestamp: Date.now(),
+        articleTopic: searchTopic,
+        targetContext: searchContext,
+        resultCount: citationsWithPlacement.length,
+      }, ...prev.slice(0, 4)]); // Keep last 5 searches
+      
       toast({
         title: "Citations Found!",
-        description: `Found ${data.totalFound} authoritative sources ${targetContext ? '- Click "Validate" to verify' : ''}`,
+        description: `Found ${citationsWithPlacement.length} new authoritative sources ${targetContext ? '- Starting auto-validation' : ''}`,
       });
 
-      // Auto-validate if target context is provided
-      if (targetContext && citationsWithPlacement.length > 0) {
+      // Enhancement 1: Parallel validation if target context is provided
+      if (searchContext && citationsWithPlacement.length > 0) {
         toast({
-          title: "Auto-validating...",
-          description: "Checking if citations support your claim",
+          title: "Auto-validating in parallel...",
+          description: "Checking all citations simultaneously",
         });
         
-        // Validate all citations sequentially
-        for (const citation of citationsWithPlacement) {
-          await validateCitation(citation);
-          // Small delay between validations
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        await validateCitations(citationsWithPlacement);
       }
     } catch (error: any) {
       console.error('Citation search error:', error);
@@ -236,8 +273,9 @@ export const BetterCitationFinder = ({
   };
 
   const handleAddCitation = async (citation: BetterCitation) => {
-    // PHASE 2: Track citation usage
+    // PHASE 2: Track citation usage + Enhancement 5: Track for auto-sync
     await trackCitationUsed(citation.url);
+    setCitationsAdded(prev => prev + 1);
     
     if (onAddCitation) {
       onAddCitation({
@@ -251,6 +289,85 @@ export const BetterCitationFinder = ({
     }
   };
 
+  // Enhancement 5: Auto-sync domain approvals
+  const handleAutoSync = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-domain-usage', {
+        body: { minUsageThreshold: 10 }
+      });
+
+      if (error) throw error;
+      if (data.success && data.synced > 0) {
+        toast({
+          title: "🎯 Domains Auto-Approved",
+          description: `${data.synced} heavily-used domain(s) approved automatically`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Auto-sync error:', error);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-domain-usage', {
+        body: { minUsageThreshold: 5 }
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: data.success ? "✅ Sync Complete" : "❌ Sync Failed",
+        description: data.success 
+          ? `${data.synced} domain(s) added to approved list`
+          : data.error || "Failed to sync domains",
+        variant: data.success ? "default" : "destructive",
+      });
+    } catch (error: any) {
+      console.error('Manual sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Could not sync domains",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Enhancement 4: Coverage analytics
+  const calculateAnalytics = () => {
+    const wordCount = articleContent.split(/\s+/).length;
+    const recommendedCitations = Math.ceil(wordCount / 300);
+    const currentTotal = citations.length + currentCitations.length;
+    const coverage = Math.min((currentTotal / recommendedCitations) * 100, 100);
+    
+    const paragraphs = articleContent.split(/\n\n+/).filter(p => p.trim());
+    const citationsPerParagraph = paragraphs.map(() => 0);
+    citations.forEach(c => {
+      if (c.suggestedParagraph !== undefined) {
+        citationsPerParagraph[c.suggestedParagraph] = (citationsPerParagraph[c.suggestedParagraph] || 0) + 1;
+      }
+    });
+
+    const avgAuthority = citations.length > 0
+      ? citations.reduce((sum, c) => sum + c.authorityScore, 0) / citations.length
+      : 0;
+
+    return {
+      wordCount,
+      recommendedCitations,
+      currentTotal,
+      coverage,
+      avgAuthority,
+      citationsPerParagraph,
+      paragraphCount: paragraphs.length,
+    };
+  };
+
+  const analytics = calculateAnalytics();
+
   const getAuthorityBadgeColor = (score: number) => {
     if (score >= 8) return "default";
     if (score >= 6) return "secondary";
@@ -258,10 +375,10 @@ export const BetterCitationFinder = ({
   };
 
   return (
-    <Card className="border-purple-200 bg-purple-50/30">
+    <Card className="border-primary/20 bg-primary/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-600" />
+          <Sparkles className="h-5 w-5 text-primary" />
           AI Citation Finder
         </CardTitle>
           <CardDescription>
@@ -274,23 +391,128 @@ export const BetterCitationFinder = ({
           </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button
-          onClick={handleFindCitations}
-          disabled={isSearching || !articleTopic || !articleContent}
-          className="gap-2"
-        >
-          {isSearching ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Searching for authoritative sources...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Find Better Citations
-            </>
-          )}
-        </Button>
+        {/* Enhancement 4: Analytics Dashboard */}
+        <Collapsible open={showAnalytics} onOpenChange={setShowAnalytics}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              <BarChart3 className="h-4 w-4" />
+              {showAnalytics ? 'Hide' : 'Show'} Coverage Analytics
+              <ChevronDown className={`h-4 w-4 transition-transform ${showAnalytics ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-3 pt-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-card rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground mb-1">Coverage</div>
+                <div className="flex items-center gap-2">
+                  <Progress value={analytics.coverage} className="h-2 flex-1" />
+                  <span className="text-sm font-semibold">{Math.round(analytics.coverage)}%</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {analytics.currentTotal}/{analytics.recommendedCitations} citations
+                </div>
+              </div>
+              <div className="bg-card rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground mb-1">Avg Authority</div>
+                <div className="text-2xl font-bold text-primary">
+                  {analytics.avgAuthority.toFixed(1)}/10
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {citations.length} sources
+                </div>
+              </div>
+              <div className="bg-card rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground mb-1">Word Count</div>
+                <div className="text-2xl font-bold">{analytics.wordCount}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {analytics.paragraphCount} paragraphs
+                </div>
+              </div>
+            </div>
+            {analytics.citationsPerParagraph.length > 0 && (
+              <Alert>
+                <AlertDescription className="text-xs">
+                  <strong>Coverage Heatmap:</strong> {analytics.citationsPerParagraph.map((count, i) => 
+                    count === 0 ? '⚪' : count === 1 ? '🟡' : '🟢'
+                  ).join(' ')}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Main action buttons */}
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleFindCitations()}
+            disabled={isSearching || !articleTopic || !articleContent}
+            className="gap-2 flex-1"
+          >
+            {isSearching ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Find Better Citations
+              </>
+            )}
+          </Button>
+
+          {/* Enhancement 5: Manual sync button */}
+          <Button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            {isSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Database className="h-4 w-4" />
+            )}
+            Auto-Approve Domains
+          </Button>
+        </div>
+
+        {/* Enhancement 3: Search history */}
+        {searchHistory.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              Recent Searches
+            </div>
+            <Select onValueChange={(value) => {
+              const item = searchHistory[parseInt(value)];
+              if (item) handleFindCitations(item);
+            }}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Retry previous search..." />
+              </SelectTrigger>
+              <SelectContent>
+                {searchHistory.map((item, index) => (
+                  <SelectItem key={index} value={index.toString()}>
+                    {item.articleTopic.substring(0, 40)}... ({item.resultCount} results)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Enhancement 5: Citation counter */}
+        {citationsAdded > 0 && (
+          <Alert>
+            <TrendingUp className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              <strong>{citationsAdded} citation(s)</strong> added this session
+              {citationsAdded >= 10 && citationsAdded % 10 === 0 && ' • Auto-sync triggered!'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {citations.length > 0 && (
           <>
@@ -298,6 +520,12 @@ export const BetterCitationFinder = ({
               <AlertDescription>
                 Found <strong>{citations.filter(c => c.verified !== false).length}</strong> verified,
                 high-authority sources in <strong>{articleLanguage}</strong>
+                {/* Enhancement 2: Deduplication info */}
+                {suggestedUrls.size > citations.length && (
+                  <span className="block mt-1 text-xs text-muted-foreground">
+                    ({suggestedUrls.size - citations.length} duplicate(s) filtered)
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
