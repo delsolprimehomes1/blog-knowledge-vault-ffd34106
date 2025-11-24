@@ -74,7 +74,7 @@ export function extractLanguageFromPath(url: string): string | null {
     const pathSegments = urlObj.pathname.split('/').filter(Boolean);
     
     // Common language codes to detect
-    const languageCodes = ['en', 'es', 'de', 'fr', 'nl', 'pl', 'sv', 'da', 'hu', 'it', 'pt'];
+    const languageCodes = ['en', 'de', 'fr', 'nl', 'pl', 'sv', 'da', 'hu', 'it', 'pt'];
     
     // Check first path segment for language code
     if (pathSegments.length > 0) {

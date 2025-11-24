@@ -296,7 +296,6 @@ export default function BulkInternalLinks() {
                   <SelectItem value="fr">French</SelectItem>
                   <SelectItem value="nl">Dutch</SelectItem>
                   <SelectItem value="de">German</SelectItem>
-                  <SelectItem value="es">Spanish</SelectItem>
                 </SelectContent>
               </Select>
 
