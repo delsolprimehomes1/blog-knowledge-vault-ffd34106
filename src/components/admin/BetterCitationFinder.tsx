@@ -106,7 +106,13 @@ export const BetterCitationFinder = ({
 
   // Enhancement 1: Parallel batch validation
   const validateCitations = async (citationsToValidate: BetterCitation[]) => {
-    if (!targetContext) return;
+    if (!targetContext) {
+      toast({
+        description: "Validation requires a target context",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const validationPromises = citationsToValidate.map(async (citation) => {
       setValidatingUrls(prev => new Set(prev).add(citation.url));
@@ -328,9 +334,13 @@ export const BetterCitationFinder = ({
       setSearchProgress(0);
       
       if (error.name !== 'AbortError') {
+        // More specific error handling
+        const isFunctionError = error.message?.includes('Edge Function') || error.message?.includes('FunctionsHttpError');
         toast({
           title: "Search Failed",
-          description: error.message || "Failed to find citations",
+          description: isFunctionError 
+            ? "Unable to connect to citation service. Please try again." 
+            : (error.message || "Failed to find citations"),
           variant: "destructive",
         });
       }
@@ -383,14 +393,15 @@ export const BetterCitationFinder = ({
       });
 
       if (error) throw error;
-      if (data.success && data.synced > 0) {
+      if (data?.success && data.synced > 0) {
         toast({
           title: "🎯 Domains Auto-Approved",
           description: `${data.synced} heavily-used domain(s) approved automatically`,
         });
       }
     } catch (error: any) {
-      console.error('Auto-sync error:', error);
+      // Silent fail - auto-sync is a background enhancement, don't interrupt user flow
+      console.error('Auto-sync error (silent):', error);
     }
   };
 
