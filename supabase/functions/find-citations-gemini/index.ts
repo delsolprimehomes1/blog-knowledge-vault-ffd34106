@@ -94,83 +94,19 @@ const RESEARCH_PATHS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// TIERED BATCH DOMAIN SYSTEM (Search Priority Order)
+// SMART BATCH RETRY STRATEGY
+// Dynamically fetches ALL approved domains from database and chunks them
 // ═══════════════════════════════════════════════════════════════════
 
-// BATCH 1: Government & Official Statistics (Highest Priority - Search FIRST)
-const BATCH_1_GOVERNMENT = [
-  // Spanish Government (top priority for Spanish articles)
-  'ine.es', 'boe.es', 'catastro.meh.es', 'registradores.org',
-  'minhap.gob.es', 'mitma.gob.es', 'bde.es',
-  'juntadeandalucia.es', 'malaga.es', 'marbella.es',
-  
-  // UK Government
-  'gov.uk', 'ons.gov.uk', 'landregistry.gov.uk',
-  
-  // Other EU Government
-  'gov.ie', 'destatis.de', 'cbs.nl', 'insee.fr',
-  
-  // EU Official
-  'europa.eu', 'eurostat.ec.europa.eu',
-];
-
-// BATCH 2: Aggregators & Research Firms (High Priority - Search SECOND)
-const BATCH_2_AGGREGATORS = [
-  // Spanish portals (market reports only)
-  'idealista.com', 'fotocasa.es', 'pisos.com', 'habitaclia.com',
-  
-  // International property data
-  'propertydata.co.uk', 'zoopla.co.uk', 'rightmove.co.uk',
-  'immobilienscout24.de', 'funda.nl',
-  
-  // Market research firms
-  'savills.com', 'knightfrank.com', 'pwc.com', 'deloitte.com', 'ey.com',
-  
-  // Financial/Economic
-  'worldbank.org', 'imf.org', 'oecd.org', 'bis.org',
-];
-
-// BATCH 3: Reputable News & Media (Medium Priority - Search THIRD)
-const BATCH_3_NEWS = [
-  // Spanish news
-  'elpais.com', 'elmundo.es', 'lavanguardia.com', 'expansion.com',
-  'cincodias.elpais.com', 'abc.es', 'elconfidencial.com',
-  
-  // International news
-  'theguardian.com', 'bbc.com', 'ft.com', 'economist.com',
-  'reuters.com', 'bloomberg.com', 'wsj.com',
-  
-  // Expat/lifestyle
-  'expatica.com', 'thelocal.es', 'spanishpropertynews.com',
-];
-
-// BATCH 4: International & Academic (Lower Priority - Search FOURTH)
-const BATCH_4_INTERNATIONAL = [
-  // Academic
-  'sciencedirect.com', 'researchgate.net', 'journals.sagepub.com',
-  'tandfonline.com',
-  
-  // Think tanks
-  'brookings.edu', 'chathamhouse.org', 'bruegel.org',
-  
-  // Specialized real estate research
-  'rics.org', 'urban.org', 'urban-hub.com',
-  
-  // Tourism (for lifestyle claims)
-  'spain.info', 'andalucia.org', 'visitcostadelsol.com',
-  'lonelyplanet.com', 'timeout.com',
-  
-  // International organizations
-  'who.int', 'unesco.org', 'weforum.org',
-];
-
-// All batches in priority order
-const DOMAIN_BATCHES = [
-  { name: 'Government & Official Statistics', domains: BATCH_1_GOVERNMENT, tier: 1 },
-  { name: 'Aggregators & Research', domains: BATCH_2_AGGREGATORS, tier: 2 },
-  { name: 'Reputable News & Media', domains: BATCH_3_NEWS, tier: 3 },
-  { name: 'International & Academic', domains: BATCH_4_INTERNATIONAL, tier: 4 },
-];
+// Tier mapping for database results
+const TIER_NAMES: { [key: string]: string } = {
+  'premium': 'Premium/Government Sources',
+  'government': 'Government & Official Statistics',
+  'research': 'Research & Aggregators',
+  'news': 'News & Media',
+  'academic': 'Academic & International',
+  'portal': 'Portals & General',
+};
 
 // Legacy patterns kept for backward compatibility but not actively used
 const BLOCKED_URL_PATTERNS = [
@@ -287,36 +223,103 @@ function decomposeComplexClaim(claim: string): string[] {
 }
 
 // ============================================
-// TIERED BATCH SEARCH - Sequential Priority Search
+// SMART BATCH RETRY SEARCH - Dynamic 20-Domain Chunks
 // ============================================
 async function findCitationWithTieredSearch(
   claim: string,
   language: string,
   articleTopic: string,
-  attemptNumber: number = 1
+  attemptNumber: number = 1,
+  supabaseClient: any
 ): Promise<any> {
   
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`🔍 TIERED SEARCH - Attempt ${attemptNumber}`);
+  console.log(`🔍 SMART BATCH RETRY - Attempt ${attemptNumber}`);
   console.log(`📄 Claim: "${claim.substring(0, 100)}..."`);
   console.log(`${'='.repeat(60)}`);
   
-  const searchAttempts: any[] = [];
+  // Fetch ALL approved domains from database
+  console.log(`\n📡 Fetching approved domains from database...`);
+  const { data: approvedDomains, error: domainsError } = await supabaseClient
+    .from('approved_domains')
+    .select('domain, tier, language, trust_score, is_international')
+    .eq('is_allowed', true)
+    .or(`language.eq.${language},language.eq.EU,language.eq.GLOBAL,is_international.eq.true`)
+    .order('tier', { ascending: true })
+    .order('trust_score', { ascending: false });
+
+  if (domainsError || !approvedDomains) {
+    console.error('❌ Failed to fetch approved domains:', domainsError);
+    return null;
+  }
+
+  console.log(`✅ Loaded ${approvedDomains.length} approved domains for ${language}`);
   
-  // Try each batch in priority order
-  for (const batch of DOMAIN_BATCHES) {
-    console.log(`\n📦 Searching BATCH ${batch.tier}: ${batch.name}`);
-    console.log(`📊 Domains: ${batch.domains.length} in this batch`);
+  // Group domains by tier
+  const domainsByTier: { [key: string]: string[] } = {};
+  approvedDomains.forEach((d: any) => {
+    const tier = d.tier || 'portal';
+    if (!domainsByTier[tier]) domainsByTier[tier] = [];
+    domainsByTier[tier].push(d.domain);
+  });
+  
+  // Create 20-domain chunks maintaining tier priority
+  interface Chunk {
+    tier: string;
+    tierName: string;
+    chunkNumber: number;
+    domains: string[];
+  }
+  
+  const chunks: Chunk[] = [];
+  const tierOrder = ['premium', 'government', 'research', 'news', 'academic', 'portal'];
+  
+  for (const tier of tierOrder) {
+    const domains = domainsByTier[tier];
+    if (!domains || domains.length === 0) continue;
     
-    // Filter domains by language preference
-    const languageFilteredDomains = filterDomainsByLanguage(batch.domains, language);
+    // Split into 20-domain chunks
+    for (let i = 0; i < domains.length; i += 20) {
+      chunks.push({
+        tier,
+        tierName: TIER_NAMES[tier] || tier,
+        chunkNumber: Math.floor(i / 20) + 1,
+        domains: domains.slice(i, i + 20)
+      });
+    }
+  }
+  
+  console.log(`\n📦 Created ${chunks.length} chunks of 20 domains from ${Object.keys(domainsByTier).length} tiers`);
+  console.log(`   Tiers: ${Object.entries(domainsByTier).map(([t, d]) => `${t}(${d.length})`).join(', ')}`);
+  
+  const searchAttempts: any[] = [];
+  let totalDomainsSearched = 0;
+  
+  // ⭐ Sequential chunk retry - stop on first success
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const chunkLabel = `${chunk.tier.toUpperCase()}-${chunk.chunkNumber}`;
     
-    // Limit to 20 domains (Perplexity limit)
-    const batchDomains = languageFilteredDomains.slice(0, 20);
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔍 CHUNK ${i + 1}/${chunks.length}: ${chunkLabel}`);
+    console.log(`   Tier: ${chunk.tierName}`);
+    console.log(`   Domains: ${chunk.domains.length}`);
+    console.log(`   Total searched so far: ${totalDomainsSearched}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     
-    console.log(`🌍 Language-filtered to: ${batchDomains.length} ${language} domains`);
+    totalDomainsSearched += chunk.domains.length;
     
-    // Construct batch-specific search query
+    // Filter domains by language (keep government sources)
+    const languageFilteredDomains = filterDomainsByLanguage(chunk.domains, language);
+    
+    if (languageFilteredDomains.length === 0) {
+      console.log(`⏭️ Skipping chunk - no domains match language filter`);
+      continue;
+    }
+    
+    console.log(`🌍 Language-filtered to: ${languageFilteredDomains.length} domains`);
+    
+    // Construct search query
     const searchQuery = `
 Find an authoritative ${language} source from ONLY these approved domains that verifies this claim:
 
@@ -325,14 +328,13 @@ Find an authoritative ${language} source from ONLY these approved domains that v
 Article context: ${articleTopic}
 
 CRITICAL REQUIREMENTS:
-1. Source MUST be from one of these domains ONLY: ${batchDomains.join(', ')}
+1. Source MUST be from one of these ${languageFilteredDomains.length} domains ONLY: ${languageFilteredDomains.join(', ')}
 2. Do NOT use any other domains, even if they seem relevant
 3. Language: ${language}
 4. Must contain specific data, statistics, or official information
 5. For aggregator sites (idealista, fotocasa), only use /informes/ or /estadisticas/ paths
 
-Preferred content types for this batch (${batch.name}):
-${getBatchContentTypeHints(batch.tier)}
+Preferred source types: ${chunk.tierName}
 
 Response format (JSON only):
 {
@@ -346,10 +348,10 @@ Response format (JSON only):
   }
 }
 
-If NO suitable source exists in these domains, return:
+If NO suitable source exists, return:
 {
   "citation": null,
-  "reason": "No source found in ${batch.name} domains"
+  "reason": "No source found in this chunk"
 }
 `.trim();
 
@@ -376,14 +378,20 @@ If NO suitable source exists in these domains, return:
           max_tokens: 1000,
           return_citations: true,
           search_recency_filter: "month",
-          // Enforce domain restrictions at API level (limit to first 20 due to API constraints)
-          search_domain_filter: batchDomains.slice(0, 20)
+          search_domain_filter: languageFilteredDomains
         })
       });
 
       if (!response.ok) {
-        console.error(`❌ Batch ${batch.tier} API error: ${response.status}`);
-        continue; // Try next batch
+        console.error(`❌ Chunk ${chunkLabel} API error: ${response.status}`);
+        searchAttempts.push({
+          chunk: chunkLabel,
+          tier: chunk.tier,
+          domains: languageFilteredDomains.length,
+          found: false,
+          reason: `API error ${response.status}`
+        });
+        continue;
       }
 
       const data = await response.json();
@@ -394,58 +402,70 @@ If NO suitable source exists in these domains, return:
       try {
         citationData = JSON.parse(content);
       } catch (parseError) {
-        // Try forgiving parser
         const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                          content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           citationData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
         } else {
-          console.warn(`⚠️ Batch ${batch.tier} JSON parse failed`);
-          continue; // Try next batch
+          console.warn(`⚠️ Chunk ${chunkLabel} JSON parse failed`);
+          searchAttempts.push({
+            chunk: chunkLabel,
+            tier: chunk.tier,
+            domains: languageFilteredDomains.length,
+            found: false,
+            reason: 'JSON parse error'
+          });
+          continue;
         }
       }
       
       // Record attempt
       searchAttempts.push({
-        batch: batch.name,
-        tier: batch.tier,
-        domains: batchDomains.length,
+        chunk: chunkLabel,
+        tier: chunk.tier,
+        tierName: chunk.tierName,
+        domains: languageFilteredDomains.length,
         found: citationData?.citation ? true : false,
         reason: citationData?.reason
       });
       
       // Check if citation found
       if (!citationData?.citation || !citationData.citation.url) {
-        console.log(`⚠️ Batch ${batch.tier}: No citation found`);
+        console.log(`⚠️ No citation in chunk ${chunkLabel}`);
         console.log(`   Reason: ${citationData?.reason || 'Unknown'}`);
-        continue; // Try next batch
+        console.log(`   Continuing to next chunk...`);
+        continue;
       }
       
       const citation = citationData.citation;
       const domain = new URL(citation.url).hostname.replace('www.', '');
       
-      // CRITICAL: Verify domain is actually from this batch
-      const isFromThisBatch = batchDomains.some(d => 
+      // Verify domain is from this chunk
+      const isFromThisChunk = languageFilteredDomains.some(d => 
         domain.includes(d) || d.includes(domain)
       );
       
-      if (!isFromThisBatch) {
-        console.log(`⚠️ Batch ${batch.tier}: Citation from wrong domain: ${domain}`);
-        console.log(`   Expected domains from batch, got: ${domain}`);
-        continue; // Try next batch
+      if (!isFromThisChunk) {
+        console.log(`⚠️ Citation from unapproved domain: ${domain}`);
+        console.log(`   Expected domains from chunk, got: ${domain}`);
+        continue;
       }
       
       // Check if it's a blocked competitor
       if (isBlockedCompetitor(citation.url, domain)) {
-        console.log(`❌ Batch ${batch.tier}: Competitor blocked - ${domain}`);
-        continue; // Try next batch
+        console.log(`❌ Competitor blocked - ${domain}`);
+        continue;
       }
       
-      // SUCCESS! Found a valid citation
-      console.log(`✅ BATCH ${batch.tier} SUCCESS: ${domain}`);
+      // 🎉 SUCCESS! Found a valid citation
+      console.log(`\n✅ ═══════════════════════════════════════════`);
+      console.log(`   SUCCESS IN CHUNK ${chunkLabel}!`);
+      console.log(`   Domain: ${domain}`);
       console.log(`   Title: ${citation.title}`);
       console.log(`   Relevance: ${citation.relevance_score}/10`);
-      console.log(`   Stopped searching - found in priority tier ${batch.tier}`);
+      console.log(`   Searched ${i + 1}/${chunks.length} chunks (${totalDomainsSearched} domains)`);
+      console.log(`   Stopped early - citation found!`);
+      console.log(`═══════════════════════════════════════════\n`);
       
       // Calculate authority score
       let authorityScore = citation.relevance_score || 7;
@@ -459,8 +479,12 @@ If NO suitable source exists in these domains, return:
         relevance: citation.why_authoritative || 'Authoritative source',
         authorityScore: authorityScore,
         specificityScore: citation.relevance_score * 10 || 70,
-        batchTier: batch.tier,
-        batchName: batch.name,
+        batchTier: getTierNumber(chunk.tier),
+        batchName: chunk.tierName,
+        chunkLabel: chunkLabel,
+        chunksSearched: i + 1,
+        totalChunks: chunks.length,
+        domainsSearched: totalDomainsSearched,
         needsManualReview: citation.relevance_score < 7,
         searchAttempts: searchAttempts,
         diversityScore: 100,
@@ -468,19 +492,43 @@ If NO suitable source exists in these domains, return:
       };
       
     } catch (error) {
-      console.error(`❌ Batch ${batch.tier} search error:`, error);
-      continue; // Try next batch
+      console.error(`❌ Chunk ${chunkLabel} error:`, error);
+      searchAttempts.push({
+        chunk: chunkLabel,
+        tier: chunk.tier,
+        domains: languageFilteredDomains.length,
+        found: false,
+        reason: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
     
-    // Small delay between batches to avoid rate limiting (optimized from 1500ms)
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Small delay between chunks to avoid rate limiting
+    if (i < chunks.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
   }
   
-  // If we get here, all batches failed
-  console.log(`\n❌ ALL BATCHES EXHAUSTED - No valid citation found`);
-  console.log(`📊 Searched ${searchAttempts.length} batches`);
+  // ❌ All chunks exhausted - no citation found
+  console.log(`\n❌ ═══════════════════════════════════════════`);
+  console.log(`   ALL ${chunks.length} CHUNKS EXHAUSTED`);
+  console.log(`   Total domains searched: ${totalDomainsSearched}/${approvedDomains.length}`);
+  console.log(`   No valid citation found`);
+  console.log(`═══════════════════════════════════════════\n`);
   
   return null;
+}
+
+// Helper: Convert tier string to number for compatibility
+function getTierNumber(tier: string): number {
+  const tierMap: { [key: string]: number } = {
+    'premium': 1,
+    'government': 1,
+    'research': 2,
+    'news': 3,
+    'academic': 4,
+    'portal': 4
+  };
+  return tierMap[tier] || 4;
 }
 
 // ============================================
@@ -516,23 +564,7 @@ function filterDomainsByLanguage(domains: string[], language: string): string[] 
   });
 }
 
-// ============================================
-// HELPER: Get Content Type Hints for Batch
-// ============================================
-function getBatchContentTypeHints(tier: number): string {
-  switch (tier) {
-    case 1:
-      return '- Official statistics and data tables\n- Government reports and white papers\n- Legal and regulatory documents';
-    case 2:
-      return '- Market analysis and trend reports\n- Price indices and statistical aggregations\n- Professional research publications';
-    case 3:
-      return '- News articles with data and statistics\n- Investigative journalism\n- Expert interviews and analysis';
-    case 4:
-      return '- Academic research papers\n- International organization reports\n- Specialized industry analysis';
-    default:
-      return '- Authoritative information with citations';
-  }
-}
+// Removed - no longer needed with dynamic database fetching
 
 // ============================================
 // HELPER: Check if Domain is Blocked Competitor
@@ -673,12 +705,13 @@ serve(async (req) => {
             const subClaims = decomposeComplexClaim(claimData.claim);
             
             for (const subClaim of subClaims) {
-              // ⭐ USE TIERED BATCH SEARCH
+              // ⭐ USE SMART BATCH RETRY SEARCH
               const citation = await findCitationWithTieredSearch(
                 subClaim,
                 articleLanguage,
                 articleTopic,
-                globalClaimIdx + 1
+                globalClaimIdx + 1,
+                supabase // Pass Supabase client
               );
 
               if (citation) {
