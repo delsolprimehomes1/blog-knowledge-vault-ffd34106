@@ -1,3 +1,15 @@
+/**
+ * BetterCitationFinder - Advanced AI-powered citation discovery and validation
+ * 
+ * This component replaces the legacy ExternalLinkFinder component (deprecated 2025)
+ * and provides comprehensive citation finding with:
+ * - AI-powered relevance scoring and authority analysis
+ * - Content validation against specific claims
+ * - Regional prioritization and language matching
+ * - Domain diversity tracking and usage analytics
+ * - Automatic placement suggestions with confidence scoring
+ */
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
