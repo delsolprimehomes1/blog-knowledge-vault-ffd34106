@@ -177,7 +177,7 @@ export const BetterCitationFinder = ({
     // Create abort controller for timeout and cancellation
     const controller = new AbortController();
     setAbortController(controller);
-    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+    const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout
     
     // Start progress animation
     const progressInterval = setInterval(() => {
@@ -206,7 +206,7 @@ export const BetterCitationFinder = ({
         if (error.name === 'AbortError') {
           toast({
             title: "Search Timeout",
-            description: "Search took longer than 3 minutes. This may indicate issues with the search. Please try again with a simpler topic or fewer claims.",
+            description: "Search took longer than 4 minutes. This may indicate issues with the search. Please try again with a simpler topic or fewer claims.",
             variant: "destructive",
           });
           return;
