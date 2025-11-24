@@ -31,7 +31,6 @@ interface TranslationsSectionProps {
 
 const LANGUAGES: Array<{ code: Language; flag: string; name: string }> = [
   { code: "en", flag: "🇬🇧", name: "English" },
-  { code: "es", flag: "🇪🇸", name: "Spanish" },
   { code: "de", flag: "🇩🇪", name: "German" },
   { code: "nl", flag: "🇳🇱", name: "Dutch" },
   { code: "fr", flag: "🇫🇷", name: "French" },
