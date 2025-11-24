@@ -21,6 +21,7 @@ export type Database = {
           domain: string
           id: string
           is_allowed: boolean | null
+          is_international: boolean | null
           language: string | null
           notes: string | null
           region: string | null
@@ -35,6 +36,7 @@ export type Database = {
           domain: string
           id?: string
           is_allowed?: boolean | null
+          is_international?: boolean | null
           language?: string | null
           notes?: string | null
           region?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           domain?: string
           id?: string
           is_allowed?: boolean | null
+          is_international?: boolean | null
           language?: string | null
           notes?: string | null
           region?: string | null
