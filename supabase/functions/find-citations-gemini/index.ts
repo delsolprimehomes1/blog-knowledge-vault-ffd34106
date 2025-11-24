@@ -89,6 +89,33 @@ const COMPETITOR_AGENCIES = [
   'spanishproperties.com',
   'spanishhomes.com',
   'spanish-property-centre.com',
+  'primeinvest.es',
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// AGGRESSIVE KEYWORD BLOCKING - Block ANY domain containing these terms
+// ═══════════════════════════════════════════════════════════════════
+const BLOCKED_DOMAIN_KEYWORDS = [
+  // English terms
+  'property', 'properties', 'realestate', 'real-estate', 'estate-agent',
+  'homes', 'villas', 'apartments', 'condos', 'realtor', 'broker',
+  'listing', 'listings', 'forsale', 'for-sale',
+  
+  // Spanish terms
+  'inmobiliaria', 'inmobiliarias', 'casas', 'pisos', 'viviendas',
+  'alquiler', 'venta', 'comprar', 'vender',
+  
+  // Dutch/Belgian terms
+  'makelaar', 'makelaardij', 'vastgoed', 'woning', 'huizen',
+  
+  // German terms
+  'immobilien', 'makler',
+  
+  // French terms
+  'immobilier', 'agence',
+  
+  // General real estate terms
+  'immo', 'estate', 'housing',
 ];
 
 // Research paths that are OK even from agencies (Savills/Knight Frank research divisions)
@@ -120,11 +147,6 @@ const BLOCKED_URL_PATTERNS = [
   '/venta-de-viviendas/', '/comprar-casa/', '/alquilar-piso/',
 ];
 
-const BLOCKED_DOMAIN_KEYWORDS = [
-  'property', 'properties', 'realestate', 'real-estate',
-  'inmobiliaria', 'inmobiliarias', 'homes', 'villas',
-  'apartments', 'casas', 'pisos', 'viviendas',
-];
 
 interface Citation {
   url: string;
@@ -225,6 +247,61 @@ function decomposeComplexClaim(claim: string): string[] {
 }
 
 // ============================================
+// BULLETPROOF COMPETITOR BLOCKING FUNCTION
+// ============================================
+function isBlockedCompetitorBulletproof(
+  url: string, 
+  domain: string,
+  databaseBlacklist: Set<string>
+): boolean {
+  // 1. Check hardcoded competitor agencies
+  if (COMPETITOR_AGENCIES.some(competitor => domain.includes(competitor))) {
+    console.log(`   🚫 Blocked by hardcoded list: ${domain}`);
+    return true;
+  }
+  
+  // 2. Check database blacklist
+  if (databaseBlacklist.has(domain)) {
+    console.log(`   🚫 Blocked by database blacklist: ${domain}`);
+    return true;
+  }
+  
+  // 3. Check keyword blocking (aggressive)
+  const lowerDomain = domain.toLowerCase();
+  const lowerUrl = url.toLowerCase();
+  
+  for (const keyword of BLOCKED_DOMAIN_KEYWORDS) {
+    if (lowerDomain.includes(keyword) || lowerUrl.includes(keyword)) {
+      console.log(`   🚫 Blocked by keyword "${keyword}": ${domain}`);
+      return true;
+    }
+  }
+  
+  // 4. Check for property listing URL patterns
+  const listingPatterns = [
+    '/property/', '/properties/', '/listing/', '/listings/',
+    '/for-sale/', '/forsale/', '/comprar/', '/venta/', '/alquiler/',
+    '/buy/', '/sell/', '/rent/', '/search/',
+  ];
+  
+  for (const pattern of listingPatterns) {
+    if (lowerUrl.includes(pattern)) {
+      console.log(`   🚫 Blocked by listing URL pattern "${pattern}": ${url}`);
+      return true;
+    }
+  }
+  
+  // Allow research paths even from otherwise blocked domains
+  const isResearchPath = RESEARCH_PATHS.some(path => lowerUrl.includes(path));
+  if (isResearchPath) {
+    console.log(`   ✅ Allowed research path: ${url}`);
+    return false;
+  }
+  
+  return false;
+}
+
+// ============================================
 // SMART BATCH RETRY SEARCH - Dynamic 20-Domain Chunks
 // ============================================
 async function findCitationWithTieredSearch(
@@ -240,7 +317,7 @@ async function findCitationWithTieredSearch(
   console.log(`📄 Claim: "${claim.substring(0, 100)}..."`);
   console.log(`${'='.repeat(60)}`);
   
-  // Fetch ALL approved domains from database
+  // Fetch ALL approved domains from database (allowed = true)
   console.log(`\n📡 Fetching approved domains from database...`);
   const { data: approvedDomains, error: domainsError } = await supabaseClient
     .from('approved_domains')
@@ -249,6 +326,26 @@ async function findCitationWithTieredSearch(
     .or(`language.eq.${language},language.eq.EU,language.eq.GLOBAL,is_international.eq.true`)
     .order('tier', { ascending: true })
     .order('trust_score', { ascending: false });
+
+  if (domainsError || !approvedDomains) {
+    console.error('❌ Failed to fetch approved domains:', domainsError);
+    return null;
+  }
+
+  console.log(`✅ Loaded ${approvedDomains.length} approved domains for ${language}`);
+  
+  // Fetch database blacklist (is_allowed = false)
+  console.log(`\n🚫 Fetching database blacklist...`);
+  const { data: blacklistedDomains, error: blacklistError } = await supabaseClient
+    .from('approved_domains')
+    .select('domain')
+    .eq('is_allowed', false);
+  
+  const databaseBlacklist = new Set<string>(
+    (blacklistedDomains || []).map((d: any) => d.domain)
+  );
+  
+  console.log(`✅ Loaded ${databaseBlacklist.size} blacklisted domains from database`);
 
   if (domainsError || !approvedDomains) {
     console.error('❌ Failed to fetch approved domains:', domainsError);
@@ -313,20 +410,30 @@ async function findCitationWithTieredSearch(
     
     totalDomainsSearched += chunk.domains.length;
     
-    // Construct search query
+    // Construct STRICT RELEVANCE search query
     const searchQuery = `
-Find an authoritative ${language} source from ONLY these approved domains that verifies this claim:
+Find an authoritative ${language} source from ONLY these approved domains that verifies THIS SPECIFIC CLAIM:
 
 "${claim}"
 
 Article context: ${articleTopic}
 
+🎯 **CRITICAL TOPICAL RELEVANCE REQUIREMENT:**
+The citation MUST directly support THIS EXACT CLAIM - not just the general article topic.
+The source content must:
+- Provide data, statistics, or information that DIRECTLY validates this specific claim
+- Match the EXACT subject matter of this sentence/claim
+- Be placed where this claim appears in the article
+
 CRITICAL REQUIREMENTS:
 1. Source MUST be from one of these ${chunk.domains.length} domains ONLY: ${chunk.domains.join(', ')}
 2. Do NOT use any other domains, even if they seem relevant
 3. Language: ${language}
-4. Must contain specific data, statistics, or official information
+4. Must contain specific data, statistics, or official information that MATCHES this claim
 5. For aggregator sites (idealista, fotocasa), only use /informes/ or /estadisticas/ paths
+6. ❌ NEVER cite ANY company that sells, rents, or brokers real estate
+7. ❌ NEVER cite real estate agencies, property portals, relocation services, property investment platforms
+8. ❌ NEVER cite estate agents, brokerages, or listing sites
 
 Preferred source types: ${chunk.tierName}
 
@@ -338,7 +445,8 @@ Response format (JSON only):
     "domain": "domain.com",
     "relevance_score": 1-10,
     "quote": "relevant excerpt that supports the claim",
-    "why_authoritative": "why this source is trustworthy"
+    "why_authoritative": "why this source is trustworthy",
+    "claimMatch": "REQUIRED: Explain exactly how this source supports THIS SPECIFIC CLAIM (not just the general topic)"
   }
 }
 
@@ -359,10 +467,16 @@ If NO suitable source exists, return:
         body: JSON.stringify({
           model: 'sonar-pro',
           messages: [
-            {
-              role: 'system',
-              content: `You are a citation research assistant. You MUST only use sources from the provided approved domain list. Never suggest sources from other domains. Respond with valid JSON only.`
-            },
+          {
+            role: 'system',
+            content: `You are a citation research assistant. 
+CRITICAL RULES:
+1. ONLY use sources from the provided approved domain list
+2. NEVER suggest real estate agencies, brokerages, property portals, or listing sites
+3. Citations must EXACTLY match the specific claim - not just the general topic
+4. Always include "claimMatch" field explaining how the source supports the EXACT claim
+5. Respond with valid JSON only`
+          },
             {
               role: 'user',
               content: searchQuery
@@ -445,10 +559,18 @@ If NO suitable source exists, return:
         continue;
       }
       
-      // Check if it's a blocked competitor
-      if (isBlockedCompetitor(citation.url, domain)) {
-        console.log(`❌ Competitor blocked - ${domain}`);
+      // === BULLETPROOF COMPETITOR BLOCKING ===
+      if (isBlockedCompetitorBulletproof(citation.url, domain, databaseBlacklist)) {
+        console.log(`❌ COMPETITOR BLOCKED (bulletproof check): ${domain}`);
+        console.log(`   URL: ${citation.url}`);
         continue;
+      }
+      
+      // === STRICT RELEVANCE CHECK ===
+      if (!citation.claimMatch || citation.claimMatch.length < 20) {
+        console.log(`⚠️ Weak relevance match - missing claimMatch field: ${domain}`);
+        console.log(`   claimMatch: ${citation.claimMatch || 'MISSING'}`);
+        // Allow but flag for manual review
       }
       
       // 🎉 SUCCESS! Found a valid citation

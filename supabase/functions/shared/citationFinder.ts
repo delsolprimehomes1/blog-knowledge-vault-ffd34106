@@ -17,6 +17,30 @@ const ALLOWED_DATA_PATHS = [
   '/data'
 ];
 
+// ===== AGGRESSIVE KEYWORD BLOCKING =====
+const BLOCKED_DOMAIN_KEYWORDS = [
+  // English terms
+  'property', 'properties', 'realestate', 'real-estate', 'estate-agent',
+  'homes', 'villas', 'apartments', 'condos', 'realtor', 'broker',
+  'listing', 'listings', 'forsale', 'for-sale',
+  
+  // Spanish terms
+  'inmobiliaria', 'inmobiliarias', 'casas', 'pisos', 'viviendas',
+  'alquiler', 'venta', 'comprar', 'vender',
+  
+  // Dutch/Belgian terms
+  'makelaar', 'makelaardij', 'vastgoed', 'woning', 'huizen',
+  
+  // German terms
+  'immobilien', 'makler',
+  
+  // French terms
+  'immobilier', 'agence',
+  
+  // General real estate terms
+  'immo', 'estate', 'housing',
+];
+
 export interface CitationValidation {
   isValid: boolean;
   validationScore: number;
@@ -31,6 +55,7 @@ export interface BetterCitation {
   sourceName: string;
   description: string;
   relevance: string;
+  claimMatch?: string; // STRICT RELEVANCE: Explanation of how source supports specific claim
   authorityScore: number;
   language: string;
   suggestedContext: string;
@@ -158,6 +183,36 @@ function extractDomain(url: string): string {
   }
 }
 
+// ===== BULLETPROOF KEYWORD/PATTERN BLOCKING =====
+function isBlockedByKeywordOrPattern(url: string, domain: string): boolean {
+  const lowerDomain = domain.toLowerCase();
+  const lowerUrl = url.toLowerCase();
+  
+  // Check keyword blocking
+  for (const keyword of BLOCKED_DOMAIN_KEYWORDS) {
+    if (lowerDomain.includes(keyword) || lowerUrl.includes(keyword)) {
+      console.log(`   🚫 Blocked by keyword "${keyword}": ${domain}`);
+      return true;
+    }
+  }
+  
+  // Check property listing URL patterns
+  const listingPatterns = [
+    '/property/', '/properties/', '/listing/', '/listings/',
+    '/for-sale/', '/forsale/', '/comprar/', '/venta/', '/alquiler/',
+    '/buy/', '/sell/', '/rent/', '/search/',
+  ];
+  
+  for (const pattern of listingPatterns) {
+    if (lowerUrl.includes(pattern)) {
+      console.log(`   🚫 Blocked by listing URL pattern "${pattern}": ${url}`);
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // ===== SIMPLE AUTHORITY SCORING (No Usage Tracking) =====
 interface DomainScore {
   domain: string;
@@ -243,10 +298,15 @@ async function callPerplexityForBatch(
   const config = languageConfig[articleLanguage as keyof typeof languageConfig] || languageConfig.es;
   
   const targetContextSection = targetContext 
-    ? `\n**TARGET CONTEXT FOR CITATION (HIGH PRIORITY):**
+    ? `\n**TARGET CONTEXT FOR CITATION (🎯 HIGH PRIORITY - EXACT MATCH REQUIRED):**
 "${targetContext}"
 
-🎯 **CRITICAL:** Find sources that SPECIFICALLY support this exact claim or statement. The citation must be directly relevant to this specific context, not just the general article topic.`
+🎯 **CRITICAL TOPICAL RELEVANCE REQUIREMENT:**
+The citation MUST directly support THIS EXACT CLAIM/STATEMENT - not just the general article topic.
+The source content must:
+- Provide data, statistics, or information that DIRECTLY validates this specific claim
+- Match the EXACT subject matter of this sentence/claim  
+- Be contextually appropriate for where this claim appears in the article`
     : '';
 
   const focusContext = focusArea 
@@ -258,7 +318,8 @@ async function callPerplexityForBatch(
     : '';
 
   const blockedDomainsText = blockedDomains.length > 0
-    ? `\n\n🚫 **CRITICAL: NEVER use these blocked domains:**\n${blockedDomains.map(d => `- ${d}`).join('\n')}`
+    ? `\n\n🚫 **CRITICAL: NEVER use these blocked domains (ZERO TOLERANCE):**\n${blockedDomains.map(d => `- ${d}`).join('\n')}\n\n❌ ABSOLUTE RULE: NEVER cite ANY company that sells, rents, or brokers real estate.
+❌ Forbidden categories: real estate agencies, property portals, relocation services, property investment platforms, estate agents, brokerages, listing sites, property search sites.`
     : '';
 
   const prompt = `You are an expert research assistant finding authoritative external sources for a ${config.name} language article using Google Search.
@@ -272,39 +333,49 @@ ${focusContext}
 ${currentCitationsText}
 ${blockedDomainsText}
 
-**CRITICAL GUIDANCE FOR ${articleLanguage.toUpperCase()} ARTICLES ABOUT NON-${articleLanguage.toUpperCase()} TOPICS:**
+**CRITICAL GUIDANCE FOR ${articleLanguage.toUpperCase()} ARTICLES:**
 - Prioritize INTERNATIONAL sources in ${config.name} language
-- For topics about specific regions: Find international analysis rather than local government sites
-- AVOID: Real estate agency websites, property portals, real estate brokerages, listing sites
-- PREFER: Research institutions, statistical agencies, market analysis firms, academic studies, international organizations
+- For topics about specific regions: Find international analysis rather than local sources
+- ❌ ZERO TOLERANCE: Real estate agency websites, property portals, real estate brokerages, listing sites, property search sites
+- ✅ PREFER: Research institutions, statistical agencies, market analysis firms, academic studies, international organizations
 
 **PREFERRED SOURCE TYPES (in order of priority):**
 1. International statistical/economic agencies (EU, OECD, World Bank, Eurostat)
-2. Academic research and university studies
+2. Academic research and university studies  
 3. International business/financial publications (Bloomberg, Financial Times, Reuters)
 4. Market research and analysis firms
 5. Official international organizations (UN, IMF, etc.)
+
+**❌ NEVER CITE (ZERO TOLERANCE):**
+- Real estate agencies or brokerages
+- Property listing portals or search sites
+- Property investment platforms
+- Relocation services focused on property
+- Estate agents or property consultants
+- ANY company that sells, rents, lists, or brokers real estate
 
 **TARGET DOMAINS FOR THIS SEARCH (prioritize these ${batch.length} domains):**
 ${batch.map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\n')}
 
 **SEARCH INSTRUCTIONS:**
 1. Focus ONLY on these ${batch.length} domains listed above
-2. ${targetContext ? '🎯 PRIORITY: Find sources that specifically support the target context provided above' : 'Search for content that matches the article topic and claims made in the article'}
+2. ${targetContext ? '🎯 PRIORITY: Find sources that EXACTLY match and support the specific target context provided above - NOT just the general topic' : 'Search for content that matches specific claims in the article'}
 3. Find 2-4 high-quality citations from DIFFERENT domains in this list
 4. Ensure all sources are in ${config.name} language
-5. Match citations to specific claims, statistics, or statements in the article
+5. Each citation must match a SPECIFIC claim, statistic, or statement (not just general topic)
+6. Include "claimMatch" field explaining EXACTLY how the source supports the specific claim
 
 **CRITICAL REQUIREMENTS:**
 1. ALL sources MUST be in ${config.name} language
 2. Prioritize INTERNATIONAL sources over local/regional ones
 3. Sources must be HIGH AUTHORITY (research, statistical, international organizations)
-4. Content must DIRECTLY relate to specific claims in the article
+4. Content must DIRECTLY relate to SPECIFIC CLAIMS in the article (exact topical match required)
 5. Sources must be currently accessible (HTTPS, active)
 6. Avoid duplicating current citations listed above
 7. Find diverse sources **FROM DIFFERENT DOMAINS**
 8. **NEVER use blocked domains - only use domains from the target list**
-9. **AVOID all real estate agencies, brokerages, and property listing sites**
+9. **❌ ZERO TOLERANCE: NEVER cite ANY real estate agencies, brokerages, property portals, or listing sites**
+10. **Each citation MUST include "claimMatch" explaining exact relevance to specific claim**
 
 **Return ONLY valid JSON array in this EXACT format:**
 [
@@ -313,6 +384,7 @@ ${batch.map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\
     "sourceName": "Official Source Name",
     "description": "Brief description of what this source contains (1-2 sentences)",
     "relevance": "Specific claim or statement in the article this source supports",
+    "claimMatch": "REQUIRED: Explain EXACTLY how this source supports the SPECIFIC CLAIM (not just general topic)",
     "authorityScore": 9,
     "language": "${articleLanguage}",
     "suggestedContext": "Exact section or paragraph in the article where this citation should appear"
@@ -337,7 +409,15 @@ Return only the JSON array, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: `You are an expert research assistant finding authoritative ${config.name}-language INTERNATIONAL sources. ${blockedDomains.length > 0 ? `NEVER use these blocked domains: ${blockedDomains.join(', ')}. ` : ''}NEVER suggest real estate agencies, brokerages, or property listing sites. Focus ONLY on the provided target domains. Return ONLY valid JSON arrays. Never duplicate provided citations.`
+            content: `You are an expert research assistant finding authoritative ${config.name}-language INTERNATIONAL sources. 
+CRITICAL RULES (ZERO TOLERANCE):
+1. ${blockedDomains.length > 0 ? `NEVER use blocked domains: ${blockedDomains.join(', ')}` : 'Check blocked domain list'}
+2. NEVER suggest ANY real estate agencies, brokerages, property portals, or listing sites
+3. Citations must EXACTLY match the specific claim - not just the general topic
+4. ALWAYS include "claimMatch" field explaining exact relevance
+5. Focus ONLY on provided target domains
+6. Return ONLY valid JSON arrays
+7. Never duplicate citations`
           },
           {
             role: 'user',
@@ -442,7 +522,7 @@ async function searchCitationsInBatches(
       focusArea
     );
     
-    // Filter and validate citations
+    // === BULLETPROOF FILTER AND VALIDATION ===
     const validCitations = batchCitations.filter(citation => {
       const domain = extractDomain(citation.url);
       
@@ -450,9 +530,15 @@ async function searchCitationsInBatches(
       const urlPath = citation.url.toLowerCase();
       const isStatisticalPage = ALLOWED_DATA_PATHS.some(path => urlPath.includes(path));
       
-      // Check if blocked (but allow statistical pages even from blocked domains)
+      // Check if blocked by database
       if (blockedDomainSet.has(domain) && !isStatisticalPage) {
-        console.warn(`   🚫 REJECTED blocked domain: ${domain}`);
+        console.warn(`   🚫 REJECTED database blocked domain: ${domain}`);
+        return false;
+      }
+      
+      // === BULLETPROOF KEYWORD/PATTERN BLOCKING ===
+      if (isBlockedByKeywordOrPattern(citation.url, domain) && !isStatisticalPage) {
+        console.warn(`   🚫 REJECTED by keyword/pattern blocking: ${domain}`);
         return false;
       }
       
@@ -469,13 +555,21 @@ async function searchCitationsInBatches(
       
       // Basic validation
       if (!citation.url || !citation.sourceName || !citation.url.startsWith('http')) {
+        console.warn(`   ❌ REJECTED invalid citation structure: ${citation.url}`);
         return false;
       }
       
       // Check for duplicates
       if (currentCitations.includes(citation.url) || 
           allCitations.some(c => c.url === citation.url)) {
+        console.warn(`   ⚠️ REJECTED duplicate: ${citation.url}`);
         return false;
+      }
+      
+      // === STRICT RELEVANCE CHECK ===
+      if (!citation.claimMatch || citation.claimMatch.length < 20) {
+        console.warn(`   ⚠️ Weak relevance - missing claimMatch: ${domain}`);
+        // Allow but flag for review
       }
       
       return true;
