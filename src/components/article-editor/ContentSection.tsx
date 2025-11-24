@@ -1,5 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LazyRichTextEditor } from "@/components/LazyRichTextEditor";
 import { AlertCircle, AlertTriangle } from "lucide-react";
@@ -12,6 +13,9 @@ interface ContentSectionProps {
   onSpeakableAnswerChange: (value: string) => void;
   onDetailedContentChange: (value: string) => void;
   errors?: Record<string, string>;
+  selectionMode?: boolean;
+  onTextSelected?: (selectedText: string) => void;
+  onCancelSelection?: () => void;
 }
 
 export const ContentSection = ({
@@ -20,6 +24,9 @@ export const ContentSection = ({
   onSpeakableAnswerChange,
   onDetailedContentChange,
   errors = {},
+  selectionMode = false,
+  onTextSelected,
+  onCancelSelection,
 }: ContentSectionProps) => {
   const speakableWords = countWords(speakableAnswer);
   const speakableStatus = getWordCountStatus(speakableWords, 40, 60);
@@ -30,10 +37,37 @@ export const ContentSection = ({
   
   const citationMarkerCount = (detailedContent.match(/\[CITATION_NEEDED\]/g) || []).length;
 
+  const handleSelectText = () => {
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim() || "";
+    
+    if (selectedText && onTextSelected) {
+      onTextSelected(selectedText);
+    }
+  };
+
   return (
-    <Card>
+    <Card className={selectionMode ? "ring-2 ring-primary" : ""}>
       <CardHeader>
         <CardTitle>Content</CardTitle>
+        {selectionMode && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                <strong>Selection Mode:</strong> Highlight the text you want to cite, then click "Done"
+              </span>
+              <div className="flex gap-2 ml-4">
+                <Button size="sm" onClick={handleSelectText}>
+                  Done
+                </Button>
+                <Button size="sm" variant="outline" onClick={onCancelSelection}>
+                  Cancel
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {citationMarkerCount > 0 && (

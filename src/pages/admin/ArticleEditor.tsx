@@ -25,6 +25,7 @@ import {
 } from "@/lib/articleUtils";
 import { Language, FunnelStage, ArticleStatus, InternalLink, ExternalCitation, FAQEntity } from "@/types/blog";
 import { EEATSection } from "@/components/article-editor/EEATSection";
+import { ContentSection } from "@/components/article-editor/ContentSection";
 import { ExternalCitationsSection } from "@/components/article-editor/ExternalCitationsSection";
 import { InternalLinksSection } from "@/components/article-editor/InternalLinksSection";
 import { RelatedArticlesSection } from "@/components/article-editor/RelatedArticlesSection";
@@ -78,6 +79,7 @@ const ArticleEditor = () => {
   const [imageUploading, setImageUploading] = useState(false);
   const [isImageGenerating, setIsImageGenerating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [citationSelectionMode, setCitationSelectionMode] = useState(false);
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -602,53 +604,29 @@ const ArticleEditor = () => {
         />
 
         {/* Section 3: Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Content</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="speakableAnswer">Speakable Answer (40-60 words optimal) *</Label>
-              <Textarea
-                id="speakableAnswer"
-                value={speakableAnswer}
-                onChange={(e) => setSpeakableAnswer(e.target.value)}
-                placeholder="Write a conversational, action-oriented summary that voice assistants can read..."
-                rows={4}
-                className={errors.speakableAnswer ? "border-red-500" : ""}
-              />
-              <div className="flex items-center justify-between mt-1">
-                <p className={`text-xs ${speakableStatus.color}`}>
-                  {speakableWords} words - {speakableStatus.message}
-                </p>
-              </div>
-              {errors.speakableAnswer && (
-                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.speakableAnswer}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label>Detailed Content (1500-2500 words target) *</Label>
-              <LazyRichTextEditor
-                content={detailedContent}
-                onChange={setDetailedContent}
-                placeholder="Write your detailed article content here..."
-              />
-              <p className={`text-xs mt-1 ${contentStatus.color}`}>
-                {contentWords} words - {contentStatus.message}
-              </p>
-              {errors.detailedContent && (
-                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.detailedContent}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div data-content-section>
+          <ContentSection
+            speakableAnswer={speakableAnswer}
+            detailedContent={detailedContent}
+            onSpeakableAnswerChange={setSpeakableAnswer}
+            onDetailedContentChange={setDetailedContent}
+            errors={errors}
+            selectionMode={citationSelectionMode}
+            onTextSelected={(selectedText) => {
+              setCitationSelectionMode(false);
+              // Scroll back to citations section with the selected text
+              const citationsSection = document.querySelector('[data-citations-section]');
+              if (citationsSection) {
+                citationsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+              toast.success(`Selected text: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
+            }}
+            onCancelSelection={() => {
+              setCitationSelectionMode(false);
+              toast.info("Text selection cancelled");
+            }}
+          />
+        </div>
 
         {/* Citation Replacement Tool - Always show helper */}
         {detailedContent.includes('[CITATION_NEEDED]') ? (
@@ -757,14 +735,24 @@ const ArticleEditor = () => {
         />
 
         {/* Section 6: External Citations */}
-        <ExternalCitationsSection
-          citations={externalCitations}
-          onCitationsChange={setExternalCitations}
-          errors={errors}
-          articleContent={detailedContent}
-          headline={headline}
-          language={language}
-        />
+        <div data-citations-section>
+          <ExternalCitationsSection
+            citations={externalCitations}
+            onCitationsChange={setExternalCitations}
+            errors={errors}
+            articleContent={detailedContent}
+            headline={headline}
+            language={language}
+            onRequestTextSelection={() => {
+              setCitationSelectionMode(true);
+              // Scroll to content section
+              const contentSection = document.querySelector('[data-content-section]');
+              if (contentSection) {
+                contentSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+          />
+        </div>
 
         {/* Section 6.5: Citation Health Status */}
         {isEditing && (

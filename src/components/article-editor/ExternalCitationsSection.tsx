@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Plus, Trash2, Info } from "lucide-react";
 import { ExternalCitation } from "@/types/blog";
-import { ExternalLinkFinder } from "@/components/ExternalLinkFinder";
-import { BetterCitationFinder } from "@/components/admin/BetterCitationFinder";
+import { ContextualCitationFinder } from "./ContextualCitationFinder";
 
 interface ExternalCitationsSectionProps {
   citations: ExternalCitation[];
@@ -15,6 +14,7 @@ interface ExternalCitationsSectionProps {
   articleContent?: string;
   headline?: string;
   language?: string;
+  onRequestTextSelection: () => void;
 }
 
 export const ExternalCitationsSection = ({
@@ -24,18 +24,10 @@ export const ExternalCitationsSection = ({
   articleContent = "",
   headline = "",
   language = "es",
+  onRequestTextSelection,
 }: ExternalCitationsSectionProps) => {
   const addCitation = () => {
     onCitationsChange([...citations, { text: "", url: "", source: "" }]);
-  };
-
-  const handleAddCitationFromFinder = (citation: { url: string; sourceName: string; anchorText: string }) => {
-    const newCitation: ExternalCitation = {
-      text: citation.anchorText,
-      url: citation.url,
-      source: citation.sourceName,
-    };
-    onCitationsChange([...citations, newCitation]);
   };
 
   const updateCitation = (index: number, field: keyof ExternalCitation, value: string) => {
@@ -72,25 +64,16 @@ export const ExternalCitationsSection = ({
           </AlertDescription>
         </Alert>
         
-        {/* AI-Powered Better Citation Finder (New - Perplexity) */}
         {headline && articleContent && (
-          <BetterCitationFinder
-            articleTopic={headline}
-            articleLanguage={language}
+          <ContextualCitationFinder
             articleContent={articleContent}
-            currentCitations={citations.map(c => c.url)}
-            onAddCitation={handleAddCitationFromFinder}
+            headline={headline}
+            currentCitations={citations}
+            onCitationsChange={onCitationsChange}
+            language={language}
+            onRequestTextSelection={onRequestTextSelection}
           />
         )}
-
-        {/* Original External Link Finder (Backup) */}
-        <ExternalLinkFinder
-          articleContent={articleContent}
-          headline={headline}
-          currentCitations={citations}
-          onCitationsChange={onCitationsChange}
-          language={language}
-        />
 
         {/* Manual Citations List */}
         <div className="space-y-4">
