@@ -470,8 +470,8 @@ If NO suitable source exists in these domains, return:
       continue; // Try next batch
     }
     
-    // Small delay between batches to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Small delay between batches to avoid rate limiting (optimized from 1500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
   
   // If we get here, all batches failed
@@ -640,90 +640,122 @@ serve(async (req) => {
     
     const batchStats: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
-    console.log(`🎯 Processing ${maxClaims} claims with tiered batch search...\n`);
+    console.log(`🎯 Processing ${maxClaims} claims with parallel tiered batch search (3 at a time)...\n`);
 
-    // Find citation for each claim using tiered batch search
-    for (let i = 0; i < maxClaims; i++) {
-      const claimData = claims[i];
+    // Process claims in parallel batches of 3 for speed optimization
+    const PARALLEL_LIMIT = 3;
+    const claimBatches: Claim[][] = [];
+    
+    for (let i = 0; i < maxClaims; i += PARALLEL_LIMIT) {
+      claimBatches.push(claims.slice(i, Math.min(i + PARALLEL_LIMIT, maxClaims)));
+    }
+    
+    console.log(`📦 Split ${maxClaims} claims into ${claimBatches.length} parallel batch(es)\n`);
 
-      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-      console.log(`📌 CLAIM ${i + 1}/${maxClaims}:`);
-      console.log(`   "${claimData.claim}"\n`);
+    // Process each batch of claims in parallel
+    for (let batchIdx = 0; batchIdx < claimBatches.length; batchIdx++) {
+      const batch = claimBatches[batchIdx];
+      console.log(`\n🚀 PARALLEL BATCH ${batchIdx + 1}/${claimBatches.length}: Processing ${batch.length} claim(s) simultaneously`);
+      
+      // Process claims in this batch simultaneously
+      const results = await Promise.allSettled(
+        batch.map(async (claimData, idx) => {
+          const globalClaimIdx = batchIdx * PARALLEL_LIMIT + idx;
+          
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📌 CLAIM ${globalClaimIdx + 1}/${maxClaims}:`);
+          console.log(`   "${claimData.claim}"\n`);
+          
+          try {
+            // Decompose complex claims
+            const subClaims = decomposeComplexClaim(claimData.claim);
+            
+            for (const subClaim of subClaims) {
+              // ⭐ USE TIERED BATCH SEARCH
+              const citation = await findCitationWithTieredSearch(
+                subClaim,
+                articleLanguage,
+                articleTopic,
+                globalClaimIdx + 1
+              );
 
-      try {
-        // Decompose complex claims
-        const subClaims = decomposeComplexClaim(claimData.claim);
+              if (citation) {
+                // Check for duplicates
+                const isDuplicate = citations.some(c => c.url === citation.url);
+                if (isDuplicate) {
+                  console.log(`⏭️ Skipping duplicate: ${citation.url}`);
+                  continue;
+                }
+                
+                // Extract domain for diversity scoring
+                try {
+                  const url = new URL(citation.url);
+                  const domain = url.hostname.replace('www.', '');
+                  const usageCount = usageMap.get(domain) || 0;
+                  
+                  let diversityScore = 100;
+                  if (usageCount >= 20) diversityScore = 0;
+                  else if (usageCount >= 15) diversityScore = 30;
+                  else if (usageCount >= 10) diversityScore = 60;
+                  else if (usageCount >= 5) diversityScore = 80;
+
+                  const citationWithMeta = {
+                    ...citation,
+                    claimText: claimData.claim,
+                    sentenceIndex: claimData.sentenceIndex,
+                    diversityScore,
+                    usageCount,
+                  };
+                  
+                  return { success: true, citation: citationWithMeta, batchTier: citation.batchTier, needsReview: citation.needsManualReview };
+                } catch (e) {
+                  console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
+                }
+                
+                break; // Found citation for this claim
+              }
+            }
+            
+            console.log(`   ⚠️ No citation found after searching all batches\n`);
+            return { success: false };
+            
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('Invalid citation structure')) {
+              jsonParseFailures++;
+            }
+            console.error(`   ❌ ERROR processing claim ${globalClaimIdx + 1}:`, error);
+            return { success: false, error };
+          }
+        })
+      );
+      
+      // Process results from parallel batch
+      results.forEach((result, idx) => {
+        const globalClaimIdx = batchIdx * PARALLEL_LIMIT + idx;
         
-        let citationFound = false;
-        for (const subClaim of subClaims) {
-          // ⭐ USE TIERED BATCH SEARCH
-          const citation = await findCitationWithTieredSearch(
-            subClaim,
-            articleLanguage,
-            articleTopic,
-            i + 1
-          );
-
-          if (citation) {
-            // Check for duplicates
-            const isDuplicate = citations.some(c => c.url === citation.url);
-            if (isDuplicate) {
-              console.log(`⏭️ Skipping duplicate: ${citation.url}`);
-              continue;
-            }
-            
-            citationFound = true;
-            
-            // Extract domain for diversity scoring
-            try {
-              const url = new URL(citation.url);
-              const domain = url.hostname.replace('www.', '');
-              const usageCount = usageMap.get(domain) || 0;
-              
-              let diversityScore = 100;
-              if (usageCount >= 20) diversityScore = 0;
-              else if (usageCount >= 15) diversityScore = 30;
-              else if (usageCount >= 10) diversityScore = 60;
-              else if (usageCount >= 5) diversityScore = 80;
-
-              const citationWithMeta = {
-                ...citation,
-                claimText: claimData.claim,
-                sentenceIndex: claimData.sentenceIndex,
-                diversityScore,
-                usageCount,
-              };
-              
-              // Track batch statistics
-              if (citation.batchTier) {
-                batchStats[citation.batchTier] = (batchStats[citation.batchTier] || 0) + 1;
-              }
-              
-              // Soft match detection - high authority but lower specificity
-              if (citation.needsManualReview) {
-                softMatches.push(citationWithMeta);
-                console.log(`   ⚠️ SOFT MATCH: Needs manual review\n`);
-              } else {
-                citations.push(citationWithMeta);
-                console.log(`   ✅ ACCEPTED: Citation ${i + 1} from Batch ${citation.batchTier}\n`);
-              }
-            } catch (e) {
-              console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
-            }
-            
-            break; // Found citation for this claim, move to next
+        if (result.status === 'fulfilled' && result.value.success) {
+          const { citation, batchTier, needsReview } = result.value;
+          
+          // Track batch statistics
+          if (batchTier) {
+            batchStats[batchTier] = (batchStats[batchTier] || 0) + 1;
+          }
+          
+          // Soft match detection - high authority but lower specificity
+          if (needsReview) {
+            softMatches.push(citation);
+            console.log(`   ⚠️ SOFT MATCH: Needs manual review (Claim ${globalClaimIdx + 1})\n`);
+          } else {
+            citations.push(citation);
+            console.log(`   ✅ ACCEPTED: Citation ${globalClaimIdx + 1} from Batch ${batchTier}\n`);
           }
         }
-        
-        if (!citationFound) {
-          console.log(`   ⚠️ No citation found after searching all batches\n`);
-        }
-
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('Invalid citation structure')) {
-          jsonParseFailures++;
-        }
-        console.error(`   ❌ ERROR processing claim ${i + 1}:`, error);
+      });
+      
+      // Small delay between parallel batches (not between individual claims)
+      if (batchIdx < claimBatches.length - 1) {
+        console.log(`⏸️ Waiting 1s before next parallel batch...\n`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
