@@ -16,6 +16,8 @@ interface ContextualCitationFinderProps {
   currentCitations: ExternalCitation[];
   onCitationsChange: (citations: ExternalCitation[]) => void;
   language?: string;
+  targetContext?: string;
+  onTargetContextChange?: (context: string) => void;
   onRequestTextSelection: () => void;
 }
 
@@ -27,9 +29,11 @@ export function ContextualCitationFinder({
   currentCitations,
   onCitationsChange,
   language = "es",
+  targetContext: externalTargetContext = "",
+  onTargetContextChange,
   onRequestTextSelection,
 }: ContextualCitationFinderProps) {
-  const [targetContext, setTargetContext] = useState("");
+  const targetContext = externalTargetContext;
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleAddCitation = (citation: ExternalCitation) => {
@@ -37,12 +41,12 @@ export function ContextualCitationFinder({
   };
 
   const handleClearContext = () => {
-    setTargetContext("");
+    onTargetContextChange?.("");
   };
 
   const handleContextChange = (value: string) => {
     if (value.length <= MAX_CONTEXT_LENGTH) {
-      setTargetContext(value);
+      onTargetContextChange?.(value);
     }
   };
 

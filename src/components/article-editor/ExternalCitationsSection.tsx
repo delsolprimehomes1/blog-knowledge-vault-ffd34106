@@ -14,6 +14,8 @@ interface ExternalCitationsSectionProps {
   articleContent?: string;
   headline?: string;
   language?: string;
+  targetContext?: string;
+  onTargetContextChange?: (context: string) => void;
   onRequestTextSelection: () => void;
 }
 
@@ -24,6 +26,8 @@ export const ExternalCitationsSection = ({
   articleContent = "",
   headline = "",
   language = "es",
+  targetContext = "",
+  onTargetContextChange,
   onRequestTextSelection,
 }: ExternalCitationsSectionProps) => {
   const addCitation = () => {
@@ -71,6 +75,8 @@ export const ExternalCitationsSection = ({
             currentCitations={citations}
             onCitationsChange={onCitationsChange}
             language={language}
+            targetContext={targetContext}
+            onTargetContextChange={onTargetContextChange}
             onRequestTextSelection={onRequestTextSelection}
           />
         )}
