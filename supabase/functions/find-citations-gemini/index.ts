@@ -12,6 +12,10 @@ const corsHeaders = {
 const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
 const PERPLEXITY_BASE_URL = 'https://api.perplexity.ai/chat/completions';
 
+// Maximum chunks to search before giving up (prevents timeout)
+// Each chunk = 20 domains, so 8 chunks = 160 domains searched
+const MAX_CHUNKS_TO_SEARCH = 8;
+
 if (!PERPLEXITY_API_KEY) {
   console.warn('⚠️ PERPLEXITY_API_KEY not found - citation search will fail');
 }
@@ -289,17 +293,19 @@ async function findCitationWithTieredSearch(
   
   console.log(`\n📦 Created ${chunks.length} chunks of 20 domains from ${Object.keys(domainsByTier).length} tiers`);
   console.log(`   Tiers: ${Object.entries(domainsByTier).map(([t, d]) => `${t}(${d.length})`).join(', ')}`);
+  console.log(`   🛡️ Will search max ${MAX_CHUNKS_TO_SEARCH} chunks (${MAX_CHUNKS_TO_SEARCH * 20} domains) to prevent timeout`);
   
   const searchAttempts: any[] = [];
   let totalDomainsSearched = 0;
+  const maxChunks = Math.min(chunks.length, MAX_CHUNKS_TO_SEARCH);
   
-  // ⭐ Sequential chunk retry - stop on first success
-  for (let i = 0; i < chunks.length; i++) {
+  // ⭐ Sequential chunk retry - stop on first success or max chunks reached
+  for (let i = 0; i < maxChunks; i++) {
     const chunk = chunks[i];
     const chunkLabel = `${chunk.tier.toUpperCase()}-${chunk.chunkNumber}`;
     
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`🔍 CHUNK ${i + 1}/${chunks.length}: ${chunkLabel}`);
+    console.log(`🔍 CHUNK ${i + 1}/${maxChunks}: ${chunkLabel}`);
     console.log(`   Tier: ${chunk.tierName}`);
     console.log(`   Domains: ${chunk.domains.length}`);
     console.log(`   Total searched so far: ${totalDomainsSearched}`);
@@ -491,16 +497,20 @@ If NO suitable source exists, return:
     }
     
     // Small delay between chunks to avoid rate limiting
-    if (i < chunks.length - 1) {
+    if (i < maxChunks - 1) {
       await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
   
-  // ❌ All chunks exhausted - no citation found
+  // ❌ Max chunks searched - no citation found
+  const wasLimited = chunks.length > MAX_CHUNKS_TO_SEARCH;
   console.log(`\n❌ ═══════════════════════════════════════════`);
-  console.log(`   ALL ${chunks.length} CHUNKS EXHAUSTED`);
+  console.log(`   ${wasLimited ? `REACHED MAX CHUNK LIMIT (${MAX_CHUNKS_TO_SEARCH}/${chunks.length})` : `ALL ${chunks.length} CHUNKS EXHAUSTED`}`);
   console.log(`   Total domains searched: ${totalDomainsSearched}/${approvedDomains.length}`);
-  console.log(`   No valid citation found`);
+  console.log(`   No valid citation found in searched chunks`);
+  if (wasLimited) {
+    console.log(`   ℹ️ Stopped early to prevent timeout - ${chunks.length - MAX_CHUNKS_TO_SEARCH} chunks not searched`);
+  }
   console.log(`═══════════════════════════════════════════\n`);
   
   return null;
