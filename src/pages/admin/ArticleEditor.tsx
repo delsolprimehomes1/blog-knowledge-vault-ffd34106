@@ -80,6 +80,7 @@ const ArticleEditor = () => {
   const [isImageGenerating, setIsImageGenerating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [citationSelectionMode, setCitationSelectionMode] = useState(false);
+  const [citationTargetContext, setCitationTargetContext] = useState("");
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -614,12 +615,13 @@ const ArticleEditor = () => {
             selectionMode={citationSelectionMode}
             onTextSelected={(selectedText) => {
               setCitationSelectionMode(false);
+              setCitationTargetContext(selectedText.substring(0, 150)); // Respect max length
               // Scroll back to citations section with the selected text
               const citationsSection = document.querySelector('[data-citations-section]');
               if (citationsSection) {
                 citationsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
-              toast.success(`Selected text: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
+              toast.success(`Citation target set: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
             }}
             onCancelSelection={() => {
               setCitationSelectionMode(false);
@@ -743,6 +745,8 @@ const ArticleEditor = () => {
             articleContent={detailedContent}
             headline={headline}
             language={language}
+            targetContext={citationTargetContext}
+            onTargetContextChange={setCitationTargetContext}
             onRequestTextSelection={() => {
               setCitationSelectionMode(true);
               // Scroll to content section
