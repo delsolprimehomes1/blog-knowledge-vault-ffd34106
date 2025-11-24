@@ -17,6 +17,7 @@ serve(async (req) => {
       articleLanguage = 'es',
       articleContent,
       currentCitations = [],
+      targetContext,
       focusArea,
       verifyUrls = true
     } = await req.json();
@@ -39,6 +40,7 @@ serve(async (req) => {
       articleContent,
       currentCitations,
       perplexityApiKey,
+      targetContext,
       focusArea
     );
 

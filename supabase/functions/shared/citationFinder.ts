@@ -183,10 +183,18 @@ async function callPerplexityForBatch(
   currentCitations: string[],
   blockedDomains: string[],
   perplexityApiKey: string,
+  targetContext?: string,
   focusArea?: string
 ): Promise<BetterCitation[]> {
   const config = languageConfig[articleLanguage as keyof typeof languageConfig] || languageConfig.es;
   
+  const targetContextSection = targetContext 
+    ? `\n**TARGET CONTEXT FOR CITATION (HIGH PRIORITY):**
+"${targetContext}"
+
+🎯 **CRITICAL:** Find sources that SPECIFICALLY support this exact claim or statement. The citation must be directly relevant to this specific context, not just the general article topic.`
+    : '';
+
   const focusContext = focusArea 
     ? `\n**Special Focus:** ${focusArea} - prioritize sources specific to this region/topic`
     : '';
@@ -205,6 +213,7 @@ async function callPerplexityForBatch(
 **Language Required:** ${config.name}
 **Full Article Content:**
 ${articleContent}
+${targetContextSection}
 ${focusContext}
 ${currentCitationsText}
 ${blockedDomainsText}
@@ -227,7 +236,7 @@ ${batch.map(d => `- ${d.domain} (${d.category}, authority: ${d.score})`).join('\
 
 **SEARCH INSTRUCTIONS:**
 1. Focus ONLY on these ${batch.length} domains listed above
-2. Search for content that matches the article topic and claims made in the article
+2. ${targetContext ? '🎯 PRIORITY: Find sources that specifically support the target context provided above' : 'Search for content that matches the article topic and claims made in the article'}
 3. Find 2-4 high-quality citations from DIFFERENT domains in this list
 4. Ensure all sources are in ${config.name} language
 5. Match citations to specific claims, statistics, or statements in the article
@@ -329,6 +338,7 @@ async function searchCitationsInBatches(
   articleContent: string,
   currentCitations: string[],
   perplexityApiKey: string,
+  targetContext?: string,
   focusArea?: string
 ): Promise<BetterCitation[]> {
   
@@ -374,6 +384,7 @@ async function searchCitationsInBatches(
       currentCitations,
       blockedDomains,
       perplexityApiKey,
+      targetContext,
       focusArea
     );
     
@@ -459,6 +470,7 @@ export async function findBetterCitations(
   articleContent: string,
   currentCitations: string[],
   perplexityApiKey: string,
+  targetContext?: string,
   focusArea?: string
 ): Promise<BetterCitation[]> {
   
@@ -497,6 +509,7 @@ export async function findBetterCitations(
     articleContent,
     currentCitations,
     perplexityApiKey,
+    targetContext,
     focusArea
   );
   

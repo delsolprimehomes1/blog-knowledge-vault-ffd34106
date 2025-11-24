@@ -15,6 +15,7 @@ interface ExternalLinkFinderProps {
   currentCitations: ExternalCitation[];
   onCitationsChange: (citations: ExternalCitation[]) => void;
   language?: string;
+  targetContext?: string; // Optional: specific sentence/paragraph to cite
 }
 
 interface FoundCitation {
@@ -30,7 +31,8 @@ export const ExternalLinkFinder = ({
   headline,
   currentCitations,
   onCitationsChange,
-  language = 'es'
+  language = 'es',
+  targetContext
 }: ExternalLinkFinderProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [foundLinks, setFoundLinks] = useState<FoundCitation[]>([]);
@@ -54,6 +56,7 @@ export const ExternalLinkFinder = ({
           articleLanguage: language,
           articleContent: articleContent,
           currentCitations: currentCitations.map(c => c.url),
+          targetContext: targetContext,
           verifyUrls: true
         }
       });
