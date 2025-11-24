@@ -375,7 +375,9 @@ If NO suitable source exists in these domains, return:
           temperature: 0.2,
           max_tokens: 1000,
           return_citations: true,
-          search_recency_filter: "month"
+          search_recency_filter: "month",
+          // Enforce domain restrictions at API level (limit to first 20 due to API constraints)
+          search_domain_filter: batchDomains.slice(0, 20)
         })
       });
 
