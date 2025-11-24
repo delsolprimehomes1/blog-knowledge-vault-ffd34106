@@ -516,6 +516,155 @@ If NO suitable source exists, return:
   return null;
 }
 
+// ============================================
+// FALLBACK: Open Web Search with Competitor Blocking
+// ============================================
+async function findCitationWithOpenWebFallback(
+  claim: string,
+  language: string,
+  articleTopic: string,
+  claimIndex: number,
+  supabase: any
+): Promise<Citation | null> {
+  console.log(`\n🌐 ═══════════════════════════════════════════`);
+  console.log(`   OPEN WEB FALLBACK SEARCH`);
+  console.log(`   Claim ${claimIndex}: "${claim.substring(0, 80)}..."`);
+  console.log(`═══════════════════════════════════════════\n`);
+
+  try {
+    // Fetch blacklisted domains from database
+    const { data: blacklistedDomains } = await supabase
+      .from('approved_domains')
+      .select('domain')
+      .eq('is_allowed', false);
+
+    // Combine database blacklist with hardcoded competitor list
+    const databaseBlacklist = blacklistedDomains?.map((d: { domain: string }) => d.domain) || [];
+    const allBlockedDomains = [...new Set([...COMPETITOR_AGENCIES, ...databaseBlacklist])];
+    
+    console.log(`🛑 Total blocked domains: ${allBlockedDomains.length}`);
+    console.log(`   • Hardcoded competitors: ${COMPETITOR_AGENCIES.length}`);
+    console.log(`   • Database blacklist: ${databaseBlacklist.length}\n`);
+
+    // Construct strict exclusion prompt
+    const excludedDomainsStr = allBlockedDomains.join(', ');
+    
+    const prompt = `You are a citation research expert. Find ONE authoritative ${language} source that verifies this claim about "${articleTopic}":
+
+"${claim}"
+
+🛑 CRITICAL EXCLUSION RULES:
+You MUST NEVER cite ANY of these ${allBlockedDomains.length} blocked domains:
+${excludedDomainsStr}
+
+Additionally, you MUST NEVER use:
+- Real estate agency websites (inmobiliarias)
+- Property listing portals (idealista, fotocasa, etc.)
+- Real estate investment platforms
+- Relocation/expat property services
+- Any site with "property", "inmobiliaria", "realestate", "vivienda" in domain
+
+✅ ONLY cite these types of sources:
+- Government websites (.gov, .gob.es)
+- Official statistics bureaus (INE, Eurostat)
+- Central banks and financial regulators
+- News outlets (major newspapers, TV networks)
+- Research institutions and universities
+- Established encyclopedias (Wikipedia is OK for general facts)
+- Official tourism/geography authorities
+
+Return ONE citation in this exact JSON format:
+{
+  "url": "full URL with https://",
+  "source": "official source name",
+  "text": "brief quote or statement that verifies the claim",
+  "specificity": 85
+}`;
+
+    const perplexityResponse = await fetch(PERPLEXITY_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-large-128k-online',
+        messages: [
+          { role: 'system', content: 'You are a citation finder. Return ONLY valid JSON with one citation. Never use blocked domains.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!perplexityResponse.ok) {
+      const errorText = await perplexityResponse.text();
+      console.error(`❌ Perplexity API error: ${perplexityResponse.status} ${errorText}`);
+      return null;
+    }
+
+    const data = await perplexityResponse.json();
+    const rawContent = data.choices[0].message.content;
+    
+    console.log(`📥 Raw Perplexity response (first 300 chars):\n${rawContent.substring(0, 300)}...\n`);
+
+    // Parse JSON response
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('❌ No JSON found in response');
+      return null;
+    }
+
+    const citation = JSON.parse(jsonMatch[0]);
+
+    // Validate citation structure
+    if (!citation.url || !citation.source || !citation.text) {
+      console.error('❌ Invalid citation structure');
+      return null;
+    }
+
+    // CRITICAL: Double-check domain is not blocked
+    const url = new URL(citation.url);
+    const domain = url.hostname.replace('www.', '');
+    
+    if (isBlockedCompetitor(citation.url, domain)) {
+      console.log(`🛑 FALLBACK BLOCKED: ${domain} is a competitor - Perplexity violated exclusion rules!`);
+      return null;
+    }
+
+    // Additional keyword blocking for safety
+    const domainLower = domain.toLowerCase();
+    const blockedKeywords = ['property', 'inmobiliaria', 'realestate', 'vivienda', 'listing', 'piso', 'casa-', 'homes'];
+    if (blockedKeywords.some(kw => domainLower.includes(kw))) {
+      console.log(`🛑 FALLBACK BLOCKED: ${domain} contains blocked keyword`);
+      return null;
+    }
+
+    console.log(`✅ Open web citation found: ${domain}`);
+    console.log(`   Source: ${citation.source}`);
+    console.log(`   Specificity: ${citation.specificity || 80}\n`);
+
+    return {
+      url: citation.url,
+      sourceName: citation.source,
+      description: citation.text,
+      relevance: 'High - Open web search',
+      authorityScore: 75, // Open web sources get medium authority
+      specificityScore: citation.specificity || 80,
+      batchTier: 5, // Special tier for open web
+      needsManualReview: false,
+      isFromOpenWeb: true, // Flag for UI
+      diversityScore: 100,
+      usageCount: 0,
+    } as any; // Use 'as any' since we're adding extra properties beyond Citation interface
+
+  } catch (error) {
+    console.error(`❌ Open web fallback error:`, error);
+    return null;
+  }
+}
+
 // Helper: Convert tier string to number for compatibility
 function getTierNumber(tier: string): number {
   const tierMap: { [key: string]: number } = {
@@ -700,13 +849,25 @@ serve(async (req) => {
           
           try {
             // Search directly without sub-claim decomposition to save time
-            const citation = await findCitationWithTieredSearch(
+            let citation = await findCitationWithTieredSearch(
               claimData.claim,
               articleLanguage,
               articleTopic,
               globalClaimIdx + 1,
               supabase // Pass Supabase client
             );
+
+            // NEW: If no citation from approved domains, try open web fallback
+            if (!citation) {
+              console.log(`🌐 Trying open web fallback for claim ${globalClaimIdx + 1}...`);
+              citation = await findCitationWithOpenWebFallback(
+                claimData.claim,
+                articleLanguage,
+                articleTopic,
+                globalClaimIdx + 1,
+                supabase
+              );
+            }
 
             if (citation) {
               // Check for duplicates
