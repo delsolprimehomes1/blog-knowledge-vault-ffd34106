@@ -318,28 +318,10 @@ export const BetterCitationFinder = ({
       
       toast({
         title: "Citations Found!",
-        description: `Found ${citationsWithPlacement.length} new authoritative sources via Perplexity search ${targetContext ? '- Starting auto-validation' : ''}`,
+        description: `Found ${citationsWithPlacement.length} new authoritative sources. ${targetContext ? 'Use the Validate button to check quality.' : ''}`,
       });
 
-      // Enhancement 1: Parallel validation if target context is provided
-      if (searchContext && citationsWithPlacement.length > 0) {
-        try {
-          toast({
-            title: "Auto-validating in parallel...",
-            description: "Checking all citations simultaneously",
-          });
-          
-          await validateCitations(citationsWithPlacement);
-        } catch (validationError) {
-          console.error('Validation failed, but citations were found:', validationError);
-          toast({
-            title: "Citations Found (Validation Skipped)",
-            description: `Found ${citationsWithPlacement.length} sources, but validation failed. You can manually verify them.`,
-            variant: "default",
-          });
-          // Continue execution - citations are already in state
-        }
-      }
+      // Auto-validation disabled - use manual validation button instead
     } catch (error: any) {
       console.error('Citation search error:', error);
       clearInterval(progressInterval);
