@@ -28,7 +28,7 @@ const ALLOWED_DATA_PATHS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// TIER 1: Individual Real Estate Agencies - BLOCK EVERYTHING
+// COMPETITOR AGENCIES - ALWAYS BLOCKED (All Tiers)
 // ═══════════════════════════════════════════════════════════════════
 const COMPETITOR_AGENCIES = [
   // Marbella/Costa del Sol agencies (HIGH PRIORITY - direct competitors)
@@ -69,13 +69,13 @@ const COMPETITOR_AGENCIES = [
   'oi-realtor.com',
   'housers.com',
   
-  // Property investment sites (masquerading as agencies)
+  // Property investment sites
   'propertyinvestment.com',
   'buyspanishproperty.com',
   'investinspain.com',
   'spanish-property-investment.com',
   
-  // UK/International property portals focused on listings
+  // UK/International portals focused on listings
   'aplaceinthesun.com',
   'kyero.com',
   'thinkspain.com',
@@ -87,81 +87,89 @@ const COMPETITOR_AGENCIES = [
   'spanish-property-centre.com',
 ];
 
-// ═══════════════════════════════════════════════════════════════════
-// TIER 2: Property Portals/Aggregators - ALLOW only statistical pages
-// ═══════════════════════════════════════════════════════════════════
-const PORTAL_AGGREGATORS = [
-  'idealista.com',
-  'fotocasa.es',
-  'habitaclia.com',
-  'pisos.com',
-  'nuroa.es',
-  'yaencontre.com',
-  'trovit.es',
-  'mitula.es',
-  'nestoria.es',
-  'properstar.com',
-  
-  // International equivalents (for cross-border comparisons)
-  'rightmove.co.uk',
-  'zoopla.co.uk',
-  'onthemarket.com',
-  'immobiliare.it',
-  'immoweb.be',
-  'funda.nl',
-  'zillow.com',
-  'realtor.com',
-  'trulia.com',
-  'redfin.com',
+// Research paths that are OK even from agencies (Savills/Knight Frank research divisions)
+const RESEARCH_PATHS = [
+  '/research/', '/market-report', '/market-analysis', '/insights/',
+  '/news/', '/discover/', '/informes/', '/estadisticas/',
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// TIER 3: Always Allowed - Government, Official Stats, Reputable News
+// TIERED BATCH DOMAIN SYSTEM (Search Priority Order)
 // ═══════════════════════════════════════════════════════════════════
-const ALWAYS_ALLOWED_DOMAINS = [
-  // Spanish government (HIGHEST TRUST)
-  'gob.es',
-  'ine.es',
-  'boe.es',
-  'bde.es',
-  'catastro.meh.es',
-  'registradores.org',
+
+// BATCH 1: Government & Official Statistics (Highest Priority - Search FIRST)
+const BATCH_1_GOVERNMENT = [
+  // Spanish Government (top priority for Spanish articles)
+  'ine.es', 'boe.es', 'catastro.meh.es', 'registradores.org',
+  'minhap.gob.es', 'mitma.gob.es', 'bde.es',
+  'juntadeandalucia.es', 'malaga.es', 'marbella.es',
   
-  // International government
-  'gov.uk',
-  'ons.gov.uk',
-  'gov.ie',
-  'gov.de',
-  'gov.fr',
-  'gov.nl',
-  'gov.pl',
-  'gov.se',
-  'gov.dk',
+  // UK Government
+  'gov.uk', 'ons.gov.uk', 'landregistry.gov.uk',
   
-  // European Union
-  'europa.eu',
-  'eurostat.ec.europa.eu',
+  // Other EU Government
+  'gov.ie', 'destatis.de', 'cbs.nl', 'insee.fr',
+  
+  // EU Official
+  'europa.eu', 'eurostat.ec.europa.eu',
+];
+
+// BATCH 2: Aggregators & Research Firms (High Priority - Search SECOND)
+const BATCH_2_AGGREGATORS = [
+  // Spanish portals (market reports only)
+  'idealista.com', 'fotocasa.es', 'pisos.com', 'habitaclia.com',
+  
+  // International property data
+  'propertydata.co.uk', 'zoopla.co.uk', 'rightmove.co.uk',
+  'immobilienscout24.de', 'funda.nl',
+  
+  // Market research firms
+  'savills.com', 'knightfrank.com', 'pwc.com', 'deloitte.com', 'ey.com',
+  
+  // Financial/Economic
+  'worldbank.org', 'imf.org', 'oecd.org', 'bis.org',
+];
+
+// BATCH 3: Reputable News & Media (Medium Priority - Search THIRD)
+const BATCH_3_NEWS = [
+  // Spanish news
+  'elpais.com', 'elmundo.es', 'lavanguardia.com', 'expansion.com',
+  'cincodias.elpais.com', 'abc.es', 'elconfidencial.com',
+  
+  // International news
+  'theguardian.com', 'bbc.com', 'ft.com', 'economist.com',
+  'reuters.com', 'bloomberg.com', 'wsj.com',
+  
+  // Expat/lifestyle
+  'expatica.com', 'thelocal.es', 'spanishpropertynews.com',
+];
+
+// BATCH 4: International & Academic (Lower Priority - Search FOURTH)
+const BATCH_4_INTERNATIONAL = [
+  // Academic
+  'sciencedirect.com', 'researchgate.net', 'journals.sagepub.com',
+  'tandfonline.com',
+  
+  // Think tanks
+  'brookings.edu', 'chathamhouse.org', 'bruegel.org',
+  
+  // Specialized real estate research
+  'rics.org', 'urban.org', 'urban-hub.com',
+  
+  // Tourism (for lifestyle claims)
+  'spain.info', 'andalucia.org', 'visitcostadelsol.com',
+  'lonelyplanet.com', 'timeout.com',
   
   // International organizations
-  'worldbank.org',
-  'oecd.org',
-  'imf.org',
-  'un.org',
-  
-  // Reputable news (NOT real estate focused)
-  'elpais.com',
-  'elmundo.es',
-  'lavanguardia.com',
-  'expansion.com',
-  'cincodias.elpais.com',
-  'theguardian.com',
-  'bbc.com',
-  'bbc.co.uk',
-  'ft.com',
-  'reuters.com',
-  'bloomberg.com',
-  'economist.com',
-  'wsj.com',
+  'who.int', 'unesco.org', 'weforum.org',
+];
+
+// All batches in priority order
+const DOMAIN_BATCHES = [
+  { name: 'Government & Official Statistics', domains: BATCH_1_GOVERNMENT, tier: 1 },
+  { name: 'Aggregators & Research', domains: BATCH_2_AGGREGATORS, tier: 2 },
+  { name: 'Reputable News & Media', domains: BATCH_3_NEWS, tier: 3 },
+  { name: 'International & Academic', domains: BATCH_4_INTERNATIONAL, tier: 4 },
 ];
 
 // Legacy patterns kept for backward compatibility but not actively used
@@ -251,155 +259,6 @@ function extractClaimsNeedingCitations(content: string): Claim[] {
 }
 
 // ============================================
-// CHECK IF URL IS A COMPETITOR (TIER 1 ENHANCED)
-// ============================================
-function isCompetitorUrl(url: string, domain: string): { 
-  isBlocked: boolean; 
-  reason: string; 
-  blockType?: 'agency' | 'portal_listing' | 'unknown_realestate' | 'heuristic';
-} {
-  const urlLower = url.toLowerCase();
-  const domainLower = domain.toLowerCase();
-  
-  console.log(`\n🔍 Evaluating: ${domain}`);
-  
-  // ═══════════════════════════════════════════════
-  // STEP 1: ALWAYS ALLOWED (Highest Priority)
-  // ═══════════════════════════════════════════════
-  const isAlwaysAllowed = ALWAYS_ALLOWED_DOMAINS.some(allowed => 
-    domainLower.includes(allowed) || allowed.includes(domainLower)
-  );
-  
-  if (isAlwaysAllowed) {
-    console.log(`✅ TIER 3 ALLOWED: Government/Official source`);
-    return { isBlocked: false, reason: 'Government/Official source' };
-  }
-  
-  // ═══════════════════════════════════════════════
-  // STEP 2: COMPETITOR AGENCIES (Block Everything)
-  // ═══════════════════════════════════════════════
-  const isCompetitorAgency = COMPETITOR_AGENCIES.some(competitor => 
-    domainLower.includes(competitor) || competitor.includes(domainLower)
-  );
-  
-  if (isCompetitorAgency) {
-    console.log(`❌ TIER 1 BLOCKED: Individual real estate agency`);
-    return { 
-      isBlocked: true, 
-      reason: `Competitor real estate agency: ${domain}`,
-      blockType: 'agency'
-    };
-  }
-  
-  // ═══════════════════════════════════════════════
-  // STEP 3: PORTAL AGGREGATORS (Conditional)
-  // ═══════════════════════════════════════════════
-  const isPortalAggregator = PORTAL_AGGREGATORS.some(portal => 
-    domainLower.includes(portal) || portal.includes(domainLower)
-  );
-  
-  if (isPortalAggregator) {
-    // Check if URL has statistical/research path
-    const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
-      urlLower.includes(path)
-    );
-    
-    // Enhanced market report detection
-    const marketReportPatterns = [
-      /informe[-_]?mercado/i,
-      /market[-_]?report/i,
-      /informe[-_]?precios/i,
-      /price[-_]?report/i,
-      /price[-_]?index/i,
-      /market[-_]?analysis/i,
-      /analisis[-_]?mercado/i,
-      /estadisticas[-_]?inmobiliarias/i,
-      /tendencias[-_]?mercado/i,
-      /market[-_]?trends/i,
-    ];
-    
-    const hasMarketReportPattern = marketReportPatterns.some(pattern => 
-      pattern.test(urlLower)
-    );
-    
-    if (hasStatisticalPath || hasMarketReportPattern) {
-      console.log(`✅ TIER 2 ALLOWED: Portal aggregator statistical page`);
-      console.log(`   - Statistical path: ${hasStatisticalPath}`);
-      console.log(`   - Market report pattern: ${hasMarketReportPattern}`);
-      return { isBlocked: false, reason: 'Portal aggregator market report' };
-    } else {
-      console.log(`❌ TIER 2 BLOCKED: Portal listing page (not statistical)`);
-      return { 
-        isBlocked: true, 
-        reason: `Portal listing page: ${domain}`,
-        blockType: 'portal_listing'
-      };
-    }
-  }
-  
-  // ═══════════════════════════════════════════════
-  // STEP 4: HEURISTIC DETECTION (Unknown Domains)
-  // ═══════════════════════════════════════════════
-  console.log(`⚠️ UNKNOWN DOMAIN: Applying heuristics...`);
-  
-  // Real estate keyword detection
-  const realEstateKeywords = [
-    'property', 'properties', 'real-estate', 'realestate', 
-    'inmobiliaria', 'inmobiliarias',
-    'homes', 'houses', 'villas', 'apartments',
-    'estate', 'estates', 'realtor', 'realtors',
-    'marbella', 'costa-del-sol', 'costadelsol',
-    'casas', 'pisos', 'viviendas'
-  ];
-  
-  const hasRealEstateKeyword = realEstateKeywords.some(keyword => 
-    domainLower.includes(keyword)
-  );
-  
-  if (hasRealEstateKeyword) {
-    // Check if it has statistical indicators
-    const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
-      urlLower.includes(path)
-    );
-    
-    if (hasStatisticalPath) {
-      console.log(`⚠️ SOFT ALLOW: Real estate domain with statistical path (NEEDS REVIEW)`);
-      return { 
-        isBlocked: false, 
-        reason: 'Unknown real estate site with statistical path - needs manual review'
-      };
-    } else {
-      console.log(`❌ HEURISTIC BLOCKED: Real estate keyword in domain, no statistical path`);
-      return { 
-        isBlocked: true, 
-        reason: `Likely competitor (real estate keyword in domain): ${domain}`,
-        blockType: 'unknown_realestate'
-      };
-    }
-  }
-  
-  // ═══════════════════════════════════════════════
-  // STEP 5: SAFE BY DEFAULT (Generic Domains)
-  // ═══════════════════════════════════════════════
-  const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
-    urlLower.includes(path)
-  );
-  
-  if (hasStatisticalPath) {
-    console.log(`✅ ALLOWED: Generic domain with statistical path`);
-    return { isBlocked: false, reason: 'Generic site with statistical content' };
-  }
-  
-  // Final fallback: Be cautious with unknown domains
-  console.log(`❌ DEFAULT BLOCK: Unknown domain with no clear indicators`);
-  return { 
-    isBlocked: true, 
-    reason: `Unknown domain without statistical indicators: ${domain}`,
-    blockType: 'heuristic'
-  };
-}
-
-// ============================================
 // CLAIM DECOMPOSITION HELPER
 // ============================================
 function decomposeComplexClaim(claim: string): string[] {
@@ -428,182 +287,277 @@ function decomposeComplexClaim(claim: string): string[] {
 }
 
 // ============================================
-// FIND CITATION WITH PERPLEXITY (REAL-TIME WEB SEARCH)
+// TIERED BATCH SEARCH - Sequential Priority Search
 // ============================================
-async function findCitationWithPerplexity(
+async function findCitationWithTieredSearch(
   claim: string,
   language: string,
-  approvedDomains: string[],
-  articleTopic: string
+  articleTopic: string,
+  attemptNumber: number = 1
 ): Promise<any> {
   
-  console.log(`🔍 Perplexity search for: "${claim.substring(0, 100)}..."`);
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`🔍 TIERED SEARCH - Attempt ${attemptNumber}`);
+  console.log(`📄 Claim: "${claim.substring(0, 100)}..."`);
+  console.log(`${'='.repeat(60)}`);
   
-  // Filter domains by language
-  const languageDomains = approvedDomains.filter(domain => {
-    if (language === 'es') return domain.includes('.es') || domain.includes('.gob.es');
-    if (language === 'en') return domain.includes('.gov') || domain.includes('.uk') || domain.includes('.ie');
-    if (language === 'de') return domain.includes('.de');
-    if (language === 'fr') return domain.includes('.fr') || domain.includes('.gouv.fr');
-    if (language === 'nl') return domain.includes('.nl');
-    if (language === 'pl') return domain.includes('.pl');
-    if (language === 'sv') return domain.includes('.se');
-    if (language === 'da') return domain.includes('.dk');
-    if (language === 'hu') return domain.includes('.hu');
-    return domain.includes('.com') || domain.includes('.org'); // International
-  }).slice(0, 20);
-
-  const searchQuery = `
-Find an authoritative ${language} source that verifies this claim about Costa del Sol real estate:
+  const searchAttempts: any[] = [];
+  
+  // Try each batch in priority order
+  for (const batch of DOMAIN_BATCHES) {
+    console.log(`\n📦 Searching BATCH ${batch.tier}: ${batch.name}`);
+    console.log(`📊 Domains: ${batch.domains.length} in this batch`);
+    
+    // Filter domains by language preference
+    const languageFilteredDomains = filterDomainsByLanguage(batch.domains, language);
+    
+    // Limit to 20 domains (Perplexity limit)
+    const batchDomains = languageFilteredDomains.slice(0, 20);
+    
+    console.log(`🌍 Language-filtered to: ${batchDomains.length} ${language} domains`);
+    
+    // Construct batch-specific search query
+    const searchQuery = `
+Find an authoritative ${language} source from ONLY these approved domains that verifies this claim:
 
 "${claim}"
 
 Article context: ${articleTopic}
 
-Requirements:
-1. Must be from official government, statistical bureau, or reputable news sources
-2. Prefer these domains: ${languageDomains.join(', ')}
-3. Must contain specific data, statistics, or official information
-4. Language: ${language}
-5. Focus on: real estate market, property law, taxation, lifestyle in Spain
+CRITICAL REQUIREMENTS:
+1. Source MUST be from one of these domains ONLY: ${batchDomains.join(', ')}
+2. Do NOT use any other domains, even if they seem relevant
+3. Language: ${language}
+4. Must contain specific data, statistics, or official information
+5. For aggregator sites (idealista, fotocasa), only use /informes/ or /estadisticas/ paths
 
-Return ONLY valid JSON in this exact format:
+Preferred content types for this batch (${batch.name}):
+${getBatchContentTypeHints(batch.tier)}
+
+Response format (JSON only):
 {
   "citation": {
-    "url": "exact URL of the source",
+    "url": "exact URL from approved domains only",
     "title": "page title",
     "domain": "domain.com",
-    "relevance_score": 8,
+    "relevance_score": 1-10,
     "quote": "relevant excerpt that supports the claim",
-    "why_authoritative": "brief explanation of why this source is trustworthy"
+    "why_authoritative": "why this source is trustworthy"
   }
 }
 
-If no suitable source exists, return:
+If NO suitable source exists in these domains, return:
 {
   "citation": null,
-  "reason": "explanation why no source found"
+  "reason": "No source found in ${batch.name} domains"
 }
 `.trim();
 
-  try {
-    const response = await fetch(PERPLEXITY_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'sonar-pro',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a citation research assistant for Costa del Sol real estate content.
-            You MUST respond with valid JSON only. Never use conversational language.
-            Search the web in real-time to find authoritative sources.
-            Prioritize government sources (.gov, .gob.es), statistical bureaus (ine.es, ons.gov.uk), and reputable news outlets.`
-          },
-          {
-            role: 'user',
-            content: searchQuery
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-        return_citations: true,
-        search_recency_filter: "month"
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Perplexity API error: ${response.status} - ${errorText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    const perplexityCitations = data.citations || [];
-    
-    console.log(`📚 Perplexity returned ${perplexityCitations.length} citations`);
-
-    // Parse JSON response with forgiving parser
-    let citationData;
     try {
-      citationData = JSON.parse(content);
-    } catch (parseError) {
-      console.warn('⚠️ JSON parse failed, trying forgiving parser...');
-      // Try to extract JSON from markdown code blocks
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                       content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          citationData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        } catch (e) {
-          console.error('❌ Could not extract JSON from response');
-          return null;
-        }
-      } else {
-        console.error('❌ No JSON found in response');
-        return null;
+      const response = await fetch(PERPLEXITY_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'sonar-pro',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a citation research assistant. You MUST only use sources from the provided approved domain list. Never suggest sources from other domains. Respond with valid JSON only.`
+            },
+            {
+              role: 'user',
+              content: searchQuery
+            }
+          ],
+          temperature: 0.2,
+          max_tokens: 1000,
+          return_citations: true,
+          search_recency_filter: "month"
+        })
+      });
+
+      if (!response.ok) {
+        console.error(`❌ Batch ${batch.tier} API error: ${response.status}`);
+        continue; // Try next batch
       }
-    }
 
-    if (!citationData?.citation || !citationData.citation.url) {
-      console.log(`⚠️ No citation found. Reason: ${citationData?.reason || 'Unknown'}`);
-      return null;
-    }
-
-    const citation = citationData.citation;
-    const domain = new URL(citation.url).hostname.replace('www.', '');
-    
-    // Check if competitor (enhanced with reason tracking)
-    const competitorCheck = isCompetitorUrl(citation.url, domain);
-
-    if (competitorCheck.isBlocked) {
-      console.log(`❌ BLOCKED: ${competitorCheck.reason}`);
+      const data = await response.json();
+      const content = data.choices[0].message.content;
       
-      // Return block info for diagnostics (instead of null)
+      // Parse response
+      let citationData;
+      try {
+        citationData = JSON.parse(content);
+      } catch (parseError) {
+        // Try forgiving parser
+        const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                         content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          citationData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } else {
+          console.warn(`⚠️ Batch ${batch.tier} JSON parse failed`);
+          continue; // Try next batch
+        }
+      }
+      
+      // Record attempt
+      searchAttempts.push({
+        batch: batch.name,
+        tier: batch.tier,
+        domains: batchDomains.length,
+        found: citationData?.citation ? true : false,
+        reason: citationData?.reason
+      });
+      
+      // Check if citation found
+      if (!citationData?.citation || !citationData.citation.url) {
+        console.log(`⚠️ Batch ${batch.tier}: No citation found`);
+        console.log(`   Reason: ${citationData?.reason || 'Unknown'}`);
+        continue; // Try next batch
+      }
+      
+      const citation = citationData.citation;
+      const domain = new URL(citation.url).hostname.replace('www.', '');
+      
+      // CRITICAL: Verify domain is actually from this batch
+      const isFromThisBatch = batchDomains.some(d => 
+        domain.includes(d) || d.includes(domain)
+      );
+      
+      if (!isFromThisBatch) {
+        console.log(`⚠️ Batch ${batch.tier}: Citation from wrong domain: ${domain}`);
+        console.log(`   Expected domains from batch, got: ${domain}`);
+        continue; // Try next batch
+      }
+      
+      // Check if it's a blocked competitor
+      if (isBlockedCompetitor(citation.url, domain)) {
+        console.log(`❌ Batch ${batch.tier}: Competitor blocked - ${domain}`);
+        continue; // Try next batch
+      }
+      
+      // SUCCESS! Found a valid citation
+      console.log(`✅ BATCH ${batch.tier} SUCCESS: ${domain}`);
+      console.log(`   Title: ${citation.title}`);
+      console.log(`   Relevance: ${citation.relevance_score}/10`);
+      console.log(`   Stopped searching - found in priority tier ${batch.tier}`);
+      
+      // Calculate authority score
+      let authorityScore = citation.relevance_score || 7;
+      if (domain.includes('.gov') || domain.includes('.gob')) authorityScore = Math.max(authorityScore, 9);
+      if (domain.includes('ine.es') || domain.includes('bde.es')) authorityScore = 10;
+      
       return {
-        blocked: true,
         url: citation.url,
-        domain: domain,
-        blockReason: competitorCheck.reason,
-        blockType: competitorCheck.blockType,
-        title: citation.title || 'Unknown'
+        sourceName: citation.title || 'Untitled Source',
+        description: citation.quote || '',
+        relevance: citation.why_authoritative || 'Authoritative source',
+        authorityScore: authorityScore,
+        specificityScore: citation.relevance_score * 10 || 70,
+        batchTier: batch.tier,
+        batchName: batch.name,
+        needsManualReview: citation.relevance_score < 7,
+        searchAttempts: searchAttempts,
+        diversityScore: 100,
+        usageCount: 0,
       };
+      
+    } catch (error) {
+      console.error(`❌ Batch ${batch.tier} search error:`, error);
+      continue; // Try next batch
     }
     
-    // Validate domain approval
-    const isApproved = approvedDomains.some(approved => 
-      domain.includes(approved) || approved.includes(domain)
-    );
-
-    // If not in approved list but not blocked, flag for review
-    if (!isApproved) {
-      console.log(`⚠️ Domain ${domain} not in approved list but not blocked - FLAGGING FOR REVIEW`);
-    }
-
-    // Calculate authority score (1-10)
-    let authorityScore = citation.relevance_score || 7;
-    if (domain.includes('.gov') || domain.includes('.gob')) authorityScore = Math.max(authorityScore, 9);
-    if (domain.includes('ine.es') || domain.includes('bde.es')) authorityScore = 10;
-
-    return {
-      url: citation.url,
-      sourceName: citation.title || 'Untitled Source',
-      description: citation.quote || '',
-      relevance: citation.why_authoritative || 'Authoritative source',
-      authorityScore: authorityScore,
-      specificityScore: citation.relevance_score * 10 || 70,
-      diversityScore: 100,
-      usageCount: 0,
-    };
-
-  } catch (error) {
-    console.error('❌ Perplexity search error:', error);
-    return null;
+    // Small delay between batches to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
+  
+  // If we get here, all batches failed
+  console.log(`\n❌ ALL BATCHES EXHAUSTED - No valid citation found`);
+  console.log(`📊 Searched ${searchAttempts.length} batches`);
+  
+  return null;
+}
+
+// ============================================
+// HELPER: Filter Domains by Language
+// ============================================
+function filterDomainsByLanguage(domains: string[], language: string): string[] {
+  // Don't filter government sources - they're always relevant
+  const governmentTLDs = ['.gov', '.gob', '.org', '.eu', '.int'];
+  
+  return domains.filter(domain => {
+    // Always include government/official sources
+    if (governmentTLDs.some(tld => domain.includes(tld))) {
+      return true;
+    }
+    
+    // Language-specific filtering
+    switch (language) {
+      case 'es':
+        return domain.includes('.es') || domain.includes('spanish') || 
+               domain.includes('spain') || !domain.includes('.');
+      case 'en':
+        return domain.includes('.uk') || domain.includes('.com') || 
+               domain.includes('.org') || !domain.includes('.es');
+      case 'de':
+        return domain.includes('.de') || !domain.includes('.es');
+      case 'fr':
+        return domain.includes('.fr') || !domain.includes('.es');
+      case 'nl':
+        return domain.includes('.nl') || !domain.includes('.es');
+      default:
+        return true; // Include all for other languages
+    }
+  });
+}
+
+// ============================================
+// HELPER: Get Content Type Hints for Batch
+// ============================================
+function getBatchContentTypeHints(tier: number): string {
+  switch (tier) {
+    case 1:
+      return '- Official statistics and data tables\n- Government reports and white papers\n- Legal and regulatory documents';
+    case 2:
+      return '- Market analysis and trend reports\n- Price indices and statistical aggregations\n- Professional research publications';
+    case 3:
+      return '- News articles with data and statistics\n- Investigative journalism\n- Expert interviews and analysis';
+    case 4:
+      return '- Academic research papers\n- International organization reports\n- Specialized industry analysis';
+    default:
+      return '- Authoritative information with citations';
+  }
+}
+
+// ============================================
+// HELPER: Check if Domain is Blocked Competitor
+// ============================================
+function isBlockedCompetitor(url: string, domain: string): boolean {
+  const urlLower = url.toLowerCase();
+  const domainLower = domain.toLowerCase();
+  
+  // Check against blocked list
+  const isBlocked = COMPETITOR_AGENCIES.some(competitor => 
+    domainLower.includes(competitor) || competitor.includes(domainLower)
+  );
+  
+  if (!isBlocked) return false;
+  
+  // Check for research path exceptions (Savills, Knight Frank research OK)
+  const hasResearchPath = RESEARCH_PATHS.some(path => 
+    urlLower.includes(path)
+  );
+  
+  if (hasResearchPath && (domainLower.includes('savills') || 
+                          domainLower.includes('knightfrank'))) {
+    console.log(`✅ Exception: Research path from ${domain}`);
+    return false; // Allow research divisions
+  }
+  
+  return true; // Blocked
 }
 
 // ============================================
@@ -684,17 +638,11 @@ serve(async (req) => {
     let specificityRejections = 0;
     let jsonParseFailures = 0;
     
-    const blockedSources: Array<{
-      url: string;
-      domain: string;
-      blockReason: string;
-      blockType?: string;
-      title: string;
-    }> = [];
+    const batchStats: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
-    console.log(`🎯 Processing ${maxClaims} claims...\n`);
+    console.log(`🎯 Processing ${maxClaims} claims with tiered batch search...\n`);
 
-    // Find citation for each claim with decomposition
+    // Find citation for each claim using tiered batch search
     for (let i = 0; i < maxClaims; i++) {
       const claimData = claims[i];
 
@@ -708,28 +656,15 @@ serve(async (req) => {
         
         let citationFound = false;
         for (const subClaim of subClaims) {
-          const citation = await findCitationWithPerplexity(
+          // ⭐ USE TIERED BATCH SEARCH
+          const citation = await findCitationWithTieredSearch(
             subClaim,
             articleLanguage,
-            approvedDomainsList,
-            articleTopic
+            articleTopic,
+            i + 1
           );
 
           if (citation) {
-            // Check if this is a blocked citation
-            if (citation.blocked) {
-              blockedSources.push({
-                url: citation.url,
-                domain: citation.domain,
-                blockReason: citation.blockReason,
-                blockType: citation.blockType,
-                title: citation.title
-              });
-              competitorsBlocked++;
-              console.log(`⏭️ Blocked: ${citation.blockReason}`);
-              continue; // Try next sub-claim
-            }
-            
             // Check for duplicates
             const isDuplicate = citations.some(c => c.url === citation.url);
             if (isDuplicate) {
@@ -738,45 +673,50 @@ serve(async (req) => {
             }
             
             citationFound = true;
-          // Extract domain for diversity scoring
-          try {
-            const url = new URL(citation.url);
-            const domain = url.hostname.replace('www.', '');
-            const usageCount = usageMap.get(domain) || 0;
             
-            let diversityScore = 100;
-            if (usageCount >= 20) diversityScore = 0;
-            else if (usageCount >= 15) diversityScore = 30;
-            else if (usageCount >= 10) diversityScore = 60;
-            else if (usageCount >= 5) diversityScore = 80;
+            // Extract domain for diversity scoring
+            try {
+              const url = new URL(citation.url);
+              const domain = url.hostname.replace('www.', '');
+              const usageCount = usageMap.get(domain) || 0;
+              
+              let diversityScore = 100;
+              if (usageCount >= 20) diversityScore = 0;
+              else if (usageCount >= 15) diversityScore = 30;
+              else if (usageCount >= 10) diversityScore = 60;
+              else if (usageCount >= 5) diversityScore = 80;
 
-            const citationWithMeta = {
-              ...citation,
-              claimText: claimData.claim,
-              sentenceIndex: claimData.sentenceIndex,
-              diversityScore,
-              usageCount,
-            };
-            
-            // TIER 3: Soft match detection - high authority but maybe lower specificity
-            if (citation.authorityScore >= 90 && citation.specificityScore < 70) {
-              softMatches.push(citationWithMeta);
-              console.log(`   ⚠️ SOFT MATCH: High-authority source but lower specificity (needs manual review)\n`);
-            } else {
-              citations.push(citationWithMeta);
-              console.log(`   ✅ ACCEPTED: Citation ${i + 1} added\n`);
+              const citationWithMeta = {
+                ...citation,
+                claimText: claimData.claim,
+                sentenceIndex: claimData.sentenceIndex,
+                diversityScore,
+                usageCount,
+              };
+              
+              // Track batch statistics
+              if (citation.batchTier) {
+                batchStats[citation.batchTier] = (batchStats[citation.batchTier] || 0) + 1;
+              }
+              
+              // Soft match detection - high authority but lower specificity
+              if (citation.needsManualReview) {
+                softMatches.push(citationWithMeta);
+                console.log(`   ⚠️ SOFT MATCH: Needs manual review\n`);
+              } else {
+                citations.push(citationWithMeta);
+                console.log(`   ✅ ACCEPTED: Citation ${i + 1} from Batch ${citation.batchTier}\n`);
+              }
+            } catch (e) {
+              console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
             }
-          } catch (e) {
-            console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
+            
+            break; // Found citation for this claim, move to next
           }
-          
-          break; // Found citation for this claim, move to next
-        }
         }
         
         if (!citationFound) {
-          competitorsBlocked++;
-          console.log(`   ⚠️ No citation found for claim ${i + 1}\n`);
+          console.log(`   ⚠️ No citation found after searching all batches\n`);
         }
 
       } catch (error) {
@@ -886,8 +826,8 @@ serve(async (req) => {
         specificityRejections,
         timeElapsed: elapsed,
         language: articleLanguage,
-        model: 'Perplexity Sonar-Pro',
-        message: `Found ${citations.length} perfect match(es)${softMatches.length > 0 ? ` + ${softMatches.length} soft match(es) for review` : ''} (${competitorsBlocked} competitors blocked)`,
+        model: 'Perplexity Sonar-Pro (Tiered Batch Search)',
+        message: `Found ${citations.length} citation(s) across ${Object.values(batchStats).filter(v => v > 0).length} priority tier(s)`,
         diagnostics: {
           claimsAnalyzed: maxClaims,
           citationsFound: citations.length,
@@ -895,30 +835,31 @@ serve(async (req) => {
           competitorsBlocked,
           timeElapsed: `${elapsed}s`,
           successRate: `${((citations.length/maxClaims)*100).toFixed(1)}%`,
-          apiUsed: 'Perplexity Sonar-Pro',
+          apiUsed: 'Perplexity Sonar-Pro (Tiered Batch Search)',
           
-          // Detailed blocking breakdown
-          blockingStats: {
-            totalBlocked: blockedSources.length,
-            competitorAgencies: blockedSources.filter(s => s.blockType === 'agency').length,
-            portalListings: blockedSources.filter(s => s.blockType === 'portal_listing').length,
-            unknownRealEstate: blockedSources.filter(s => s.blockType === 'unknown_realestate').length,
-            heuristicBlocks: blockedSources.filter(s => s.blockType === 'heuristic').length,
+          // ⭐ BATCH STATISTICS
+          batchPerformance: {
+            tier1_government: batchStats[1] || 0,
+            tier2_aggregators: batchStats[2] || 0,
+            tier3_news: batchStats[3] || 0,
+            tier4_international: batchStats[4] || 0,
           },
           
-          // List of blocked sources with reasons
-          blockedSources: blockedSources.map(s => ({
-            url: s.url,
-            domain: s.domain,
-            reason: s.blockReason,
-            blockType: s.blockType,
-            title: s.title
-          })).slice(0, 10), // Limit to first 10 for readability
+          averageBatchTier: citations.length > 0
+            ? (citations.reduce((sum: number, c: any) => sum + (c.batchTier || 4), 0) / citations.length).toFixed(1)
+            : 'N/A',
+          
+          citationQuality: {
+            highestAuthority: citations.filter(c => c.batchTier === 1).length,
+            mediumAuthority: citations.filter(c => c.batchTier === 2 || c.batchTier === 3).length,
+            lowerAuthority: citations.filter(c => c.batchTier === 4).length,
+          },
           
           softMatchDetails: softMatches.length > 0 ? softMatches.map(s => ({
             url: s.url,
             domain: new URL(s.url).hostname.replace('www.', ''),
             relevanceScore: s.specificityScore,
+            batchTier: s.batchTier,
             reason: 'Needs manual review - lower specificity'
           })) : []
         },

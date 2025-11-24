@@ -547,6 +547,46 @@ export const BetterCitationFinder = ({
                   </Alert>
                 )}
                 
+                {debugInfo.batchPerformance && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <h5 className="font-semibold text-blue-800 mb-2">
+                      📊 Citation Quality Distribution
+                    </h5>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>🏛️ Government (Tier 1):</span>
+                        <span className="font-bold text-green-600">
+                          {debugInfo.batchPerformance.tier1_government}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📈 Aggregators (Tier 2):</span>
+                        <span className="font-bold text-blue-600">
+                          {debugInfo.batchPerformance.tier2_aggregators}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📰 News (Tier 3):</span>
+                        <span className="font-bold text-yellow-600">
+                          {debugInfo.batchPerformance.tier3_news}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>🌍 International (Tier 4):</span>
+                        <span className="font-bold text-gray-600">
+                          {debugInfo.batchPerformance.tier4_international}
+                        </span>
+                      </div>
+                    </div>
+                    {debugInfo.averageBatchTier && debugInfo.averageBatchTier !== 'N/A' && (
+                      <div className="mt-2 pt-2 border-t border-blue-200 text-xs text-blue-700">
+                        Average Quality Tier: <strong>{debugInfo.averageBatchTier}</strong>
+                        {' '}(1 = Highest Authority)
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 {debugInfo.blockingStats && debugInfo.blockingStats.totalBlocked > 0 && (
                   <Alert className="bg-red-50 border-red-200">
                     <XCircle className="h-4 w-4 text-red-800" />
