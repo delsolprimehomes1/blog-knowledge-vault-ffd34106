@@ -156,6 +156,7 @@ export function ContextualCitationFinder({
             articleLanguage={language}
             articleContent={articleContent}
             currentCitations={currentCitations.map(c => c.url)}
+            targetContext={targetContext || undefined}
             onAddCitation={(citation) => {
               const newCitation: ExternalCitation = {
                 text: citation.anchorText,

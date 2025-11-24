@@ -4,8 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle, Shield, XCircle, Loader2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface CitationValidation {
+  isValid: boolean;
+  validationScore: number;
+  explanation: string;
+  keyFactsExtracted: string[];
+  relevanceAnalysis: string;
+  recommendations?: string;
+}
 
 interface BetterCitation {
   url: string;
@@ -19,6 +30,8 @@ interface BetterCitation {
   statusCode?: number;
   diversityScore?: number;
   usageCount?: number;
+  validation?: CitationValidation;
+  validationStatus?: 'pending' | 'validating' | 'validated' | 'failed';
 }
 
 interface BetterCitationFinderProps {
@@ -26,6 +39,7 @@ interface BetterCitationFinderProps {
   articleLanguage: string;
   articleContent: string;
   currentCitations: string[];
+  targetContext?: string;
   onAddCitation?: (citation: { url: string; sourceName: string; anchorText: string }) => void;
 }
 
@@ -34,11 +48,76 @@ export const BetterCitationFinder = ({
   articleLanguage,
   articleContent,
   currentCitations,
+  targetContext,
   onAddCitation,
 }: BetterCitationFinderProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [citations, setCitations] = useState<BetterCitation[]>([]);
+  const [validatingUrls, setValidatingUrls] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const validateCitation = async (citation: BetterCitation) => {
+    if (!targetContext) {
+      toast({
+        title: "No Target Claim",
+        description: "Please specify a target claim to validate citations",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidatingUrls(prev => new Set(prev).add(citation.url));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-citation-content', {
+        body: {
+          citationUrl: citation.url,
+          targetClaim: targetContext,
+          articleLanguage,
+          sourceName: citation.sourceName,
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Validation failed');
+
+      // Update citation with validation result
+      setCitations(prev => prev.map(c => 
+        c.url === citation.url 
+          ? { 
+              ...c, 
+              validation: data.validation,
+              validationStatus: 'validated' as const
+            }
+          : c
+      ));
+
+      const validation = data.validation;
+      toast({
+        title: validation.isValid ? "Citation Validated ✓" : "Citation Invalid ✗",
+        description: `Score: ${validation.validationScore}/100 - ${validation.explanation.substring(0, 100)}`,
+        variant: validation.isValid ? "default" : "destructive",
+      });
+    } catch (error: any) {
+      console.error('Validation error:', error);
+      setCitations(prev => prev.map(c => 
+        c.url === citation.url 
+          ? { ...c, validationStatus: 'failed' as const }
+          : c
+      ));
+      toast({
+        title: "Validation Failed",
+        description: error.message || "Could not validate citation",
+        variant: "destructive",
+      });
+    } finally {
+      setValidatingUrls(prev => {
+        const next = new Set(prev);
+        next.delete(citation.url);
+        return next;
+      });
+    }
+  };
 
   const handleFindCitations = async () => {
     setIsSearching(true);
@@ -49,11 +128,11 @@ export const BetterCitationFinder = ({
           articleLanguage,
           articleContent: articleContent,
           currentCitations,
+          targetContext,
         }
       });
 
       if (error) {
-        // Handle rate limit errors specifically
         if (error.message?.includes('429') || data?.error === 'QUOTA_EXHAUSTED') {
           toast({
             title: "API Quota Exhausted",
@@ -69,12 +148,33 @@ export const BetterCitationFinder = ({
         throw new Error(data.error || 'Failed to find citations');
       }
 
-      setCitations(data.citations);
+      // Initialize citations with pending validation status if target context exists
+      const citationsWithStatus = data.citations.map((c: BetterCitation) => ({
+        ...c,
+        validationStatus: targetContext ? 'pending' as const : undefined
+      }));
+      
+      setCitations(citationsWithStatus);
       
       toast({
         title: "Citations Found!",
-        description: `Found ${data.totalFound} authoritative sources using Gemini AI`,
+        description: `Found ${data.totalFound} authoritative sources ${targetContext ? '- Click "Validate" to verify' : ''}`,
       });
+
+      // Auto-validate if target context is provided
+      if (targetContext && citationsWithStatus.length > 0) {
+        toast({
+          title: "Auto-validating...",
+          description: "Checking if citations support your claim",
+        });
+        
+        // Validate all citations sequentially
+        for (const citation of citationsWithStatus) {
+          await validateCitation(citation);
+          // Small delay between validations
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     } catch (error: any) {
       console.error('Citation search error:', error);
       toast({
@@ -120,9 +220,14 @@ export const BetterCitationFinder = ({
           <Sparkles className="h-5 w-5 text-purple-600" />
           AI Citation Finder
         </CardTitle>
-        <CardDescription>
-          Powered by <strong>Gemini AI</strong> to find authoritative sources from approved domains matching your article content.
-        </CardDescription>
+          <CardDescription>
+            Powered by <strong>Gemini AI</strong> to find authoritative sources from approved domains matching your article content.
+            {targetContext && (
+              <span className="block mt-1 text-primary">
+                🎯 <strong>Validation Mode:</strong> Citations will be verified against your target claim
+              </span>
+            )}
+          </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button
@@ -153,91 +258,197 @@ export const BetterCitationFinder = ({
             </Alert>
 
             <div className="space-y-3">
-              {citations.map((citation, index) => (
-                <div
-                  key={index}
-                  className={`border rounded-lg p-4 space-y-2 ${
-                    citation.verified === false ? 'opacity-60 bg-gray-50' : 'bg-white'
-                  }`}
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm mb-1">{citation.sourceName}</h4>
-                      <a
-                        href={citation.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline flex items-center gap-1 break-all"
-                      >
-                        {citation.url}
-                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                      </a>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {citation.verified !== false && (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      )}
-                      <Badge variant={getAuthorityBadgeColor(citation.authorityScore)}>
-                        Authority: {citation.authorityScore}/10
-                      </Badge>
-                      {citation.diversityScore !== undefined && (
-                        <Badge 
-                          variant={citation.diversityScore >= 80 ? "default" : citation.diversityScore >= 50 ? "secondary" : "outline"}
-                          className={citation.diversityScore >= 80 ? "bg-green-600" : ""}
+              {citations.map((citation, index) => {
+                const isValidating = validatingUrls.has(citation.url);
+                const validation = citation.validation;
+                const validationScore = validation?.validationScore;
+
+                return (
+                  <div
+                    key={index}
+                    className={`border rounded-lg p-4 space-y-2 ${
+                      citation.verified === false ? 'opacity-60 bg-gray-50' : 'bg-white'
+                    }`}
+                  >
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm mb-1">{citation.sourceName}</h4>
+                        <a
+                          href={citation.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1 break-all"
                         >
-                          {citation.usageCount === 0 ? '✨ Unused' : `${citation.usageCount}× used`}
+                          {citation.url}
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {citation.verified !== false && (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        )}
+                        <Badge variant={getAuthorityBadgeColor(citation.authorityScore)}>
+                          Authority: {citation.authorityScore}/10
                         </Badge>
-                      )}
+                        {citation.diversityScore !== undefined && (
+                          <Badge 
+                            variant={citation.diversityScore >= 80 ? "default" : citation.diversityScore >= 50 ? "secondary" : "outline"}
+                            className={citation.diversityScore >= 80 ? "bg-green-600" : ""}
+                          >
+                            {citation.usageCount === 0 ? '✨ Unused' : `${citation.usageCount}× used`}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Description */}
-                  <p className="text-xs text-muted-foreground">{citation.description}</p>
+                    {/* Validation Status Badge */}
+                    {(validation || isValidating || citation.validationStatus) && (
+                      <div className="flex items-center gap-2">
+                        {isValidating ? (
+                          <Badge variant="outline" className="gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Validating...
+                          </Badge>
+                        ) : validation ? (
+                          <>
+                            <Badge 
+                              variant={validation.isValid ? "default" : "destructive"}
+                              className={validation.isValid ? "bg-green-600 gap-1" : "gap-1"}
+                            >
+                              {validation.isValid ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Validated</>
+                              ) : (
+                                <><XCircle className="h-3 w-3" /> Invalid</>
+                              )}
+                            </Badge>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground">Score:</span>
+                                <Progress value={validationScore} className="h-2 w-24" />
+                                <span className="font-medium">{validationScore}/100</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : citation.validationStatus === 'failed' ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            Validation Failed
+                          </Badge>
+                        ) : citation.validationStatus === 'pending' ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Shield className="h-3 w-3" />
+                            Pending Validation
+                          </Badge>
+                        ) : null}
+                      </div>
+                    )}
 
-                  {/* Relevance */}
-                  <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                    <p className="text-xs text-blue-900">
-                      <strong>Why relevant:</strong> {citation.relevance}
-                    </p>
-                  </div>
+                    {/* Description */}
+                    <p className="text-xs text-muted-foreground">{citation.description}</p>
 
-                  {/* Suggested Context */}
-                  <div className="bg-green-50 border border-green-200 rounded p-2">
-                    <p className="text-xs text-green-900">
-                      <strong>💡 Suggested placement:</strong> {citation.suggestedContext}
-                    </p>
-                  </div>
+                    {/* Relevance */}
+                    <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                      <p className="text-xs text-blue-900">
+                        <strong>Why relevant:</strong> {citation.relevance}
+                      </p>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    {onAddCitation && citation.verified !== false && (
+                    {/* Suggested Context */}
+                    <div className="bg-green-50 border border-green-200 rounded p-2">
+                      <p className="text-xs text-green-900">
+                        <strong>💡 Suggested placement:</strong> {citation.suggestedContext}
+                      </p>
+                    </div>
+
+                    {/* Validation Details (Collapsible) */}
+                    {validation && (
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="w-full gap-2 text-xs">
+                            <Shield className="h-3 w-3" />
+                            View Validation Details
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 pt-2">
+                          <Alert className={validation.isValid ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+                            <AlertDescription className="text-xs space-y-2">
+                              <div>
+                                <strong>Explanation:</strong>
+                                <p className="mt-1">{validation.explanation}</p>
+                              </div>
+                              
+                              {validation.keyFactsExtracted.length > 0 && (
+                                <div>
+                                  <strong>Key Facts Found:</strong>
+                                  <ul className="mt-1 list-disc list-inside">
+                                    {validation.keyFactsExtracted.map((fact, i) => (
+                                      <li key={i}>{fact}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              <div>
+                                <strong>Relevance Analysis:</strong>
+                                <p className="mt-1">{validation.relevanceAnalysis}</p>
+                              </div>
+
+                              {validation.recommendations && (
+                                <div className="pt-2 border-t">
+                                  <strong>💡 Recommendations:</strong>
+                                  <p className="mt-1">{validation.recommendations}</p>
+                                </div>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      {onAddCitation && citation.verified !== false && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddCitation(citation)}
+                          disabled={validation && !validation.isValid}
+                        >
+                          Add to Article
+                        </Button>
+                      )}
+                      {targetContext && !validation && !isValidating && citation.validationStatus !== 'failed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => validateCitation(citation)}
+                          className="gap-1"
+                        >
+                          <Shield className="h-3 w-3" />
+                          Validate
+                        </Button>
+                      )}
                       <Button
                         size="sm"
-                        onClick={() => handleAddCitation(citation)}
+                        variant="outline"
+                        onClick={() => handleCopyUrl(citation.url)}
                       >
-                        Add to Article
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy URL
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyUrl(citation.url)}
-                    >
-                      <Copy className="h-3 w-3 mr-1" />
-                      Copy URL
-                    </Button>
-                  </div>
+                    </div>
 
-                  {citation.verified === false && (
-                    <Alert variant="destructive">
-                      <AlertDescription className="text-xs">
-                        ⚠️ This URL could not be verified. Please check accessibility before using.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              ))}
+                    {citation.verified === false && (
+                      <Alert variant="destructive">
+                        <AlertDescription className="text-xs">
+                          ⚠️ This URL could not be verified. Please check accessibility before using.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

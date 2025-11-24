@@ -1,6 +1,15 @@
 // Advanced Citation Discovery with Perplexity AI
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
+export interface CitationValidation {
+  isValid: boolean;
+  validationScore: number;
+  explanation: string;
+  keyFactsExtracted: string[];
+  relevanceAnalysis: string;
+  recommendations?: string;
+}
+
 export interface BetterCitation {
   url: string;
   sourceName: string;
@@ -12,6 +21,8 @@ export interface BetterCitation {
   diversityScore?: number;
   usageCount?: number;
   finalScore?: number;
+  validation?: CitationValidation;
+  validationStatus?: 'pending' | 'validating' | 'validated' | 'failed';
 }
 
 const languageConfig = {

@@ -45,6 +45,9 @@ verify_jwt = false
 [functions.find-better-citations]
 verify_jwt = false
 
+[functions.validate-citation-content]
+verify_jwt = false
+
 [functions.trigger-rebuild]
 verify_jwt = false
 
