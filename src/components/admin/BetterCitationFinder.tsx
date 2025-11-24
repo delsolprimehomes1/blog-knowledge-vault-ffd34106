@@ -547,13 +547,46 @@ export const BetterCitationFinder = ({
                   </Alert>
                 )}
                 
-                {debugInfo.competitorsBlocked > 0 && (
+                {debugInfo.blockingStats && debugInfo.blockingStats.totalBlocked > 0 && (
                   <Alert className="bg-red-50 border-red-200">
                     <XCircle className="h-4 w-4 text-red-800" />
-                    <AlertDescription className="text-red-800">
-                      <div className="font-semibold">
-                        🚫 {debugInfo.competitorsBlocked} competitor source(s) blocked
+                    <AlertDescription>
+                      <h5 className="font-semibold text-red-800 mb-2">
+                        🚫 {debugInfo.blockingStats.totalBlocked} Source(s) Blocked
+                      </h5>
+                      <div className="space-y-1 text-xs text-red-700">
+                        {debugInfo.blockingStats.competitorAgencies > 0 && (
+                          <div>• Competitor Agencies: {debugInfo.blockingStats.competitorAgencies}</div>
+                        )}
+                        {debugInfo.blockingStats.portalListings > 0 && (
+                          <div>• Portal Listings: {debugInfo.blockingStats.portalListings}</div>
+                        )}
+                        {debugInfo.blockingStats.unknownRealEstate > 0 && (
+                          <div>• Unknown Real Estate Sites: {debugInfo.blockingStats.unknownRealEstate}</div>
+                        )}
+                        {debugInfo.blockingStats.heuristicBlocks > 0 && (
+                          <div>• Heuristic Blocks: {debugInfo.blockingStats.heuristicBlocks}</div>
+                        )}
                       </div>
+                      
+                      {debugInfo.blockedSources && debugInfo.blockedSources.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-red-800 font-medium hover:underline">
+                            View Blocked Sources ({debugInfo.blockedSources.length})
+                          </summary>
+                          <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                            {debugInfo.blockedSources.map((source: any, i: number) => (
+                              <div key={i} className="p-2 bg-white rounded border border-red-100">
+                                <div className="font-mono text-xs text-red-600 break-all">{source.domain}</div>
+                                <div className="text-xs text-gray-600 mt-1">{source.reason}</div>
+                                {source.title && source.title !== 'Unknown' && (
+                                  <div className="text-xs text-gray-500 mt-1 italic">{source.title}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
