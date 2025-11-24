@@ -27,54 +27,144 @@ const ALLOWED_DATA_PATHS = [
   '/report/', '/reports/', '/study/', '/studies/', '/analysis/'
 ];
 
-// ============================================
-// COMPREHENSIVE COMPETITOR BLOCKLIST
-// ============================================
-const BLOCKED_DOMAINS = [
-  // International Property Portals
-  'zillow.com', 'realtor.com', 'trulia.com', 'redfin.com',
-  'rightmove.co.uk', 'zoopla.co.uk', 'onthemarket.com', 'primelocation.com',
-  'propertyfinder.com', 'propertypal.com', 'daft.ie', 'myhome.ie',
+// ═══════════════════════════════════════════════════════════════════
+// TIER 1: Individual Real Estate Agencies - BLOCK EVERYTHING
+// ═══════════════════════════════════════════════════════════════════
+const COMPETITOR_AGENCIES = [
+  // Marbella/Costa del Sol agencies (HIGH PRIORITY - direct competitors)
+  'panoramamarbella.com',
+  'panoramaproperties.com',
+  'christopherclover.com',
+  'drumelia.com',
+  'landmar.com',
+  'crystal-shore.com',
+  'marbella-hills.com',
+  'marbellaproperties.com',
+  'costadelsolproperties.com',
+  'inmobiliaria-marbella.com',
+  'viva-estates.com',
+  'inmogolf.com',
+  'habitat-marbella.com',
   
-  // Spanish Property Portals
-  'idealista.com', 'fotocasa.es', 'pisos.com', 'habitaclia.com',
-  'kyero.com', 'thinkspain.com', 'aplaceinthesun.com', 'casas.com',
-  'spanishpropertyinsight.com', 'propertyspain.co.uk', 'spainhouses.net',
-  'spanish-property-centre.com', 'viva-estates.com', 'spanishhomes.com',
+  // International luxury agencies
+  'engel-voelkers.com',
+  'sothebysrealty.com',
+  'knightfrank.com',
+  'savills.com',
+  'christiesrealestate.com',
+  'lucasfox.com',
+  'coldwellbanker.com',
+  'century21.es',
+  're-max.es',
+  'remax.es',
+  'berkshirehathaway.com',
+  'compass.com',
+  'kw.com',
+  'kellerwilliams.com',
   
-  // Costa del Sol Specific Real Estate
-  'costadelsolproperties.com', 'marbellaproperties.com',
-  'marbella-realestate.com', 'costa-del-sol-properties.com',
-  'mijas-property.com', 'fuengirola-property.com',
-  'estepona-properties.com', 'benalmadena-property.com',
-  'nerja-property.com', 'torrox-property.com',
-  'marbella.es', 'costadelsol.com', 'marbellaeast.com',
-  'nuevaandalucia.com', 'goldenmileproperty.com',
-  'puerto-banus.com', 'sotogrande-property.com',
+  // Spanish agency chains
+  'gilmar.es',
+  'promora.es',
+  'solvia.es',
+  'oi-realtor.com',
+  'housers.com',
   
-  // Real Estate Agencies (Spain/International)
-  'solvilla.com', 'viva-estates.com', 'panorama-estates.com',
-  'inmobilia.com', 'garu-garu.com', 'terra-meridiana.com',
-  'gilmar.es', 'housers.com', 'engel-voelkers.com',
-  'lucasfox.com', 'coldwellbanker.com', 'century21.com',
-  'remax.com', 're-max.com', 'sothebysrealty.com',
-  'knightfrank.com', 'savills.com', 'christiesrealestate.com',
-  'berkshirehathaway.com', 'kw.com', 'kellerwilliams.com',
+  // Property investment sites (masquerading as agencies)
+  'propertyinvestment.com',
+  'buyspanishproperty.com',
+  'investinspain.com',
+  'spanish-property-investment.com',
   
-  // Property Investment Sites
-  'propertyinvestment.com', 'investproperty.com', 'buyspanishproperty.com',
-  'investinspain.com', 'spanish-property-investment.com',
-  'international-property-investment.com',
-  
-  // Property Listing Aggregators
-  'mitula.com', 'trovit.com', 'nestoria.com', 'realtor.com',
-  'homes.com', 'point2homes.com', 'homefinder.com',
-  
-  // Developer Websites (Generic patterns will catch most)
-  'taylor-wimpey.es', 'metrovacesa.com', 'aedas-homes.com',
-  'neinor.com', 'habitat-inmobiliaria.com',
+  // UK/International property portals focused on listings
+  'aplaceinthesun.com',
+  'kyero.com',
+  'thinkspain.com',
+  'spanish-property.com',
+  'propertyguides.com',
+  'spainhouses.net',
+  'spanishproperties.com',
+  'spanishhomes.com',
+  'spanish-property-centre.com',
 ];
 
+// ═══════════════════════════════════════════════════════════════════
+// TIER 2: Property Portals/Aggregators - ALLOW only statistical pages
+// ═══════════════════════════════════════════════════════════════════
+const PORTAL_AGGREGATORS = [
+  'idealista.com',
+  'fotocasa.es',
+  'habitaclia.com',
+  'pisos.com',
+  'nuroa.es',
+  'yaencontre.com',
+  'trovit.es',
+  'mitula.es',
+  'nestoria.es',
+  'properstar.com',
+  
+  // International equivalents (for cross-border comparisons)
+  'rightmove.co.uk',
+  'zoopla.co.uk',
+  'onthemarket.com',
+  'immobiliare.it',
+  'immoweb.be',
+  'funda.nl',
+  'zillow.com',
+  'realtor.com',
+  'trulia.com',
+  'redfin.com',
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// TIER 3: Always Allowed - Government, Official Stats, Reputable News
+// ═══════════════════════════════════════════════════════════════════
+const ALWAYS_ALLOWED_DOMAINS = [
+  // Spanish government (HIGHEST TRUST)
+  'gob.es',
+  'ine.es',
+  'boe.es',
+  'bde.es',
+  'catastro.meh.es',
+  'registradores.org',
+  
+  // International government
+  'gov.uk',
+  'ons.gov.uk',
+  'gov.ie',
+  'gov.de',
+  'gov.fr',
+  'gov.nl',
+  'gov.pl',
+  'gov.se',
+  'gov.dk',
+  
+  // European Union
+  'europa.eu',
+  'eurostat.ec.europa.eu',
+  
+  // International organizations
+  'worldbank.org',
+  'oecd.org',
+  'imf.org',
+  'un.org',
+  
+  // Reputable news (NOT real estate focused)
+  'elpais.com',
+  'elmundo.es',
+  'lavanguardia.com',
+  'expansion.com',
+  'cincodias.elpais.com',
+  'theguardian.com',
+  'bbc.com',
+  'bbc.co.uk',
+  'ft.com',
+  'reuters.com',
+  'bloomberg.com',
+  'economist.com',
+  'wsj.com',
+];
+
+// Legacy patterns kept for backward compatibility but not actively used
 const BLOCKED_URL_PATTERNS = [
   '/property/', '/properties/', '/real-estate/', '/realestate/',
   '/homes/', '/villas/', '/apartments/', '/for-sale/', '/forsale/',
@@ -163,209 +253,150 @@ function extractClaimsNeedingCitations(content: string): Claim[] {
 // ============================================
 // CHECK IF URL IS A COMPETITOR (TIER 1 ENHANCED)
 // ============================================
-function isCompetitorUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.toLowerCase();
-    const pathname = urlObj.pathname.toLowerCase();
-    const fullUrl = url.toLowerCase();
+function isCompetitorUrl(url: string, domain: string): { 
+  isBlocked: boolean; 
+  reason: string; 
+  blockType?: 'agency' | 'portal_listing' | 'unknown_realestate' | 'heuristic';
+} {
+  const urlLower = url.toLowerCase();
+  const domainLower = domain.toLowerCase();
+  
+  console.log(`\n🔍 Evaluating: ${domain}`);
+  
+  // ═══════════════════════════════════════════════
+  // STEP 1: ALWAYS ALLOWED (Highest Priority)
+  // ═══════════════════════════════════════════════
+  const isAlwaysAllowed = ALWAYS_ALLOWED_DOMAINS.some(allowed => 
+    domainLower.includes(allowed) || allowed.includes(domainLower)
+  );
+  
+  if (isAlwaysAllowed) {
+    console.log(`✅ TIER 3 ALLOWED: Government/Official source`);
+    return { isBlocked: false, reason: 'Government/Official source' };
+  }
+  
+  // ═══════════════════════════════════════════════
+  // STEP 2: COMPETITOR AGENCIES (Block Everything)
+  // ═══════════════════════════════════════════════
+  const isCompetitorAgency = COMPETITOR_AGENCIES.some(competitor => 
+    domainLower.includes(competitor) || competitor.includes(domainLower)
+  );
+  
+  if (isCompetitorAgency) {
+    console.log(`❌ TIER 1 BLOCKED: Individual real estate agency`);
+    return { 
+      isBlocked: true, 
+      reason: `Competitor real estate agency: ${domain}`,
+      blockType: 'agency'
+    };
+  }
+  
+  // ═══════════════════════════════════════════════
+  // STEP 3: PORTAL AGGREGATORS (Conditional)
+  // ═══════════════════════════════════════════════
+  const isPortalAggregator = PORTAL_AGGREGATORS.some(portal => 
+    domainLower.includes(portal) || portal.includes(domainLower)
+  );
+  
+  if (isPortalAggregator) {
+    // Check if URL has statistical/research path
+    const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
+      urlLower.includes(path)
+    );
     
-    // 🎯 TIER 1: Enhanced semantic detection of market reports/statistics
-    // Check for statistical/research path patterns
-    const isDataPath = ALLOWED_DATA_PATHS.some(path => pathname.includes(path));
-    
-    // Check for semantic markers of market reports (even without specific paths)
+    // Enhanced market report detection
     const marketReportPatterns = [
       /informe[-_]?mercado/i,
       /market[-_]?report/i,
       /informe[-_]?precios/i,
       /price[-_]?report/i,
+      /price[-_]?index/i,
       /market[-_]?analysis/i,
       /analisis[-_]?mercado/i,
       /estadisticas[-_]?inmobiliarias/i,
-      /real[-_]?estate[-_]?statistics/i,
-      /housing[-_]?market/i,
-      /mercado[-_]?inmobiliario/i,
-      /property[-_]?trends/i,
-      /tendencias[-_]?inmobiliarias/i,
+      /tendencias[-_]?mercado/i,
+      /market[-_]?trends/i,
     ];
     
-    const hasMarketReportIndicators = marketReportPatterns.some(pattern => 
-      pattern.test(fullUrl)
+    const hasMarketReportPattern = marketReportPatterns.some(pattern => 
+      pattern.test(urlLower)
     );
     
-    // Check if URL is in news/analysis section (common for market reports)
-    const isNewsOrAnalysisSection = 
-      pathname.includes('/news/') ||
-      pathname.includes('/noticias/') ||
-      pathname.includes('/inmobiliario/') ||
-      pathname.includes('/analisis/') ||
-      pathname.includes('/analysis/') ||
-      pathname.includes('/research/') ||
-      pathname.includes('/investigacion/');
-    
-    // Allow if it's a statistical page OR has market report indicators + is in news/analysis
-    if (isDataPath || (hasMarketReportIndicators && isNewsOrAnalysisSection)) {
-      console.log(`   ✅ TIER 1 ALLOWED: Market report/statistical page detected: ${url}`);
-      console.log(`      - Data path match: ${isDataPath}`);
-      console.log(`      - Market report indicators: ${hasMarketReportIndicators}`);
-      console.log(`      - News/analysis section: ${isNewsOrAnalysisSection}`);
-      return false; // ALLOW statistical content
+    if (hasStatisticalPath || hasMarketReportPattern) {
+      console.log(`✅ TIER 2 ALLOWED: Portal aggregator statistical page`);
+      console.log(`   - Statistical path: ${hasStatisticalPath}`);
+      console.log(`   - Market report pattern: ${hasMarketReportPattern}`);
+      return { isBlocked: false, reason: 'Portal aggregator market report' };
+    } else {
+      console.log(`❌ TIER 2 BLOCKED: Portal listing page (not statistical)`);
+      return { 
+        isBlocked: true, 
+        reason: `Portal listing page: ${domain}`,
+        blockType: 'portal_listing'
+      };
     }
-    
-    // Check blocked domains (but market reports already allowed above)
-    for (const blocked of BLOCKED_DOMAINS) {
-      if (hostname.includes(blocked.toLowerCase())) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: Domain "${blocked}" (${url})`);
-        return true;
-      }
-    }
-    
-    // Check URL path for property listing keywords
-    for (const pattern of BLOCKED_URL_PATTERNS) {
-      if (pathname.includes(pattern) || fullUrl.includes(pattern)) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: Pattern "${pattern}" in URL`);
-        return true;
-      }
-    }
-    
-    // Check hostname for real estate keywords
-    for (const keyword of BLOCKED_DOMAIN_KEYWORDS) {
-      if (hostname.includes(keyword)) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: Keyword "${keyword}" in domain`);
-        return true;
-      }
-    }
-    
-    return false;
-    
-  } catch (e) {
-    console.warn(`   ⚠️ Invalid URL format: ${url}`);
-    return true; // Block invalid URLs
-  }
-}
-
-// ============================================
-// VALIDATE CITATION SPECIFICITY (TIER 3 ENHANCED)
-// ============================================
-function validateCitationSpecificity(citation: any, claim: string): boolean {
-  console.log(`   🔍 Validating specificity for: ${citation.sourceName}`);
-  
-  // Extract keywords from claim
-  const claimKeywords = claim
-    .toLowerCase()
-    .replace(/[^\w\sáéíóúñü]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 3);
-  
-  const relevanceText = citation.relevance.toLowerCase();
-  const urlLower = citation.url.toLowerCase();
-  
-  // Count keyword matches in relevance and URL
-  const relevanceMatches = claimKeywords.filter(keyword => 
-    relevanceText.includes(keyword)
-  );
-  const urlMatches = claimKeywords.filter(keyword => 
-    urlLower.includes(keyword)
-  );
-  
-  const relevanceMatchPercent = claimKeywords.length > 0 
-    ? (relevanceMatches.length / claimKeywords.length) * 100 
-    : 0;
-  
-  // 🎯 TIER 3: Multi-tier validation with fallback scoring
-  
-  // Tier 1: Perfect match (URL + description contain keywords)
-  if (urlMatches.length >= 2 && relevanceMatches.length >= 2) {
-    console.log(`   ✅ TIER 3.1 PASSED: Perfect match (${urlMatches.length} URL keywords, ${relevanceMatches.length} relevance keywords)`);
-    return true;
   }
   
-  // Tier 2: Strong relevance (high scores + some keywords)
-  if (citation.authorityScore >= 90 && 
-      citation.specificityScore >= 80 &&
-      (urlMatches.length >= 1 || relevanceMatches.length >= 2)) {
-    console.log(`   ✅ TIER 3.2 PASSED: Strong relevance (Authority: ${citation.authorityScore}, Specificity: ${citation.specificityScore})`);
-    return true;
-  }
+  // ═══════════════════════════════════════════════
+  // STEP 4: HEURISTIC DETECTION (Unknown Domains)
+  // ═══════════════════════════════════════════════
+  console.log(`⚠️ UNKNOWN DOMAIN: Applying heuristics...`);
   
-  // Tier 3: Fallback for high-authority sources (government/statistical)
-  if (citation.authorityScore >= 95) {
-    console.log(`   ⚠️ TIER 3.3 PASSED: High-authority source despite low specificity match (Authority: ${citation.authorityScore})`);
-    return true;
-  }
-  
-  // Traditional validation for lower authority sources
-  if (relevanceMatchPercent < 40) {
-    console.warn(`   ❌ FAILED: Relevance doesn't mention claim keywords (${relevanceMatchPercent.toFixed(1)}% match, need 40%+)`);
-    return false;
-  }
-  
-  // URL specificity check
-  try {
-    const url = new URL(citation.url);
-    const path = url.pathname;
-    
-    const isHomepage = 
-      path === '/' ||
-      path === '/index.html' ||
-      path === '/index.php' ||
-      path === '/home' ||
-      path.match(/^\/(en|es|de|nl|fr|pl|sv|da|hu)\/?$/);
-    
-    if (isHomepage) {
-      console.warn(`   ❌ FAILED: URL is homepage (not specific): ${citation.url}`);
-      return false;
-    }
-    
-    // Check for statistical/research path (from TIER 1)
-    const isDataPath = ALLOWED_DATA_PATHS.some(p => path.includes(p));
-    
-    const hasSpecificPath = 
-      isDataPath ||
-      path.length > 15 ||
-      path.includes('data') ||
-      path.includes('statistics') ||
-      path.includes('estadisticas') ||
-      path.includes('report') ||
-      path.includes('informe') ||
-      path.includes('research') ||
-      path.includes('investigacion') ||
-      path.includes('article') ||
-      path.includes('articulo') ||
-      /\d{4}/.test(path);
-    
-    if (!hasSpecificPath) {
-      console.warn(`   ❌ FAILED: URL path too generic: ${path}`);
-      return false;
-    }
-    
-  } catch (e) {
-    console.warn(`   ❌ FAILED: Invalid URL: ${citation.url}`);
-    return false;
-  }
-  
-  // Check for evidence language
-  const evidenceKeywords = [
-    'data', 'statistics', 'report', 'study', 'research',
-    'datos', 'estadísticas', 'informe', 'estudio', 'investigación',
-    'shows', 'indicates', 'reveals', 'states', 'confirms',
-    'muestra', 'indica', 'revela', 'afirma', 'confirma',
-    'government', 'official', 'gobierno', 'oficial',
-    'according to', 'según'
+  // Real estate keyword detection
+  const realEstateKeywords = [
+    'property', 'properties', 'real-estate', 'realestate', 
+    'inmobiliaria', 'inmobiliarias',
+    'homes', 'houses', 'villas', 'apartments',
+    'estate', 'estates', 'realtor', 'realtors',
+    'marbella', 'costa-del-sol', 'costadelsol',
+    'casas', 'pisos', 'viviendas'
   ];
   
-  const hasEvidenceLanguage = evidenceKeywords.some(keyword => 
-    relevanceText.includes(keyword)
-  ) || /\d+%|\d+\s*(million|thousand|millón|mil)/.test(relevanceText);
+  const hasRealEstateKeyword = realEstateKeywords.some(keyword => 
+    domainLower.includes(keyword)
+  );
   
-  if (!hasEvidenceLanguage) {
-    console.warn(`   ❌ FAILED: Relevance doesn't indicate specific data/evidence`);
-    return false;
+  if (hasRealEstateKeyword) {
+    // Check if it has statistical indicators
+    const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
+      urlLower.includes(path)
+    );
+    
+    if (hasStatisticalPath) {
+      console.log(`⚠️ SOFT ALLOW: Real estate domain with statistical path (NEEDS REVIEW)`);
+      return { 
+        isBlocked: false, 
+        reason: 'Unknown real estate site with statistical path - needs manual review'
+      };
+    } else {
+      console.log(`❌ HEURISTIC BLOCKED: Real estate keyword in domain, no statistical path`);
+      return { 
+        isBlocked: true, 
+        reason: `Likely competitor (real estate keyword in domain): ${domain}`,
+        blockType: 'unknown_realestate'
+      };
+    }
   }
   
-  console.log(`   ✅ PASSED: Citation is specific and relevant (${relevanceMatchPercent.toFixed(1)}% keyword match)`);
-  return true;
+  // ═══════════════════════════════════════════════
+  // STEP 5: SAFE BY DEFAULT (Generic Domains)
+  // ═══════════════════════════════════════════════
+  const hasStatisticalPath = ALLOWED_DATA_PATHS.some(path => 
+    urlLower.includes(path)
+  );
+  
+  if (hasStatisticalPath) {
+    console.log(`✅ ALLOWED: Generic domain with statistical path`);
+    return { isBlocked: false, reason: 'Generic site with statistical content' };
+  }
+  
+  // Final fallback: Be cautious with unknown domains
+  console.log(`❌ DEFAULT BLOCK: Unknown domain with no clear indicators`);
+  return { 
+    isBlocked: true, 
+    reason: `Unknown domain without statistical indicators: ${domain}`,
+    blockType: 'heuristic'
+  };
 }
 
 // ============================================
@@ -404,7 +435,7 @@ async function findCitationWithPerplexity(
   language: string,
   approvedDomains: string[],
   articleTopic: string
-): Promise<Citation | null> {
+): Promise<any> {
   
   console.log(`🔍 Perplexity search for: "${claim.substring(0, 100)}..."`);
   
@@ -526,33 +557,31 @@ If no suitable source exists, return:
     const citation = citationData.citation;
     const domain = new URL(citation.url).hostname.replace('www.', '');
     
-    // Validate domain
+    // Check if competitor (enhanced with reason tracking)
+    const competitorCheck = isCompetitorUrl(citation.url, domain);
+
+    if (competitorCheck.isBlocked) {
+      console.log(`❌ BLOCKED: ${competitorCheck.reason}`);
+      
+      // Return block info for diagnostics (instead of null)
+      return {
+        blocked: true,
+        url: citation.url,
+        domain: domain,
+        blockReason: competitorCheck.reason,
+        blockType: competitorCheck.blockType,
+        title: citation.title || 'Unknown'
+      };
+    }
+    
+    // Validate domain approval
     const isApproved = approvedDomains.some(approved => 
       domain.includes(approved) || approved.includes(domain)
     );
-    
-    // Allow statistical/research paths even if domain not pre-approved
-    const statisticalPaths = [
-      '/informes/', '/estadisticas/', '/market-report', '/datos/',
-      '/statistics/', '/research/', '/estudios/', '/analisis-mercado',
-      '/price-index', '/market-analysis', '/inmobiliario'
-    ];
-    
-    const hasStatisticalPath = statisticalPaths.some(path => 
-      citation.url.toLowerCase().includes(path)
-    );
 
-    if (!isApproved && !hasStatisticalPath) {
-      // Check if competitor
-      if (isCompetitorUrl(citation.url)) {
-        console.log(`❌ COMPETITOR BLOCKED: ${domain}`);
-        return null;
-      }
-      console.log(`⚠️ Domain ${domain} not in approved list but not a competitor`);
-    }
-
-    if (hasStatisticalPath) {
-      console.log(`✅ ALLOWED: Statistical/research page from ${domain}`);
+    // If not in approved list but not blocked, flag for review
+    if (!isApproved) {
+      console.log(`⚠️ Domain ${domain} not in approved list but not blocked - FLAGGING FOR REVIEW`);
     }
 
     // Calculate authority score (1-10)
@@ -648,12 +677,20 @@ serve(async (req) => {
       );
     }
 
-    const citations: Citation[] = [];
-    const softMatches: Citation[] = []; // TIER 3: Soft matches for manual review
+    const citations: any[] = [];
+    const softMatches: any[] = [];
     const maxClaims = Math.min(claims.length, 5); // Limit to 5 citations
     let competitorsBlocked = 0;
     let specificityRejections = 0;
     let jsonParseFailures = 0;
+    
+    const blockedSources: Array<{
+      url: string;
+      domain: string;
+      blockReason: string;
+      blockType?: string;
+      title: string;
+    }> = [];
 
     console.log(`🎯 Processing ${maxClaims} claims...\n`);
 
@@ -679,6 +716,20 @@ serve(async (req) => {
           );
 
           if (citation) {
+            // Check if this is a blocked citation
+            if (citation.blocked) {
+              blockedSources.push({
+                url: citation.url,
+                domain: citation.domain,
+                blockReason: citation.blockReason,
+                blockType: citation.blockType,
+                title: citation.title
+              });
+              competitorsBlocked++;
+              console.log(`⏭️ Blocked: ${citation.blockReason}`);
+              continue; // Try next sub-claim
+            }
+            
             // Check for duplicates
             const isDuplicate = citations.some(c => c.url === citation.url);
             if (isDuplicate) {
@@ -845,6 +896,31 @@ serve(async (req) => {
           timeElapsed: `${elapsed}s`,
           successRate: `${((citations.length/maxClaims)*100).toFixed(1)}%`,
           apiUsed: 'Perplexity Sonar-Pro',
+          
+          // Detailed blocking breakdown
+          blockingStats: {
+            totalBlocked: blockedSources.length,
+            competitorAgencies: blockedSources.filter(s => s.blockType === 'agency').length,
+            portalListings: blockedSources.filter(s => s.blockType === 'portal_listing').length,
+            unknownRealEstate: blockedSources.filter(s => s.blockType === 'unknown_realestate').length,
+            heuristicBlocks: blockedSources.filter(s => s.blockType === 'heuristic').length,
+          },
+          
+          // List of blocked sources with reasons
+          blockedSources: blockedSources.map(s => ({
+            url: s.url,
+            domain: s.domain,
+            reason: s.blockReason,
+            blockType: s.blockType,
+            title: s.title
+          })).slice(0, 10), // Limit to first 10 for readability
+          
+          softMatchDetails: softMatches.length > 0 ? softMatches.map(s => ({
+            url: s.url,
+            domain: new URL(s.url).hostname.replace('www.', ''),
+            relevanceScore: s.specificityScore,
+            reason: 'Needs manual review - lower specificity'
+          })) : []
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
