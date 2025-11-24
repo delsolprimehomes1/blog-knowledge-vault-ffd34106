@@ -100,11 +100,9 @@ const RESEARCH_PATHS = [
 
 // Tier mapping for database results
 const TIER_NAMES: { [key: string]: string } = {
-  'premium': 'Premium/Government Sources',
-  'government': 'Government & Official Statistics',
-  'research': 'Research & Aggregators',
-  'news': 'News & Media',
-  'academic': 'Academic & International',
+  'tier_1': 'Tier 1: Premium & Government',
+  'tier_2': 'Tier 2: News & Research',
+  'tier_3': 'Tier 3: Academic & International',
   'portal': 'Portals & General',
 };
 
@@ -272,7 +270,7 @@ async function findCitationWithTieredSearch(
   }
   
   const chunks: Chunk[] = [];
-  const tierOrder = ['premium', 'government', 'research', 'news', 'academic', 'portal'];
+  const tierOrder = ['tier_1', 'tier_2', 'tier_3', 'portal'];
   
   for (const tier of tierOrder) {
     const domains = domainsByTier[tier];
