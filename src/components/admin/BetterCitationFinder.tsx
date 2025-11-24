@@ -93,6 +93,8 @@ export const BetterCitationFinder = ({
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(0);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const { toast } = useToast();
 
   // Enhancement 5: Auto-sync every 10 citations
@@ -164,6 +166,18 @@ export const BetterCitationFinder = ({
 
   const handleFindCitations = async (retrySearch?: SearchHistoryItem) => {
     setIsSearching(true);
+    setSearchProgress(0);
+    
+    // Create abort controller for timeout and cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+    
+    // Start progress animation
+    const progressInterval = setInterval(() => {
+      setSearchProgress(prev => Math.min(prev + 1.5, 90)); // Cap at 90% until complete
+    }, 1000);
+    
     try {
       const searchTopic = retrySearch?.articleTopic || articleTopic;
       const searchContext = retrySearch?.targetContext || targetContext;
@@ -175,14 +189,26 @@ export const BetterCitationFinder = ({
           articleContent: articleContent,
           currentCitations,
           targetContext: searchContext,
-        }
+        },
       });
 
+      clearTimeout(timeoutId);
+      clearInterval(progressInterval);
+      setSearchProgress(100);
+      
       if (error) {
+        if (error.name === 'AbortError') {
+          toast({
+            title: "Search Timeout",
+            description: "Search took longer than 3 minutes. This may indicate issues with the search. Please try again with a simpler topic or fewer claims.",
+            variant: "destructive",
+          });
+          return;
+        }
         if (error.message?.includes('429') || data?.error === 'QUOTA_EXHAUSTED') {
           toast({
             title: "API Quota Exhausted",
-            description: data?.userMessage || "Gemini API quota exhausted. Please wait a few minutes or check your API key quota.",
+            description: data?.userMessage || "Perplexity API quota exhausted. Please wait a few minutes or check your API key quota.",
             variant: "destructive",
           });
           return;
@@ -306,13 +332,30 @@ export const BetterCitationFinder = ({
       }
     } catch (error: any) {
       console.error('Citation search error:', error);
-      toast({
-        title: "Search Failed",
-        description: error.message || "Failed to find citations",
-        variant: "destructive",
-      });
+      clearInterval(progressInterval);
+      setSearchProgress(0);
+      
+      if (error.name !== 'AbortError') {
+        toast({
+          title: "Search Failed",
+          description: error.message || "Failed to find citations",
+          variant: "destructive",
+        });
+      }
     } finally {
+      clearTimeout(timeoutId);
+      clearInterval(progressInterval);
       setIsSearching(false);
+      setAbortController(null);
+    }
+  };
+  
+  const handleCancelSearch = () => {
+    if (abortController) {
+      abortController.abort();
+      toast({
+        description: "Search cancelled",
+      });
     }
   };
 
@@ -636,40 +679,73 @@ export const BetterCitationFinder = ({
         )}
 
         {/* Main action buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={() => handleFindCitations()}
-            disabled={isSearching || !articleTopic || !articleContent}
-            className="gap-2 flex-1"
-          >
-            {isSearching ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Find Better Citations
-              </>
-            )}
-          </Button>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleFindCitations()}
+              disabled={isSearching || !articleTopic || !articleContent}
+              className="gap-2 flex-1"
+            >
+              {isSearching ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Find Better Citations
+                </>
+              )}
+            </Button>
 
-          {/* Enhancement 5: Manual sync button */}
-          <Button
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            {isSyncing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Database className="h-4 w-4" />
-            )}
-            Auto-Approve Domains
-          </Button>
+            {/* Enhancement 5: Manual sync button */}
+            <Button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Database className="h-4 w-4" />
+              )}
+              Auto-Approve Domains
+            </Button>
+          </div>
+          
+          {/* Progress indicator during search */}
+          {isSearching && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Progress value={searchProgress} className="flex-1 mr-3" />
+                <span className="text-sm font-medium text-muted-foreground">{Math.round(searchProgress)}%</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <div className="font-medium mb-1">⚡ Parallel tiered search in progress...</div>
+                <div className="text-[10px] opacity-75">
+                  Batch 1: Government → Batch 2: Aggregators → Batch 3: News → Batch 4: International
+                </div>
+              </div>
+              <Alert className="py-2">
+                <Clock className="h-3 w-3" />
+                <AlertDescription className="text-xs">
+                  This may take 30-90 seconds. Processing 3 claims simultaneously for speed.
+                </AlertDescription>
+              </Alert>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCancelSearch}
+                className="w-full"
+              >
+                <XCircle className="mr-2 h-3 w-3" />
+                Cancel Search
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Enhancement 3: Search history */}
