@@ -323,12 +323,22 @@ export const BetterCitationFinder = ({
 
       // Enhancement 1: Parallel validation if target context is provided
       if (searchContext && citationsWithPlacement.length > 0) {
-        toast({
-          title: "Auto-validating in parallel...",
-          description: "Checking all citations simultaneously",
-        });
-        
-        await validateCitations(citationsWithPlacement);
+        try {
+          toast({
+            title: "Auto-validating in parallel...",
+            description: "Checking all citations simultaneously",
+          });
+          
+          await validateCitations(citationsWithPlacement);
+        } catch (validationError) {
+          console.error('Validation failed, but citations were found:', validationError);
+          toast({
+            title: "Citations Found (Validation Skipped)",
+            description: `Found ${citationsWithPlacement.length} sources, but validation failed. You can manually verify them.`,
+            variant: "default",
+          });
+          // Continue execution - citations are already in state
+        }
       }
     } catch (error: any) {
       console.error('Citation search error:', error);
