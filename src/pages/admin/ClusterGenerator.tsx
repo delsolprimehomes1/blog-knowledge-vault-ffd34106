@@ -14,7 +14,7 @@ import { ClusterReviewInterface } from "@/components/cluster-review/ClusterRevie
 import { BlogArticle } from "@/types/blog";
 import { validateAllArticles } from "@/lib/linkValidation";
 
-type Language = 'en' | 'es' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu';
+type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu';
 
 type StepStatus = 'pending' | 'running' | 'complete';
 
@@ -27,7 +27,6 @@ interface GenerationStep {
 
 const languageOptions = [
   { value: 'en', label: '🇬🇧 English', name: 'English' },
-  { value: 'es', label: '🇪🇸 Spanish', name: 'Spanish' },
   { value: 'de', label: '🇩🇪 German', name: 'German' },
   { value: 'nl', label: '🇳🇱 Dutch', name: 'Dutch' },
   { value: 'fr', label: '🇫🇷 French', name: 'French' },
