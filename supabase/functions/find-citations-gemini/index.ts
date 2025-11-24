@@ -307,16 +307,6 @@ async function findCitationWithTieredSearch(
     
     totalDomainsSearched += chunk.domains.length;
     
-    // Filter domains by language (keep government sources)
-    const languageFilteredDomains = filterDomainsByLanguage(chunk.domains, language);
-    
-    if (languageFilteredDomains.length === 0) {
-      console.log(`⏭️ Skipping chunk - no domains match language filter`);
-      continue;
-    }
-    
-    console.log(`🌍 Language-filtered to: ${languageFilteredDomains.length} domains`);
-    
     // Construct search query
     const searchQuery = `
 Find an authoritative ${language} source from ONLY these approved domains that verifies this claim:
@@ -326,7 +316,7 @@ Find an authoritative ${language} source from ONLY these approved domains that v
 Article context: ${articleTopic}
 
 CRITICAL REQUIREMENTS:
-1. Source MUST be from one of these ${languageFilteredDomains.length} domains ONLY: ${languageFilteredDomains.join(', ')}
+1. Source MUST be from one of these ${chunk.domains.length} domains ONLY: ${chunk.domains.join(', ')}
 2. Do NOT use any other domains, even if they seem relevant
 3. Language: ${language}
 4. Must contain specific data, statistics, or official information
@@ -376,7 +366,7 @@ If NO suitable source exists, return:
           max_tokens: 1000,
           return_citations: true,
           search_recency_filter: "month",
-          search_domain_filter: languageFilteredDomains
+          search_domain_filter: chunk.domains
         })
       });
 
@@ -385,7 +375,7 @@ If NO suitable source exists, return:
         searchAttempts.push({
           chunk: chunkLabel,
           tier: chunk.tier,
-          domains: languageFilteredDomains.length,
+          domains: chunk.domains.length,
           found: false,
           reason: `API error ${response.status}`
         });
@@ -409,7 +399,7 @@ If NO suitable source exists, return:
           searchAttempts.push({
             chunk: chunkLabel,
             tier: chunk.tier,
-            domains: languageFilteredDomains.length,
+            domains: chunk.domains.length,
             found: false,
             reason: 'JSON parse error'
           });
@@ -422,7 +412,7 @@ If NO suitable source exists, return:
         chunk: chunkLabel,
         tier: chunk.tier,
         tierName: chunk.tierName,
-        domains: languageFilteredDomains.length,
+        domains: chunk.domains.length,
         found: citationData?.citation ? true : false,
         reason: citationData?.reason
       });
@@ -439,7 +429,7 @@ If NO suitable source exists, return:
       const domain = new URL(citation.url).hostname.replace('www.', '');
       
       // Verify domain is from this chunk
-      const isFromThisChunk = languageFilteredDomains.some(d => 
+      const isFromThisChunk = chunk.domains.some(d => 
         domain.includes(d) || d.includes(domain)
       );
       
@@ -494,7 +484,7 @@ If NO suitable source exists, return:
       searchAttempts.push({
         chunk: chunkLabel,
         tier: chunk.tier,
-        domains: languageFilteredDomains.length,
+        domains: chunk.domains.length,
         found: false,
         reason: error instanceof Error ? error.message : 'Unknown error'
       });
