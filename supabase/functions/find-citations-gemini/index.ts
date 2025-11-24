@@ -7,6 +7,16 @@ const corsHeaders = {
 };
 
 // ============================================
+// PERPLEXITY API CONFIGURATION
+// ============================================
+const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+const PERPLEXITY_BASE_URL = 'https://api.perplexity.ai/chat/completions';
+
+if (!PERPLEXITY_API_KEY) {
+  console.warn('⚠️ PERPLEXITY_API_KEY not found - citation search will fail');
+}
+
+// ============================================
 // TIER 1: ALLOWED STATISTICAL/RESEARCH PATHS
 // ============================================
 // Allow data/research pages even from property portals
@@ -359,247 +369,210 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
 }
 
 // ============================================
-// FIND CITATION FOR SPECIFIC CLAIM
+// CLAIM DECOMPOSITION HELPER
 // ============================================
-async function findCitationForClaim(
-  claim: string,
-  context: string,
-  language: string,
-  headline: string,
-  approvedDomains: string[]
-): Promise<Citation | null> {
+function decomposeComplexClaim(claim: string): string[] {
+  // Check if claim has multiple elements
+  const hasMultipleElements = 
+    (claim.match(/,/g) || []).length >= 2 ||
+    (claim.match(/ and /gi) || []).length >= 2 ||
+    claim.split(' ').length > 20;
   
-  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!openaiApiKey) {
-    throw new Error('OPENAI_API_KEY not configured');
+  if (!hasMultipleElements) {
+    return [claim];
   }
   
-  const languageMap: Record<string, string> = {
-    'en': 'English',
-    'es': 'Spanish',
-    'de': 'German',
-    'nl': 'Dutch',
-    'fr': 'French',
-    'pl': 'Polish',
-    'sv': 'Swedish',
-    'da': 'Danish',
-    'hu': 'Hungarian',
-  };
+  // Split by commas and "and"
+  const elements = claim
+    .split(/,\s*(?:and\s+)?|\s+and\s+/i)
+    .map(part => part.trim())
+    .filter(part => part.length > 15); // Ignore very short fragments
   
-  const preferredSources: Record<string, string> = {
-    'en': 'Government (.gov), Education (.edu), Research institutions, Major news organizations',
-    'es': 'Gobierno (.gob.es, ministerios), Educación (.edu.es), INE (ine.es), Banco de España, Grandes medios (El País, El Mundo)',
-    'de': 'Regierung (.de), Bildungseinrichtungen, Forschungsinstitute, Große Medien',
-    'nl': 'Overheid (.nl), Onderwijsinstellingen, Onderzoeksinstellingen, Grote media',
-    'fr': 'Gouvernement (.gouv.fr), Éducation, Instituts de recherche, Grands médias',
-  };
+  if (elements.length > 1) {
+    console.log(`🔍 Decomposed complex claim into ${elements.length} sub-claims`);
+    return elements;
+  }
   
-  const targetLang = languageMap[language] || 'English';
-  const preferredSourceTypes = preferredSources[language] || preferredSources['en'];
-  
-  const prompt = `You are a research expert finding ONE authoritative citation for a SPECIFIC CLAIM.
-
-**ARTICLE TITLE:** "${headline}"
-**LANGUAGE REQUIRED:** ${targetLang}
-
-**SPECIFIC CLAIM THAT NEEDS PROOF:**
-"${claim}"
-
-**SURROUNDING CONTEXT:**
-${context}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 CRITICAL REQUIREMENTS - READ CAREFULLY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. ✅ Source MUST directly prove THIS EXACT CLAIM (not just the general topic)
-2. ✅ Source MUST be in ${targetLang} language
-3. ✅ Source MUST be authoritative: ${preferredSourceTypes}
-4. ✅ URL MUST link to a SPECIFIC PAGE with this data (NOT homepage)
-
-5. ❌ ABSOLUTELY NO real estate company websites
-6. ❌ ABSOLUTELY NO property listing sites
-7. ❌ ABSOLUTELY NO companies selling Costa del Sol property
-8. ❌ ABSOLUTELY NO real estate agencies
-9. ❌ ABSOLUTELY NO property portals (idealista, fotocasa, kyero, etc.)
-10. ❌ ABSOLUTELY NO developer websites
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ GOOD SOURCE EXAMPLES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Claim: "Property prices rose 15% in 2023"
-✅ GOOD: ine.es/estadisticas/mercado-inmobiliario/andalucia-2023
-   Reason: Official government statistics with exact data
-
-✅ GOOD: bde.es/informes/vivienda/analisis-precios-2023.pdf
-   Reason: Bank of Spain official report on housing prices
-
-✅ GOOD: mitma.gob.es/vivienda/precios-estadisticas
-   Reason: Ministry of Transport housing statistics
-
-❌ BAD: marbella-property-experts.com/market-report
-   Reason: REAL ESTATE COMPANY - BLOCKED
-
-❌ BAD: idealista.com/precios/malaga
-   Reason: PROPERTY PORTAL - BLOCKED
-
-❌ BAD: spain-real-estate.com/prices
-   Reason: PROPERTY SELLER - BLOCKED
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 APPROVED DOMAINS (PRIORITIZE THESE):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${approvedDomains.slice(0, 40).join(', ')}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 RETURN FORMAT (JSON ONLY):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{
-  "sourceName": "Official Organization Name",
-  "url": "https://exact-specific-page-url.com/data-page",
-  "relevance": "Explains EXACTLY how this source proves the specific claim with specific data points",
-  "authorityScore": 95,
-  "specificityScore": 90
+  return [claim];
 }
 
-**Authority Scores:**
-- Government: 95-100
-- Education/Research: 90-95  
-- Major News: 85-90
-- Industry Associations: 80-85
+// ============================================
+// FIND CITATION WITH PERPLEXITY (REAL-TIME WEB SEARCH)
+// ============================================
+async function findCitationWithPerplexity(
+  claim: string,
+  language: string,
+  approvedDomains: string[],
+  articleTopic: string
+): Promise<Citation | null> {
+  
+  console.log(`🔍 Perplexity search for: "${claim.substring(0, 100)}..."`);
+  
+  // Filter domains by language
+  const languageDomains = approvedDomains.filter(domain => {
+    if (language === 'es') return domain.includes('.es') || domain.includes('.gob.es');
+    if (language === 'en') return domain.includes('.gov') || domain.includes('.uk') || domain.includes('.ie');
+    if (language === 'de') return domain.includes('.de');
+    if (language === 'fr') return domain.includes('.fr') || domain.includes('.gouv.fr');
+    if (language === 'nl') return domain.includes('.nl');
+    if (language === 'pl') return domain.includes('.pl');
+    if (language === 'sv') return domain.includes('.se');
+    if (language === 'da') return domain.includes('.dk');
+    if (language === 'hu') return domain.includes('.hu');
+    return domain.includes('.com') || domain.includes('.org'); // International
+  }).slice(0, 20);
 
-**Specificity Score:** How directly it addresses THIS EXACT CLAIM (0-100)
-- 90-100: Contains the exact statistic/fact from the claim
-- 70-89: Directly relevant with supporting data
-- Below 70: Too general (DO NOT SUGGEST)
+  const searchQuery = `
+Find an authoritative ${language} source that verifies this claim about Costa del Sol real estate:
 
-⚠️ CRITICAL: Return ONLY the JSON object. No markdown. No code blocks. No explanations. Start with { and end with }`;
+"${claim}"
+
+Article context: ${articleTopic}
+
+Requirements:
+1. Must be from official government, statistical bureau, or reputable news sources
+2. Prefer these domains: ${languageDomains.join(', ')}
+3. Must contain specific data, statistics, or official information
+4. Language: ${language}
+5. Focus on: real estate market, property law, taxation, lifestyle in Spain
+
+Return ONLY valid JSON in this exact format:
+{
+  "citation": {
+    "url": "exact URL of the source",
+    "title": "page title",
+    "domain": "domain.com",
+    "relevance_score": 8,
+    "quote": "relevant excerpt that supports the claim",
+    "why_authoritative": "brief explanation of why this source is trustworthy"
+  }
+}
+
+If no suitable source exists, return:
+{
+  "citation": null,
+  "reason": "explanation why no source found"
+}
+`.trim();
 
   try {
-    console.log(`   📡 Calling OpenAI API...`);
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(PERPLEXITY_BASE_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'sonar-pro',
         messages: [
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: `You are a citation research assistant for Costa del Sol real estate content.
+            You MUST respond with valid JSON only. Never use conversational language.
+            Search the web in real-time to find authoritative sources.
+            Prioritize government sources (.gov, .gob.es), statistical bureaus (ine.es, ons.gov.uk), and reputable news outlets.`
+          },
+          {
+            role: 'user',
+            content: searchQuery
+          }
         ],
-        // REMOVED response_format to allow more flexible JSON responses
-        max_completion_tokens: 4000 // Increased from 2000 to prevent truncation
+        temperature: 0.2,
+        max_tokens: 1000,
+        return_citations: true,
+        search_recency_filter: "month"
       })
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      console.error(`❌ Perplexity API error: ${response.status} - ${errorText}`);
+      return null;
     }
-    
+
     const data = await response.json();
+    const content = data.choices[0].message.content;
+    const perplexityCitations = data.citations || [];
     
-    // Check for response truncation
-    const finishReason = data.choices[0].finish_reason;
-    if (finishReason === 'length') {
-      console.warn(`   ⚠️ OpenAI response was truncated (finish_reason: length)`);
-      console.warn(`   Claim may not have received complete citation analysis`);
-    }
-    
-    const responseText = data.choices[0].message.content;
-    
-    console.log(`   ✅ OpenAI response received (${responseText.length} chars, finish_reason: ${finishReason})`);
-    
-    // Parse JSON from response with FORGIVING PARSER (TIER 2)
-    let citation = null;
-    
+    console.log(`📚 Perplexity returned ${perplexityCitations.length} citations`);
+
+    // Parse JSON response with forgiving parser
+    let citationData;
     try {
-      citation = JSON.parse(responseText);
-    } catch (e) {
-      console.warn(`   ⚠️ Standard JSON parse failed, trying forgiving parser...`);
-      
-      // TIER 2: Forgiving parser - extract fields even if structure is off
-      try {
-        // Try to extract JSON object from markdown code blocks or text
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const extractedJson = jsonMatch[0];
-          citation = JSON.parse(extractedJson);
-          console.log(`   ✅ Forgiving parser succeeded`);
-        } else {
-          // Try to manually extract key fields using regex
-          const urlMatch = responseText.match(/"url":\s*"([^"]+)"/);
-          const sourceNameMatch = responseText.match(/"sourceName":\s*"([^"]+)"/);
-          const relevanceMatch = responseText.match(/"relevance":\s*"([^"]+)"/);
-          const authorityMatch = responseText.match(/"authorityScore":\s*(\d+)/);
-          const specificityMatch = responseText.match(/"specificityScore":\s*(\d+)/);
-          
-          if (urlMatch && sourceNameMatch) {
-            citation = {
-              url: urlMatch[1],
-              sourceName: sourceNameMatch[1],
-              relevance: relevanceMatch?.[1] || "Relevant source found",
-              authorityScore: authorityMatch ? parseInt(authorityMatch[1]) : 85,
-              specificityScore: specificityMatch ? parseInt(specificityMatch[1]) : 75,
-            };
-            console.log(`   ✅ Manual field extraction succeeded`);
-          }
+      citationData = JSON.parse(content);
+    } catch (parseError) {
+      console.warn('⚠️ JSON parse failed, trying forgiving parser...');
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          citationData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } catch (e) {
+          console.error('❌ Could not extract JSON from response');
+          return null;
         }
-      } catch (forgiveError) {
-        console.error(`   ❌ Forgiving parser also failed:`, forgiveError);
-      }
-      
-      if (!citation) {
-        console.error(`   ❌ All parsing attempts failed`);
-        console.log(`   Raw response: ${responseText.substring(0, 300)}`);
-        
-        if (finishReason === 'length') {
-          console.error(`   ⚠️ Parse failure likely caused by response truncation`);
-        }
-        
+      } else {
+        console.error('❌ No JSON found in response');
         return null;
       }
     }
-    
-    // Validate minimum required fields
-    if (!citation || !citation.url || !citation.sourceName) {
-      console.warn(`   ❌ Invalid citation structure (missing url or sourceName)`);
-      console.log(`   Citation object:`, JSON.stringify(citation).substring(0, 200));
+
+    if (!citationData?.citation || !citationData.citation.url) {
+      console.log(`⚠️ No citation found. Reason: ${citationData?.reason || 'Unknown'}`);
       return null;
     }
+
+    const citation = citationData.citation;
+    const domain = new URL(citation.url).hostname.replace('www.', '');
     
-    // CRITICAL: Check if it's a competitor
-    if (isCompetitorUrl(citation.url)) {
-      return null;
+    // Validate domain
+    const isApproved = approvedDomains.some(approved => 
+      domain.includes(approved) || approved.includes(domain)
+    );
+    
+    // Allow statistical/research paths even if domain not pre-approved
+    const statisticalPaths = [
+      '/informes/', '/estadisticas/', '/market-report', '/datos/',
+      '/statistics/', '/research/', '/estudios/', '/analisis-mercado',
+      '/price-index', '/market-analysis', '/inmobiliario'
+    ];
+    
+    const hasStatisticalPath = statisticalPaths.some(path => 
+      citation.url.toLowerCase().includes(path)
+    );
+
+    if (!isApproved && !hasStatisticalPath) {
+      // Check if competitor
+      if (isCompetitorUrl(citation.url)) {
+        console.log(`❌ COMPETITOR BLOCKED: ${domain}`);
+        return null;
+      }
+      console.log(`⚠️ Domain ${domain} not in approved list but not a competitor`);
     }
-    
-    // Validate specificity
-    if (!validateCitationSpecificity(citation, claim)) {
-      return null;
+
+    if (hasStatisticalPath) {
+      console.log(`✅ ALLOWED: Statistical/research page from ${domain}`);
     }
-    
-    // Check specificity score threshold
-    if (citation.specificityScore && citation.specificityScore < 70) {
-      console.warn(`   ❌ REJECTED: Specificity too low (${citation.specificityScore}% - need 70%+)`);
-      return null;
-    }
-    
-    console.log(`   ✅ Citation validated and accepted`);
-    return citation;
-    
+
+    // Calculate authority score (1-10)
+    let authorityScore = citation.relevance_score || 7;
+    if (domain.includes('.gov') || domain.includes('.gob')) authorityScore = Math.max(authorityScore, 9);
+    if (domain.includes('ine.es') || domain.includes('bde.es')) authorityScore = 10;
+
+    return {
+      url: citation.url,
+      sourceName: citation.title || 'Untitled Source',
+      description: citation.quote || '',
+      relevance: citation.why_authoritative || 'Authoritative source',
+      authorityScore: authorityScore,
+      specificityScore: citation.relevance_score * 10 || 70,
+      diversityScore: 100,
+      usageCount: 0,
+    };
+
   } catch (error) {
-    // Check for rate limit errors and propagate them
-    if (error instanceof Error && (error.message.includes('429') || error.message.toLowerCase().includes('rate limit'))) {
-      console.error(`   ⚠️ OpenAI API rate limited (429)`);
-      throw new Error('RATE_LIMITED: OpenAI API rate limit reached');
-    }
-    
-    console.error(`   ❌ Error finding citation:`, error);
+    console.error('❌ Perplexity search error:', error);
     return null;
   }
 }
@@ -627,7 +600,7 @@ serve(async (req) => {
     }
 
     console.log('\n🔍 ═══════════════════════════════════════════');
-    console.log('   CLAIM-SPECIFIC CITATION FINDER (OpenAI)');
+    console.log('   PERPLEXITY-POWERED CITATION FINDER');
     console.log('═══════════════════════════════════════════\n');
     console.log(`📄 Article: "${articleTopic}"`);
     console.log(`🌍 Language: ${articleLanguage}\n`);
@@ -684,7 +657,7 @@ serve(async (req) => {
 
     console.log(`🎯 Processing ${maxClaims} claims...\n`);
 
-    // Find citation for each claim
+    // Find citation for each claim with decomposition
     for (let i = 0; i < maxClaims; i++) {
       const claimData = claims[i];
 
@@ -693,15 +666,27 @@ serve(async (req) => {
       console.log(`   "${claimData.claim}"\n`);
 
       try {
-        const citation = await findCitationForClaim(
-          claimData.claim,
-          claimData.context,
-          articleLanguage,
-          articleTopic,
-          approvedDomainsList
-        );
+        // Decompose complex claims
+        const subClaims = decomposeComplexClaim(claimData.claim);
+        
+        let citationFound = false;
+        for (const subClaim of subClaims) {
+          const citation = await findCitationWithPerplexity(
+            subClaim,
+            articleLanguage,
+            approvedDomainsList,
+            articleTopic
+          );
 
-        if (citation) {
+          if (citation) {
+            // Check for duplicates
+            const isDuplicate = citations.some(c => c.url === citation.url);
+            if (isDuplicate) {
+              console.log(`⏭️ Skipping duplicate: ${citation.url}`);
+              continue;
+            }
+            
+            citationFound = true;
           // Extract domain for diversity scoring
           try {
             const url = new URL(citation.url);
@@ -733,10 +718,14 @@ serve(async (req) => {
           } catch (e) {
             console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
           }
-        } else {
-          // Track rejection reasons for better diagnostics
+          
+          break; // Found citation for this claim, move to next
+        }
+        }
+        
+        if (!citationFound) {
           competitorsBlocked++;
-          console.log(`   ⚠️  REJECTED: No valid citation found\n`);
+          console.log(`   ⚠️ No citation found for claim ${i + 1}\n`);
         }
 
       } catch (error) {
@@ -789,7 +778,7 @@ serve(async (req) => {
           competitorsBlocked,
           timeElapsed: elapsed,
           language: articleLanguage,
-          model: 'openai/gpt-5-mini',
+          model: 'Perplexity Sonar-Pro',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -846,8 +835,17 @@ serve(async (req) => {
         specificityRejections,
         timeElapsed: elapsed,
         language: articleLanguage,
-        model: 'openai/gpt-5-mini',
+        model: 'Perplexity Sonar-Pro',
         message: `Found ${citations.length} perfect match(es)${softMatches.length > 0 ? ` + ${softMatches.length} soft match(es) for review` : ''} (${competitorsBlocked} competitors blocked)`,
+        diagnostics: {
+          claimsAnalyzed: maxClaims,
+          citationsFound: citations.length,
+          softMatches: softMatches.length,
+          competitorsBlocked,
+          timeElapsed: `${elapsed}s`,
+          successRate: `${((citations.length/maxClaims)*100).toFixed(1)}%`,
+          apiUsed: 'Perplexity Sonar-Pro',
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -861,7 +859,7 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: 'RATE_LIMITED',
-          userMessage: 'OpenAI API rate limit reached. Please wait a moment before trying again.',
+          userMessage: 'Perplexity API rate limit reached. Please wait a moment before trying again.',
           citations: [],
         }),
         { 

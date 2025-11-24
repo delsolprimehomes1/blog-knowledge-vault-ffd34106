@@ -53,6 +53,10 @@ interface BetterCitation {
   placementReasoning?: string;
   needsManualReview?: boolean;
   reviewReason?: string;
+  sourceMetadata?: {
+    perplexityConfidence: string;
+    searchTimestamp: string;
+  };
 }
 
 interface SearchHistoryItem {
@@ -87,6 +91,8 @@ export const BetterCitationFinder = ({
   const [citationsAdded, setCitationsAdded] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const { toast } = useToast();
 
   // Enhancement 5: Auto-sync every 10 citations
@@ -193,6 +199,11 @@ export const BetterCitationFinder = ({
           errorDescription += '\n\nSuggestions:\n' + diagnostics.suggestions.join('\n• ');
         }
         
+        // Store diagnostics for debug panel
+        if (diagnostics) {
+          setDebugInfo(diagnostics);
+        }
+        
         toast({
           title: "Citation Search Failed",
           description: errorDescription,
@@ -273,9 +284,15 @@ export const BetterCitationFinder = ({
         resultCount: citationsWithPlacement.length,
       }, ...prev.slice(0, 4)]); // Keep last 5 searches
       
+      // Store diagnostics for debug panel
+      if (data.diagnostics) {
+        console.log('📊 Search Diagnostics:', data.diagnostics);
+        setDebugInfo(data.diagnostics);
+      }
+      
       toast({
         title: "Citations Found!",
-        description: `Found ${citationsWithPlacement.length} new authoritative sources ${targetContext ? '- Starting auto-validation' : ''}`,
+        description: `Found ${citationsWithPlacement.length} new authoritative sources via Perplexity search ${targetContext ? '- Starting auto-validation' : ''}`,
       });
 
       // Enhancement 1: Parallel validation if target context is provided
@@ -416,7 +433,7 @@ export const BetterCitationFinder = ({
           AI Citation Finder
         </CardTitle>
           <CardDescription>
-            Powered by <strong>Gemini AI</strong> to find authoritative sources from approved domains matching your article content.
+            Powered by <strong>Perplexity Sonar-Pro</strong> with real-time web search to find authoritative sources from approved domains.
             {targetContext && (
               <span className="block mt-1 text-primary">
                 🎯 <strong>Validation Mode:</strong> Citations will be verified against your target claim
@@ -474,6 +491,76 @@ export const BetterCitationFinder = ({
             )}
           </CollapsibleContent>
         </Collapsible>
+
+        {/* Debug Panel */}
+        {debugInfo && (
+          <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <Database className="h-4 w-4" />
+                {showDebug ? 'Hide' : 'Show'} Search Diagnostics
+                <ChevronDown className={`h-4 w-4 transition-transform ${showDebug ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-3">
+              <div className="p-4 bg-muted rounded-lg border space-y-2 text-sm">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Perplexity Search Results
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-muted-foreground">API Used:</span>
+                    <div className="font-mono text-xs">{debugInfo.apiUsed}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Success Rate:</span>
+                    <div className="font-semibold">{debugInfo.successRate}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Claims Analyzed:</span>
+                    <div className="font-semibold">{debugInfo.claimsAnalyzed}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Citations Found:</span>
+                    <div className="font-semibold">{debugInfo.citationsFound}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Time Elapsed:</span>
+                    <div className="font-semibold">{debugInfo.timeElapsed}</div>
+                  </div>
+                </div>
+                
+                {debugInfo.softMatches > 0 && (
+                  <Alert className="bg-yellow-50 border-yellow-200">
+                    <AlertCircle className="h-4 w-4 text-yellow-800" />
+                    <AlertDescription className="text-yellow-800">
+                      <div className="font-semibold">
+                        ⚠️ {debugInfo.softMatches} citation(s) need manual review
+                      </div>
+                      {debugInfo.softMatchDetails?.map((match: any, i: number) => (
+                        <div key={i} className="ml-2 mt-1 text-xs">
+                          • {match.domain} (relevance: {match.relevanceScore}/10)
+                        </div>
+                      ))}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {debugInfo.competitorsBlocked > 0 && (
+                  <Alert className="bg-red-50 border-red-200">
+                    <XCircle className="h-4 w-4 text-red-800" />
+                    <AlertDescription className="text-red-800">
+                      <div className="font-semibold">
+                        🚫 {debugInfo.competitorsBlocked} competitor source(s) blocked
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
         {/* Main action buttons */}
         <div className="flex gap-2">
