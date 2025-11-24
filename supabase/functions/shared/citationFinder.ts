@@ -23,6 +23,10 @@ export interface BetterCitation {
   finalScore?: number;
   validation?: CitationValidation;
   validationStatus?: 'pending' | 'validating' | 'validated' | 'failed';
+  suggestedParagraph?: number;
+  suggestedSentence?: number;
+  placementConfidence?: number;
+  placementReasoning?: string;
 }
 
 const languageConfig = {
@@ -147,13 +151,15 @@ interface DomainScore {
 /**
  * Calculate simple authority scores for approved domains
  * No usage tracking - rely on Gemini's natural diversity via Google Search
+ * PHASE 1: Includes regional boosting for relevant language content
  */
 function calculateSimpleAuthorityScores(
-  approvedDomains: Array<{ domain: string; category: string; language: string | null }>
+  approvedDomains: Array<{ domain: string; category: string; language: string | null }>,
+  articleLanguage?: string
 ): Map<string, number> {
   const scores = new Map<string, number>();
   
-  for (const { domain, category } of approvedDomains) {
+  for (const { domain, category, language } of approvedDomains) {
     let score = 50; // Base score
     
     // Government domains: highest priority
@@ -175,6 +181,26 @@ function calculateSimpleAuthorityScores(
     // News organizations
     else if (category.toLowerCase().includes('news')) {
       score = 70;
+    }
+
+    // PHASE 1: Regional boost for Spanish articles
+    if (articleLanguage === 'es') {
+      // Boost Spanish government sources
+      if (
+        domain.includes('ine.es') ||
+        domain.includes('boe.es') ||
+        domain.includes('juntadeandalucia.es') ||
+        domain.includes('andalucia.org') ||
+        domain.includes('.gob.es')
+      ) {
+        score += 15; // Regional authority boost
+        console.log(`[Regional Boost] ${domain}: +15 (Spanish government source)`);
+      }
+      // Boost Spanish academic/research
+      else if (language === 'es' && (domain.includes('.edu.es') || domain.includes('universidad'))) {
+        score += 10;
+        console.log(`[Regional Boost] ${domain}: +10 (Spanish academic source)`);
+      }
     }
     
     scores.set(domain, score);

@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle, Shield, XCircle, Loader2, ChevronDown } from "lucide-react";
+import { Sparkles, ExternalLink, CheckCircle2, Copy, RefreshCw, AlertCircle, Shield, XCircle, Loader2, ChevronDown, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackCitationSuggested, trackCitationUsed } from "@/lib/domainUsageTracking";
+import { analyzeCitationPlacement, getPlacementDescription, getPlacementConfidenceColor } from "@/lib/citationPlacement";
 
 interface CitationValidation {
   isValid: boolean;
@@ -32,6 +34,10 @@ interface BetterCitation {
   usageCount?: number;
   validation?: CitationValidation;
   validationStatus?: 'pending' | 'validating' | 'validated' | 'failed';
+  suggestedParagraph?: number;
+  suggestedSentence?: number;
+  placementConfidence?: number;
+  placementReasoning?: string;
 }
 
 interface BetterCitationFinderProps {
@@ -148,13 +154,36 @@ export const BetterCitationFinder = ({
         throw new Error(data.error || 'Failed to find citations');
       }
 
-      // Initialize citations with pending validation status if target context exists
-      const citationsWithStatus = data.citations.map((c: BetterCitation) => ({
-        ...c,
-        validationStatus: targetContext ? 'pending' as const : undefined
-      }));
+      // PHASE 2: Track citation suggestions
+      data.citations.forEach((citation: BetterCitation) => {
+        trackCitationSuggested(citation.url);
+      });
+
+      // PHASE 3: Analyze placement for each citation
+      const citationsWithPlacement = data.citations.map((citation: BetterCitation) => {
+        let citationWithStatus = {
+          ...citation,
+          validationStatus: targetContext ? 'pending' as const : undefined
+        };
+
+        // Add placement analysis if target context exists
+        if (targetContext && articleContent) {
+          const placement = analyzeCitationPlacement(articleContent, targetContext);
+          if (placement) {
+            citationWithStatus = {
+              ...citationWithStatus,
+              suggestedParagraph: placement.paragraphIndex,
+              suggestedSentence: placement.sentenceIndex,
+              placementConfidence: placement.placementConfidence,
+              placementReasoning: placement.reasoning
+            };
+          }
+        }
+
+        return citationWithStatus;
+      });
       
-      setCitations(citationsWithStatus);
+      setCitations(citationsWithPlacement);
       
       toast({
         title: "Citations Found!",
@@ -162,14 +191,14 @@ export const BetterCitationFinder = ({
       });
 
       // Auto-validate if target context is provided
-      if (targetContext && citationsWithStatus.length > 0) {
+      if (targetContext && citationsWithPlacement.length > 0) {
         toast({
           title: "Auto-validating...",
           description: "Checking if citations support your claim",
         });
         
         // Validate all citations sequentially
-        for (const citation of citationsWithStatus) {
+        for (const citation of citationsWithPlacement) {
           await validateCitation(citation);
           // Small delay between validations
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -194,7 +223,10 @@ export const BetterCitationFinder = ({
     });
   };
 
-  const handleAddCitation = (citation: BetterCitation) => {
+  const handleAddCitation = async (citation: BetterCitation) => {
+    // PHASE 2: Track citation usage
+    await trackCitationUsed(citation.url);
+    
     if (onAddCitation) {
       onAddCitation({
         url: citation.url,
@@ -360,6 +392,23 @@ export const BetterCitationFinder = ({
                         <strong>💡 Suggested placement:</strong> {citation.suggestedContext}
                       </p>
                     </div>
+
+                    {/* PHASE 3: Placement suggestion */}
+                    {citation.suggestedParagraph && citation.placementConfidence && (
+                      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 p-3">
+                        <div className="flex items-start gap-2">
+                          <MapPin className={`h-4 w-4 mt-0.5 ${getPlacementConfidenceColor(citation.placementConfidence)}`} />
+                          <div className="flex-1 text-sm">
+                            <div className="font-medium text-blue-900 dark:text-blue-100">
+                              📍 Suggested Location: Paragraph {citation.suggestedParagraph}, Sentence {citation.suggestedSentence}
+                            </div>
+                            <div className="text-blue-700 dark:text-blue-300 text-xs mt-1">
+                              {citation.placementReasoning} • {citation.placementConfidence}% confidence
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Validation Details (Collapsible) */}
                     {validation && (
