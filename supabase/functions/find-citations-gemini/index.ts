@@ -7,6 +7,17 @@ const corsHeaders = {
 };
 
 // ============================================
+// TIER 1: ALLOWED STATISTICAL/RESEARCH PATHS
+// ============================================
+// Allow data/research pages even from property portals
+const ALLOWED_DATA_PATHS = [
+  '/informes/', '/estudios/', '/estadisticas/', '/estadistica/',
+  '/market-report/', '/research/', '/statistics/', '/data/',
+  '/analisis/', '/informe/', '/estudio/', '/investigacion/',
+  '/report/', '/reports/', '/study/', '/studies/', '/analysis/'
+];
+
+// ============================================
 // COMPREHENSIVE COMPETITOR BLOCKLIST
 // ============================================
 const BLOCKED_DOMAINS = [
@@ -140,7 +151,7 @@ function extractClaimsNeedingCitations(content: string): Claim[] {
 }
 
 // ============================================
-// CHECK IF URL IS A COMPETITOR
+// CHECK IF URL IS A COMPETITOR (TIER 1 ENHANCED)
 // ============================================
 function isCompetitorUrl(url: string): boolean {
   try {
@@ -148,6 +159,13 @@ function isCompetitorUrl(url: string): boolean {
     const hostname = urlObj.hostname.toLowerCase();
     const pathname = urlObj.pathname.toLowerCase();
     const fullUrl = url.toLowerCase();
+    
+    // 🎯 TIER 1: Allow statistical/research pages even from property portals
+    const isDataPath = ALLOWED_DATA_PATHS.some(path => pathname.includes(path));
+    if (isDataPath) {
+      console.log(`   ✅ TIER 1 ALLOWED: Statistical/research page detected: ${pathname}`);
+      return false; // ALLOW statistical content
+    }
     
     // Check blocked domains
     for (const blocked of BLOCKED_DOMAINS) {
@@ -182,12 +200,12 @@ function isCompetitorUrl(url: string): boolean {
 }
 
 // ============================================
-// VALIDATE CITATION SPECIFICITY
+// VALIDATE CITATION SPECIFICITY (TIER 3 ENHANCED)
 // ============================================
 function validateCitationSpecificity(citation: any, claim: string): boolean {
   console.log(`   🔍 Validating specificity for: ${citation.sourceName}`);
   
-  // Stage 1: Extract keywords from claim
+  // Extract keywords from claim
   const claimKeywords = claim
     .toLowerCase()
     .replace(/[^\w\sáéíóúñü]/g, '')
@@ -195,22 +213,49 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
     .filter(word => word.length > 3);
   
   const relevanceText = citation.relevance.toLowerCase();
+  const urlLower = citation.url.toLowerCase();
   
-  // Stage 2: Check relevance mentions claim keywords (40%+ match required)
-  const keywordMatches = claimKeywords.filter(keyword => 
+  // Count keyword matches in relevance and URL
+  const relevanceMatches = claimKeywords.filter(keyword => 
     relevanceText.includes(keyword)
   );
+  const urlMatches = claimKeywords.filter(keyword => 
+    urlLower.includes(keyword)
+  );
   
-  const keywordMatchPercent = claimKeywords.length > 0 
-    ? (keywordMatches.length / claimKeywords.length) * 100 
+  const relevanceMatchPercent = claimKeywords.length > 0 
+    ? (relevanceMatches.length / claimKeywords.length) * 100 
     : 0;
   
-  if (keywordMatchPercent < 40) {
-    console.warn(`   ❌ FAILED: Relevance doesn't mention claim keywords (${keywordMatchPercent.toFixed(1)}% match, need 40%+)`);
+  // 🎯 TIER 3: Multi-tier validation with fallback scoring
+  
+  // Tier 1: Perfect match (URL + description contain keywords)
+  if (urlMatches.length >= 2 && relevanceMatches.length >= 2) {
+    console.log(`   ✅ TIER 3.1 PASSED: Perfect match (${urlMatches.length} URL keywords, ${relevanceMatches.length} relevance keywords)`);
+    return true;
+  }
+  
+  // Tier 2: Strong relevance (high scores + some keywords)
+  if (citation.authorityScore >= 90 && 
+      citation.specificityScore >= 80 &&
+      (urlMatches.length >= 1 || relevanceMatches.length >= 2)) {
+    console.log(`   ✅ TIER 3.2 PASSED: Strong relevance (Authority: ${citation.authorityScore}, Specificity: ${citation.specificityScore})`);
+    return true;
+  }
+  
+  // Tier 3: Fallback for high-authority sources (government/statistical)
+  if (citation.authorityScore >= 95) {
+    console.log(`   ⚠️ TIER 3.3 PASSED: High-authority source despite low specificity match (Authority: ${citation.authorityScore})`);
+    return true;
+  }
+  
+  // Traditional validation for lower authority sources
+  if (relevanceMatchPercent < 40) {
+    console.warn(`   ❌ FAILED: Relevance doesn't mention claim keywords (${relevanceMatchPercent.toFixed(1)}% match, need 40%+)`);
     return false;
   }
   
-  // Stage 3: URL is specific (not homepage)
+  // URL specificity check
   try {
     const url = new URL(citation.url);
     const path = url.pathname;
@@ -227,8 +272,11 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
       return false;
     }
     
-    // Stage 4: URL path should be substantial
+    // Check for statistical/research path (from TIER 1)
+    const isDataPath = ALLOWED_DATA_PATHS.some(p => path.includes(p));
+    
     const hasSpecificPath = 
+      isDataPath ||
       path.length > 15 ||
       path.includes('data') ||
       path.includes('statistics') ||
@@ -239,7 +287,7 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
       path.includes('investigacion') ||
       path.includes('article') ||
       path.includes('articulo') ||
-      /\d{4}/.test(path); // Contains year
+      /\d{4}/.test(path);
     
     if (!hasSpecificPath) {
       console.warn(`   ❌ FAILED: URL path too generic: ${path}`);
@@ -251,7 +299,7 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
     return false;
   }
   
-  // Stage 5: Relevance indicates specific data/evidence
+  // Check for evidence language
   const evidenceKeywords = [
     'data', 'statistics', 'report', 'study', 'research',
     'datos', 'estadísticas', 'informe', 'estudio', 'investigación',
@@ -270,7 +318,7 @@ function validateCitationSpecificity(citation: any, claim: string): boolean {
     return false;
   }
   
-  console.log(`   ✅ PASSED: Citation is specific and relevant (${keywordMatchPercent.toFixed(1)}% keyword match)`);
+  console.log(`   ✅ PASSED: Citation is specific and relevant (${relevanceMatchPercent.toFixed(1)}% keyword match)`);
   return true;
 }
 
@@ -517,12 +565,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get approved domains for this language
+    // 🎯 TIER 2: Get approved domains for this language + international sources
     const { data: approvedDomains, error: domainsError } = await supabase
       .from('approved_domains')
-      .select('domain, category, trust_score, tier')
+      .select('domain, category, trust_score, tier, is_international')
       .eq('is_allowed', true)
-      .or(`language.eq.${articleLanguage},language.eq.EU,language.eq.GLOBAL`)
+      .or(`language.eq.${articleLanguage},language.eq.EU,language.eq.GLOBAL,is_international.eq.true`)
       .order('trust_score', { ascending: false });
 
     if (domainsError) {
