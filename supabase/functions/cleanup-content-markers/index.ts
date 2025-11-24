@@ -48,7 +48,7 @@ If no good source exists, return: {"url": null, "source": null}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
+        model: 'sonar',
         messages: [
           { role: 'system', content: 'You are a citation finder. Return only valid JSON.' },
           { role: 'user', content: prompt }

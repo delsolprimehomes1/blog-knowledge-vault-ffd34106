@@ -588,7 +588,7 @@ Return ONE citation in this exact JSON format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
+        model: 'sonar',
         messages: [
           { role: 'system', content: 'You are a citation finder. Return ONLY valid JSON with one citation. Never use blocked domains.' },
           { role: 'user', content: prompt }
