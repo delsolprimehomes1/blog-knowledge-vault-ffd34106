@@ -51,6 +51,8 @@ interface BetterCitation {
   suggestedSentence?: number;
   placementConfidence?: number;
   placementReasoning?: string;
+  needsManualReview?: boolean;
+  reviewReason?: string;
 }
 
 interface SearchHistoryItem {
@@ -182,18 +184,39 @@ export const BetterCitationFinder = ({
         throw error;
       }
 
+      // Enhanced error messaging with diagnostics
       if (!data.success) {
-        throw new Error(data.error || 'Failed to find citations');
+        const diagnostics = data.diagnostics;
+        let errorDescription = data.message || 'Failed to find citations';
+        
+        if (diagnostics?.suggestions) {
+          errorDescription += '\n\nSuggestions:\n' + diagnostics.suggestions.join('\n• ');
+        }
+        
+        toast({
+          title: "Citation Search Failed",
+          description: errorDescription,
+          variant: "destructive",
+        });
+        return;
       }
 
       // PHASE 2: Track citation suggestions + Enhancement 2: Deduplication
       const newCitations: BetterCitation[] = [];
+      const softMatches: BetterCitation[] = [];
+      
       const duplicateCount = data.citations.filter((citation: BetterCitation) => {
         const isDuplicate = suggestedUrls.has(citation.url);
         if (!isDuplicate) {
           trackCitationSuggested(citation.url);
           setSuggestedUrls(prev => new Set(prev).add(citation.url));
-          newCitations.push(citation);
+          
+          // Separate soft matches from perfect matches
+          if (citation.needsManualReview || data.isSoftMatch) {
+            softMatches.push(citation);
+          } else {
+            newCitations.push(citation);
+          }
         }
         return isDuplicate;
       }).length;
@@ -204,9 +227,20 @@ export const BetterCitationFinder = ({
           description: `${duplicateCount} previously suggested citation(s) removed`,
         });
       }
+      
+      // Show soft match notification if applicable
+      if (softMatches.length > 0 && newCitations.length === 0) {
+        toast({
+          title: "⚠️ Manual Review Needed",
+          description: `Found ${softMatches.length} high-authority source(s) that broadly match your topic but may need verification for exact claims.`,
+          variant: "default",
+        });
+      }
 
-      // PHASE 3: Analyze placement for each citation
-      const citationsWithPlacement = newCitations.map((citation: BetterCitation) => {
+      // PHASE 3: Analyze placement for each citation (including soft matches)
+      const allCitations = [...newCitations, ...softMatches];
+      
+      const citationsWithPlacement = allCitations.map((citation: BetterCitation) => {
         let citationWithStatus = {
           ...citation,
           validationStatus: targetContext ? 'pending' as const : undefined

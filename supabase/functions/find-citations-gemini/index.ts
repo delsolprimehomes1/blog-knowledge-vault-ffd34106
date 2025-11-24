@@ -160,25 +160,61 @@ function isCompetitorUrl(url: string): boolean {
     const pathname = urlObj.pathname.toLowerCase();
     const fullUrl = url.toLowerCase();
     
-    // 🎯 TIER 1: Allow statistical/research pages even from property portals
+    // 🎯 TIER 1: Enhanced semantic detection of market reports/statistics
+    // Check for statistical/research path patterns
     const isDataPath = ALLOWED_DATA_PATHS.some(path => pathname.includes(path));
-    if (isDataPath) {
-      console.log(`   ✅ TIER 1 ALLOWED: Statistical/research page detected: ${pathname}`);
+    
+    // Check for semantic markers of market reports (even without specific paths)
+    const marketReportPatterns = [
+      /informe[-_]?mercado/i,
+      /market[-_]?report/i,
+      /informe[-_]?precios/i,
+      /price[-_]?report/i,
+      /market[-_]?analysis/i,
+      /analisis[-_]?mercado/i,
+      /estadisticas[-_]?inmobiliarias/i,
+      /real[-_]?estate[-_]?statistics/i,
+      /housing[-_]?market/i,
+      /mercado[-_]?inmobiliario/i,
+      /property[-_]?trends/i,
+      /tendencias[-_]?inmobiliarias/i,
+    ];
+    
+    const hasMarketReportIndicators = marketReportPatterns.some(pattern => 
+      pattern.test(fullUrl)
+    );
+    
+    // Check if URL is in news/analysis section (common for market reports)
+    const isNewsOrAnalysisSection = 
+      pathname.includes('/news/') ||
+      pathname.includes('/noticias/') ||
+      pathname.includes('/inmobiliario/') ||
+      pathname.includes('/analisis/') ||
+      pathname.includes('/analysis/') ||
+      pathname.includes('/research/') ||
+      pathname.includes('/investigacion/');
+    
+    // Allow if it's a statistical page OR has market report indicators + is in news/analysis
+    if (isDataPath || (hasMarketReportIndicators && isNewsOrAnalysisSection)) {
+      console.log(`   ✅ TIER 1 ALLOWED: Market report/statistical page detected: ${url}`);
+      console.log(`      - Data path match: ${isDataPath}`);
+      console.log(`      - Market report indicators: ${hasMarketReportIndicators}`);
+      console.log(`      - News/analysis section: ${isNewsOrAnalysisSection}`);
       return false; // ALLOW statistical content
     }
     
-    // Check blocked domains
+    // Check blocked domains (but market reports already allowed above)
     for (const blocked of BLOCKED_DOMAINS) {
       if (hostname.includes(blocked.toLowerCase())) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: Domain contains "${blocked}"`);
+        console.warn(`   ❌ COMPETITOR BLOCKED: Domain "${blocked}" (${url})`);
         return true;
       }
     }
     
-    // Check URL path for property keywords
+    // Check URL path for property listing keywords
     for (const pattern of BLOCKED_URL_PATTERNS) {
       if (pathname.includes(pattern) || fullUrl.includes(pattern)) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: URL contains "${pattern}"`);
+        console.warn(`   ❌ COMPETITOR BLOCKED: Pattern "${pattern}" in URL`);
         return true;
       }
     }
@@ -186,7 +222,7 @@ function isCompetitorUrl(url: string): boolean {
     // Check hostname for real estate keywords
     for (const keyword of BLOCKED_DOMAIN_KEYWORDS) {
       if (hostname.includes(keyword)) {
-        console.warn(`   ❌ COMPETITOR BLOCKED: Domain contains keyword "${keyword}"`);
+        console.warn(`   ❌ COMPETITOR BLOCKED: Keyword "${keyword}" in domain`);
         return true;
       }
     }
@@ -479,25 +515,61 @@ ${approvedDomains.slice(0, 40).join(', ')}
     
     console.log(`   ✅ OpenAI response received (${responseText.length} chars, finish_reason: ${finishReason})`);
     
-    // Parse JSON from response
+    // Parse JSON from response with FORGIVING PARSER (TIER 2)
     let citation = null;
     
     try {
       citation = JSON.parse(responseText);
     } catch (e) {
-      console.error(`   ❌ Failed to parse JSON response:`, e);
-      console.log(`   Raw response: ${responseText.substring(0, 200)}`);
+      console.warn(`   ⚠️ Standard JSON parse failed, trying forgiving parser...`);
       
-      // Check if error is due to truncation
-      if (finishReason === 'length') {
-        console.error(`   ⚠️ Parse failure likely caused by response truncation`);
+      // TIER 2: Forgiving parser - extract fields even if structure is off
+      try {
+        // Try to extract JSON object from markdown code blocks or text
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const extractedJson = jsonMatch[0];
+          citation = JSON.parse(extractedJson);
+          console.log(`   ✅ Forgiving parser succeeded`);
+        } else {
+          // Try to manually extract key fields using regex
+          const urlMatch = responseText.match(/"url":\s*"([^"]+)"/);
+          const sourceNameMatch = responseText.match(/"sourceName":\s*"([^"]+)"/);
+          const relevanceMatch = responseText.match(/"relevance":\s*"([^"]+)"/);
+          const authorityMatch = responseText.match(/"authorityScore":\s*(\d+)/);
+          const specificityMatch = responseText.match(/"specificityScore":\s*(\d+)/);
+          
+          if (urlMatch && sourceNameMatch) {
+            citation = {
+              url: urlMatch[1],
+              sourceName: sourceNameMatch[1],
+              relevance: relevanceMatch?.[1] || "Relevant source found",
+              authorityScore: authorityMatch ? parseInt(authorityMatch[1]) : 85,
+              specificityScore: specificityMatch ? parseInt(specificityMatch[1]) : 75,
+            };
+            console.log(`   ✅ Manual field extraction succeeded`);
+          }
+        }
+      } catch (forgiveError) {
+        console.error(`   ❌ Forgiving parser also failed:`, forgiveError);
       }
       
-      return null;
+      if (!citation) {
+        console.error(`   ❌ All parsing attempts failed`);
+        console.log(`   Raw response: ${responseText.substring(0, 300)}`);
+        
+        if (finishReason === 'length') {
+          console.error(`   ⚠️ Parse failure likely caused by response truncation`);
+        }
+        
+        return null;
+      }
     }
     
+    // Validate minimum required fields
     if (!citation || !citation.url || !citation.sourceName) {
-      console.warn(`   ❌ Invalid citation structure returned`);
+      console.warn(`   ❌ Invalid citation structure (missing url or sourceName)`);
+      console.log(`   Citation object:`, JSON.stringify(citation).substring(0, 200));
       return null;
     }
     
@@ -604,8 +676,11 @@ serve(async (req) => {
     }
 
     const citations: Citation[] = [];
+    const softMatches: Citation[] = []; // TIER 3: Soft matches for manual review
     const maxClaims = Math.min(claims.length, 5); // Limit to 5 citations
     let competitorsBlocked = 0;
+    let specificityRejections = 0;
+    let jsonParseFailures = 0;
 
     console.log(`🎯 Processing ${maxClaims} claims...\n`);
 
@@ -639,24 +714,35 @@ serve(async (req) => {
             else if (usageCount >= 10) diversityScore = 60;
             else if (usageCount >= 5) diversityScore = 80;
 
-            citations.push({
+            const citationWithMeta = {
               ...citation,
               claimText: claimData.claim,
               sentenceIndex: claimData.sentenceIndex,
               diversityScore,
               usageCount,
-            });
+            };
             
-            console.log(`   ✅ ACCEPTED: Citation ${i + 1} added\n`);
+            // TIER 3: Soft match detection - high authority but maybe lower specificity
+            if (citation.authorityScore >= 90 && citation.specificityScore < 70) {
+              softMatches.push(citationWithMeta);
+              console.log(`   ⚠️ SOFT MATCH: High-authority source but lower specificity (needs manual review)\n`);
+            } else {
+              citations.push(citationWithMeta);
+              console.log(`   ✅ ACCEPTED: Citation ${i + 1} added\n`);
+            }
           } catch (e) {
             console.warn(`   ⚠️ Invalid URL in citation: ${citation.url}`);
           }
         } else {
+          // Track rejection reasons for better diagnostics
           competitorsBlocked++;
-          console.log(`   ⚠️  REJECTED: No valid citation found (competitor or low specificity)\n`);
+          console.log(`   ⚠️  REJECTED: No valid citation found\n`);
         }
 
       } catch (error) {
+        if (error instanceof Error && error.message.includes('Invalid citation structure')) {
+          jsonParseFailures++;
+        }
         console.error(`   ❌ ERROR processing claim ${i + 1}:`, error);
       }
     }
@@ -666,27 +752,78 @@ serve(async (req) => {
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`📊 FINAL RESULTS:`);
     console.log(`   Claims analyzed: ${maxClaims}`);
-    console.log(`   Citations found: ${citations.length}`);
+    console.log(`   Perfect matches: ${citations.length}`);
+    console.log(`   Soft matches: ${softMatches.length}`);
     console.log(`   Competitors blocked: ${competitorsBlocked}`);
+    console.log(`   JSON parse failures: ${jsonParseFailures}`);
     console.log(`   Success rate: ${((citations.length/maxClaims)*100).toFixed(1)}%`);
     console.log(`   Time elapsed: ${elapsed}s`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
-    // Sort by specificity score and authority
+    // Sort both perfect and soft matches by quality
     citations.sort((a, b) => {
       const scoreA = (a.specificityScore || 0) + (a.authorityScore * 0.5);
       const scoreB = (b.specificityScore || 0) + (b.authorityScore * 0.5);
       return scoreB - scoreA;
     });
+    
+    softMatches.sort((a, b) => b.authorityScore - a.authorityScore);
 
-    if (citations.length === 0) {
+    // TIER 3: If no perfect matches but have soft matches, return them with special flag
+    if (citations.length === 0 && softMatches.length > 0) {
+      console.log(`\n⚠️ SOFT MATCH MODE: Returning high-authority sources that need manual review\n`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          isSoftMatch: true,
+          message: `Found ${softMatches.length} high-authority source(s) that are broadly relevant but may need manual verification for exact claim matching.`,
+          citations: softMatches.map(c => ({
+            ...c,
+            needsManualReview: true,
+            reviewReason: 'High-authority source but lower specificity for this exact claim'
+          })),
+          totalFound: softMatches.length,
+          verifiedCount: 0,
+          claimsAnalyzed: maxClaims,
+          competitorsBlocked,
+          timeElapsed: elapsed,
+          language: articleLanguage,
+          model: 'openai/gpt-5-mini',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Build detailed failure message
+    if (citations.length === 0 && softMatches.length === 0) {
+      let failureReasons: string[] = [];
+      if (competitorsBlocked > 0) failureReasons.push(`${competitorsBlocked} competitor source(s) blocked`);
+      if (jsonParseFailures > 0) failureReasons.push(`${jsonParseFailures} AI response parsing error(s)`);
+      if (specificityRejections > 0) failureReasons.push(`${specificityRejections} source(s) too generic`);
+      
+      const failureMessage = failureReasons.length > 0
+        ? `No valid citations found: ${failureReasons.join(', ')}`
+        : 'No valid citations found. The claim may be too specific or require sources not in our approved domain list.';
+      
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'No valid citations found. All sources were either competitors or not specific enough.',
+          message: failureMessage,
           citations: [],
           claimsAnalyzed: maxClaims,
           competitorsBlocked,
+          jsonParseFailures,
+          specificityRejections,
+          diagnostics: {
+            reason: 'no_matches_found',
+            suggestions: [
+              competitorsBlocked > 0 ? 'Most relevant sources were competitor websites' : null,
+              jsonParseFailures > 0 ? 'AI had trouble generating valid citation structures' : null,
+              specificityRejections > 0 ? 'Found sources were too generic for this specific claim' : null,
+              'Consider broadening the claim or manually adding a citation',
+            ].filter(Boolean),
+          },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -696,14 +833,21 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         citations,
+        softMatches: softMatches.length > 0 ? softMatches.map(c => ({
+          ...c,
+          needsManualReview: true,
+          reviewReason: 'High-authority but lower specificity'
+        })) : undefined,
         totalFound: citations.length,
         verifiedCount: citations.length,
         claimsAnalyzed: maxClaims,
         competitorsBlocked,
+        jsonParseFailures,
+        specificityRejections,
         timeElapsed: elapsed,
         language: articleLanguage,
         model: 'openai/gpt-5-mini',
-        message: `Found ${citations.length} high-quality, claim-specific citations (${competitorsBlocked} competitors blocked)`,
+        message: `Found ${citations.length} perfect match(es)${softMatches.length > 0 ? ` + ${softMatches.length} soft match(es) for review` : ''} (${competitorsBlocked} competitors blocked)`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
