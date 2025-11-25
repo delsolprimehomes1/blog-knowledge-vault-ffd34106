@@ -213,6 +213,161 @@ function isBlockedByKeywordOrPattern(url: string, domain: string): boolean {
   return false;
 }
 
+// ===== EXTRACT KEYWORDS FROM CLAIM FOR RELEVANCE CHECKING =====
+function extractKeywords(text: string): string[] {
+  // Remove common words and extract meaningful keywords
+  const commonWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+    'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be',
+    'el', 'la', 'los', 'las', 'un', 'una', 'de', 'en', 'y', 'o', 'que',
+  ]);
+  
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !commonWords.has(w));
+  
+  return [...new Set(words)];
+}
+
+// ===== ACTIVE COMPETITOR VERIFICATION WITH PERPLEXITY =====
+async function verifyNotCompetitor(
+  url: string, 
+  domain: string, 
+  perplexityApiKey: string
+): Promise<{isCompetitor: boolean, businessType: string, confidence: number}> {
+  
+  const prompt = `Analyze this website domain: ${domain}
+
+Is this company/website involved in ANY of the following businesses?
+- Selling or renting real estate/properties
+- Real estate brokerage or agency services
+- Property listing portals or platforms
+- Property investment advisory
+- Relocation services focused on property sales/rentals
+- Estate agent services
+- Property consulting or brokerage
+
+ANSWER ONLY with JSON in this exact format:
+{
+  "isRealEstateCompany": true or false,
+  "businessType": "brief description of what the company actually does",
+  "confidence": 1-10 (how confident are you in this assessment)
+}
+
+Return ONLY the JSON, nothing else.`;
+
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a business analysis assistant. Respond only with valid JSON. Be accurate and objective in determining if a company is involved in real estate sales/brokerage.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 200,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Competitor verification API error: ${response.status}`);
+      return { isCompetitor: false, businessType: 'verification_failed', confidence: 0 };
+    }
+
+    const data = await response.json();
+    const resultText = data.choices[0].message.content;
+    
+    // Extract JSON from response
+    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn('⚠️ No JSON found in competitor verification response');
+      return { isCompetitor: false, businessType: 'parse_error', confidence: 0 };
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    
+    return {
+      isCompetitor: result.isRealEstateCompany === true,
+      businessType: result.businessType || 'unknown',
+      confidence: result.confidence || 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Competitor verification error:', error);
+    return { isCompetitor: false, businessType: 'error', confidence: 0 };
+  }
+}
+
+// ===== AUTO-ADD TO BLACKLIST =====
+async function addToBlacklist(domain: string, reason: string): Promise<void> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Check if domain already exists
+    const { data: existing } = await supabase
+      .from('approved_domains')
+      .select('id')
+      .eq('domain', domain)
+      .single();
+    
+    if (existing) {
+      // Update existing to set is_allowed = false
+      await supabase
+        .from('approved_domains')
+        .update({ 
+          is_allowed: false,
+          notes: `Auto-blocked: ${reason}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('domain', domain);
+      
+      console.log(`✅ Updated ${domain} to blacklist (is_allowed=false)`);
+    } else {
+      // Insert new blacklist entry
+      await supabase
+        .from('approved_domains')
+        .insert({
+          domain,
+          category: 'Auto-detected Competitor',
+          trust_score: 0,
+          tier: 'tier_3',
+          is_allowed: false,
+          notes: `Auto-blocked by Perplexity verification: ${reason}`,
+        });
+      
+      console.log(`✅ Added ${domain} to blacklist database`);
+    }
+    
+    // Log to audit trail
+    await supabase
+      .from('citation_cleanup_audit_log')
+      .insert({
+        scan_type: 'competitor_verification',
+        competitor_domain: domain,
+        action_taken: 'auto_blacklisted',
+        match_type: 'perplexity_verification',
+        field_name: reason,
+      });
+      
+  } catch (error) {
+    console.error('❌ Failed to add to blacklist:', error);
+  }
+}
+
 // ===== SIMPLE AUTHORITY SCORING (No Usage Tracking) =====
 interface DomainScore {
   domain: string;
@@ -566,10 +721,27 @@ async function searchCitationsInBatches(
         return false;
       }
       
-      // === STRICT RELEVANCE CHECK ===
-      if (!citation.claimMatch || citation.claimMatch.length < 20) {
-        console.warn(`   ⚠️ Weak relevance - missing claimMatch: ${domain}`);
-        // Allow but flag for review
+      // === STRICT RELEVANCE ENFORCEMENT: REJECT WEAK MATCHES ===
+      if (!citation.claimMatch || citation.claimMatch.length < 30) {
+        console.warn(`   ❌ REJECTED - weak relevance (missing/short claimMatch): ${domain}`);
+        return false;
+      }
+      
+      // Check claimMatch actually references the claim keywords
+      const claimKeywords = extractKeywords(targetContext || articleTopic);
+      const matchesClaimKeywords = claimKeywords.some(kw => 
+        citation.claimMatch!.toLowerCase().includes(kw.toLowerCase())
+      );
+      
+      if (!matchesClaimKeywords && claimKeywords.length > 0) {
+        console.warn(`   ❌ REJECTED - claimMatch doesn't reference actual claim keywords: ${domain}`);
+        return false;
+      }
+      
+      // Reject low relevance scores
+      if (citation.authorityScore < 7) {
+        console.warn(`   ❌ REJECTED - relevance score too low (${citation.authorityScore}): ${domain}`);
+        return false;
       }
       
       return true;
@@ -628,7 +800,8 @@ export async function findBetterCitations(
   currentCitations: string[],
   perplexityApiKey: string,
   targetContext?: string,
-  focusArea?: string
+  focusArea?: string,
+  verifyCompetitors: boolean = true
 ): Promise<BetterCitation[]> {
   
   console.log('\n🚀 Starting batch citation search...');
@@ -669,6 +842,65 @@ export async function findBetterCitations(
     targetContext,
     focusArea
   );
+  
+  // ACTIVE COMPETITOR VERIFICATION (if enabled)
+  if (verifyCompetitors) {
+    console.log(`\n🔍 ACTIVE COMPETITOR VERIFICATION - Checking ${citations.length} citations`);
+    
+    const approvedDomainsSet = new Set(approvedDomains.map(d => d.domain));
+    const verifiedCitations: BetterCitation[] = [];
+    
+    for (const citation of citations) {
+      const domain = extractDomain(citation.url);
+      
+      // Skip verification for known approved high-trust domains
+      const isKnownApproved = approvedDomainsSet.has(domain);
+      const hasHighAuthority = citation.authorityScore >= 80;
+      
+      if (isKnownApproved && hasHighAuthority) {
+        console.log(`   ✅ Trusted domain (skipping verification): ${domain}`);
+        verifiedCitations.push(citation);
+        continue;
+      }
+      
+      // Verify with Perplexity if not in approved list or low trust
+      console.log(`   🔍 Verifying: ${domain} (authority: ${citation.authorityScore})...`);
+      const verification = await verifyNotCompetitor(citation.url, domain, perplexityApiKey);
+      
+      if (verification.isCompetitor && verification.confidence >= 7) {
+        console.log(`   🚫 COMPETITOR DETECTED: ${domain}`);
+        console.log(`      Business: ${verification.businessType}`);
+        console.log(`      Confidence: ${verification.confidence}/10`);
+        
+        // Auto-add to blacklist
+        await addToBlacklist(domain, verification.businessType);
+        continue;
+      }
+      
+      console.log(`   ✅ Verified safe: ${domain} (${verification.businessType})`);
+      verifiedCitations.push(citation);
+    }
+    
+    console.log(`\n📊 Competitor verification complete: ${verifiedCitations.length}/${citations.length} citations approved`);
+    
+    // Validate government source presence
+    const govCitations = verifiedCitations.filter(c => 
+      c.url.includes('.gov') || 
+      c.url.includes('.gob.es') || 
+      c.url.includes('.europa.eu') ||
+      c.url.includes('.overheid.nl')
+    );
+
+    console.log(`\n🏛️  Found ${govCitations.length} government citations out of ${verifiedCitations.length} total`);
+    
+    if (verifiedCitations.length === 0) {
+      console.warn('⚠️  No citations found after verification');
+    } else if (govCitations.length === 0) {
+      console.warn('⚠️  No government sources found - consider manual review');
+    }
+    
+    return verifiedCitations.slice(0, 10);
+  }
   
   // Validate government source presence
   const govCitations = citations.filter(c => 
