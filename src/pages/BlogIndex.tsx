@@ -120,11 +120,12 @@ const BlogIndex = () => {
   const blogUrl = `${baseUrl}/blog`;
   
   const langToHreflang: Record<string, string> = {
-    en: 'en-GB', es: 'es-ES', de: 'de-DE', nl: 'nl-NL',
+    en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
     fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', da: 'da-DK', hu: 'hu-HU',
+    fi: 'fi-FI', no: 'nb-NO'
   };
 
-  const activeLanguages = ['en', 'es', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu'];
+  const activeLanguages = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
   
   const totalArticles = articlesData?.length || 0;
   const totalPages = Math.ceil(totalArticles / ARTICLES_PER_PAGE);

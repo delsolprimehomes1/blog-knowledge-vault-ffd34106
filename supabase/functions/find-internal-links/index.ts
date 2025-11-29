@@ -15,7 +15,9 @@ function getLanguageName(code: string): string {
     'pl': 'Polish',
     'sv': 'Swedish',
     'da': 'Danish',
-    'hu': 'Hungarian'
+    'hu': 'Hungarian',
+    'fi': 'Finnish',
+    'no': 'Norwegian'
   };
   return names[code] || 'English';
 }

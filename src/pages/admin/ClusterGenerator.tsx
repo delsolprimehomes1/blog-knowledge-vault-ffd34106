@@ -14,7 +14,7 @@ import { ClusterReviewInterface } from "@/components/cluster-review/ClusterRevie
 import { BlogArticle } from "@/types/blog";
 import { validateAllArticles } from "@/lib/linkValidation";
 
-type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu';
+type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu' | 'fi' | 'no';
 
 type StepStatus = 'pending' | 'running' | 'complete';
 
@@ -34,6 +34,8 @@ const languageOptions = [
   { value: 'sv', label: '🇸🇪 Swedish', name: 'Swedish' },
   { value: 'da', label: '🇩🇰 Danish', name: 'Danish' },
   { value: 'hu', label: '🇭🇺 Hungarian', name: 'Hungarian' },
+  { value: 'fi', label: '🇫🇮 Finnish', name: 'Finnish' },
+  { value: 'no', label: '🇳🇴 Norwegian', name: 'Norwegian' },
 ];
 
 const STORAGE_KEY = 'cluster_generator_backup';

@@ -1,6 +1,6 @@
 // TypeScript interfaces matching the Supabase schema
 
-export type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu';
+export type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu' | 'fi' | 'no';
 export type FunnelStage = 'TOFU' | 'MOFU' | 'BOFU';
 export type ArticleStatus = 'draft' | 'published' | 'archived';
 

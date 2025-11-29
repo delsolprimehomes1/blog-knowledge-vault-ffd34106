@@ -38,6 +38,8 @@ const LANGUAGES: Array<{ code: Language; flag: string; name: string }> = [
   { code: "sv", flag: "🇸🇪", name: "Swedish" },
   { code: "da", flag: "🇩🇰", name: "Danish" },
   { code: "hu", flag: "🇭🇺", name: "Hungarian" },
+  { code: "fi", flag: "🇫🇮", name: "Finnish" },
+  { code: "no", flag: "🇳🇴", name: "Norwegian" },
 ];
 
 export const TranslationsSection = ({

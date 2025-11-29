@@ -59,7 +59,7 @@ function generateOrganizationSchema() {
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "Customer Service",
-      "availableLanguage": ["en", "es", "de", "nl", "fr", "pl", "sv", "da", "hu"],
+      "availableLanguage": ["en", "de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"],
       "telephone": "+34-952-123-456",
       "email": "info@delsolprimehomes.com"
     },
@@ -211,8 +211,9 @@ function generateStaticHTML(article: ArticleData): string {
 
   // Build hreflang links for translations
   const langToHreflang: Record<string, string> = {
-    en: 'en-GB', es: 'es-ES', de: 'de-DE', nl: 'nl-NL',
-    fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', da: 'da-DK', hu: 'hu-HU'
+    en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
+    fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', da: 'da-DK', hu: 'hu-HU',
+    fi: 'fi-FI', no: 'nb-NO'
   };
 
   const hreflangLinksArray = [];
