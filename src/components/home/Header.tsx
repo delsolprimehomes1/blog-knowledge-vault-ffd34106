@@ -6,11 +6,11 @@ import { LANGUAGE_NAMES, NAV_LINKS } from '../../constants/home';
 import { Button } from './ui/Button';
 
 interface HeaderProps {
-  currentLang: Language;
-  setLang: (lang: Language) => void;
+  currentLang?: Language;
+  setLang?: (lang: Language) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
+export const Header: React.FC<HeaderProps> = ({ currentLang = Language.EN, setLang }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -69,31 +69,33 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
         {/* Actions */}
         <div className="hidden lg:flex items-center gap-6">
           {/* Language Selector */}
-          <div className="relative">
-            <button 
-              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors duration-300 ${isScrolled ? 'text-slate-700 hover:text-prime-900' : 'text-white hover:text-prime-gold'}`}
-            >
-              {currentLang} <ChevronDown size={14} className={`transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isLangMenuOpen && (
-              <div className="absolute top-full right-0 mt-4 w-48 bg-white rounded-xl shadow-2xl shadow-slate-900/10 py-2 border border-slate-100 grid grid-cols-1 overflow-hidden animate-fade-in-up origin-top-right">
-                {Object.values(Language).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => {
-                      setLang(lang);
-                      setIsLangMenuOpen(false);
-                    }}
-                    className={`px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${currentLang === lang ? 'text-prime-gold font-bold bg-slate-50/50' : 'text-slate-600'}`}
-                  >
-                    {LANGUAGE_NAMES[lang]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {setLang && (
+            <div className="relative">
+              <button 
+                onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors duration-300 ${isScrolled ? 'text-slate-700 hover:text-prime-900' : 'text-white hover:text-prime-gold'}`}
+              >
+                {currentLang} <ChevronDown size={14} className={`transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isLangMenuOpen && (
+                <div className="absolute top-full right-0 mt-4 w-48 bg-white rounded-xl shadow-2xl shadow-slate-900/10 py-2 border border-slate-100 grid grid-cols-1 overflow-hidden animate-fade-in-up origin-top-right">
+                  {Object.values(Language).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        setLang(lang);
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${currentLang === lang ? 'text-prime-gold font-bold bg-slate-50/50' : 'text-slate-600'}`}
+                    >
+                      {LANGUAGE_NAMES[lang]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <Button variant={isScrolled ? 'primary' : 'secondary'} size="sm" className={!isScrolled ? 'shadow-lg shadow-black/10' : ''}>
             Book a Call
@@ -133,23 +135,25 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
           )
         ))}
         
-        <div className="flex flex-col gap-4 mt-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Language</span>
-          <div className="grid grid-cols-2 gap-3">
-            {Object.values(Language).map((lang) => (
-              <button
-                key={lang}
-                onClick={() => {
-                  setLang(lang);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`px-3 py-2 text-sm rounded-lg border transition-colors ${currentLang === lang ? 'border-prime-900 bg-prime-900 text-white' : 'border-slate-200 text-slate-600'}`}
-              >
-                {LANGUAGE_NAMES[lang]}
-              </button>
-            ))}
+        {setLang && (
+          <div className="flex flex-col gap-4 mt-4">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Language</span>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.values(Language).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => {
+                    setLang(lang);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`px-3 py-2 text-sm rounded-lg border transition-colors ${currentLang === lang ? 'border-prime-900 bg-prime-900 text-white' : 'border-slate-200 text-slate-600'}`}
+                >
+                  {LANGUAGE_NAMES[lang]}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         
         <Button fullWidth onClick={() => setIsMobileMenuOpen(false)} className="mt-auto mb-8">
            Book a Call

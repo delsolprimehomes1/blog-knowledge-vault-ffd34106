@@ -1,12 +1,26 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, MapPin, Wallet, Home } from 'lucide-react';
-import { LOCATIONS } from '../../../constants/home';
+import { LOCATIONS, BUDGET_RANGES } from '../../../constants/home';
 import { Button } from '../ui/Button';
 
 export const QuickSearch: React.FC = () => {
+  const navigate = useNavigate();
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState('');
   const [purpose, setPurpose] = useState('');
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (location) params.append("location", location);
+    if (purpose) params.append("propertyType", purpose);
+    if (budget) {
+      const [min, max] = budget.split("-");
+      if (min) params.append("priceMin", min);
+      if (max && max !== "+") params.append("priceMax", max);
+    }
+    navigate(`/property-finder?${params.toString()}`);
+  };
 
   return (
     <div className="relative z-30 -mt-32 md:-mt-24 container mx-auto px-4 reveal-on-scroll stagger-2">
@@ -33,7 +47,7 @@ export const QuickSearch: React.FC = () => {
                 onChange={(e) => setLocation(e.target.value)}
               >
                 <option value="">Any Location</option>
-                {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                {LOCATIONS.map(loc => <option key={loc.value} value={loc.value}>{loc.label}</option>)}
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
             </div>
@@ -81,7 +95,7 @@ export const QuickSearch: React.FC = () => {
           </div>
 
           {/* Submit */}
-          <Button fullWidth className="h-[58px] shadow-xl shadow-prime-900/10 text-lg" variant="primary">
+          <Button onClick={handleSearch} fullWidth className="h-[58px] shadow-xl shadow-prime-900/10 text-lg" variant="primary">
             Open the Full Property Finder
           </Button>
 

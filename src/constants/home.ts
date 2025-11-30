@@ -16,20 +16,35 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
 
 // Locations for dropdown - Expanded list based on requirements
 export const LOCATIONS = [
-  'Málaga',
-  'Torremolinos',
-  'Benalmádena',
-  'Fuengirola',
-  'Mijas',
-  'Marbella',
-  'San Pedro de Alcántara',
-  'Ojén',
-  'Istán',
-  'Benahavís',
-  'Estepona',
-  'Casares',
-  'Manilva',
-  'Sotogrande'
+  { label: 'Málaga', value: 'Málaga' },
+  { label: 'Torremolinos', value: 'Torremolinos' },
+  { label: 'Benalmádena', value: 'Benalmádena' },
+  { label: 'Fuengirola', value: 'Fuengirola' },
+  { label: 'Mijas', value: 'Mijas' },
+  { label: 'Marbella', value: 'Marbella' },
+  { label: 'San Pedro de Alcántara', value: 'San Pedro de Alcántara' },
+  { label: 'Ojén', value: 'Ojén' },
+  { label: 'Istán', value: 'Istán' },
+  { label: 'Benahavís', value: 'Benahavís' },
+  { label: 'Estepona', value: 'Estepona' },
+  { label: 'Casares', value: 'Casares' },
+  { label: 'Manilva', value: 'Manilva' },
+  { label: 'Sotogrande', value: 'Sotogrande' }
+];
+
+export const PROPERTY_TYPES = [
+  { label: 'Apartment', value: 'Apartment' },
+  { label: 'Villa', value: 'Villa' },
+  { label: 'Penthouse', value: 'Penthouse' },
+  { label: 'Townhouse', value: 'Townhouse' },
+  { label: 'Duplex', value: 'Duplex' },
+];
+
+export const BUDGET_RANGES = [
+  { label: '€300k - €500k', value: '300000-500000' },
+  { label: '€500k - €800k', value: '500000-800000' },
+  { label: '€800k - €1.5M', value: '800000-1500000' },
+  { label: '€1.5M+', value: '1500000+' },
 ];
 
 // Featured Areas Data (Keeping main highlights)

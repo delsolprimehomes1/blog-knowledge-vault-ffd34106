@@ -25,6 +25,8 @@ import BlogIndex from "./pages/BlogIndex";
 import Sitemap from "./pages/Sitemap";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
+import PropertyFinder from "./pages/PropertyFinder";
+import PropertyDetail from "./pages/PropertyDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +49,8 @@ const App = () => (
           <Route path="/blog" element={<BlogIndex />} />
           <Route path="/blog/:slug" element={<BlogArticle />} />
           <Route path="/sitemap" element={<Sitemap />} />
+          <Route path="/property-finder" element={<PropertyFinder />} />
+          <Route path="/property/:reference" element={<PropertyDetail />} />
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
