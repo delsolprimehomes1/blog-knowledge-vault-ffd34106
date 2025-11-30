@@ -1,0 +1,119 @@
+import { Language, Area, BlogPost } from '../types/home';
+
+// Map of full language names
+export const LANGUAGE_NAMES: Record<Language, string> = {
+  [Language.EN]: 'English',
+  [Language.NL]: 'Nederlands',
+  [Language.FR]: 'Français',
+  [Language.DE]: 'Deutsch',
+  [Language.FI]: 'Suomi',
+  [Language.PL]: 'Polski',
+  [Language.DA]: 'Dansk',
+  [Language.HU]: 'Magyar',
+  [Language.SV]: 'Svenska',
+  [Language.NO]: 'Norsk',
+};
+
+// Locations for dropdown - Expanded list based on requirements
+export const LOCATIONS = [
+  'Málaga',
+  'Torremolinos',
+  'Benalmádena',
+  'Fuengirola',
+  'Mijas',
+  'Marbella',
+  'San Pedro de Alcántara',
+  'Ojén',
+  'Istán',
+  'Benahavís',
+  'Estepona',
+  'Casares',
+  'Manilva',
+  'Sotogrande'
+];
+
+// Featured Areas Data (Keeping main highlights)
+export const FEATURED_AREAS: Area[] = [
+  {
+    id: 'marbella',
+    name: 'Marbella',
+    image: 'https://picsum.photos/id/164/800/600', // Luxury boat/water feel
+    description: 'The jewel of the Costa del Sol. Luxury living, golden miles, and exclusive amenities.'
+  },
+  {
+    id: 'estepona',
+    name: 'Estepona',
+    image: 'https://picsum.photos/id/212/800/600', // Street/Architecture
+    description: 'The Garden of the Costa del Sol. Traditional charm meets modern luxury developments.'
+  },
+  {
+    id: 'sotogrande',
+    name: 'Sotogrande',
+    image: 'https://picsum.photos/id/69/800/600', // Greenery/Golf feel
+    description: 'Privacy and prestige. World-class polo, golf, and marina lifestyle.'
+  },
+  {
+    id: 'malaga',
+    name: 'Málaga City',
+    image: 'https://picsum.photos/id/122/800/600', // Cityscape
+    description: 'A vibrant cultural hub blending history with futuristic urban living.'
+  }
+];
+
+// Mock Blog Posts
+export const LATEST_POSTS: BlogPost[] = [
+  {
+    id: '1',
+    title: 'Buying Off-Plan in Spain: A Legal Checklist',
+    excerpt: 'Understand bank guarantees and the importance of the LPO before you sign.',
+    date: 'Oct 12, 2023',
+    image: 'https://picsum.photos/id/450/600/400'
+  },
+  {
+    id: '2',
+    title: 'The Rise of AI in Real Estate Valuation',
+    excerpt: 'How we use advanced algorithms to ensure you are paying the fair market price.',
+    date: 'Sep 28, 2023',
+    image: 'https://picsum.photos/id/3/600/400'
+  },
+  {
+    id: '3',
+    title: 'Golden Visa Updates for 2024',
+    excerpt: 'What non-EU citizens need to know about residency through property investment.',
+    date: 'Sep 15, 2023',
+    image: 'https://picsum.photos/id/20/600/400'
+  }
+];
+
+// Navigation Structure
+export const NAV_LINKS = [
+  { label: 'Properties', href: '/property-finder' },
+  { label: 'Areas', href: '/areas' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Buyers Guide', href: '/buyers-guide' },
+  { label: 'Blog', href: '/blog' },
+];
+
+// JSON-LD Structured Data Generator
+export const getStructuredData = () => ({
+  "@context": "https://schema.org",
+  "@type": "RealEstateAgent",
+  "name": "DelSolPrimeHomes",
+  "image": "https://picsum.photos/id/1031/800/600",
+  "url": "https://delsolprimehomes.com",
+  "telephone": "+34123456789",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Av. Ricardo Soriano",
+    "addressLocality": "Marbella",
+    "postalCode": "29601",
+    "addressCountry": "ES"
+  },
+  "priceRange": "$$$",
+  "founders": [
+    { "@type": "Person", "name": "Hans Beeckman" },
+    { "@type": "Person", "name": "Cédric Van Hecke" },
+    { "@type": "Person", "name": "Steven Roberts" }
+  ],
+  "areaServed": ["Málaga", "Marbella", "Estepona", "Sotogrande"]
+});

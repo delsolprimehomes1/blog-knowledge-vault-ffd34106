@@ -24,6 +24,7 @@ import BlogArticle from "./pages/BlogArticle";
 import BlogIndex from "./pages/BlogIndex";
 import Sitemap from "./pages/Sitemap";
 import NotFound from "./pages/NotFound";
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,7 +42,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/blog" replace />} />
+          <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/blog" element={<BlogIndex />} />
           <Route path="/blog/:slug" element={<BlogArticle />} />
