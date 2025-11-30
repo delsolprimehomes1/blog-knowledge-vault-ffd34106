@@ -1,61 +1,34 @@
 import React from 'react';
-import { Star, ArrowRight, Calendar } from 'lucide-react';
 import { Section } from '../ui/Section';
+import { Button } from '../ui/Button';
 import { LATEST_POSTS } from '../../../constants/home';
+import { Star, Quote, ArrowRight } from 'lucide-react';
 
 export const Reviews: React.FC = () => {
-  const reviews = [
-    {
-      name: 'Sophie M.',
-      country: 'Belgium',
-      rating: 5,
-      text: 'As a first-time buyer from abroad, I was overwhelmed. The team explained everything in Dutch, helped me understand the legal process, and their AI tool confirmed the property was fairly priced. I couldn\'t have done it without them.'
-    },
-    {
-      name: 'Lars P.',
-      country: 'Sweden',
-      rating: 5,
-      text: 'Professional, transparent, and incredibly patient with all my questions. They went above and beyond to ensure I understood every step. Highly recommended!'
-    },
-    {
-      name: 'Emma K.',
-      country: 'UK',
-      rating: 5,
-      text: 'The AI valuation tool gave me confidence I was making a smart investment. Their after-sales support has been exceptional—they even helped set up my utilities and community fees.'
-    }
-  ];
-
   return (
-    <Section background="white">
+    <Section className="bg-slate-50 relative">
       <div className="text-center mb-16 reveal-on-scroll">
-        <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-950 mb-4">
-          What Our <span className="text-prime-gold italic">Clients Say</span>
-        </h2>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          Real stories from real people who found their dream homes with us.
-        </p>
+        <h2 className="text-4xl font-serif font-bold text-prime-900 mb-6">What Our Clients Say</h2>
+        <div className="flex justify-center gap-1 mb-4">
+            {[1,2,3,4,5].map(i => <Star key={i} size={28} className="fill-prime-gold text-prime-gold" />)}
+        </div>
+        <p className="text-slate-500 font-medium">Real words from real buyers who trusted us with one of the most important decisions of their lives.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {reviews.map((review, index) => (
-          <div 
-            key={index}
-            className={`bg-slate-50 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 reveal-on-scroll stagger-${index + 1}`}
-          >
-            <div className="flex items-center mb-4">
-              {[...Array(review.rating)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 fill-prime-gold text-prime-gold" />
-              ))}
-            </div>
-            <p className="text-slate-700 mb-6 leading-relaxed italic">"{review.text}"</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-prime-950">{review.name}</p>
-                <p className="text-sm text-slate-500">{review.country}</p>
-              </div>
-            </div>
+      {/* Elfsight Placeholder - Styled */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 h-80 flex items-center justify-center mb-10 max-w-4xl mx-auto relative overflow-hidden group reveal-on-scroll">
+        <Quote className="absolute top-8 left-8 text-slate-100 w-24 h-24 -z-0" />
+        <div className="text-center text-slate-400 relative z-10 p-6">
+          <div className="w-16 h-16 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+             <span className="text-2xl font-serif text-slate-300">G</span>
           </div>
-        ))}
+          <p className="font-medium text-slate-600 mb-2">Google Reviews Widget Integration</p>
+          <p className="text-xs bg-slate-100 px-3 py-1 rounded-full inline-block">Client-side Script Placeholder</p>
+        </div>
+      </div>
+
+      <div className="text-center reveal-on-scroll">
+        <Button variant="outline">Read All Reviews</Button>
       </div>
     </Section>
   );
@@ -63,56 +36,42 @@ export const Reviews: React.FC = () => {
 
 export const BlogTeaser: React.FC = () => {
   return (
-    <Section background="light">
-      <div className="text-center mb-16 reveal-on-scroll">
-        <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-950 mb-4">
-          <span className="text-prime-gold italic">Latest Insights</span> from Our Blog
-        </h2>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          Stay informed with expert advice on Costa del Sol real estate, legal tips, and market trends.
-        </p>
+    <Section background="white">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-16 reveal-on-scroll">
+        <div>
+          <span className="text-prime-gold font-bold uppercase tracking-widest text-xs mb-3 block">Knowledge Base</span>
+          <h2 className="text-4xl font-serif font-bold text-prime-900 mb-4">Insights & Guides for Foreign Buyers</h2>
+          <p className="text-slate-600 font-light text-lg max-w-2xl">Learn more about taxes, legal processes, market trends, and everything you need to make a safe and well-informed decision.</p>
+        </div>
+        <Button variant="ghost" className="hidden md:flex text-prime-gold font-bold group">
+           Visit the Blog <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {LATEST_POSTS.map((post, index) => (
-          <a 
-            key={post.id}
-            href={`/blog/${post.id}`}
-            className={`group block bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 overflow-hidden reveal-on-scroll stagger-${index + 1}`}
-          >
-            <div className="relative h-48 overflow-hidden">
-              <img 
-                src={post.image}
-                alt={post.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
+        {LATEST_POSTS.map((post, idx) => (
+          <article key={post.id} className={`bg-white rounded-2xl overflow-hidden border border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 flex flex-col h-full group reveal-on-scroll stagger-${idx + 1}`}>
+            <div className="h-56 overflow-hidden relative">
+                <img src={post.image} alt={post.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-md text-xs font-bold text-prime-900 uppercase tracking-wider shadow-sm">
+                  {post.date}
+                </div>
             </div>
-            <div className="p-6">
-              <div className="flex items-center text-sm text-slate-500 mb-3">
-                <Calendar className="w-4 h-4 mr-2" />
-                {post.date}
-              </div>
-              <h3 className="text-xl font-bold text-prime-950 mb-3 group-hover:text-prime-gold transition-colors">
-                {post.title}
-              </h3>
-              <p className="text-slate-600 mb-4 leading-relaxed">{post.excerpt}</p>
-              <div className="flex items-center text-prime-gold group-hover:text-prime-goldDark transition-colors">
-                <span className="font-medium">Read More</span>
-                <ArrowRight className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+            <div className="p-8 flex-1 flex flex-col">
+              <h3 className="text-xl font-bold text-prime-900 mb-4 group-hover:text-prime-gold transition-colors cursor-pointer leading-tight">{post.title}</h3>
+              <p className="text-slate-600 text-sm mb-6 flex-1 font-light leading-relaxed">{post.excerpt}</p>
+              <a href={`/blog/${post.id}`} className="text-prime-900 font-bold text-sm hover:text-prime-gold transition-colors mt-auto flex items-center gap-2 group/link">
+                Read Article <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
+              </a>
             </div>
-          </a>
+          </article>
         ))}
       </div>
-
-      <div className="text-center mt-12">
-        <a 
-          href="/blog"
-          className="inline-flex items-center space-x-2 px-8 py-4 bg-prime-900 text-white rounded-lg hover:bg-prime-800 transition-colors font-medium shadow-lg"
-        >
-          <span>View All Articles</span>
-          <ArrowRight className="w-5 h-5" />
-        </a>
+      
+       <div className="mt-12 md:hidden text-center reveal-on-scroll">
+        <Button variant="ghost" className="text-prime-gold font-bold">
+          Visit the Blog
+        </Button>
       </div>
     </Section>
   );

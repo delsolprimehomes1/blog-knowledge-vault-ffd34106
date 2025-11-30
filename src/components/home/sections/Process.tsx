@@ -1,67 +1,57 @@
 import React from 'react';
-import { Search, FileText, Home, Key } from 'lucide-react';
 import { Section } from '../ui/Section';
+import { Button } from '../ui/Button';
+import { Phone, Search, FileText, Plane, Key } from 'lucide-react';
 
 export const Process: React.FC = () => {
+  // Pass the component itself (e.g., Phone) rather than an element (e.g., <Phone />).
+  // This avoids issues with cloneElement and React Context/Version mismatches.
   const steps = [
-    {
-      icon: Search,
-      title: 'Discovery Call',
-      description: 'We discuss your needs, budget, and timeline in your preferred language.'
-    },
-    {
-      icon: FileText,
-      title: 'Property Selection',
-      description: 'Our AI analyzes the market to shortlist properties that match your criteria and offer fair value.'
-    },
-    {
-      icon: Home,
-      title: 'Viewings & Due Diligence',
-      description: 'We arrange visits, review legal documents, and explain every clause of your contract.'
-    },
-    {
-      icon: Key,
-      title: 'Completion & Beyond',
-      description: 'From reservation to keys and beyond—after-sales support for utilities, taxes, and community management.'
-    }
+    { id: 1, title: 'Discovery Call in Your Language', desc: 'We begin with a friendly video call to understand your goals, budget, and timing.', Icon: Phone },
+    { id: 2, title: 'Tailored Shortlist & Video Presentations', desc: 'You receive a personalised selection of pre-screened new-build projects that meet your criteria.', Icon: Search },
+    { id: 3, title: 'Legal & Financial Clarity', desc: 'We explain licences, contracts, payment terms, taxes, and legal protections — all before any reservation.', Icon: FileText },
+    { id: 4, title: 'Viewing Trip & Final Selection', desc: 'Visit the area and the projects with us, compare options, and choose your preferred development.', Icon: Plane },
+    { id: 5, title: 'Signing, Follow-Up & Handover', desc: 'We guide you through the full process until completion, snagging, and key delivery — and can help with furniture, rentals, and property management.', Icon: Key },
   ];
 
   return (
-    <Section background="light">
-      <div className="text-center mb-16 reveal-on-scroll">
-        <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-950 mb-4">
-          Our <span className="text-prime-gold italic">Simple Process</span>
-        </h2>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          From first call to final handover, we're with you every step of the way.
-        </p>
+    <Section background="white" className="relative overflow-hidden py-24 md:py-32">
+      <div className="text-center mb-20 reveal-on-scroll">
+        <span className="text-prime-gold font-bold uppercase tracking-widest text-xs mb-3 block">How We Work</span>
+        <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-900">From First Call to Key Handover</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {steps.map((step, index) => (
-          <div 
-            key={index}
-            className={`relative reveal-on-scroll stagger-${index + 1}`}
-          >
-            {/* Connecting Line (hidden on mobile, shown on larger screens) */}
-            {index < steps.length - 1 && (
-              <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-prime-gold via-prime-goldLight to-transparent -translate-x-8"></div>
-            )}
-            
-            <div className="relative bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 h-full">
-              {/* Step Number */}
-              <div className="absolute -top-4 -left-4 w-10 h-10 bg-prime-gold rounded-full flex items-center justify-center font-bold text-prime-950 text-lg shadow-lg">
-                {index + 1}
+      <div className="relative max-w-7xl mx-auto">
+        {/* Connecting Line (Desktop) */}
+        <div className="hidden lg:block absolute top-10 left-0 w-full h-0.5 bg-slate-100 -z-0"></div>
+        <div className="hidden lg:block absolute top-10 left-0 w-0 h-0.5 bg-prime-gold transition-all duration-[2s] ease-out reveal-on-scroll visible:w-full -z-0"></div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-8 relative z-10">
+          {steps.map((step, idx) => (
+            <div key={step.id} className={`flex flex-col items-center text-center group reveal-on-scroll stagger-${idx + 1}`}>
+              <div className="w-20 h-20 rounded-full bg-white border-4 border-slate-50 flex items-center justify-center mb-8 shadow-lg group-hover:border-prime-gold/30 group-hover:scale-110 transition-all duration-500 relative">
+                 <div className="absolute inset-0 bg-prime-gold/5 rounded-full scale-0 group-hover:scale-100 transition-transform duration-500"></div>
+                
+                {/* Render the component dynamically */}
+                <step.Icon className="w-8 h-8 text-prime-900 group-hover:text-prime-gold transition-colors duration-300" />
+                
+                {/* Step Number Badge */}
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-prime-900 text-prime-gold rounded-full flex items-center justify-center text-sm font-bold border-2 border-white">
+                  {step.id}
+                </div>
               </div>
               
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-prime-gold/10 rounded-2xl mb-6">
-                <step.icon className="w-8 h-8 text-prime-gold" />
+              <div className="bg-white lg:bg-transparent p-6 lg:p-0 rounded-2xl border border-slate-100 lg:border-none shadow-sm lg:shadow-none w-full hover:shadow-lg transition-shadow duration-300">
+                <h3 className="text-lg font-bold text-prime-900 mb-3">{step.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed font-light">{step.desc}</p>
               </div>
-              <h3 className="text-xl font-bold text-prime-950 mb-3">{step.title}</h3>
-              <p className="text-slate-600 leading-relaxed">{step.description}</p>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-20 text-center reveal-on-scroll">
+        <Button variant="primary">View the Buyers Guide</Button>
       </div>
     </Section>
   );

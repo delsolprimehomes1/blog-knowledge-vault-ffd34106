@@ -1,49 +1,60 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
 import { Section } from '../ui/Section';
 import { FEATURED_AREAS } from '../../../constants/home';
+import { Button } from '../ui/Button';
+import { ArrowRight, MapPin } from 'lucide-react';
 
 export const FeaturedAreas: React.FC = () => {
   return (
-    <Section background="white">
-      <div className="text-center mb-16 reveal-on-scroll">
-        <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-950 mb-4">
-          Explore <span className="text-prime-gold italic">Prime Locations</span>
-        </h2>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          From Málaga to Sotogrande, discover the diverse lifestyle offerings of the Costa del Sol.
-        </p>
+    <Section background="light">
+      <div className="flex flex-col md:flex-row justify-between items-end mb-16 reveal-on-scroll">
+        <div className="max-w-2xl">
+          <span className="text-prime-gold font-bold uppercase tracking-widest text-xs mb-3 block">Locations</span>
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-prime-900 mb-6">From Málaga to Sotogrande — Carefully Selected Areas</h2>
+          <p className="text-slate-600 text-lg font-light leading-relaxed">
+            Each area on the Costa del Sol has its own character, lifestyle, and investment potential. We help you understand which locations best match your goals.
+          </p>
+        </div>
+        <Button variant="ghost" className="hidden md:flex text-prime-gold font-bold hover:bg-white/50 group">
+          Explore All Areas <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {FEATURED_AREAS.map((area, index) => (
-          <div 
-            key={area.id}
-            className={`group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 h-96 reveal-on-scroll stagger-${index + 1}`}
-          >
-            {/* Background Image */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-              style={{ backgroundImage: `url(${area.image})` }}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {FEATURED_AREAS.map((area, idx) => (
+          <div key={area.id} className={`group relative overflow-hidden rounded-2xl cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-slate-900/20 transition-all duration-500 aspect-[3/4] reveal-on-scroll stagger-${idx + 1}`}>
+            <img 
+              src={area.image} 
+              alt={area.name} 
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
             />
-            
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-prime-950/90 via-prime-950/40 to-transparent"></div>
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
             
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-              <h3 className="text-3xl font-serif font-bold mb-3">{area.name}</h3>
-              <p className="text-slate-200 mb-4 leading-relaxed">{area.description}</p>
-              <a 
-                href={`/areas/${area.id}`}
-                className="inline-flex items-center space-x-2 text-prime-gold hover:text-prime-goldLight transition-colors group/link"
-              >
-                <span className="font-medium">Learn More</span>
-                <ArrowRight className="w-4 h-4 transform group-hover/link:translate-x-1 transition-transform" />
-              </a>
+            <div className="absolute bottom-0 left-0 p-8 w-full transform transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+              <div className="flex items-center gap-2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-y-2 group-hover:translate-y-0">
+                  <MapPin size={14} className="text-prime-gold" />
+                  <span className="text-xs text-prime-gold uppercase tracking-widest font-bold">Costa del Sol</span>
+              </div>
+              <h3 className="text-3xl font-serif font-bold text-white mb-3 group-hover:text-prime-goldLight transition-colors">{area.name}</h3>
+              <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-500">
+                <p className="text-slate-200 text-sm font-light leading-relaxed mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                  {area.description}
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center text-white group-hover:bg-prime-gold group-hover:border-prime-gold group-hover:text-prime-900 transition-all duration-300">
+                <ArrowRight size={14} />
+              </div>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-12 md:hidden text-center reveal-on-scroll">
+        <Button variant="ghost" className="text-prime-gold font-bold">
+          Explore All Areas
+        </Button>
       </div>
     </Section>
   );
