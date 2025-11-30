@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import { Language } from '../../types/home';
 import { LANGUAGE_NAMES, NAV_LINKS } from '../../constants/home';
@@ -43,14 +44,25 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-10">
           {NAV_LINKS.map((link) => (
-            <a 
-              key={link.href} 
-              href={`#${currentLang}${link.href}`}
-              className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
-            >
-              {link.label}
-              <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
-            </a>
+            link.href === '/blog' ? (
+              <Link 
+                key={link.href} 
+                to="/blog"
+                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
+              >
+                {link.label}
+                <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+              </Link>
+            ) : (
+              <a 
+                key={link.href} 
+                href={`#${currentLang}${link.href}`}
+                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
+              >
+                {link.label}
+                <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+              </a>
+            )
           ))}
         </nav>
 
@@ -100,14 +112,25 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
       {/* Mobile Menu */}
       <div className={`fixed inset-0 bg-white/95 backdrop-blur-xl z-40 flex flex-col pt-32 px-8 gap-8 lg:hidden transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {NAV_LINKS.map((link) => (
-          <a 
-            key={link.href} 
-            href={`#${currentLang}${link.href}`}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4"
-          >
-            {link.label}
-          </a>
+          link.href === '/blog' ? (
+            <Link 
+              key={link.href} 
+              to="/blog"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4"
+            >
+              {link.label}
+            </Link>
+          ) : (
+            <a 
+              key={link.href} 
+              href={`#${currentLang}${link.href}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4"
+            >
+              {link.label}
+            </a>
+          )
         ))}
         
         <div className="flex flex-col gap-4 mt-4">

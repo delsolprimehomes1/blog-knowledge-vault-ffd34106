@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { Language } from '../../types/home';
 
@@ -61,7 +62,7 @@ export const Footer: React.FC = () => {
               <li><a href="#" className="hover:text-prime-gold transition-colors">Featured Areas</a></li>
               <li><a href="#" className="hover:text-prime-gold transition-colors">Our Team</a></li>
               <li><a href="#" className="hover:text-prime-gold transition-colors">Buyers Guide</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Blog & Insights</a></li>
+              <li><Link to="/blog" className="hover:text-prime-gold transition-colors">Blog & Insights</Link></li>
             </ul>
           </div>
 

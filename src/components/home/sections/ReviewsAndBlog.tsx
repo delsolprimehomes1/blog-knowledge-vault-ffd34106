@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Section } from '../ui/Section';
 import { Button } from '../ui/Button';
 import { LATEST_POSTS } from '../../../constants/home';
@@ -28,7 +29,9 @@ export const Reviews: React.FC = () => {
       </div>
 
       <div className="text-center reveal-on-scroll">
-        <Button variant="outline">Read All Reviews</Button>
+        <Link to="/blog">
+          <Button variant="outline">Read All Reviews</Button>
+        </Link>
       </div>
     </Section>
   );
@@ -43,9 +46,11 @@ export const BlogTeaser: React.FC = () => {
           <h2 className="text-4xl font-serif font-bold text-prime-900 mb-4">Insights & Guides for Foreign Buyers</h2>
           <p className="text-slate-600 font-light text-lg max-w-2xl">Learn more about taxes, legal processes, market trends, and everything you need to make a safe and well-informed decision.</p>
         </div>
-        <Button variant="ghost" className="hidden md:flex text-prime-gold font-bold group">
-           Visit the Blog <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-        </Button>
+        <Link to="/blog" className="hidden md:flex">
+          <Button variant="ghost" className="text-prime-gold font-bold group">
+            Visit the Blog <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -59,19 +64,21 @@ export const BlogTeaser: React.FC = () => {
             </div>
             <div className="p-8 flex-1 flex flex-col">
               <h3 className="text-xl font-bold text-prime-900 mb-4 group-hover:text-prime-gold transition-colors cursor-pointer leading-tight">{post.title}</h3>
-              <p className="text-slate-600 text-sm mb-6 flex-1 font-light leading-relaxed">{post.excerpt}</p>
-              <a href={`/blog/${post.id}`} className="text-prime-900 font-bold text-sm hover:text-prime-gold transition-colors mt-auto flex items-center gap-2 group/link">
+              <p className="text-slate-600 text-sm mb-6 flex-1 font-light leading-relaxed" style={{ lineHeight: '1.75' }}>{post.excerpt}</p>
+              <Link to={`/blog/${post.id}`} className="text-prime-900 font-bold text-sm hover:text-prime-gold transition-colors mt-auto flex items-center gap-2 group/link">
                 Read Article <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
-              </a>
+              </Link>
             </div>
           </article>
         ))}
       </div>
       
        <div className="mt-12 md:hidden text-center reveal-on-scroll">
-        <Button variant="ghost" className="text-prime-gold font-bold">
-          Visit the Blog
-        </Button>
+        <Link to="/blog">
+          <Button variant="ghost" className="text-prime-gold font-bold">
+            Visit the Blog
+          </Button>
+        </Link>
       </div>
     </Section>
   );
