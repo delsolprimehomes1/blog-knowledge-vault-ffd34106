@@ -19,6 +19,14 @@ export default {
         display: ['Cormorant Garamond', 'serif'],
       },
       colors: {
+        prime: {
+          950: '#020617',
+          900: '#0f172a',
+          800: '#1e293b',
+          gold: '#C5A059',
+          goldLight: '#E5C687',
+          goldDark: '#997B3D',
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -105,6 +113,18 @@ export default {
           "0%": { transform: "translateY(100%)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -114,6 +134,8 @@ export default {
         "scale-in": "scale-in 0.4s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "slide-in-up": "slide-in-up 0.4s ease-out",
+        float: 'float 6s ease-in-out infinite',
+        shimmer: 'shimmer 2s linear infinite',
       },
     },
   },
