@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
               <Link 
                 key={link.href} 
                 to="/blog"
-                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
+                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
               >
                 {link.label}
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
               <a 
                 key={link.href} 
                 href={`#${currentLang}${link.href}`}
-                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
+                className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isScrolled ? 'text-slate-700' : 'text-white/90'}`}
               >
                 {link.label}
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
               key={link.href} 
               to="/blog"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4"
+              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
             >
               {link.label}
             </Link>
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, setLang }) => {
               key={link.href} 
               href={`#${currentLang}${link.href}`}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4"
+              className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
             >
               {link.label}
             </a>

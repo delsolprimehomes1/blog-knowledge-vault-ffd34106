@@ -58,11 +58,11 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">Navigate</h4>
             <ul className="space-y-3 text-slate-300 text-sm">
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Property Finder</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Featured Areas</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Our Team</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Buyers Guide</a></li>
-              <li><Link to="/blog" className="hover:text-prime-gold transition-colors">Blog & Insights</Link></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Property Finder</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Featured Areas</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Our Team</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Buyers Guide</a></li>
+              <li><Link to="/blog" className="hover:text-prime-gold transition-colors font-nav">Blog & Insights</Link></li>
             </ul>
           </div>
 
@@ -70,11 +70,11 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">Legal</h4>
             <ul className="space-y-3 text-slate-300 text-sm">
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Cookie Policy</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">Legal Notice</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">LPO Information</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors">GDPR Compliance</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Privacy Policy</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Cookie Policy</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">Legal Notice</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">LPO Information</a></li>
+              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">GDPR Compliance</a></li>
             </ul>
           </div>
 

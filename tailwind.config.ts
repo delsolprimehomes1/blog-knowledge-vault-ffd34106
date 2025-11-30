@@ -14,9 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        sans: ['Lato', 'sans-serif'],
         serif: ['Playfair Display', 'Georgia', 'serif'],
         display: ['Playfair Display', 'Georgia', 'serif'],
+        nav: ['Raleway', 'sans-serif'],
       },
       colors: {
         prime: {
