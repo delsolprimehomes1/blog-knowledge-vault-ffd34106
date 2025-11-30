@@ -32,20 +32,16 @@ const PropertyFinder = () => {
   const searchProperties = async (params: PropertySearchParams, pageNum: number = 1) => {
     setIsLoading(true);
     try {
-      // Build query string
-      const queryParams = new URLSearchParams();
-      if (params.location) queryParams.append("location", params.location);
-      if (params.priceMin) queryParams.append("priceMin", params.priceMin.toString());
-      if (params.priceMax) queryParams.append("priceMax", params.priceMax.toString());
-      if (params.propertyType) queryParams.append("propertyType", params.propertyType);
-      if (params.bedrooms) queryParams.append("bedrooms", params.bedrooms.toString());
-      if (params.bathrooms) queryParams.append("bathrooms", params.bathrooms.toString());
-      queryParams.append("page", pageNum.toString());
-
+      // Call edge function with params in body
       const { data, error } = await supabase.functions.invoke("search-properties", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
+        body: {
+          location: params.location,
+          priceMin: params.priceMin,
+          priceMax: params.priceMax,
+          propertyType: params.propertyType,
+          bedrooms: params.bedrooms,
+          bathrooms: params.bathrooms,
+          page: pageNum,
         },
       });
 
@@ -55,7 +51,14 @@ const PropertyFinder = () => {
       setTotal(data.total || 0);
       setPage(pageNum);
 
-      // Update URL params
+      // Update URL params for shareable links
+      const queryParams = new URLSearchParams();
+      if (params.location) queryParams.append("location", params.location);
+      if (params.priceMin) queryParams.append("priceMin", params.priceMin.toString());
+      if (params.priceMax) queryParams.append("priceMax", params.priceMax.toString());
+      if (params.propertyType) queryParams.append("propertyType", params.propertyType);
+      if (params.bedrooms) queryParams.append("bedrooms", params.bedrooms.toString());
+      if (params.bathrooms) queryParams.append("bathrooms", params.bathrooms.toString());
       setSearchParams(queryParams);
     } catch (error) {
       console.error("Error searching properties:", error);

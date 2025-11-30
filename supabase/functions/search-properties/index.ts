@@ -66,22 +66,45 @@ serve(async (req) => {
   }
 
   try {
-    const { searchParams } = new URL(req.url);
     const apiKey = Deno.env.get('RESALES_ONLINE_API_KEY');
     
     if (!apiKey) {
       throw new Error('RESALES_ONLINE_API_KEY not configured');
     }
 
-    // Extract search parameters
-    const location = searchParams.get('location') || '';
-    const priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined;
-    const priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined;
-    const propertyType = searchParams.get('propertyType') || '';
-    const bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : undefined;
-    const bathrooms = searchParams.get('bathrooms') ? parseInt(searchParams.get('bathrooms')!) : undefined;
-    const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
+    // Extract search parameters from either URL (GET) or body (POST)
+    let location = '';
+    let priceMin: number | undefined;
+    let priceMax: number | undefined;
+    let propertyType = '';
+    let bedrooms: number | undefined;
+    let bathrooms: number | undefined;
+    let page = 1;
+    let limit = 20;
+
+    if (req.method === 'POST') {
+      // Handle POST request from supabase.functions.invoke
+      const body = await req.json();
+      location = body.location || '';
+      priceMin = body.priceMin;
+      priceMax = body.priceMax;
+      propertyType = body.propertyType || '';
+      bedrooms = body.bedrooms;
+      bathrooms = body.bathrooms;
+      page = body.page || 1;
+      limit = body.limit || 20;
+    } else {
+      // Handle GET request with URL params
+      const { searchParams } = new URL(req.url);
+      location = searchParams.get('location') || '';
+      priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined;
+      priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined;
+      propertyType = searchParams.get('propertyType') || '';
+      bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : undefined;
+      bathrooms = searchParams.get('bathrooms') ? parseInt(searchParams.get('bathrooms')!) : undefined;
+      page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
+      limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
+    }
 
     console.log('🔍 Searching properties:', { location, priceMin, priceMax, propertyType, bedrooms, page });
 
