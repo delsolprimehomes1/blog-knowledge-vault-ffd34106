@@ -273,6 +273,8 @@ const BlogArticle = () => {
               translations={article.translations as Record<string, string>}
             />
 
+            <SpeakableBox answer={article.speakable_answer} />
+
             <ArticleContent
               content={article.detailed_content}
               featuredImageUrl={article.featured_image_url}
@@ -288,8 +290,6 @@ const BlogArticle = () => {
                 />
               }
             />
-
-            <SpeakableBox answer={article.speakable_answer} />
 
             <TableOfContents content={article.detailed_content} />
 
