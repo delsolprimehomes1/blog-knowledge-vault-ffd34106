@@ -27,9 +27,7 @@ export const Hero: React.FC = () => {
         >
           <source src="https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/692ced3382f4c567c43c328f.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-slate-900/50 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-slate-900/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/50 to-transparent" />
+        <div className="absolute inset-0 bg-black/30" />
       </div>
 
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center pt-24 md:pt-32 pb-32 md:pb-40">
