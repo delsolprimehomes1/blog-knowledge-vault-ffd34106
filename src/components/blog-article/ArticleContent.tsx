@@ -12,7 +12,47 @@ interface ArticleContentProps {
   diagramUrl?: string;
   diagramDescription?: string;
   externalCitations?: ExternalCitation[];
+  midArticleCTA?: React.ReactNode;
 }
+
+// Helper function to split content at midpoint for CTA insertion
+const splitContentAtMidpoint = (htmlContent: string): { firstHalf: string; secondHalf: string } => {
+  // Find all block-level elements (p, h2, h3, h4, ul, ol, blockquote, div, table, figure)
+  const blockElementPattern = /<(p|h2|h3|h4|ul|ol|blockquote|div|table|figure|section|article)[\s>][^]*?<\/\1>/gi;
+  const matches = Array.from(htmlContent.matchAll(blockElementPattern));
+  
+  if (matches.length === 0) {
+    // No block elements found, split at half character count
+    const midPoint = Math.floor(htmlContent.length / 2);
+    return {
+      firstHalf: htmlContent.slice(0, midPoint),
+      secondHalf: htmlContent.slice(midPoint)
+    };
+  }
+  
+  // Calculate target split point (55% of content)
+  const targetIndex = Math.floor(matches.length * 0.55);
+  const targetMatch = matches[targetIndex];
+  
+  if (!targetMatch) {
+    // Fallback to middle match
+    const middleIndex = Math.floor(matches.length / 2);
+    const middleMatch = matches[middleIndex];
+    const splitPoint = middleMatch ? middleMatch.index! + middleMatch[0].length : Math.floor(htmlContent.length / 2);
+    return {
+      firstHalf: htmlContent.slice(0, splitPoint),
+      secondHalf: htmlContent.slice(splitPoint)
+    };
+  }
+  
+  // Split after the target block element
+  const splitPoint = targetMatch.index! + targetMatch[0].length;
+  
+  return {
+    firstHalf: htmlContent.slice(0, splitPoint),
+    secondHalf: htmlContent.slice(splitPoint)
+  };
+};
 
 export const ArticleContent = ({
   content,
@@ -22,6 +62,7 @@ export const ArticleContent = ({
   diagramUrl,
   diagramDescription,
   externalCitations = [],
+  midArticleCTA,
 }: ArticleContentProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
   
@@ -74,6 +115,11 @@ export const ArticleContent = ({
   };
   
   const processedContent = processContent(content);
+  
+  // Split content if midArticleCTA is provided
+  const { firstHalf, secondHalf } = midArticleCTA 
+    ? splitContentAtMidpoint(processedContent) 
+    : { firstHalf: processedContent, secondHalf: '' };
 
   useEffect(() => {
     if (!contentRef.current) return;
@@ -124,10 +170,28 @@ export const ArticleContent = ({
         </figure>
       )}
 
-      <div
-        className="article-content prose prose-lg max-w-none"
-        dangerouslySetInnerHTML={{ __html: processedContent }}
-      />
+      {midArticleCTA ? (
+        <>
+          <div
+            ref={contentRef}
+            className="article-content prose prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: firstHalf }}
+          />
+          
+          {midArticleCTA}
+          
+          <div
+            className="article-content prose prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: secondHalf }}
+          />
+        </>
+      ) : (
+        <div
+          ref={contentRef}
+          className="article-content prose prose-lg max-w-none"
+          dangerouslySetInnerHTML={{ __html: processedContent }}
+        />
+      )}
 
       {diagramUrl && (
         <figure className="my-12 md:my-16">

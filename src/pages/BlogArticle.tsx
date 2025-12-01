@@ -281,11 +281,12 @@ const BlogArticle = () => {
               diagramUrl={article.diagram_url || undefined}
               diagramDescription={article.diagram_description || undefined}
               externalCitations={article.external_citations as ExternalCitation[]}
-            />
-
-            <FunnelCTA
-              funnelStage={article.funnel_stage as FunnelStage}
-              ctaArticles={ctaArticles || []}
+              midArticleCTA={
+                <FunnelCTA
+                  funnelStage={article.funnel_stage as FunnelStage}
+                  ctaArticles={ctaArticles || []}
+                />
+              }
             />
 
             <SpeakableBox answer={article.speakable_answer} />
