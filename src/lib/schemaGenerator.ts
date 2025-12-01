@@ -145,6 +145,7 @@ export function generateSpeakableSchema(article: BlogArticle): any {
   const schema: any = {
     "@context": "https://schema.org",
     "@type": "SpeakableSpecification",
+    "inLanguage": article.language,
     "cssSelector": [".speakable-answer", ".qa-summary"],
     "xpath": ["/html/body/article/section[@class='speakable-answer']"]
   };

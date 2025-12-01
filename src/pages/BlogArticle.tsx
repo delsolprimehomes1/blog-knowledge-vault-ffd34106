@@ -273,7 +273,7 @@ const BlogArticle = () => {
               translations={article.translations as Record<string, string>}
             />
 
-            <SpeakableBox answer={article.speakable_answer} />
+            <SpeakableBox answer={article.speakable_answer} language={article.language} />
 
             <ArticleContent
               content={article.detailed_content}
