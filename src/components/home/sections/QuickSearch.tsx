@@ -25,8 +25,8 @@ export const QuickSearch: React.FC = () => {
   };
 
   return (
-    <div className="relative z-40 -mt-32 md:-mt-24 container mx-auto px-4 reveal-on-scroll stagger-2">
-      <div className="glass-panel rounded-2xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.15)] p-6 md:p-10 max-w-6xl mx-auto bg-white">
+    <div className="relative z-50 -mt-32 md:-mt-24 container mx-auto px-4 reveal-on-scroll stagger-2">
+      <div className="rounded-2xl p-6 md:p-10 max-w-6xl mx-auto bg-white border border-slate-100 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_25px_50px_-12px_rgba(0,0,0,0.25),0_50px_100px_-20px_rgba(0,0,0,0.15)] transform -translate-y-2 hover:-translate-y-3 transition-all duration-300">
         
         <div className="mb-8 text-center md:text-left border-b border-slate-100/80 pb-6 flex flex-col md:flex-row justify-between items-end gap-4">
           <div>
