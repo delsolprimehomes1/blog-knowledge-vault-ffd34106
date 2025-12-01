@@ -25,7 +25,7 @@ export const Hero: React.FC = () => {
           poster="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop"
           className="absolute inset-0 w-full h-full object-cover scale-110"
         >
-          <source src="https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/692ced3382f4c567c43c328f.mp4" type="video/mp4" />
+          <source src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/692d1c5b82f4c5ebf1442f43.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-slate-900/50 mix-blend-multiply" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-slate-900/30" />
