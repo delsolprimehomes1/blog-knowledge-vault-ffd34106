@@ -44,18 +44,33 @@ const BlogIndex = () => {
     },
   });
 
-  // Fetch articles with filters
+  // Fetch articles with filters and server-side pagination
   const { data: articlesData, isLoading: articlesLoading, error: articlesError } = useQuery({
-    queryKey: ["blog-articles", selectedCategory, selectedLanguage, searchQuery],
+    queryKey: ["blog-articles", selectedCategory, selectedLanguage, searchQuery, currentPage],
     queryFn: async () => {
-      console.log('Fetching articles with filters:', { selectedCategory, selectedLanguage, searchQuery });
+      console.log('Fetching articles with filters:', { selectedCategory, selectedLanguage, searchQuery, currentPage });
       
+      const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+      const endIndex = startIndex + ARTICLES_PER_PAGE - 1;
+
       let query = supabase
         .from("blog_articles")
-        .select("*, authors!blog_articles_author_id_fkey(name, photo_url)")
+        .select(`
+          id,
+          slug,
+          headline,
+          category,
+          language,
+          featured_image_url,
+          date_published,
+          read_time,
+          meta_description,
+          authors!blog_articles_author_id_fkey(name, photo_url)
+        `, { count: 'exact' })
         .eq("status", "published")
         .eq("funnel_stage", "TOFU")
-        .order("date_published", { ascending: false });
+        .order("date_published", { ascending: false })
+        .range(startIndex, endIndex);
 
       if (selectedCategory !== "all" && categories) {
         const category = categories.find(c => c.id === selectedCategory);
@@ -72,13 +87,13 @@ const BlogIndex = () => {
         query = query.or(`headline.ilike.%${searchQuery}%,meta_description.ilike.%${searchQuery}%`);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) {
         console.error('Articles error:', error);
         throw error;
       }
-      console.log('Articles loaded:', data?.length, 'articles');
-      return data;
+      console.log('Articles loaded:', data?.length, 'of', count, 'total articles');
+      return { articles: data, totalCount: count || 0 };
     },
   });
 
@@ -127,11 +142,9 @@ const BlogIndex = () => {
 
   const activeLanguages = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
   
-  const totalArticles = articlesData?.length || 0;
+  const totalArticles = articlesData?.totalCount || 0;
   const totalPages = Math.ceil(totalArticles / ARTICLES_PER_PAGE);
-  const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
-  const endIndex = startIndex + ARTICLES_PER_PAGE;
-  const currentArticles = articlesData?.slice(startIndex, endIndex) || [];
+  const currentArticles = articlesData?.articles || [];
 
   if (hasError) {
     return (
