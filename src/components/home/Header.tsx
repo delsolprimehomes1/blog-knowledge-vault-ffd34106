@@ -20,6 +20,17 @@ export const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <header 
       className={`fixed top-0 w-full z-50 transition-all duration-500 border-b ${
@@ -121,7 +132,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Mobile Menu */}
-      <div className={`fixed inset-0 bg-white z-40 flex flex-col pt-32 px-8 gap-8 lg:hidden transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-0 bg-white z-[9999] flex flex-col pt-32 px-8 gap-8 lg:hidden transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <Link 
           to="/property-finder"
           onClick={() => setIsMobileMenuOpen(false)}
