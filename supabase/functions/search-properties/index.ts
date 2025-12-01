@@ -134,12 +134,19 @@ serve(async (req) => {
 
     // Call Resales-Online API
     const response = await fetch(apiUrl.toString());
+    const responseText = await response.text();
     
     if (!response.ok) {
-      throw new Error(`Resales-Online API error: ${response.status} ${response.statusText}`);
+      // Log full error response from Resales-Online for easier debugging
+      console.error('Resales-Online API raw error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseText,
+      });
+      throw new Error(`Resales-Online API error: ${response.status} ${response.statusText} - ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     
     // Normalize property data
     const properties: NormalizedProperty[] = (data.Properties || []).map((prop: ResalesProperty) => ({
