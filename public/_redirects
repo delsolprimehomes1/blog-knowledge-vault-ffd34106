@@ -1,18 +1,17 @@
-# Draft content redirects - cleanup Dec 2024
-# These draft URLs previously had canonical URLs set and may have been crawled
-/blog/bask-in-brilliance-understanding-costa-del-sols-sun-drenched  /blog  301
-/blog/marbella-vs-mijas-where-does-sunshine-on-the-costa-del-sol-s  /blog  301
-/blog/family-fun-vs-romantic-retreat-costa-del-sol-holiday-spots  /blog  301
-/blog/secure-your-sun-filled-future-new-builds-on-the-costa-del-so  /blog  301
-/blog/spanish-property-taxes-for-uk-irish-buyers-a-complete-guide  /blog  301
-/blog/your-sunny-retreat-benalmdena-or-estepona-for-optimum-daily-  /blog  301
-/blog/costa-del-sol-climate-your-summer-winter-weather-guide  /blog  301
-/blog/secure-your-dream-home-experience-the-costa-del-sol-climate  /blog  301
-/blog/sunshine-all-year-understanding-costa-del-sols-climate  /blog  301
-/blog/adapting-to-costa-del-sol-s-humidity-practical-tips-for-homeowners-and-visitors  /blog  301
-/blog/comparing-property-tax-rates-in-costa-del-sol-what-uk-and-irish-buyers-pay  /blog  301
-/blog/navigating-capital-gains-wealth-tax-in-costa-del-sol-for-foreign-property-owners  /blog  301
-/blog/the-complete-tax-compliance-checklist-buying-owning-property-in-costa-del-sol  /blog  301
+# Draft content redirects - cleanup Dec 2024 (updated with canonical targets)
+/blog/bask-in-brilliance-understanding-costa-del-sols-sun-drenched  /blog/costa-del-sols-sunny-secret-your-guide-to-daily-sunlight-hou  301
+/blog/marbella-vs-mijas-where-does-sunshine-on-the-costa-del-sol-s  /blog/beyond-marbella-discovering-the-best-places-to-invest-in-costa-del-sol-for-high-returns  301
+/blog/family-fun-vs-romantic-retreat-costa-del-sol-holiday-spots  /blog/costa-del-sol-holidays-your-ultimate-guide-to-sun-fun  301
+/blog/secure-your-sun-filled-future-new-builds-on-the-costa-del-so  /blog/discovering-new-build-homes-in-costa-del-sol-an-introduction-to-climate-resilient-design  301
+/blog/spanish-property-taxes-for-uk-irish-buyers-a-complete-guide  /blog/a-deep-dive-into-spanish-property-taxes-in-costa-del-sol-what-buyers-must-know  301
+/blog/your-sunny-retreat-benalmdena-or-estepona-for-optimum-daily-  /blog/choosing-your-ideal-costa-del-sol-property-airport-proximity-vs-lifestyle-zones  301
+/blog/costa-del-sol-climate-your-summer-winter-weather-guide  /blog/beyond-the-beaches-how-the-costa-del-sol-climate-enhances-outdoor-living  301
+/blog/secure-your-dream-home-experience-the-costa-del-sol-climate  /blog/beyond-the-beaches-how-the-costa-del-sol-climate-enhances-outdoor-living  301
+/blog/sunshine-all-year-understanding-costa-del-sols-climate  /blog/beyond-the-beaches-how-the-costa-del-sol-climate-enhances-outdoor-living  301
+/blog/adapting-to-costa-del-sol-s-humidity-practical-tips-for-homeowners-and-visitors  /blog/beyond-the-beaches-how-the-costa-del-sol-climate-enhances-outdoor-living  301
+/blog/comparing-property-tax-rates-in-costa-del-sol-what-uk-and-irish-buyers-pay  /blog/a-deep-dive-into-spanish-property-taxes-in-costa-del-sol-what-buyers-must-know  301
+/blog/navigating-capital-gains-wealth-tax-in-costa-del-sol-for-foreign-property-owners  /blog/calculating-your-investment-a-detailed-guide-to-capital-gains-tax-in-costa-del-sol-for-uk-irish-sellers  301
+/blog/the-complete-tax-compliance-checklist-buying-owning-property-in-costa-del-sol  /blog/a-deep-dive-into-spanish-property-taxes-in-costa-del-sol-what-buyers-must-know  301
 
 # SPA routing for blog articles
 /blog/:slug  /blog/:slug/index.html  200
