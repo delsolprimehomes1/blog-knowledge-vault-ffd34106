@@ -486,7 +486,7 @@ async function findCitationWithTieredSearch(
     .from('approved_domains')
     .select('domain, tier, language, trust_score, is_international')
     .eq('is_allowed', true)
-    .or(`language.eq.${language},language.eq.EU,language.eq.GLOBAL,is_international.eq.true`)
+    .or(`language.eq.${language},language.eq.eu,language.eq.global,language.eq.all,language.is.null,is_international.eq.true`)
     .order('tier', { ascending: true })
     .order('trust_score', { ascending: false });
 
@@ -1123,7 +1123,7 @@ serve(async (req) => {
       .from('approved_domains')
       .select('domain, category, trust_score, tier, is_international')
       .eq('is_allowed', true)
-      .or(`language.eq.${articleLanguage},language.eq.EU,language.eq.GLOBAL,is_international.eq.true`)
+      .or(`language.eq.${articleLanguage},language.eq.eu,language.eq.global,language.eq.all,language.is.null,is_international.eq.true`)
       .order('trust_score', { ascending: false });
 
     if (domainsError) {
