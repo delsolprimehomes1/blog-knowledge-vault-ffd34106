@@ -1073,12 +1073,14 @@ export type Database = {
           cluster_count: number | null
           cluster_focus_areas: Json | null
           completed_languages: string[] | null
+          completion_note: string | null
           created_at: string | null
           current_language_index: number | null
           error: string | null
           id: string
           is_multilingual: boolean | null
           language: string
+          language_status: Json | null
           languages_queue: string[] | null
           primary_keyword: string
           progress: Json | null
@@ -1098,12 +1100,14 @@ export type Database = {
           cluster_count?: number | null
           cluster_focus_areas?: Json | null
           completed_languages?: string[] | null
+          completion_note?: string | null
           created_at?: string | null
           current_language_index?: number | null
           error?: string | null
           id?: string
           is_multilingual?: boolean | null
           language: string
+          language_status?: Json | null
           languages_queue?: string[] | null
           primary_keyword: string
           progress?: Json | null
@@ -1123,12 +1127,14 @@ export type Database = {
           cluster_count?: number | null
           cluster_focus_areas?: Json | null
           completed_languages?: string[] | null
+          completion_note?: string | null
           created_at?: string | null
           current_language_index?: number | null
           error?: string | null
           id?: string
           is_multilingual?: boolean | null
           language?: string
+          language_status?: Json | null
           languages_queue?: string[] | null
           primary_keyword?: string
           progress?: Json | null

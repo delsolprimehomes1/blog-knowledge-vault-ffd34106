@@ -254,30 +254,82 @@ serve(async (req) => {
     const isMultilingual = job.is_multilingual === true;
     
     if (isMultilingual) {
-      console.log(`\n🌍 ========== MULTILINGUAL RESUME ==========`);
+      const languagesQueue = job.languages_queue || [];
+      
+      // ============= FIX: Determine next language from ACTUAL article counts =============
+      let completedLanguages: string[] = [];
+      let nextLanguage: string | null = null;
+      const languageStatus: Record<string, string> = job.language_status || {};
+      
+      for (const lang of languagesQueue) {
+        // Count actual articles for this language
+        const { count } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', jobId)
+          .eq('language', lang);
+        
+        const articleCount = count || 0;
+        
+        if (articleCount >= 6) {
+          completedLanguages.push(lang);
+          languageStatus[lang] = 'completed';
+        } else if (!nextLanguage) {
+          // First incomplete language is the next to generate
+          nextLanguage = lang;
+          languageStatus[lang] = 'pending';
+        }
+      }
+      
+      console.log(`\n🌍 ========== MULTILINGUAL RESUME (VERIFIED) ==========`);
       console.log(`   Job type: Multilingual cluster`);
-      console.log(`   Languages queue: ${job.languages_queue?.join(', ')}`);
-      console.log(`   Current language index: ${job.current_language_index}`);
-      console.log(`   Completed languages: ${job.completed_languages?.join(', ')}`);
+      console.log(`   Languages queue: ${languagesQueue.join(', ')}`);
+      console.log(`   Completed languages (verified): ${completedLanguages.join(', ') || 'None'}`);
+      console.log(`   Next language to generate: ${nextLanguage || 'ALL COMPLETE'}`);
+      console.log(`   Language status: ${JSON.stringify(languageStatus)}`);
       console.log(`==========================================\n`);
       
       // Check if all languages are complete
-      if (job.current_language_index >= job.languages_queue?.length) {
+      if (!nextLanguage || completedLanguages.length >= languagesQueue.length) {
         console.log(`[Resume ${jobId}] ✅ All languages complete for multilingual cluster`);
+        
+        // Update with verified completion status
+        await supabase
+          .from('cluster_generations')
+          .update({
+            status: 'completed',
+            completed_languages: completedLanguages,
+            language_status: languageStatus,
+            current_language_index: languagesQueue.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+        
         return new Response(
           JSON.stringify({
             success: true,
             jobId,
             isComplete: true,
+            completedLanguages,
             message: 'Multilingual cluster complete - all languages generated'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      // Get next language to generate
-      const nextLanguage = job.languages_queue[job.current_language_index];
-      console.log(`[Resume ${jobId}] 🌍 Continuing with next language: ${nextLanguage} (${job.current_language_index + 1}/${job.languages_queue.length})`);
+      console.log(`[Resume ${jobId}] 🌍 Continuing with next language: ${nextLanguage} (${completedLanguages.length + 1}/${languagesQueue.length})`);
+      
+      // Update language status before invoking
+      languageStatus[nextLanguage] = 'running';
+      await supabase
+        .from('cluster_generations')
+        .update({
+          language_status: languageStatus,
+          current_language_index: completedLanguages.length,
+          completed_languages: completedLanguages,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
       
       // Invoke generate-cluster with next language
       try {
@@ -293,6 +345,11 @@ serve(async (req) => {
         
         if (invokeError) {
           console.error(`[Resume ${jobId}] ❌ Error invoking generate-cluster for ${nextLanguage}:`, invokeError);
+          languageStatus[nextLanguage] = 'failed';
+          await supabase
+            .from('cluster_generations')
+            .update({ language_status: languageStatus })
+            .eq('id', jobId);
           throw invokeError;
         }
         
@@ -304,7 +361,8 @@ serve(async (req) => {
             jobId,
             isComplete: false,
             nextLanguage,
-            message: `Continuing with language ${nextLanguage} (${job.current_language_index + 1}/${job.languages_queue.length})`
+            completedLanguages,
+            message: `Continuing with language ${nextLanguage} (${completedLanguages.length + 1}/${languagesQueue.length})`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -314,7 +372,7 @@ serve(async (req) => {
         await supabase
           .from('cluster_generations')
           .update({
-            status: 'failed',
+            status: 'partial',
             error: `Failed to continue with language ${nextLanguage}: ${error instanceof Error ? error.message : 'Unknown error'}`,
             updated_at: new Date().toISOString()
           })
@@ -897,6 +955,22 @@ Return ONLY valid JSON:
 
         // SAVE ARTICLE TO DATABASE
         console.log(`[Resume ${jobId}] 💾 Saving article ${index + 1} to database...`);
+        
+        // ============= FIX: Check for duplicate before insert =============
+        const { data: existingDupe } = await supabase
+          .from('blog_articles')
+          .select('id')
+          .eq('cluster_id', jobId)
+          .eq('language', article.language)
+          .eq('cluster_number', index + 1)
+          .maybeSingle();
+        
+        if (existingDupe) {
+          console.log(`[Resume ${jobId}] ⚠️ Article ${index + 1} already exists (ID: ${existingDupe.id}), skipping duplicate insert`);
+          savedArticleIds.push(existingDupe.id);
+          generatedInThisRun++;
+          continue;
+        }
         
         const { data: savedArticle, error: saveError } = await supabase
           .from('blog_articles')
