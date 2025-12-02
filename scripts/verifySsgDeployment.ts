@@ -15,11 +15,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 interface ValidationResult {
   slug: string;
+  language: string;
   exists: boolean;
   hasSchemas: boolean;
   hasContent: boolean;
   hasMeta: boolean;
   hasHreflang: boolean;
+  hasSelfHreflang: boolean;
+  hasXDefault: boolean;
   hasCanonical: boolean;
   hasBlogPosting: boolean;
   hasRealEstateAgent: boolean;
@@ -27,6 +30,9 @@ interface ValidationResult {
   hasFAQPage: boolean;
   hasSpeakable: boolean;
   hasEntityLinking: boolean;
+  hreflangCount: number;
+  hreflangDuplicates: boolean;
+  hreflangSiblingsMissing: string[];
   aeoScore: number;
   errors: string[];
   warnings: string[];
@@ -35,10 +41,10 @@ interface ValidationResult {
 async function verifyStaticPages(distDir: string): Promise<void> {
   console.log('🔍 Verifying SSG deployment...\n');
 
-  // Fetch published articles
+  // Fetch published articles with translations data
   const { data: articles, error } = await supabase
     .from('blog_articles')
-    .select('slug, headline, status')
+    .select('slug, headline, status, language, translations')
     .eq('status', 'published');
 
   if (error) {
@@ -60,11 +66,14 @@ async function verifyStaticPages(distDir: string): Promise<void> {
   for (const article of articles) {
     const result: ValidationResult = {
       slug: article.slug,
+      language: article.language || 'unknown',
       exists: false,
       hasSchemas: false,
       hasContent: false,
       hasMeta: false,
       hasHreflang: false,
+      hasSelfHreflang: false,
+      hasXDefault: false,
       hasCanonical: false,
       hasBlogPosting: false,
       hasRealEstateAgent: false,
@@ -72,6 +81,9 @@ async function verifyStaticPages(distDir: string): Promise<void> {
       hasFAQPage: false,
       hasSpeakable: false,
       hasEntityLinking: false,
+      hreflangCount: 0,
+      hreflangDuplicates: false,
+      hreflangSiblingsMissing: [],
       aeoScore: 0,
       errors: [],
       warnings: [],
@@ -210,37 +222,120 @@ async function verifyStaticPages(distDir: string): Promise<void> {
     if (!hasOgTags) result.warnings.push('Missing Open Graph tags');
     if (!hasTwitterCard) result.warnings.push('Missing Twitter Card tags');
 
-    // Check for hreflang links
-    result.hasHreflang = html.includes('hreflang=');
-    if (!result.hasHreflang) {
-      result.warnings.push('Missing hreflang tags (for translations)');
+    // Enhanced hreflang validation
+    const hreflangMatches = html.match(/<link\s+rel="alternate"\s+hreflang="([^"]+)"\s+href="([^"]+)"\s*\/?>/g);
+    result.hasHreflang = !!(hreflangMatches && hreflangMatches.length > 0);
+    result.hreflangCount = hreflangMatches ? hreflangMatches.length : 0;
+    
+    if (result.hasHreflang) {
+      // Extract hreflang codes and URLs
+      const hreflangData = hreflangMatches!.map(match => {
+        const codeMatch = match.match(/hreflang="([^"]+)"/);
+        const urlMatch = match.match(/href="([^"]+)"/);
+        return { code: codeMatch?.[1], url: urlMatch?.[1] };
+      });
+
+      // Language mapping for validation
+      const langToHreflang: Record<string, string> = {
+        en: 'en-GB', de: 'de-DE', nl: 'nl-NL', fr: 'fr-FR', 
+        pl: 'pl-PL', sv: 'sv-SE', da: 'da-DK', hu: 'hu-HU',
+        fi: 'fi-FI', no: 'nb-NO'
+      };
+
+      const expectedSelfLang = langToHreflang[article.language] || article.language;
+      const currentUrl = `https://delsolprimehomes.com/blog/${article.slug}`;
+
+      // Check self-referencing hreflang
+      result.hasSelfHreflang = hreflangData.some(h => 
+        h.code === expectedSelfLang && h.url === currentUrl
+      );
+      if (!result.hasSelfHreflang) {
+        result.errors.push(`Missing self-referencing hreflang="${expectedSelfLang}" for current page`);
+      }
+
+      // Check x-default
+      result.hasXDefault = hreflangData.some(h => h.code === 'x-default');
+      if (!result.hasXDefault) {
+        result.errors.push('Missing hreflang="x-default" tag');
+      }
+
+      // Check for duplicates
+      const hreflangCodes = hreflangData.map(h => h.code);
+      const uniqueCodes = new Set(hreflangCodes);
+      result.hreflangDuplicates = hreflangCodes.length !== uniqueCodes.size;
+      if (result.hreflangDuplicates) {
+        result.errors.push('Duplicate hreflang tags detected');
+      }
+
+      // Validate sibling translations
+      if (article.translations && typeof article.translations === 'object') {
+        const translationLangs = Object.keys(article.translations);
+        const hreflangLangs = hreflangData
+          .filter(h => h.code !== 'x-default')
+          .map(h => {
+            // Map back from hreflang to language code
+            const reverseMap: Record<string, string> = {
+              'en-GB': 'en', 'de-DE': 'de', 'nl-NL': 'nl', 'fr-FR': 'fr',
+              'pl-PL': 'pl', 'sv-SE': 'sv', 'da-DK': 'da', 'hu-HU': 'hu',
+              'fi-FI': 'fi', 'nb-NO': 'no'
+            };
+            return reverseMap[h.code!] || h.code;
+          });
+
+        result.hreflangSiblingsMissing = translationLangs.filter(
+          lang => !hreflangLangs.includes(lang) && lang !== article.language
+        );
+        
+        if (result.hreflangSiblingsMissing.length > 0) {
+          result.warnings.push(
+            `Missing hreflang for translations: ${result.hreflangSiblingsMissing.join(', ')}`
+          );
+        }
+      }
+    } else {
+      result.warnings.push('No hreflang tags found');
     }
 
     // Check for canonical URL
     result.hasCanonical = html.includes('<link rel="canonical"');
     if (!result.hasCanonical) {
       result.errors.push('Missing canonical URL');
+    } else {
+      // Validate canonical URL matches expected format
+      const canonicalMatch = html.match(/<link\s+rel="canonical"\s+href="([^"]+)"/);
+      if (canonicalMatch) {
+        const canonicalUrl = canonicalMatch[1];
+        const expectedCanonical = `https://delsolprimehomes.com/blog/${article.slug}`;
+        if (canonicalUrl !== expectedCanonical) {
+          result.warnings.push(`Canonical URL mismatch: expected ${expectedCanonical}, got ${canonicalUrl}`);
+        }
+      }
     }
 
     // Calculate AEO Readiness Score (0-100)
     let score = 0;
     
-    // Schema completeness (40 points)
+    // Schema completeness (35 points)
     if (result.hasBlogPosting) score += 10;
     if (result.hasRealEstateAgent) score += 10;
-    if (result.hasBreadcrumbList) score += 8;
-    if (result.hasFAQPage) score += 6;
-    if (result.hasSpeakable) score += 6;
+    if (result.hasBreadcrumbList) score += 7;
+    if (result.hasFAQPage) score += 5;
+    if (result.hasSpeakable) score += 3;
     
-    // Entity linking (30 points)
-    if (result.hasEntityLinking) score += 30;
+    // Entity linking (25 points)
+    if (result.hasEntityLinking) score += 25;
     
     // Meta tags (15 points)
     if (result.hasMeta) score += 15;
     
-    // Content structure (15 points)
-    if (result.hasContent) score += 7.5;
-    if (result.hasCanonical) score += 7.5;
+    // Content structure (10 points)
+    if (result.hasContent) score += 5;
+    if (result.hasCanonical) score += 5;
+    
+    // Hreflang/i18n (15 points)
+    if (result.hasSelfHreflang) score += 5;
+    if (result.hasXDefault) score += 5;
+    if (result.hasHreflang && !result.hreflangDuplicates) score += 5;
     
     result.aeoScore = Math.round(score);
 
@@ -299,7 +394,7 @@ async function verifyStaticPages(distDir: string): Promise<void> {
 
     for (const result of results) {
       if (result.errors.length > 0 || result.warnings.length > 0 || result.aeoScore < 80) {
-        console.log(`\n📄 ${result.slug}`);
+        console.log(`\n📄 ${result.slug} [${result.language.toUpperCase()}]`);
         console.log(`   AEO Score: ${result.aeoScore}/100 ${result.aeoScore >= 90 ? '🌟' : result.aeoScore >= 80 ? '✅' : result.aeoScore >= 60 ? '⚠️' : '❌'}`);
         console.log(`   File exists: ${result.exists ? '✅' : '❌'}`);
         console.log(`   BlogPosting: ${result.hasBlogPosting ? '✅' : '❌'}`);
@@ -311,7 +406,13 @@ async function verifyStaticPages(distDir: string): Promise<void> {
         console.log(`   Content: ${result.hasContent ? '✅' : '❌'}`);
         console.log(`   Meta tags: ${result.hasMeta ? '✅' : '❌'}`);
         console.log(`   Canonical: ${result.hasCanonical ? '✅' : '❌'}`);
-        console.log(`   Hreflang: ${result.hasHreflang ? '✅' : '⚠️ '}`);
+        console.log(`   Hreflang total: ${result.hreflangCount} tags`);
+        console.log(`   Self-ref hreflang: ${result.hasSelfHreflang ? '✅' : '❌'}`);
+        console.log(`   x-default: ${result.hasXDefault ? '✅' : '❌'}`);
+        console.log(`   Duplicates: ${result.hreflangDuplicates ? '❌' : '✅'}`);
+        if (result.hreflangSiblingsMissing.length > 0) {
+          console.log(`   Missing siblings: ${result.hreflangSiblingsMissing.join(', ')}`);
+        }
 
         if (result.errors.length > 0) {
           console.log(`   🔴 Errors:`);
@@ -329,6 +430,18 @@ async function verifyStaticPages(distDir: string): Promise<void> {
   }
 
   console.log('\n' + '━'.repeat(80));
+
+  // Hreflang validation summary
+  const selfHreflangCount = results.filter(r => r.hasSelfHreflang).length;
+  const xDefaultCount = results.filter(r => r.hasXDefault).length;
+  const noDuplicatesCount = results.filter(r => !r.hreflangDuplicates).length;
+  const allSiblingsCount = results.filter(r => r.hreflangSiblingsMissing.length === 0).length;
+
+  console.log('\n🌐 HREFLANG VALIDATION:');
+  console.log(`   ✅ Self-referencing hreflang: ${selfHreflangCount}/${articles.length}`);
+  console.log(`   ✅ x-default present: ${xDefaultCount}/${articles.length}`);
+  console.log(`   ✅ No duplicates: ${noDuplicatesCount}/${articles.length}`);
+  console.log(`   ✅ All siblings linked: ${allSiblingsCount}/${articles.length}`);
 
   // AEO readiness summary
   const excellentCount = results.filter(r => r.aeoScore >= 90).length;
