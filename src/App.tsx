@@ -15,6 +15,7 @@ import Export from "./pages/admin/Export";
 import AITools from "./pages/admin/AITools";
 import SystemCheck from "./pages/admin/SystemCheck";
 import ClusterGenerator from "./pages/admin/ClusterGenerator";
+import ClusterCoverage from "./pages/admin/ClusterCoverage";
 import AEOGuide from "./pages/admin/AEOGuide";
 import BatchImageGeneration from "./pages/admin/BatchImageGeneration";
 import CitationHealth from "./pages/admin/CitationHealth";
@@ -72,6 +73,7 @@ const App = () => (
           <Route path="/admin/export" element={<ProtectedRoute><Export /></ProtectedRoute>} />
           <Route path="/admin/ai-tools" element={<ProtectedRoute><AITools /></ProtectedRoute>} />
           <Route path="/admin/cluster-generator" element={<ProtectedRoute><ClusterGenerator /></ProtectedRoute>} />
+          <Route path="/admin/cluster-coverage" element={<ProtectedRoute><ClusterCoverage /></ProtectedRoute>} />
           <Route path="/admin/system-check" element={<ProtectedRoute><SystemCheck /></ProtectedRoute>} />
           <Route path="/admin/tools/batch-image-generation" element={<ProtectedRoute><BatchImageGeneration /></ProtectedRoute>} />
           <Route path="/admin/citation-health" element={<ProtectedRoute><CitationHealth /></ProtectedRoute>} />

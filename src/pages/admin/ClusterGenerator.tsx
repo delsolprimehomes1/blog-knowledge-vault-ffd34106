@@ -44,12 +44,13 @@ const ClusterGenerator = () => {
   const navigate = useNavigate();
   const [topic, setTopic] = useState("");
   const [language, setLanguage] = useState<Language>("en");
+  const [generateAllLanguages, setGenerateAllLanguages] = useState(true); // NEW: multilingual toggle
   const [targetAudience, setTargetAudience] = useState("");
   const [primaryKeyword, setPrimaryKeyword] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [articlesGenerated, setArticlesGenerated] = useState(0);
-  const [totalArticles, setTotalArticles] = useState(6);
+  const [totalArticles, setTotalArticles] = useState(60); // Updated to 60 for multilingual
   const [steps, setSteps] = useState<GenerationStep[]>([]);
   const [generatedArticles, setGeneratedArticles] = useState<Partial<BlogArticle>[]>([]);
   const [showReview, setShowReview] = useState(false);
@@ -916,9 +917,14 @@ const ClusterGenerator = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="language" className="text-base">
-                  Language <span className="text-destructive">*</span>
+                  {generateAllLanguages ? 'Base Language (for translation)' : 'Language'} <span className="text-destructive">*</span>
                 </Label>
-                <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+                {generateAllLanguages && (
+                  <p className="text-sm text-muted-foreground">
+                    All 10 languages will be generated. Select the base language for content strategy.
+                  </p>
+                )}
+                <Select value={language} onValueChange={(value) => setLanguage(value as Language)} disabled={generateAllLanguages}>
                   <SelectTrigger id="language" className="text-base">
                     <SelectValue />
                   </SelectTrigger>
@@ -930,6 +936,20 @@ const ClusterGenerator = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                
+                {/* Multilingual Toggle */}
+                <div className="flex items-center space-x-2 pt-2 border-t">
+                  <input
+                    type="checkbox"
+                    id="generateAllLanguages"
+                    checked={generateAllLanguages}
+                    onChange={(e) => setGenerateAllLanguages(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="generateAllLanguages" className="text-sm font-normal cursor-pointer">
+                    Generate in all 10 languages (EN, NL, FR, DE, FI, PL, HU, SV, DA, NO) - {generateAllLanguages ? '60 articles' : '6 articles'}
+                  </Label>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -967,8 +987,24 @@ const ClusterGenerator = () => {
                 className="w-full text-base"
               >
                 <Sparkles className="mr-2 h-5 w-5" />
-                Generate Complete Cluster (6 Articles)
+                Generate Complete Cluster ({generateAllLanguages ? '60' : '6'} Articles)
               </Button>
+              
+              {/* Info about multilingual generation */}
+              {generateAllLanguages && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    🌍 Multilingual Generation Enabled
+                  </h4>
+                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+                    <li>60 articles total (6 per language × 10 languages)</li>
+                    <li>All articles share the same cluster_id</li>
+                    <li>Translations automatically linked</li>
+                    <li>Canonical + hreflang + x-default enabled</li>
+                    <li>Estimated time: 15-20 minutes</li>
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
