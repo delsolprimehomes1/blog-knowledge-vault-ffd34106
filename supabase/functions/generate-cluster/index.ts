@@ -715,6 +715,14 @@ Return ONLY the JSON object above, nothing else. No markdown, no explanations, n
       }
       
       console.log(`[Job ${jobId}] ✅ Successfully parsed ${articleStructures.length} article structures`);
+      
+      // Normalize field names to handle AI inconsistency
+      // AI sometimes returns 'primaryKeyword' or 'keyword' instead of 'targetKeyword'
+      articleStructures = articleStructures.map((article: any) => ({
+        ...article,
+        targetKeyword: article.targetKeyword || article.primaryKeyword || article.keyword,
+      }));
+      console.log(`[Job ${jobId}] ✅ Normalized ${articleStructures.length} article structures (targetKeyword field)`);
     } catch (parseError) {
       const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
       console.error(`[Job ${jobId}] ❌ Failed to parse article structures. Full AI response:`, structureText);
