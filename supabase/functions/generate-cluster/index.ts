@@ -160,6 +160,82 @@ async function filterCitations(
   return { filtered, blocked, cleanedContent };
 }
 
+// ============= NEW: Verify actual article count for a language =============
+async function verifyLanguageArticleCount(supabase: any, jobId: string, language: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('blog_articles')
+    .select('*', { count: 'exact', head: true })
+    .eq('cluster_id', jobId)
+    .eq('language', language);
+  
+  if (error) {
+    console.error(`[verifyLanguageArticleCount] Error:`, error);
+    return 0;
+  }
+  return count || 0;
+}
+
+// ============= NEW: Update per-language status atomically =============
+async function updateLanguageStatus(
+  supabase: any, 
+  jobId: string, 
+  language: string, 
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'timeout' | 'partial'
+) {
+  // Fetch current language_status
+  const { data: job } = await supabase
+    .from('cluster_generations')
+    .select('language_status')
+    .eq('id', jobId)
+    .single();
+  
+  const currentStatus = job?.language_status || {};
+  const updatedStatus = { ...currentStatus, [language]: status };
+  
+  await supabase
+    .from('cluster_generations')
+    .update({
+      language_status: updatedStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', jobId);
+  
+  console.log(`[Job ${jobId}] 📊 Language status updated: ${language} → ${status}`);
+  return updatedStatus;
+}
+
+// ============= NEW: Determine true job status from article counts =============
+async function determineJobStatus(
+  supabase: any,
+  jobId: string,
+  languagesQueue: string[],
+  expectedArticlesPerLang: number = 6
+): Promise<{ status: 'completed' | 'partial' | 'failed'; completedLanguages: string[]; languageStatus: Record<string, string> }> {
+  const languageStatus: Record<string, string> = {};
+  const completedLanguages: string[] = [];
+  
+  for (const lang of languagesQueue) {
+    const count = await verifyLanguageArticleCount(supabase, jobId, lang);
+    if (count >= expectedArticlesPerLang) {
+      languageStatus[lang] = 'completed';
+      completedLanguages.push(lang);
+    } else if (count > 0) {
+      languageStatus[lang] = 'partial';
+    } else {
+      languageStatus[lang] = 'pending';
+    }
+  }
+  
+  const allComplete = completedLanguages.length === languagesQueue.length;
+  const anyStarted = Object.values(languageStatus).some(s => s !== 'pending');
+  
+  return {
+    status: allComplete ? 'completed' : (anyStarted ? 'partial' : 'failed'),
+    completedLanguages,
+    languageStatus
+  };
+}
+
 // Helper function to update job progress
 async function updateProgress(supabase: any, jobId: string, step: number, message: string, articleNum?: number) {
   await supabase
@@ -400,25 +476,48 @@ async function generateCluster(
       // Fetch existing multilingual state from DB instead of reinitializing
       const { data: jobData } = await supabase
         .from('cluster_generations')
-        .select('is_multilingual, languages_queue, current_language_index, completed_languages, cluster_id')
+        .select('is_multilingual, languages_queue, current_language_index, completed_languages, language_status')
         .eq('id', jobId)
         .single();
       
       isMultilingual = jobData?.is_multilingual || false;
       languagesQueue = jobData?.languages_queue || [];
-      currentLanguage = languagesQueue[resumedLanguageIndex || 0] || language;
       
-      console.log(`[Job ${jobId}] 🌍 RESUMED multilingual job at language ${currentLanguage} (index ${resumedLanguageIndex})`);
+      // ============= FIX: Determine next language from actual article counts, not index =============
+      let nextLangIndex = 0;
+      for (let i = 0; i < languagesQueue.length; i++) {
+        const count = await verifyLanguageArticleCount(supabase, jobId, languagesQueue[i]);
+        if (count < 6) {
+          nextLangIndex = i;
+          break;
+        }
+        nextLangIndex = i + 1; // All complete
+      }
+      
+      currentLanguage = languagesQueue[nextLangIndex] || language;
+      resumedLanguageIndex = nextLangIndex;
+      
+      console.log(`[Job ${jobId}] 🌍 RESUMED multilingual job at language ${currentLanguage} (verified index ${nextLangIndex})`);
+      
+      // Mark this language as running
+      await updateLanguageStatus(supabase, jobId, currentLanguage, 'running');
     } else if (enableMultilingual) {
       languagesQueue = [...SUPPORTED_LANGUAGES];
       currentLanguage = languagesQueue[0];
       isMultilingual = true;
+      
+      // Initialize language_status for all languages
+      const initialLanguageStatus: Record<string, string> = {};
+      for (const lang of languagesQueue) {
+        initialLanguageStatus[lang] = lang === currentLanguage ? 'running' : 'pending';
+      }
       
       // Update job record with multilingual tracking
       await supabase
         .from('cluster_generations')
         .update({
           is_multilingual: true,
+          language_status: initialLanguageStatus,
           languages_queue: languagesQueue,
           current_language_index: 0,
           completed_languages: [],
@@ -2291,35 +2390,60 @@ Return ONLY valid JSON:
     await updateProgress(supabase, jobId, 11, 'Completed!');
     
     // ============= MULTILINGUAL MODE: Check if more languages remain =============
+    // ============= FIX: Use ACTUAL article counts, not queue position =============
     let finalStatus = 'completed';
     let completionNote = '';
     
     if (isMultilingual) {
-      const currentLangIndex = languagesQueue.indexOf(currentLanguage);
-      const completedLanguages = [...(languagesQueue.slice(0, currentLangIndex + 1))];
-      const remainingLanguages = languagesQueue.slice(currentLangIndex + 1);
+      // Verify actual article count for current language
+      const actualCount = await verifyLanguageArticleCount(supabase, jobId, currentLanguage);
+      const languageComplete = actualCount >= 6;
       
-      console.log(`\n🌍 ========== MULTILINGUAL STATUS ==========`);
-      console.log(`   Current language: ${currentLanguage} (${currentLangIndex + 1}/${languagesQueue.length})`);
-      console.log(`   Completed: ${completedLanguages.join(', ')}`);
+      // Update language status based on actual count
+      if (languageComplete) {
+        await updateLanguageStatus(supabase, jobId, currentLanguage, 'completed');
+      } else if (timeoutStopped) {
+        await updateLanguageStatus(supabase, jobId, currentLanguage, 'timeout');
+      } else if (actualCount > 0) {
+        // Mark as partial if some articles but not all
+        await updateLanguageStatus(supabase, jobId, currentLanguage, 'partial');
+      }
+      
+      // Determine true status from actual article counts across ALL languages
+      const { status: trueStatus, completedLanguages, languageStatus } = await determineJobStatus(
+        supabase, jobId, languagesQueue, 6
+      );
+      
+      // Find remaining languages (those with < 6 articles)
+      const remainingLanguages = languagesQueue.filter(lang => 
+        (languageStatus[lang] !== 'completed')
+      );
+      
+      console.log(`\n🌍 ========== MULTILINGUAL STATUS (VERIFIED) ==========`);
+      console.log(`   Current language: ${currentLanguage}`);
+      console.log(`   Articles for ${currentLanguage}: ${actualCount}/6`);
+      console.log(`   Completed languages: ${completedLanguages.join(', ') || 'None'}`);
       console.log(`   Remaining: ${remainingLanguages.length > 0 ? remainingLanguages.join(', ') : 'None - ALL COMPLETE!'}`);
+      console.log(`   Language status: ${JSON.stringify(languageStatus)}`);
       console.log(`==========================================\n`);
       
-      // Update multilingual tracking
+      // Update multilingual tracking with verified data
       await supabase
         .from('cluster_generations')
         .update({
           completed_languages: completedLanguages,
-          current_language_index: currentLangIndex + 1,
+          current_language_index: completedLanguages.length,
+          language_status: languageStatus,
           updated_at: new Date().toISOString()
         })
         .eq('id', jobId);
       
       if (remainingLanguages.length > 0) {
         // More languages to generate - mark as partial to trigger resume
+        // FIX: NEVER mark as "completed" if any language has < 6 articles
         finalStatus = 'partial';
-        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ')}). Next: ${remainingLanguages[0]}.`;
-        console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining. Status: partial`);
+        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ') || 'none'}). Next: ${remainingLanguages[0]}.`;
+        console.log(`[Job ${jobId}] ✅ Progress update. ${remainingLanguages.length} languages remaining. Status: partial`);
       } else {
         // All languages complete - run translation linking
         console.log(`[Job ${jobId}] 🌍 ALL LANGUAGES COMPLETE! Running translation linking...`);
@@ -2342,7 +2466,7 @@ Return ONLY valid JSON:
       finalStatus = allArticlesGenerated ? 'completed' : 'partial';
       completionNote = timeoutStopped 
         ? `${savedArticleIds.length}/${articleStructures.length} articles generated. Generation stopped early due to timeout to prevent job failure.`
-        : `${savedArticleIds.length}/${articleStructures.length} articles generated as drafts.`;
+        : `${savedArticleIds.length}/${articleStructures.length} articles saved as drafts.`;
     }
     
     console.log(`\n========================================`);
