@@ -3,7 +3,7 @@ project_id = "kazggnufaoicopvmwhdl"
 [functions.generate-image]
 verify_jwt = false
 
-[functions.find-citations-gemini]
+[functions.find-citations-perplexity]
 verify_jwt = false
 
 [functions.resume-cluster]

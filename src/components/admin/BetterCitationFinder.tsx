@@ -188,7 +188,7 @@ export const BetterCitationFinder = ({
       const searchTopic = retrySearch?.articleTopic || articleTopic;
       const searchContext = retrySearch?.targetContext || targetContext;
 
-      const { data, error } = await supabase.functions.invoke('find-citations-gemini', {
+      const { data, error } = await supabase.functions.invoke('find-citations-perplexity', {
         body: {
           articleTopic: searchTopic,
           articleLanguage,
