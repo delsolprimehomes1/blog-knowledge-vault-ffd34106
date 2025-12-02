@@ -6,6 +6,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to link translations for multilingual clusters
+async function linkTranslations(supabase: any, clusterId: string) {
+  console.log(`[Link Translations] Starting for cluster ${clusterId}...`);
+  
+  // Fetch all articles with this cluster_id
+  const { data: articles, error } = await supabase
+    .from('blog_articles')
+    .select('id, language, slug, cluster_number')
+    .eq('cluster_id', clusterId)
+    .order('cluster_number', { ascending: true });
+  
+  if (error) {
+    console.error(`[Link Translations] Error fetching articles:`, error);
+    throw error;
+  }
+  
+  if (!articles || articles.length === 0) {
+    console.warn(`[Link Translations] No articles found for cluster ${clusterId}`);
+    return;
+  }
+  
+  console.log(`[Link Translations] Found ${articles.length} articles to link`);
+  
+  // Group by cluster_number (article position in cluster)
+  const groups: Record<number, Record<string, string>> = {};
+  for (const article of articles) {
+    if (!groups[article.cluster_number]) {
+      groups[article.cluster_number] = {};
+    }
+    groups[article.cluster_number][article.language] = article.slug;
+  }
+  
+  console.log(`[Link Translations] Grouped into ${Object.keys(groups).length} article sets`);
+  
+  // Update each article with its siblings' translations
+  let updateCount = 0;
+  for (const article of articles) {
+    const siblings = { ...groups[article.cluster_number] };
+    delete siblings[article.language]; // Remove self
+    
+    const { error: updateError } = await supabase
+      .from('blog_articles')
+      .update({ translations: siblings })
+      .eq('id', article.id);
+    
+    if (updateError) {
+      console.error(`[Link Translations] Error updating article ${article.id}:`, updateError);
+    } else {
+      updateCount++;
+      console.log(`[Link Translations] ✅ Linked article ${article.cluster_number} (${article.language}) with ${Object.keys(siblings).length} siblings`);
+    }
+  }
+  
+  console.log(`[Link Translations] ✅ Complete: ${updateCount}/${articles.length} articles updated with translation links`);
+}
+
 // Helper function to remove citation links from HTML for blocked domains
 function removeCitationLinks(content: string, blockedCitations: any[]): string {
   let updatedContent = content;
@@ -304,7 +360,7 @@ async function generateCluster(jobId: string, topic: string, language: string, t
   const getRemainingTime = () => MAX_FUNCTION_RUNTIME - (Date.now() - FUNCTION_START_TIME);
   const hasTimeForNextArticle = () => getRemainingTime() > ARTICLE_TIME_ESTIMATE;
   
-  console.log(`[Job ${jobId}] ⏱️ Timeout monitoring: ${MAX_FUNCTION_RUNTIME / 1000}s limit, ${ARTICLE_TIME_ESTIMATE / 1000}s per article buffer`);
+    console.log(`[Job ${jobId}] ⏱️ Timeout monitoring: ${MAX_FUNCTION_RUNTIME / 1000}s limit, ${ARTICLE_TIME_ESTIMATE / 1000}s per article buffer`);
 
   // Start continuous heartbeat to prevent timeout detection
   const heartbeat = startHeartbeat(jobId, supabase);
@@ -314,8 +370,47 @@ async function generateCluster(jobId: string, topic: string, language: string, t
     console.log(`[Job ${jobId}] 🔍 Checking for stuck jobs...`);
     await supabase.rpc('check_stuck_cluster_jobs');
     
-    console.log(`[Job ${jobId}] Starting generation for:`, { topic, language, targetAudience, primaryKeyword });
-    await updateProgress(supabase, jobId, 0, 'Starting generation...');
+    // ============= FEATURE FLAG CHECK: MULTILINGUAL CLUSTERS =============
+    const { data: flagData } = await supabase
+      .from('content_settings')
+      .select('setting_value')
+      .eq('setting_key', 'feature_multilingual_clusters')
+      .single();
+
+    const enableMultilingual = flagData?.setting_value === 'true';
+    const SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+    
+    console.log(`[Job ${jobId}] 🌍 Multilingual feature flag: ${enableMultilingual ? 'ENABLED' : 'DISABLED'}`);
+    
+    // Determine which language(s) to generate
+    let currentLanguage = language;
+    let languagesQueue: string[] = [];
+    let isMultilingual = false;
+    
+    if (enableMultilingual) {
+      languagesQueue = [...SUPPORTED_LANGUAGES];
+      currentLanguage = languagesQueue[0];
+      isMultilingual = true;
+      
+      // Update job record with multilingual tracking
+      await supabase
+        .from('cluster_generations')
+        .update({
+          is_multilingual: true,
+          languages_queue: languagesQueue,
+          current_language_index: 0,
+          completed_languages: [],
+        })
+        .eq('id', jobId);
+      
+      console.log(`[Job ${jobId}] 🌍 MULTILINGUAL MODE: Generating all ${languagesQueue.length} languages`);
+      console.log(`[Job ${jobId}] 🌍 Current language (batch 1/10): ${currentLanguage}`);
+    } else {
+      console.log(`[Job ${jobId}] 📝 Single-language mode: ${language}`);
+    }
+    
+    console.log(`[Job ${jobId}] Starting generation for:`, { topic, language: currentLanguage, targetAudience, primaryKeyword });
+    await updateProgress(supabase, jobId, 0, isMultilingual ? `Generating language 1/10: ${currentLanguage.toUpperCase()}...` : 'Starting generation...');
 
     // Validate LOVABLE_API_KEY before starting
     console.log(`[Job ${jobId}] 🔐 Validating LOVABLE_API_KEY...`);
@@ -566,7 +661,7 @@ Return ONLY the JSON object above, nothing else. No markdown, no explanations, n
       
       const article: any = {
         funnel_stage: plan.funnelStage,
-        language,
+        language: currentLanguage, // Use current language from multilingual tracking
         status: 'draft',
       };
 
@@ -2173,20 +2268,73 @@ Return ONLY valid JSON:
 
     await updateProgress(supabase, jobId, 11, 'Completed!');
     
-    // FIX #1: Determine final status based on success rate
-    const successRate = (savedArticleIds.length / articleStructures.length) * 100;
-    const allArticlesGenerated = savedArticleIds.length === articleStructures.length;
-    const finalStatus = allArticlesGenerated ? 'completed' : 'partial';
+    // ============= MULTILINGUAL MODE: Check if more languages remain =============
+    let finalStatus = 'completed';
+    let completionNote = '';
+    
+    if (isMultilingual) {
+      const currentLangIndex = languagesQueue.indexOf(currentLanguage);
+      const completedLanguages = [...(languagesQueue.slice(0, currentLangIndex + 1))];
+      const remainingLanguages = languagesQueue.slice(currentLangIndex + 1);
+      
+      console.log(`\n🌍 ========== MULTILINGUAL STATUS ==========`);
+      console.log(`   Current language: ${currentLanguage} (${currentLangIndex + 1}/${languagesQueue.length})`);
+      console.log(`   Completed: ${completedLanguages.join(', ')}`);
+      console.log(`   Remaining: ${remainingLanguages.length > 0 ? remainingLanguages.join(', ') : 'None - ALL COMPLETE!'}`);
+      console.log(`==========================================\n`);
+      
+      // Update multilingual tracking
+      await supabase
+        .from('cluster_generations')
+        .update({
+          completed_languages: completedLanguages,
+          current_language_index: currentLangIndex + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+      
+      if (remainingLanguages.length > 0) {
+        // More languages to generate - mark as partial to trigger resume
+        finalStatus = 'partial';
+        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ')}). Next: ${remainingLanguages[0]}.`;
+        console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining. Status: partial`);
+      } else {
+        // All languages complete - run translation linking
+        console.log(`[Job ${jobId}] 🌍 ALL LANGUAGES COMPLETE! Running translation linking...`);
+        
+        try {
+          await linkTranslations(supabase, jobId);
+          console.log(`[Job ${jobId}] ✅ Translation linking complete`);
+          finalStatus = 'completed';
+          completionNote = `Multilingual cluster complete: All ${languagesQueue.length} languages generated and linked (60 articles total).`;
+        } catch (linkError) {
+          console.error(`[Job ${jobId}] ❌ Translation linking failed:`, linkError);
+          finalStatus = 'completed'; // Still mark as completed even if linking fails
+          completionNote = `Multilingual cluster complete with ${languagesQueue.length} languages, but translation linking failed: ${linkError instanceof Error ? linkError.message : 'Unknown error'}`;
+        }
+      }
+    } else {
+      // Single-language mode - original logic
+      const successRate = (savedArticleIds.length / articleStructures.length) * 100;
+      const allArticlesGenerated = savedArticleIds.length === articleStructures.length;
+      finalStatus = allArticlesGenerated ? 'completed' : 'partial';
+      completionNote = timeoutStopped 
+        ? `${savedArticleIds.length}/${articleStructures.length} articles generated. Generation stopped early due to timeout to prevent job failure.`
+        : `${savedArticleIds.length}/${articleStructures.length} articles generated as drafts.`;
+    }
     
     console.log(`\n========================================`);
     console.log(`🎉 [Job ${jobId}] CLUSTER GENERATION ${finalStatus.toUpperCase()}`);
+    console.log(`   Mode: ${isMultilingual ? 'MULTILINGUAL' : 'Single-language'}`);
     console.log(`   Total articles: ${articleStructures.length}`);
     console.log(`   Successfully saved: ${savedArticleIds.length}`);
     console.log(`   Failed: ${failedArticleCount}`);
     console.log(`   Timeout stopped: ${timeoutStopped ? 'Yes' : 'No'}`);
-    console.log(`   Success rate: ${successRate.toFixed(1)}%`);
     console.log(`   Total time: ${((Date.now() - FUNCTION_START_TIME) / 1000).toFixed(1)}s`);
     console.log(`   Status: ${finalStatus}`);
+    if (isMultilingual) {
+      console.log(`   Note: ${completionNote}`);
+    }
     console.log(`========================================\n`);
 
     // Save final status to job record with error handling and verification
@@ -2197,9 +2345,7 @@ Return ONLY valid JSON:
       .update({
         status: finalStatus,
         articles: savedArticleIds, // Only store article IDs
-        completion_note: timeoutStopped 
-          ? `${savedArticleIds.length}/${articleStructures.length} articles generated. Generation stopped early due to timeout to prevent job failure.`
-          : `${savedArticleIds.length}/${articleStructures.length} articles generated as drafts. Citations to be added during review process before publishing.`,
+        completion_note: completionNote,
         progress: {
           current_step: 11,
           total_steps: 11,
@@ -2208,13 +2354,17 @@ Return ONLY valid JSON:
           saved_articles: savedArticleIds.length,
           failed_articles: failedArticleCount,
           timeout_stopped: timeoutStopped,
+          is_multilingual: isMultilingual,
+          current_language: currentLanguage,
+          completed_languages: isMultilingual ? languagesQueue.slice(0, languagesQueue.indexOf(currentLanguage) + 1) : undefined,
           total_time_seconds: ((Date.now() - FUNCTION_START_TIME) / 1000).toFixed(1),
           message: finalStatus === 'completed' 
-            ? `✅ Cluster complete: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS. Citations pending - add before publishing.`
-            : timeoutStopped
-            ? `⚠️ Gracefully stopped before timeout: ${savedArticleIds.length}/${articleStructures.length} articles saved. Run again to generate remaining articles.`
-            : `⚠️ Partial completion: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS. Citations pending - add before publishing.`,
-          success_rate: successRate
+            ? isMultilingual 
+              ? `✅ Multilingual cluster complete: All ${languagesQueue.length} languages generated!`
+              : `✅ Cluster complete: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS.`
+            : isMultilingual
+            ? `🌍 Language ${currentLanguage} complete. Generating next language...`
+            : `⚠️ Partial completion: ${savedArticleIds.length}/${articleStructures.length} articles saved as DRAFTS.`
         },
         updated_at: new Date().toISOString()
       })

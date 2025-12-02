@@ -987,6 +987,33 @@ const ClusterGenerator = () => {
                   <span className="text-muted-foreground">{Math.round(progress)}%</span>
                 </div>
                 <Progress value={progress} className="h-3" />
+                
+                {/* Multilingual Progress Indicator */}
+                {steps.length > 0 && steps[0].message?.includes('language') && (
+                  <div className="flex gap-1 flex-wrap mt-3">
+                    {languageOptions.map((lang) => {
+                      const isComplete = steps[0].message?.toLowerCase().includes(lang.name.toLowerCase()) && 
+                                        steps[0].message?.includes('complete');
+                      const isCurrent = steps[0].message?.toLowerCase().includes(lang.name.toLowerCase()) && 
+                                       !isComplete;
+                      
+                      return (
+                        <div
+                          key={lang.value}
+                          className={`px-2 py-1 text-xs rounded-md font-medium ${
+                            isComplete 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                              : isCurrent
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 animate-pulse'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {lang.label.split(' ')[0]}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Abort Button and Elapsed Time */}

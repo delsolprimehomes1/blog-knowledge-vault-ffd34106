@@ -250,6 +250,83 @@ serve(async (req) => {
       throw new Error('Job not found');
     }
 
+    // ============= MULTILINGUAL MODE CHECK =============
+    const isMultilingual = job.is_multilingual === true;
+    
+    if (isMultilingual) {
+      console.log(`\n🌍 ========== MULTILINGUAL RESUME ==========`);
+      console.log(`   Job type: Multilingual cluster`);
+      console.log(`   Languages queue: ${job.languages_queue?.join(', ')}`);
+      console.log(`   Current language index: ${job.current_language_index}`);
+      console.log(`   Completed languages: ${job.completed_languages?.join(', ')}`);
+      console.log(`==========================================\n`);
+      
+      // Check if all languages are complete
+      if (job.current_language_index >= job.languages_queue?.length) {
+        console.log(`[Resume ${jobId}] ✅ All languages complete for multilingual cluster`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            jobId,
+            isComplete: true,
+            message: 'Multilingual cluster complete - all languages generated'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Get next language to generate
+      const nextLanguage = job.languages_queue[job.current_language_index];
+      console.log(`[Resume ${jobId}] 🌍 Continuing with next language: ${nextLanguage} (${job.current_language_index + 1}/${job.languages_queue.length})`);
+      
+      // Invoke generate-cluster with next language
+      try {
+        const { error: invokeError } = await supabase.functions.invoke('generate-cluster', {
+          body: {
+            topic: job.topic,
+            language: nextLanguage,
+            targetAudience: job.target_audience,
+            primaryKeyword: job.primary_keyword,
+            _resumeMultilingualJob: jobId // Pass job ID to reuse existing cluster_id
+          }
+        });
+        
+        if (invokeError) {
+          console.error(`[Resume ${jobId}] ❌ Error invoking generate-cluster for ${nextLanguage}:`, invokeError);
+          throw invokeError;
+        }
+        
+        console.log(`[Resume ${jobId}] ✅ Started generation for language: ${nextLanguage}`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            jobId,
+            isComplete: false,
+            nextLanguage,
+            message: `Continuing with language ${nextLanguage} (${job.current_language_index + 1}/${job.languages_queue.length})`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error(`[Resume ${jobId}] ❌ Failed to start next language:`, error);
+        
+        await supabase
+          .from('cluster_generations')
+          .update({
+            status: 'failed',
+            error: `Failed to continue with language ${nextLanguage}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+        
+        throw error;
+      }
+    }
+
+    // ============= SINGLE-LANGUAGE MODE (ORIGINAL LOGIC) =============
+    console.log(`[Resume ${jobId}] 📝 Single-language resume mode`);
+
     // Validate job can be resumed
     if (!job.article_structure) {
       throw new Error('Job missing article_structure - cannot resume. Please start a new generation.');
