@@ -28,7 +28,7 @@ serve(async (req) => {
       .from('cluster_generations')
       .select('*')
       .eq('id', jobId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching job:', error);
@@ -36,7 +36,15 @@ serve(async (req) => {
     }
 
     if (!job) {
-      throw new Error('Job not found');
+      // Job doesn't exist - return not_found status so frontend can stop polling
+      return new Response(
+        JSON.stringify({
+          success: true,
+          status: 'not_found',
+          error: 'Job not found or was deleted'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`Job ${jobId} status: ${job.status}`);
