@@ -20,6 +20,7 @@ import BatchImageGeneration from "./pages/admin/BatchImageGeneration";
 import CitationHealth from "./pages/admin/CitationHealth";
 import ApprovedDomains from "./pages/admin/ApprovedDomains";
 import BulkInternalLinks from "./pages/admin/BulkInternalLinks";
+import TranslationLinker from "./pages/admin/TranslationLinker";
 import Auth from "./pages/Auth";
 import BlogArticle from "./pages/BlogArticle";
 import BlogIndex from "./pages/BlogIndex";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/admin/docs/aeo-sge-guide" element={<ProtectedRoute><AEOGuide /></ProtectedRoute>} />
           <Route path="/admin/approved-domains" element={<ProtectedRoute><ApprovedDomains /></ProtectedRoute>} />
           <Route path="/admin/bulk-internal-links" element={<ProtectedRoute><BulkInternalLinks /></ProtectedRoute>} />
+          <Route path="/admin/translation-linker" element={<ProtectedRoute><TranslationLinker /></ProtectedRoute>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
