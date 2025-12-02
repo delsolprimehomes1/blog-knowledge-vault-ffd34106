@@ -166,6 +166,14 @@ const BlogArticle = () => {
   const baseUrl = window.location.origin;
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
 
+  // Preview URL detection
+  const isPreview = typeof window !== 'undefined' && (
+    window.location.hostname.includes('lovable.app') ||
+    window.location.hostname.includes('preview') ||
+    window.location.hostname.includes('staging') ||
+    window.location.hostname !== 'delsolprimehomes.com'
+  );
+
   // Language to hreflang mapping
   const langToHreflang: Record<string, string> = {
     en: 'en-GB',
@@ -177,6 +185,8 @@ const BlogArticle = () => {
     sv: 'sv-SE',
     da: 'da-DK',
     hu: 'hu-HU',
+    fi: 'fi-FI',
+    no: 'nb-NO',
   };
 
   // Generate hreflang tags array
@@ -217,10 +227,19 @@ const BlogArticle = () => {
   return (
     <>
       <Helmet>
+        {/* Preview exclusion - noindex/nofollow for non-production URLs */}
+        {isPreview && (
+          <meta name="robots" content="noindex, nofollow" />
+        )}
+        
         {/* Basic Meta Tags */}
         <title>{article.meta_title} | Del Sol Prime Homes</title>
         <meta name="description" content={article.meta_description} />
-        <link rel="canonical" href={article.canonical_url || currentUrl} />
+        
+        {/* Canonical - Only on production */}
+        {!isPreview && (
+          <link rel="canonical" href={article.canonical_url || currentUrl} />
+        )}
         
         {/* Open Graph Tags */}
         <meta property="og:title" content={article.headline} />
@@ -246,13 +265,15 @@ const BlogArticle = () => {
         <meta name="twitter:description" content={article.meta_description} />
         <meta name="twitter:image" content={article.featured_image_url} />
         
-        {/* Hreflang Tags */}
-        {hreflangTags.map((tag) => (
+        {/* Hreflang Tags - Only on production */}
+        {!isPreview && hreflangTags.map((tag) => (
           <link key={tag.lang} rel="alternate" hrefLang={tag.hrefLang} href={tag.href} />
         ))}
         
         {/* Additional Meta */}
-        <meta name="robots" content="index, follow, max-image-preview:large" />
+        {!isPreview && (
+          <meta name="robots" content="index, follow, max-image-preview:large" />
+        )}
         {author && <meta name="author" content={author.name} />}
         <meta name="language" content={article.language} />
         
