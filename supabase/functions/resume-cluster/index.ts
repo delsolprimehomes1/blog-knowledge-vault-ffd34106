@@ -298,7 +298,11 @@ serve(async (req) => {
         } else if (!nextLanguage && currentStatus !== 'completed') {
           // First incomplete language is the next to generate
           nextLanguage = lang;
-          languageStatus[lang] = 'pending';
+          // Preserve 'partial' status if articles already exist, otherwise set to 'pending'
+          if (currentStatus !== 'partial') {
+            languageStatus[lang] = 'pending';
+          }
+          // Keep 'partial' as-is for accurate tracking
         }
       }
       
