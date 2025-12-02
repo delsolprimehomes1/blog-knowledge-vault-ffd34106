@@ -59,6 +59,27 @@ const ClusterGenerator = () => {
   const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   const [lastBackendUpdate, setLastBackendUpdate] = useState<Date | null>(null);
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'generating' | 'partial' | 'completed'>('idle');
+  const [isMultilingualEnabled, setIsMultilingualEnabled] = useState(false);
+  const [loadingFlag, setLoadingFlag] = useState(true);
+
+  // Fetch multilingual feature flag on mount
+  useEffect(() => {
+    const fetchMultilingualFlag = async () => {
+      const { data, error } = await supabase
+        .from('content_settings')
+        .select('setting_value')
+        .eq('setting_key', 'feature_multilingual_clusters')
+        .single();
+      
+      if (!error && data?.setting_value === 'true') {
+        setIsMultilingualEnabled(true);
+        setTotalArticles(60); // 6 articles × 10 languages
+      }
+      setLoadingFlag(false);
+    };
+    
+    fetchMultilingualFlag();
+  }, []);
 
   // Check for saved backup on mount
   useEffect(() => {
@@ -448,7 +469,12 @@ const ClusterGenerator = () => {
       
       // Step 1: Start generation (returns immediately with job ID)
       const { data, error } = await supabase.functions.invoke('generate-cluster', {
-        body: { topic, language, targetAudience, primaryKeyword }
+        body: { 
+          topic, 
+          language: isMultilingualEnabled ? 'en' : language, // Backend handles multilingual queue
+          targetAudience, 
+          primaryKeyword 
+        }
       });
 
       if (error) {
@@ -896,7 +922,9 @@ const ClusterGenerator = () => {
                 AI Content Cluster Generator
               </CardTitle>
               <CardDescription className="text-lg">
-                Generate 6 interconnected articles with one click
+                {isMultilingualEnabled 
+                  ? 'Generate 60 interconnected articles (6 × 10 languages) with one click'
+                  : 'Generate 6 interconnected articles with one click'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -914,23 +942,38 @@ const ClusterGenerator = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="language" className="text-base">
-                  Language <span className="text-destructive">*</span>
-                </Label>
-                <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-                  <SelectTrigger id="language" className="text-base">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isMultilingualEnabled ? (
+                <div className="space-y-2">
+                  <Label htmlFor="language" className="text-base">
+                    Language <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+                    <SelectTrigger id="language" className="text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languageOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-base">Languages</Label>
+                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/50 dark:to-green-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <span className="text-3xl">🌍</span>
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-900 dark:text-blue-100">All 10 Languages</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        EN · DE · NL · FR · PL · SV · DA · HU · FI · NO
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="targetAudience" className="text-base">
@@ -962,12 +1005,14 @@ const ClusterGenerator = () => {
 
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || loadingFlag}
                 size="lg"
                 className="w-full text-base"
               >
                 <Sparkles className="mr-2 h-5 w-5" />
-                Generate Complete Cluster (6 Articles)
+                {isMultilingualEnabled 
+                  ? 'Generate Multilingual Cluster (60 Articles)'
+                  : 'Generate Complete Cluster (6 Articles)'}
               </Button>
             </CardContent>
           </Card>

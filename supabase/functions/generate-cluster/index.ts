@@ -346,7 +346,15 @@ async function withHeartbeat<T>(
 }
 
 // Main generation function (runs in background)
-async function generateCluster(jobId: string, topic: string, language: string, targetAudience: string, primaryKeyword: string) {
+async function generateCluster(
+  jobId: string, 
+  topic: string, 
+  language: string, 
+  targetAudience: string, 
+  primaryKeyword: string,
+  resumedLanguageIndex?: number,
+  isResumedMultilingual?: boolean
+) {
   const FUNCTION_START_TIME = Date.now();
   const MAX_FUNCTION_RUNTIME = 4.5 * 60 * 1000; // 4.5 minutes (safety margin before 5-min Supabase limit)
   const ARTICLE_TIME_ESTIMATE = 30000; // 30 seconds per article estimate
@@ -387,7 +395,21 @@ async function generateCluster(jobId: string, topic: string, language: string, t
     let languagesQueue: string[] = [];
     let isMultilingual = false;
     
-    if (enableMultilingual) {
+    // Handle resumed multilingual jobs
+    if (isResumedMultilingual) {
+      // Fetch existing multilingual state from DB instead of reinitializing
+      const { data: jobData } = await supabase
+        .from('cluster_generations')
+        .select('is_multilingual, languages_queue, current_language_index, completed_languages, cluster_id')
+        .eq('id', jobId)
+        .single();
+      
+      isMultilingual = jobData?.is_multilingual || false;
+      languagesQueue = jobData?.languages_queue || [];
+      currentLanguage = languagesQueue[resumedLanguageIndex || 0] || language;
+      
+      console.log(`[Job ${jobId}] 🌍 RESUMED multilingual job at language ${currentLanguage} (index ${resumedLanguageIndex})`);
+    } else if (enableMultilingual) {
       languagesQueue = [...SUPPORTED_LANGUAGES];
       currentLanguage = languagesQueue[0];
       isMultilingual = true;
@@ -2439,7 +2461,7 @@ serve(async (req) => {
   }
 
   try {
-    const { topic, language, targetAudience, primaryKeyword } = await req.json();
+    const { topic, language, targetAudience, primaryKeyword, _resumeMultilingualJob } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -2461,33 +2483,75 @@ serve(async (req) => {
       }
     }
 
-    // Create job record
-    const { data: job, error: jobError } = await supabase
-      .from('cluster_generations')
-      .insert({
-        user_id: userId,
-        topic,
-        language,
-        target_audience: targetAudience,
-        primary_keyword: primaryKeyword,
-        status: 'pending',
-      })
-      .select()
-      .single();
+    let job;
+    let resumedLanguageIndex = 0;
+    
+    // Handle multilingual continuation
+    if (_resumeMultilingualJob) {
+      console.log(`[Resume] 🌍 Continuing multilingual job: ${_resumeMultilingualJob}`);
+      
+      // Fetch existing job
+      const { data: existingJob, error: fetchError } = await supabase
+        .from('cluster_generations')
+        .select('*')
+        .eq('id', _resumeMultilingualJob)
+        .single();
+      
+      if (fetchError || !existingJob) {
+        throw new Error(`Failed to fetch job for multilingual resume: ${fetchError?.message}`);
+      }
+      
+      job = existingJob;
+      resumedLanguageIndex = job.current_language_index || 0;
+      
+      console.log(`[Resume] Continuing from language index ${resumedLanguageIndex}: ${job.languages_queue?.[resumedLanguageIndex]}`);
+      
+      // Update job status to generating
+      await supabase
+        .from('cluster_generations')
+        .update({
+          status: 'generating',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', job.id);
+    } else {
+      // Create new job
+      const { data: newJob, error: jobError } = await supabase
+        .from('cluster_generations')
+        .insert({
+          user_id: userId,
+          topic,
+          language,
+          target_audience: targetAudience,
+          primary_keyword: primaryKeyword,
+          status: 'pending',
+        })
+        .select()
+        .single();
 
-    if (jobError) {
-      console.error('Failed to create job:', jobError);
-      throw jobError;
+      if (jobError) {
+        console.error('Failed to create job:', jobError);
+        throw jobError;
+      }
+      
+      job = newJob;
+      console.log(`✅ Created job ${job.id}, starting background generation`);
     }
-
-    console.log(`✅ Created job ${job.id}, starting background generation`);
 
     // Start generation in background (non-blocking) with global error boundary
     // @ts-ignore - EdgeRuntime is available in Deno Deploy
     EdgeRuntime.waitUntil(
       (async () => {
         try {
-          await generateCluster(job.id, topic, language, targetAudience, primaryKeyword);
+          await generateCluster(
+            job.id, 
+            job.topic, 
+            _resumeMultilingualJob ? job.languages_queue[resumedLanguageIndex] : language,
+            job.target_audience, 
+            job.primary_keyword,
+            _resumeMultilingualJob ? resumedLanguageIndex : undefined,
+            _resumeMultilingualJob ? true : false
+          );
         } catch (error) {
           console.error(`[Job ${job.id}] 🚨 FATAL ERROR - generateCluster crashed:`, {
             errorType: error?.constructor?.name,
