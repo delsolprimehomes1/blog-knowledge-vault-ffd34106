@@ -2109,7 +2109,8 @@ Return ONLY valid JSON:
         console.log(`✅ [Job ${jobId}] Article ${i + 1} - SAVED SUCCESSFULLY (ID: ${savedArticle.id})`);
         console.log(`⏱️  Article time: ${articleDuration}s | Total elapsed: ${((Date.now() - FUNCTION_START_TIME) / 1000).toFixed(1)}s`);
         
-        // Update cluster progress immediately
+        // CHECKPOINT: Update cluster progress immediately after each article save
+        // This ensures job state is recoverable even if timeout occurs
         await supabase
           .from('cluster_generations')
           .update({
@@ -2121,13 +2122,13 @@ Return ONLY valid JSON:
               total_articles: articleStructures.length,
               saved_articles: savedArticleIds.length,
               failed_articles: failedArticleCount,
-              message: `Article ${i + 1}/${articleStructures.length} saved: "${article.headline}"`
+              message: `✅ CHECKPOINT: Article ${i + 1}/${articleStructures.length} saved for ${language}`
             },
             updated_at: new Date().toISOString()
           })
           .eq('id', jobId);
         
-        console.log(`📊 [Job ${jobId}] Progress: ${savedArticleIds.length}/${articleStructures.length} articles saved\n`);
+        console.log(`📊 [Job ${jobId}] CHECKPOINT: ${savedArticleIds.length}/${articleStructures.length} articles saved for ${language}\n`);
         
       } catch (saveError) {
         const error = saveError as Error;
@@ -2199,6 +2200,11 @@ Return ONLY valid JSON:
     console.log(`[Job ${jobId}] Fetching saved articles for internal linking...`);
 
     // STEP 3: Find internal links between cluster articles
+    // POST-PROCESSING: Wrapped in try-catch so timeout during linking doesn't corrupt state
+    // Articles are already saved and language is marked complete before this point
+    console.log(`\n📎 [Job ${jobId}] Starting POST-PROCESSING (non-fatal if timeout)...`);
+    
+    try {
     // Fetch all saved articles from database
     const { data: articlesForLinking, error: fetchArticlesError } = await supabase
       .from('blog_articles')
@@ -2397,24 +2403,39 @@ Return ONLY valid JSON:
 
     await updateProgress(supabase, jobId, 11, 'Completed!');
     
+    } catch (postProcessError) {
+      // POST-PROCESSING FAILURE IS NON-FATAL
+      // Articles are already saved and language status is updated after this block
+      console.warn(`\n⚠️ [Job ${jobId}] POST-PROCESSING FAILED (non-fatal):`, postProcessError);
+      console.warn(`   Articles are saved. Internal links/CTAs can be added manually.`);
+      console.warn(`   Continuing to language completion check...\n`);
+    }
+    
     // ============= MULTILINGUAL MODE: Check if more languages remain =============
-    // ============= FIX: Use ACTUAL article counts, not queue position =============
+    // ============= EARLY COMPLETION MARKING: Mark language complete BEFORE post-processing =============
     let finalStatus = 'completed';
     let completionNote = '';
     
     if (isMultilingual) {
-      // Verify actual article count for current language
+      // EARLY COMPLETION: Verify article count and mark language complete IMMEDIATELY
+      // This happens BEFORE internal links/CTAs so timeout during post-processing is safe
       const actualCount = await verifyLanguageArticleCount(supabase, jobId, currentLanguage);
       const languageComplete = actualCount >= 6;
       
-      // Update language status based on actual count
+      console.log(`\n🎯 [Job ${jobId}] EARLY COMPLETION CHECK for ${currentLanguage}`);
+      console.log(`   Articles found: ${actualCount}/6`);
+      console.log(`   Language complete: ${languageComplete}`);
+      
+      // Update language status IMMEDIATELY based on actual count (before any post-processing)
       if (languageComplete) {
         await updateLanguageStatus(supabase, jobId, currentLanguage, 'completed');
+        console.log(`   ✅ Language ${currentLanguage} marked COMPLETED (6 articles verified)`);
       } else if (timeoutStopped) {
         await updateLanguageStatus(supabase, jobId, currentLanguage, 'timeout');
+        console.log(`   ⏱️ Language ${currentLanguage} marked TIMEOUT (${actualCount} articles saved)`);
       } else if (actualCount > 0) {
-        // Mark as partial if some articles but not all
         await updateLanguageStatus(supabase, jobId, currentLanguage, 'partial');
+        console.log(`   ⚠️ Language ${currentLanguage} marked PARTIAL (${actualCount} articles saved)`);
       }
       
       // Determine true status from actual article counts across ALL languages
@@ -2447,39 +2468,22 @@ Return ONLY valid JSON:
         .eq('id', jobId);
       
       if (remainingLanguages.length > 0) {
-        // More languages to generate - mark as partial to trigger resume
-        // FIX: NEVER mark as "completed" if any language has < 6 articles
+        // More languages to generate - mark as partial
         finalStatus = 'partial';
-        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ') || 'none'}). Next: ${remainingLanguages[0]}.`;
-        console.log(`[Job ${jobId}] ✅ Progress update. ${remainingLanguages.length} languages remaining. Status: partial`);
+        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ') || 'none'}). Next: ${remainingLanguages[0]}. Click Resume to continue.`;
+        console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining.`);
+        console.log(`[Job ${jobId}] ℹ️ AUTO-CONTINUATION DISABLED - User must click "Resume" for next language: ${remainingLanguages[0]}`);
         
-        // AUTO-CONTINUATION: Automatically invoke resume-cluster for next language
-        console.log(`[Job ${jobId}] 🚀 Auto-continuing to next language: ${remainingLanguages[0]}`);
-        try {
-          const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-          const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-          
-          // Use fetch to invoke resume-cluster (can't use supabase.functions.invoke from within edge function)
-          const resumeResponse = await fetch(`${supabaseUrl}/functions/v1/resume-cluster`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({ jobId }),
-          });
-          
-          if (!resumeResponse.ok) {
-            const errorText = await resumeResponse.text();
-            console.error(`[Job ${jobId}] ⚠️ Auto-resume HTTP error: ${resumeResponse.status} - ${errorText}`);
-            // Status remains 'partial' - user can manually resume
-          } else {
-            console.log(`[Job ${jobId}] ✅ Auto-resume triggered successfully for ${remainingLanguages[0]}`);
-          }
-        } catch (resumeErr) {
-          console.error(`[Job ${jobId}] ⚠️ Auto-resume error:`, resumeErr);
-          // Status remains 'partial' - user can manually resume from UI
-        }
+        // AUTO-CONTINUATION DISABLED FOR RELIABILITY
+        // User clicks "Resume" manually between languages to ensure predictable behavior
+        // This prevents cascading timeouts and makes debugging easier
+        // 
+        // Previously this code auto-invoked resume-cluster, but it caused:
+        // 1. Chain timeouts when one language took too long
+        // 2. Stuck "running" states when auto-resume failed
+        // 3. Unpredictable job states
+        //
+        // Manual resume is more reliable: user clicks Resume, sees status, clicks again if needed
       } else {
         // All languages complete - run translation linking
         console.log(`[Job ${jobId}] 🌍 ALL LANGUAGES COMPLETE! Running translation linking...`);

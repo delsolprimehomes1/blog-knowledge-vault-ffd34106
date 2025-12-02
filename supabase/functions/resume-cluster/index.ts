@@ -256,10 +256,14 @@ serve(async (req) => {
     if (isMultilingual) {
       const languagesQueue = job.languages_queue || [];
       
-      // ============= FIX: Determine next language from ACTUAL article counts =============
+      // ============= STUCK JOB RECONCILIATION =============
+      // Before proceeding, reconcile language_status with actual article counts
+      // This fixes jobs that got stuck due to timeouts
+      console.log(`\n🔧 [Resume ${jobId}] RECONCILING language_status with actual article counts...`);
+      
       let completedLanguages: string[] = [];
       let nextLanguage: string | null = null;
-      const languageStatus: Record<string, string> = job.language_status || {};
+      const languageStatus: Record<string, string> = { ...(job.language_status || {}) };
       
       for (const lang of languagesQueue) {
         // Count actual articles for this language
@@ -270,11 +274,28 @@ serve(async (req) => {
           .eq('language', lang);
         
         const articleCount = count || 0;
+        const currentStatus = languageStatus[lang];
+        
+        // RECONCILIATION LOGIC:
+        // - If 6+ articles exist, status MUST be 'completed' (regardless of what DB says)
+        // - If status is 'running' but we're in resume (no active function), reset to pending or completed
+        // - If 0 articles and not 'completed', status should be 'pending'
         
         if (articleCount >= 6) {
+          if (currentStatus !== 'completed') {
+            console.log(`   🔧 ${lang}: Fixing status from '${currentStatus}' to 'completed' (${articleCount} articles exist)`);
+          }
           completedLanguages.push(lang);
           languageStatus[lang] = 'completed';
-        } else if (!nextLanguage) {
+        } else if (currentStatus === 'running') {
+          // Stuck in 'running' state - reset based on article count
+          const newStatus = articleCount > 0 ? 'partial' : 'pending';
+          console.log(`   🔧 ${lang}: Fixing stuck 'running' status to '${newStatus}' (${articleCount} articles)`);
+          languageStatus[lang] = newStatus;
+          if (!nextLanguage) {
+            nextLanguage = lang;
+          }
+        } else if (!nextLanguage && currentStatus !== 'completed') {
           // First incomplete language is the next to generate
           nextLanguage = lang;
           languageStatus[lang] = 'pending';
