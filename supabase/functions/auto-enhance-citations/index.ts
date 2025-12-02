@@ -17,6 +17,26 @@ interface CitationPlacement {
   reason: string;
 }
 
+// Helper function to extract JSON from potentially messy responses
+function extractJSON(text: string): any {
+  // Remove markdown code fences
+  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  
+  // Try to find JSON object in the text
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.error('Failed to parse extracted JSON:', e);
+      throw new Error('JSON extraction failed');
+    }
+  }
+  
+  // Fallback: try parsing the trimmed text
+  return JSON.parse(cleaned.trim());
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -152,7 +172,17 @@ ${brokenInArticle.map((c: any) => `- ${c.url} (${c.text || 'No anchor'})`).join(
 - Citations must be highly relevant (relevance score > 85)
 - Place citations naturally after factual claims, statistics, or regulations
 
-Return ONLY valid JSON:
+**RESPONSE FORMAT - CRITICAL:**
+You MUST return ONLY a JSON object with no additional text, explanation, or markdown formatting.
+Start your response with { and end with }
+Do NOT include any text before the opening brace { or after the closing brace }
+Do NOT wrap the JSON in markdown code fences
+Do NOT add explanations before or after the JSON
+
+Example of correct response format:
+{"placements":[{"sentenceIndex":3,"beforeText":"exact 20-30 chars before","afterText":"exact 20-30 chars after","url":"https://approved-domain.com/page","source":"Source Name","relevanceScore":95,"reason":"Citation supports this claim"}]}
+
+Required JSON structure:
 {
   "placements": [
     {
@@ -196,12 +226,19 @@ Return ONLY valid JSON:
         }
 
         const perplexityData = await perplexityResponse.json();
-        let responseText = perplexityData.choices[0].message.content;
+        const responseText = perplexityData.choices[0].message.content;
         
-        // Clean markdown artifacts
-        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // Try to parse JSON with robust error handling
+        let placementResult;
+        try {
+          placementResult = extractJSON(responseText);
+        } catch (parseError) {
+          console.error(`  ❌ Failed to parse Perplexity response:`, parseError);
+          console.log(`  📝 Raw response (first 400 chars): ${responseText.substring(0, 400)}...`);
+          console.log(`  📝 Response length: ${responseText.length} characters`);
+          continue; // Skip this article gracefully
+        }
         
-        const placementResult = JSON.parse(responseText);
         const placements: CitationPlacement[] = placementResult.placements || [];
 
         console.log(`  📌 Perplexity suggested ${placements.length} citations`);
