@@ -118,34 +118,46 @@ const BlogArticle = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
-          <AlertCircle className="h-16 w-16 mx-auto text-destructive" />
-          <h1 className="text-3xl font-bold mb-4">Error Loading Article</h1>
-          <p className="text-muted-foreground">
-            {error instanceof Error ? error.message : "Unable to load this article. Please try again."}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button onClick={() => window.location.reload()} variant="default">
-              Reload Page
-            </Button>
-            <Button onClick={() => window.history.back()} variant="outline">
-              Go Back
-            </Button>
+      <>
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>Error Loading Article | Del Sol Prime Homes</title>
+        </Helmet>
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
+            <AlertCircle className="h-16 w-16 mx-auto text-destructive" />
+            <h1 className="text-3xl font-bold mb-4">Error Loading Article</h1>
+            <p className="text-muted-foreground">
+              {error instanceof Error ? error.message : "Unable to load this article. Please try again."}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => window.location.reload()} variant="default">
+                Reload Page
+              </Button>
+              <Button onClick={() => window.history.back()} variant="outline">
+                Go Back
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!article) {
     return (
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
-          <p className="text-muted-foreground">The article you're looking for doesn't exist or has been removed.</p>
+      <>
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>Article Not Found | Del Sol Prime Homes</title>
+        </Helmet>
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
+            <p className="text-muted-foreground">The article you're looking for doesn't exist or has been removed.</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
