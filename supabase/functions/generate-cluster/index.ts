@@ -2053,6 +2053,30 @@ Return ONLY valid JSON:
       console.log(`========================================\n`);
       
       try {
+        // Check for duplicate before inserting (prevent constraint violations on resume)
+        const { count: existingCount } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', jobId)
+          .eq('language', language)
+          .eq('cluster_number', i + 1);
+        
+        if (existingCount && existingCount > 0) {
+          console.log(`⚠️ [Job ${jobId}] Article ${i + 1} already exists for ${language}, skipping save`);
+          // Fetch existing article ID to track it
+          const { data: existingArticle } = await supabase
+            .from('blog_articles')
+            .select('id')
+            .eq('cluster_id', jobId)
+            .eq('language', language)
+            .eq('cluster_number', i + 1)
+            .single();
+          if (existingArticle) {
+            savedArticleIds.push(existingArticle.id);
+          }
+          continue; // Skip to next article
+        }
+        
         console.log(`💾 [Job ${jobId}] Article ${i + 1} - Saving to blog_articles table...`);
         
         const { data: savedArticle, error: saveError } = await supabase
