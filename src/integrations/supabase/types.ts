@@ -261,6 +261,7 @@ export type Database = {
           headline: string
           id: string
           internal_links: Json | null
+          is_primary: boolean
           language: string
           last_citation_check_at: string | null
           last_edited_by: string | null
@@ -308,6 +309,7 @@ export type Database = {
           headline: string
           id?: string
           internal_links?: Json | null
+          is_primary?: boolean
           language: string
           last_citation_check_at?: string | null
           last_edited_by?: string | null
@@ -355,6 +357,7 @@ export type Database = {
           headline?: string
           id?: string
           internal_links?: Json | null
+          is_primary?: boolean
           language?: string
           last_citation_check_at?: string | null
           last_edited_by?: string | null
