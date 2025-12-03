@@ -24,6 +24,24 @@ function staticPageGenerator(): Plugin {
   };
 }
 
+// Plugin to generate sitemap.xml at build time
+function sitemapGenerator(): Plugin {
+  return {
+    name: "sitemap-generator",
+    async buildStart() {
+      // Generate sitemap before build so it's included in dist
+      console.log('\n🗺️ Generating sitemap...');
+      try {
+        const { generateSitemap } = await import('./scripts/generateSitemap');
+        await generateSitemap();
+      } catch (err) {
+        console.error('Failed to generate sitemap:', err);
+        // Don't fail the build if sitemap generation fails
+      }
+    }
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -33,6 +51,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(), 
     mode === "development" && componentTagger(),
+    sitemapGenerator(),
     staticPageGenerator()
   ].filter(Boolean),
   resolve: {
