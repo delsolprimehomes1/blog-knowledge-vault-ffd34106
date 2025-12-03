@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +55,7 @@ const ClusterGenerator = () => {
   const [showReview, setShowReview] = useState(false);
   const [hasBackup, setHasBackup] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   const [lastBackendUpdate, setLastBackendUpdate] = useState<Date | null>(null);
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'generating' | 'partial' | 'completed'>('idle');
@@ -187,9 +187,9 @@ const ClusterGenerator = () => {
         if (minutesSinceUpdate > 50) {
           console.error(`Job ${currentJobId} appears stuck. Last update: ${minutesSinceUpdate.toFixed(1)} minutes ago`);
           
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            setPollingInterval(null);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
           }
           
           setIsGenerating(false);
@@ -232,9 +232,9 @@ const ClusterGenerator = () => {
         setArticlesGenerated(generatedCount);
         setTotalArticles(totalCount);
         
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
         }
         
         setIsGenerating(false);
@@ -249,9 +249,9 @@ const ClusterGenerator = () => {
 
       // Handle completion
       if (data.status === 'completed') {
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
         }
         
         console.log('✅ Generation complete! Articles:', data.articles);
@@ -269,9 +269,9 @@ const ClusterGenerator = () => {
 
       // Handle failure
       if (data.status === 'failed') {
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
         }
         
         setIsGenerating(false);
@@ -322,9 +322,9 @@ const ClusterGenerator = () => {
         })
         .eq('id', jobId);
 
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
 
       setIsGenerating(false);
@@ -359,15 +359,13 @@ const ClusterGenerator = () => {
 
       // Start polling for this job
       const poll = () => checkJobStatus(jobId);
-      const interval = setInterval(poll, 3000);
-      setPollingInterval(interval);
+      pollingIntervalRef.current = setInterval(poll, 3000);
 
       // Switch to slower polling after 2 minutes
       setTimeout(() => {
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          const slowerInterval = setInterval(poll, 10000);
-          setPollingInterval(slowerInterval);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = setInterval(poll, 10000);
         }
       }, 2 * 60 * 1000);
 
@@ -379,32 +377,69 @@ const ClusterGenerator = () => {
     }
   };
 
-  // Auto-resume polling if page refreshed during generation
+  // Auto-resume polling if page refreshed during generation OR recover partial jobs
   useEffect(() => {
     const savedJobId = localStorage.getItem('current_job_id');
     if (savedJobId && !isGenerating && !jobId) {
-      console.log('Resuming generation for job:', savedJobId);
+      console.log('Found saved job, checking status:', savedJobId);
       setJobId(savedJobId);
-      setIsGenerating(true);
-      setGenerationStartTime(Date.now());
-      toast.info('Resuming generation...');
       
-      // Smart polling: 3s for first 2 min, then 10s
-      let pollCount = 0;
-      const poll = () => {
-        pollCount++;
-        checkJobStatus(savedJobId);
+      // Check job status first to determine if we should poll or show resume UI
+      const checkInitialStatus = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('check-cluster-status', {
+            body: { jobId: savedJobId }
+          });
+          
+          if (error) throw error;
+          
+          console.log('Initial job status:', data.status);
+          
+          if (data.status === 'partial') {
+            // Show Resume UI instead of auto-polling
+            setGenerationStatus('partial');
+            setArticlesGenerated(data.progress?.generated_articles || 0);
+            setTotalArticles(data.progress?.total_articles || 60);
+            setTopic(data.topic || '');
+            setTargetAudience(data.target_audience || '');
+            setPrimaryKeyword(data.primary_keyword || '');
+            toast.info(`Partial cluster found: ${data.progress?.generated_articles || 0}/${data.progress?.total_articles || 60} articles. Click "Resume Generation" to continue.`);
+          } else if (data.status === 'generating') {
+            // Active generation, start polling
+            setIsGenerating(true);
+            setGenerationStartTime(Date.now());
+            toast.info('Resuming generation polling...');
+            
+            const poll = () => checkJobStatus(savedJobId);
+            pollingIntervalRef.current = setInterval(poll, 3000);
+            
+            // After 2 minutes, switch to slower polling
+            setTimeout(() => {
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = setInterval(poll, 10000);
+              }
+            }, 120000);
+          } else if (data.status === 'completed') {
+            // Load completed cluster
+            setGeneratedArticles(data.articles || []);
+            setShowReview(true);
+            localStorage.removeItem('current_job_id');
+            setJobId(null);
+            toast.success('Loaded completed cluster');
+          } else if (data.status === 'failed' || data.status === 'not_found') {
+            // Clear stale job
+            localStorage.removeItem('current_job_id');
+            setJobId(null);
+          }
+        } catch (err) {
+          console.error('Error checking initial job status:', err);
+          localStorage.removeItem('current_job_id');
+          setJobId(null);
+        }
       };
       
-      const interval = setInterval(poll, 3000);
-      setPollingInterval(interval);
-      
-      // After 2 minutes, switch to slower polling
-      setTimeout(() => {
-        if (pollingInterval) clearInterval(pollingInterval);
-        const slowInterval = setInterval(poll, 10000);
-        setPollingInterval(slowInterval);
-      }, 120000); // 2 minutes
+      checkInitialStatus();
     }
   }, []);
 
@@ -420,11 +455,12 @@ const ClusterGenerator = () => {
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
     };
-  }, [pollingInterval]);
+  }, []);
 
   const handleGenerate = async () => {
     // Validation
@@ -500,14 +536,14 @@ const ClusterGenerator = () => {
       };
 
       // Start with fast polling (3 seconds)
-      const interval = setInterval(poll, 3000);
-      setPollingInterval(interval);
+      pollingIntervalRef.current = setInterval(poll, 3000);
 
       // After 2 minutes, switch to slower polling (10 seconds)
       setTimeout(() => {
-        if (pollingInterval) clearInterval(pollingInterval);
-        const slowInterval = setInterval(poll, 10000);
-        setPollingInterval(slowInterval);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = setInterval(poll, 10000);
+        }
       }, 120000); // 2 minutes
 
       // Initial status check
