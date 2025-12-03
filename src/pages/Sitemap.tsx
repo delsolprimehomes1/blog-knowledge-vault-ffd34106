@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { isFeatureEnabled } from "@/lib/featureFlags";
 
 const Sitemap = () => {
@@ -16,7 +16,7 @@ const Sitemap = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blog_articles")
-        .select("slug, date_modified, date_published, language, translations")
+        .select("slug, date_modified, date_published, language, cluster_id, is_primary")
         .eq("status", "published")
         .order("date_modified", { ascending: false });
       
@@ -24,6 +24,20 @@ const Sitemap = () => {
       return data;
     },
   });
+
+  // Group articles by cluster_id for hreflang siblings lookup
+  const clusterMap = useMemo(() => {
+    if (!articles) return new Map<string, typeof articles>();
+    const map = new Map<string, typeof articles>();
+    articles.forEach(article => {
+      if (article.cluster_id) {
+        const existing = map.get(article.cluster_id) || [];
+        existing.push(article);
+        map.set(article.cluster_id, existing);
+      }
+    });
+    return map;
+  }, [articles]);
 
   useEffect(() => {
     if (articles) {
@@ -63,28 +77,29 @@ ${articles.map(article => {
   const lastmod = article.date_modified || article.date_published || new Date().toISOString();
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
   
-  // Build hreflang links ONLY when feature flag is enabled
+  // Phase 4: Build hreflang links using cluster siblings (not translations JSONB)
   let hreflangLinks = '';
   
   if (hreflangEnabled) {
+    // 1. Self-referencing hreflang
     const currentLangCode = langToHreflang[article.language] || article.language;
     hreflangLinks = `\n    <xhtml:link rel="alternate" hreflang="${currentLangCode}" href="${currentUrl}" />`;
     
-    // Add translations
-    if (article.translations && typeof article.translations === 'object') {
-      const translationsObj = article.translations as Record<string, unknown>;
-      Object.entries(translationsObj).forEach(([lang, slug]) => {
-        if (slug && typeof slug === 'string' && lang !== article.language) {
-          const langCode = langToHreflang[lang] || lang;
-          hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${baseUrl}/blog/${slug}" />`;
+    // 2. Add cluster siblings as alternate language versions
+    const siblings = article.cluster_id ? clusterMap.get(article.cluster_id) : null;
+    if (siblings && siblings.length > 1) {
+      siblings.forEach((sibling) => {
+        if (sibling.slug && sibling.language !== article.language) {
+          const langCode = langToHreflang[sibling.language] || sibling.language;
+          hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${baseUrl}/blog/${sibling.slug}" />`;
         }
       });
     }
     
-    // Add x-default
-    const translationsObj = article.translations as Record<string, unknown> | null;
-    const xDefaultUrl = (translationsObj?.en && typeof translationsObj.en === 'string') 
-      ? `${baseUrl}/blog/${translationsObj.en}` 
+    // 3. x-default points to cluster primary (or self if standalone)
+    const primaryArticle = siblings?.find(s => s.is_primary);
+    const xDefaultUrl = primaryArticle 
+      ? `${baseUrl}/blog/${primaryArticle.slug}`
       : currentUrl;
     hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultUrl}" />`;
   }
