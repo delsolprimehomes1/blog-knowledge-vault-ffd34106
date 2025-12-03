@@ -226,6 +226,8 @@ const BlogArticle = () => {
   const hreflangTags: { lang: string; hrefLang: string; href: string }[] = [];
   
   if (hreflangEnabled) {
+    // Phase 3: Use clusterSiblings for hreflang (more reliable than translations JSONB)
+    
     // 1. Self-referencing hreflang (current page)
     const currentLangCode = langToHreflang[article.language] || article.language;
     hreflangTags.push({
@@ -234,23 +236,24 @@ const BlogArticle = () => {
       href: currentUrl
     });
     
-    // 2. Add translations (only existing translations)
-    if (article.translations && typeof article.translations === 'object') {
-      Object.entries(article.translations).forEach(([lang, slug]) => {
-        if (slug && typeof slug === 'string' && lang !== article.language) {
-          const langCode = langToHreflang[lang] || lang;
+    // 2. Add cluster siblings as alternate language versions
+    if (clusterSiblings && clusterSiblings.length > 0) {
+      clusterSiblings.forEach((sibling) => {
+        // Skip current article (already added as self-reference)
+        if (sibling.slug && sibling.language !== article.language) {
+          const langCode = langToHreflang[sibling.language] || sibling.language;
           hreflangTags.push({
-            lang: lang,
+            lang: sibling.language,
             hrefLang: langCode,
-            href: `${baseUrl}/blog/${slug}`
+            href: `${baseUrl}/blog/${sibling.slug}`
           });
         }
       });
     }
     
-    // 3. x-default (point to English if exists, otherwise current page)
-    const xDefaultUrl = article.translations?.en 
-      ? `${baseUrl}/blog/${article.translations.en}` 
+    // 3. x-default points to cluster primary (or self if standalone)
+    const xDefaultUrl = primaryArticle 
+      ? `${baseUrl}/blog/${primaryArticle.slug}`
       : currentUrl;
     hreflangTags.push({
       lang: 'x-default',
