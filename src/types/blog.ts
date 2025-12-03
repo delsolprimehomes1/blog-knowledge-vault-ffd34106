@@ -51,6 +51,10 @@ export interface BlogArticle {
   category: string;
   funnel_stage: FunnelStage;
   
+  // Cluster Fields
+  cluster_id?: string;
+  is_primary: boolean;
+  
   // SEO Fields
   headline: string;
   meta_title: string;

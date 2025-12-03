@@ -109,6 +109,22 @@ const BlogArticle = () => {
     enabled: !!article?.cta_article_ids,
   });
 
+  // Phase 2: Fetch cluster siblings to determine canonical primary
+  const { data: clusterSiblings } = useQuery({
+    queryKey: ["clusterSiblings", article?.cluster_id],
+    queryFn: async () => {
+      if (!article?.cluster_id) return [];
+      const { data, error } = await supabase
+        .from("blog_articles")
+        .select("id, slug, language, is_primary")
+        .eq("cluster_id", article.cluster_id)
+        .eq("status", "published");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!article?.cluster_id,
+  });
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -184,6 +200,13 @@ const BlogArticle = () => {
 
   const baseUrl = window.location.origin;
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
+  
+  // Phase 2: Determine canonical URL based on cluster primary
+  // Find the primary article in the cluster (or fallback to self)
+  const primaryArticle = clusterSiblings?.find(a => a.is_primary);
+  const canonicalUrl = primaryArticle 
+    ? `${baseUrl}/blog/${primaryArticle.slug}`
+    : currentUrl;
 
   // Language to hreflang mapping (all 10 supported languages)
   const langToHreflang: Record<string, string> = {
@@ -242,8 +265,8 @@ const BlogArticle = () => {
         {/* Basic Meta Tags */}
         <title>{article.meta_title} | Del Sol Prime Homes</title>
         <meta name="description" content={article.meta_description} />
-        {/* Canonical always self-referencing (never cross-language) */}
-        <link rel="canonical" href={currentUrl} />
+        {/* Canonical - points to cluster primary (or self if standalone/primary) */}
+        <link rel="canonical" href={canonicalUrl} />
         
         {/* Open Graph Tags */}
         <meta property="og:title" content={article.headline} />
