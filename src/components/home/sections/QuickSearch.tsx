@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, MapPin, Wallet, Home } from 'lucide-react';
+import { Search, ChevronDown, MapPin, Wallet, Home, Loader2 } from 'lucide-react';
 import { LOCATIONS } from '../../../constants/home';
 import { Button } from '../ui/Button';
 import { useTranslation } from '../../../i18n';
+import { supabase } from '../../../integrations/supabase/client';
+
+interface Property {
+  id: string;
+  reference: string;
+  title: string;
+  location: string;
+  price: number;
+  currency: string;
+  bedrooms: number;
+  bathrooms: number;
+  builtArea: number;
+  imageUrl: string;
+  propertyType: string;
+}
 
 export const QuickSearch: React.FC = () => {
   const { t } = useTranslation();
@@ -11,6 +26,47 @@ export const QuickSearch: React.FC = () => {
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Fetch properties when filters change
+  useEffect(() => {
+    const fetchProperties = async () => {
+      if (!location && !budget) return;
+      
+      setIsLoading(true);
+      setHasSearched(true);
+      
+      try {
+        const params: Record<string, string | number> = {};
+        if (location) params.location = location;
+        if (purpose) params.propertyType = purpose;
+        if (budget) {
+          const [min, max] = budget.split('-');
+          if (min) params.priceMin = parseInt(min) * 1000;
+          if (max && max !== '+') params.priceMax = parseInt(max) * 1000;
+        }
+
+        const { data, error } = await supabase.functions.invoke('search-properties', {
+          body: params
+        });
+
+        if (error) throw error;
+        
+        // Take first 3 properties for preview
+        setProperties((data?.properties || []).slice(0, 3));
+      } catch (err) {
+        console.error('Error fetching properties:', err);
+        setProperties([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const debounce = setTimeout(fetchProperties, 500);
+    return () => clearTimeout(debounce);
+  }, [location, budget, purpose]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -22,6 +78,14 @@ export const QuickSearch: React.FC = () => {
       if (max && max !== "+") params.append("priceMax", max);
     }
     navigate(`/property-finder?${params.toString()}`);
+  };
+
+  const formatPrice = (price: number, currency: string) => {
+    return new Intl.NumberFormat('en-EU', {
+      style: 'currency',
+      currency: currency || 'EUR',
+      maximumFractionDigits: 0
+    }).format(price);
   };
 
   return (
@@ -102,6 +166,55 @@ export const QuickSearch: React.FC = () => {
           </Button>
 
         </form>
+
+        {/* Live Property Preview */}
+        {hasSearched && (
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-prime-gold" />
+                <span className="ml-2 text-slate-500">Finding properties...</span>
+              </div>
+            ) : properties.length > 0 ? (
+              <>
+                <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+                  Preview Results
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {properties.map((property) => (
+                    <div 
+                      key={property.id}
+                      onClick={() => navigate(`/property/${property.reference}`)}
+                      className="group cursor-pointer bg-slate-50 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
+                    >
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img 
+                          src={property.imageUrl || '/placeholder.svg'} 
+                          alt={property.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                      <div className="p-4">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide">{property.location}</p>
+                        <h5 className="font-serif font-semibold text-prime-900 mt-1 line-clamp-1">{property.title}</h5>
+                        <p className="text-prime-gold font-bold mt-2">{formatPrice(property.price, property.currency)}</p>
+                        <div className="flex gap-3 mt-2 text-xs text-slate-500">
+                          <span>{property.bedrooms} beds</span>
+                          <span>{property.bathrooms} baths</span>
+                          <span>{property.builtArea}m²</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-center text-slate-500 py-4">
+                No properties found. Try adjusting your filters.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
