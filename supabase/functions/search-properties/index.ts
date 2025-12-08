@@ -5,39 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SearchParams {
-  location?: string;
-  priceMin?: number;
-  priceMax?: number;
-  propertyType?: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  page?: number;
-  limit?: number;
-}
-
-interface ResalesProperty {
-  Reference: string;
-  Price: number;
-  Currency: string;
-  Location: string;
-  Province: string;
-  Bedrooms: number;
-  Bathrooms: number;
-  BuiltArea: number;
-  PlotArea?: number;
-  PropertyType: string;
-  MainImage: string;
-  Images?: string[];
-  Description: string;
-  Features?: string[];
-  Pool?: string;
-  Garden?: string;
-  Parking?: string;
-  Orientation?: string;
-  Views?: string;
-}
-
 interface NormalizedProperty {
   reference: string;
   price: number;
@@ -66,110 +33,80 @@ serve(async (req) => {
   }
 
   try {
-    // Get credentials from separate secrets (matching working implementation)
-    const p1 = Deno.env.get('RESA_P1');
-    const p2 = Deno.env.get('RESA_P2');
+    // Extract search parameters from request body
+    const body = await req.json();
+    const {
+      location = '',
+      priceMin,
+      priceMax,
+      propertyType = '',
+      bedrooms,
+      bathrooms,
+      page = 1,
+      limit = 20
+    } = body;
+
+    console.log('🔍 Searching properties via proxy:', { location, priceMin, priceMax, propertyType, bedrooms, bathrooms, page });
+
+    // Call the proxy server
+    const proxyUrl = 'http://188.34.164.137:3000/search';
     
-    if (!p1 || !p2) {
-      throw new Error('RESA_P1 and RESA_P2 secrets not configured');
-    }
+    const proxyPayload = {
+      location,
+      priceMin,
+      priceMax,
+      propertyType,
+      bedrooms,
+      bathrooms,
+      page,
+      limit
+    };
 
-    console.log('🔑 API credentials loaded');
+    console.log('📡 Calling proxy server:', proxyUrl);
 
-    // Extract search parameters from either URL (GET) or body (POST)
-    let location = '';
-    let priceMin: number | undefined;
-    let priceMax: number | undefined;
-    let propertyType = '';
-    let bedrooms: number | undefined;
-    let bathrooms: number | undefined;
-    let page = 1;
-    let limit = 20;
-
-    if (req.method === 'POST') {
-      const body = await req.json();
-      location = body.location || '';
-      priceMin = body.priceMin;
-      priceMax = body.priceMax;
-      propertyType = body.propertyType || '';
-      bedrooms = body.bedrooms;
-      bathrooms = body.bathrooms;
-      page = body.page || 1;
-      limit = body.limit || 20;
-    } else {
-      const { searchParams } = new URL(req.url);
-      location = searchParams.get('location') || '';
-      priceMin = searchParams.get('priceMin') ? parseInt(searchParams.get('priceMin')!) : undefined;
-      priceMax = searchParams.get('priceMax') ? parseInt(searchParams.get('priceMax')!) : undefined;
-      propertyType = searchParams.get('propertyType') || '';
-      bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : undefined;
-      bathrooms = searchParams.get('bathrooms') ? parseInt(searchParams.get('bathrooms')!) : undefined;
-      page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
-      limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
-    }
-
-    console.log('🔍 Searching properties:', { location, priceMin, priceMax, propertyType, bedrooms, page });
-
-    // Build Resales-Online API URL with CORRECT endpoint and parameters
-    const baseUrl = 'https://webapi.resales-online.com/V6-0/SearchProperties.php';
-    
-    const params = new URLSearchParams({
-      version: '6-0',
-      service: 'SearchProperties',
-      p_agency_filterid: '2',
-      p1: p1,
-      p2: p2,
-      p_lang: 'en',
-      p_PageNo: page.toString(),
-      p_PageSize: limit.toString(),
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(proxyPayload),
     });
-    
-    // Add optional search filters (lowercase parameter names)
-    if (location) params.append('p_location', location);
-    if (priceMin) params.append('p_min', priceMin.toString());
-    if (priceMax) params.append('p_max', priceMax.toString());
-    if (propertyType) params.append('p_type', propertyType);
-    if (bedrooms) params.append('p_beds', bedrooms.toString());
-    if (bathrooms) params.append('p_baths', bathrooms.toString());
 
-    const apiUrl = `${baseUrl}?${params.toString()}`;
-    console.log('📡 Calling Resales API...');
-
-    const response = await fetch(apiUrl);
-    const responseText = await response.text();
-    
     if (!response.ok) {
-      console.error('Resales-Online API error:', {
+      const errorText = await response.text();
+      console.error('Proxy server error:', {
         status: response.status,
         statusText: response.statusText,
-        body: responseText,
+        body: errorText,
       });
-      throw new Error(`Resales-Online API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Proxy server error: ${response.status} ${response.statusText}`);
     }
 
-    const data = JSON.parse(responseText);
+    const data = await response.json();
     
-    // Normalize property data
-    const properties: NormalizedProperty[] = (data.Properties || data.Property || []).map((prop: ResalesProperty) => ({
-      reference: prop.Reference,
-      price: prop.Price,
-      currency: prop.Currency || 'EUR',
-      location: prop.Location,
-      province: prop.Province,
-      bedrooms: prop.Bedrooms,
-      bathrooms: prop.Bathrooms,
-      builtArea: prop.BuiltArea,
-      plotArea: prop.PlotArea,
-      propertyType: prop.PropertyType,
-      mainImage: prop.MainImage,
-      images: prop.Images || [],
-      description: prop.Description,
-      features: prop.Features || [],
-      pool: prop.Pool,
-      garden: prop.Garden,
-      parking: prop.Parking,
-      orientation: prop.Orientation,
-      views: prop.Views,
+    // Normalize property data from proxy response
+    const rawProperties = data.Properties || data.Property || data.properties || [];
+    
+    const properties: NormalizedProperty[] = rawProperties.map((prop: any) => ({
+      reference: prop.Reference || prop.reference || '',
+      price: prop.Price || prop.price || 0,
+      currency: prop.Currency || prop.currency || 'EUR',
+      location: prop.Location || prop.location || '',
+      province: prop.Province || prop.province || '',
+      bedrooms: prop.Bedrooms || prop.bedrooms || 0,
+      bathrooms: prop.Bathrooms || prop.bathrooms || 0,
+      builtArea: prop.BuiltArea || prop.builtArea || 0,
+      plotArea: prop.PlotArea || prop.plotArea,
+      propertyType: prop.PropertyType || prop.propertyType || '',
+      mainImage: prop.MainImage || prop.mainImage || '',
+      images: prop.Images || prop.images || [],
+      description: prop.Description || prop.description || '',
+      features: prop.Features || prop.features || [],
+      pool: prop.Pool || prop.pool,
+      garden: prop.Garden || prop.garden,
+      parking: prop.Parking || prop.parking,
+      orientation: prop.Orientation || prop.orientation,
+      views: prop.Views || prop.views,
     }));
 
     console.log(`✅ Found ${properties.length} properties`);
@@ -177,7 +114,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         properties,
-        total: data.TotalResults || data.QueryInfo?.TotalResults || properties.length,
+        total: data.TotalResults || data.QueryInfo?.TotalResults || data.total || properties.length,
         page,
         limit,
       }),
