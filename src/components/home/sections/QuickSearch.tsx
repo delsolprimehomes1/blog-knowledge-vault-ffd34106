@@ -16,7 +16,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   builtArea: number;
-  imageUrl: string;
+  mainImage: string;
   propertyType: string;
 }
 
@@ -189,9 +189,12 @@ export const QuickSearch: React.FC = () => {
                     >
                       <div className="aspect-[4/3] overflow-hidden">
                         <img 
-                          src={property.imageUrl || '/placeholder.svg'} 
-                          alt={property.title}
+                          src={property.mainImage || '/placeholder.svg'} 
+                          alt={property.title || `${property.propertyType} in ${property.location}`}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/placeholder.svg';
+                          }}
                         />
                       </div>
                       <div className="p-4">
