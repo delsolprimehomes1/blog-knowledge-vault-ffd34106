@@ -87,27 +87,49 @@ serve(async (req) => {
     // Normalize property data from proxy response
     const rawProperties = data.Properties || data.Property || data.properties || [];
     
-    const properties: NormalizedProperty[] = rawProperties.map((prop: any) => ({
-      reference: prop.Reference || prop.reference || '',
-      price: prop.Price || prop.price || 0,
-      currency: prop.Currency || prop.currency || 'EUR',
-      location: prop.Location || prop.location || '',
-      province: prop.Province || prop.province || '',
-      bedrooms: prop.Bedrooms || prop.bedrooms || 0,
-      bathrooms: prop.Bathrooms || prop.bathrooms || 0,
-      builtArea: prop.BuiltArea || prop.builtArea || 0,
-      plotArea: prop.PlotArea || prop.plotArea,
-      propertyType: prop.PropertyType || prop.propertyType || '',
-      mainImage: prop.MainImage || prop.mainImage || '',
-      images: prop.Images || prop.images || [],
-      description: prop.Description || prop.description || '',
-      features: prop.Features || prop.features || [],
-      pool: prop.Pool || prop.pool,
-      garden: prop.Garden || prop.garden,
-      parking: prop.Parking || prop.parking,
-      orientation: prop.Orientation || prop.orientation,
-      views: prop.Views || prop.views,
-    }));
+    // Log first property for debugging
+    if (rawProperties.length > 0) {
+      console.log('📦 Sample raw property structure:', JSON.stringify(rawProperties[0], null, 2));
+    }
+
+    const properties: NormalizedProperty[] = rawProperties.map((prop: any) => {
+      // Extract propertyType from object if needed
+      let propertyTypeStr = '';
+      if (typeof prop.PropertyType === 'object' && prop.PropertyType !== null) {
+        propertyTypeStr = prop.PropertyType.NameType || prop.PropertyType.Type || prop.PropertyType.SubType1 || '';
+      } else if (typeof prop.propertyType === 'object' && prop.propertyType !== null) {
+        propertyTypeStr = prop.propertyType.NameType || prop.propertyType.Type || prop.propertyType.SubType1 || '';
+      } else {
+        propertyTypeStr = prop.PropertyType || prop.propertyType || '';
+      }
+
+      // Extract main image from various possible locations
+      const mainImage = prop.MainImage || prop.mainImage || prop.MainImageUrl || 
+                       prop.Picture?.MainImage || prop.Pictures?.[0]?.PictureURL || 
+                       prop.pictures?.[0]?.url || '';
+
+      return {
+        reference: prop.Reference || prop.reference || prop.Ref || '',
+        price: parseFloat(prop.Price || prop.price) || 0,
+        currency: prop.Currency || prop.currency || 'EUR',
+        location: prop.Location || prop.location || prop.Area || '',
+        province: prop.Province || prop.province || prop.Country || '',
+        bedrooms: parseInt(prop.Bedrooms || prop.bedrooms) || 0,
+        bathrooms: parseInt(prop.Bathrooms || prop.bathrooms) || 0,
+        builtArea: parseFloat(prop.BuiltArea || prop.builtArea || prop.Built) || 0,
+        plotArea: parseFloat(prop.PlotArea || prop.plotArea || prop.Plot) || undefined,
+        propertyType: propertyTypeStr,
+        mainImage: mainImage,
+        images: prop.Images || prop.images || prop.Pictures || [],
+        description: prop.Description || prop.description || '',
+        features: prop.Features || prop.features || [],
+        pool: prop.Pool || prop.pool,
+        garden: prop.Garden || prop.garden,
+        parking: prop.Parking || prop.parking,
+        orientation: prop.Orientation || prop.orientation,
+        views: prop.Views || prop.views,
+      };
+    });
 
     console.log(`✅ Found ${properties.length} properties`);
 
