@@ -23,9 +23,12 @@ export const PropertyCard = ({ property }: PropertyCardProps) => {
       {/* Property Image */}
       <div className="relative overflow-hidden aspect-[4/3]">
         <img
-          src={property.mainImage}
+          src={property.mainImage || '/placeholder.svg'}
           alt={`${property.propertyType} in ${property.location}`}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/placeholder.svg';
+          }}
         />
         <div className="absolute top-4 right-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
           {property.propertyType}

@@ -103,10 +103,11 @@ serve(async (req) => {
         propertyTypeStr = prop.PropertyType || prop.propertyType || '';
       }
 
-      // Extract main image from various possible locations
+      // Extract main image from various possible locations (proxy returns Pictures.Picture array)
       const mainImage = prop.MainImage || prop.mainImage || prop.MainImageUrl || 
+                       prop.Pictures?.Picture?.[0]?.PictureURL ||
                        prop.Picture?.MainImage || prop.Pictures?.[0]?.PictureURL || 
-                       prop.pictures?.[0]?.url || '';
+                       prop.pictures?.[0]?.url || prop.images?.Picture?.[0]?.PictureURL || '';
 
       return {
         reference: prop.Reference || prop.reference || prop.Ref || '',
