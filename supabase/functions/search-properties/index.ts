@@ -109,9 +109,23 @@ serve(async (req) => {
                        prop.Picture?.MainImage || prop.Pictures?.[0]?.PictureURL || 
                        prop.pictures?.[0]?.url || prop.images?.Picture?.[0]?.PictureURL || '';
 
+      // Extract price from various fields (sale price or rental price)
+      const price = parseFloat(
+        prop.Price || prop.price || 
+        prop.SalePrice || prop.CurrentPrice ||
+        prop.RentalPrice1 || prop.RentalPrice2 || 
+        '0'
+      ) || 0;
+
+      // Generate title from available data
+      const title = prop.Title || prop.Name || prop.PropertyName || 
+                   `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
+
       return {
+        id: prop.Reference || prop.reference || prop.Ref || '',
         reference: prop.Reference || prop.reference || prop.Ref || '',
-        price: parseFloat(prop.Price || prop.price) || 0,
+        title: title,
+        price: price,
         currency: prop.Currency || prop.currency || 'EUR',
         location: prop.Location || prop.location || prop.Area || '',
         province: prop.Province || prop.province || prop.Country || '',
