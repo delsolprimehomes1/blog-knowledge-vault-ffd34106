@@ -41,7 +41,7 @@ const Sitemap = () => {
 
   useEffect(() => {
     if (articles) {
-      const baseUrl = "https://delsolprimehomes.com";
+      const baseUrl = "https://www.delsolprimehomes.com";
       
       // All 10 supported languages (no Spanish)
       const langToHreflang: Record<string, string> = {

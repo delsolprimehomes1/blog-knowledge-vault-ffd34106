@@ -6,7 +6,7 @@ const COMPANY_INFO = {
   tagline: "Premium real estate agency specializing in Costa del Sol properties",
   phone: "+34 613 578 416",
   email: "info@delsolprimehomes.com",
-  website: "https://delsolprimehomes.com",
+  website: "https://www.delsolprimehomes.com",
   address: {
     street: "Calle Águila Real 8, Bajo C",
     city: "Mijas",

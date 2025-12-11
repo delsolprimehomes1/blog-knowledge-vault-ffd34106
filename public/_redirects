@@ -1,3 +1,7 @@
+# Force all traffic to www version
+https://delsolprimehomes.com/*  https://www.delsolprimehomes.com/:splat  301!
+http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
+
 # Draft content redirects - cleanup Dec 2024 (updated with canonical targets)
 /blog/bask-in-brilliance-understanding-costa-del-sols-sun-drenched  /blog/costa-del-sols-sunny-secret-your-guide-to-daily-sunlight-hou  301
 /blog/marbella-vs-mijas-where-does-sunshine-on-the-costa-del-sol-s  /blog/beyond-marbella-discovering-the-best-places-to-invest-in-costa-del-sol-for-high-returns  301

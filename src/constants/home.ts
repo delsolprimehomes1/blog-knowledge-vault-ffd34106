@@ -115,7 +115,7 @@ export const getStructuredData = () => ({
   "@type": "RealEstateAgent",
   "name": "DelSolPrimeHomes",
   "image": "https://picsum.photos/id/1031/800/600",
-  "url": "https://delsolprimehomes.com",
+  "url": "https://www.delsolprimehomes.com",
   "telephone": "+34123456789",
   "address": {
     "@type": "PostalAddress",

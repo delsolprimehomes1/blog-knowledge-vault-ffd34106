@@ -38,14 +38,14 @@ function generateOrganizationSchema() {
   return {
     "@context": "https://schema.org",
     "@type": "RealEstateAgent",
-    "@id": "https://delsolprimehomes.com/#organization",
+    "@id": "https://www.delsolprimehomes.com/#organization",
     "name": "Del Sol Prime Homes",
     "legalName": "Del Sol Prime Homes",
-    "url": "https://delsolprimehomes.com/",
+    "url": "https://www.delsolprimehomes.com/",
     "description": "Premium real estate agency specializing in Costa del Sol new-build and off-plan properties",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://delsolprimehomes.com/assets/logo-new.png",
+      "url": "https://www.delsolprimehomes.com/assets/logo-new.png",
       "width": 256,
       "height": 256
     },
@@ -77,7 +77,7 @@ function generateAuthorSchema(author: any) {
   return {
     "@context": "https://schema.org",
     "@type": "Person",
-    "@id": `https://delsolprimehomes.com/team/${author.name.toLowerCase().replace(/\s+/g, '-')}#person`,
+    "@id": `https://www.delsolprimehomes.com/team/${author.name.toLowerCase().replace(/\s+/g, '-')}#person`,
     "name": author.name,
     "jobTitle": author.job_title,
     "image": author.photo_url,
@@ -96,7 +96,7 @@ function generateArticleSchema(article: ArticleData) {
   return {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "@id": `https://delsolprimehomes.com/blog/${article.slug}#article`,
+    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#article`,
     "headline": article.headline,
     "description": article.meta_description,
     "image": {
@@ -108,14 +108,14 @@ function generateArticleSchema(article: ArticleData) {
     "dateModified": article.date_modified || article.date_published,
     "wordCount": wordCount,
     "author": article.author ? {
-      "@id": `https://delsolprimehomes.com/team/${article.author.name.toLowerCase().replace(/\s+/g, '-')}#person`
+      "@id": `https://www.delsolprimehomes.com/team/${article.author.name.toLowerCase().replace(/\s+/g, '-')}#person`
     } : undefined,
     "publisher": {
-      "@id": "https://delsolprimehomes.com/#organization"
+      "@id": "https://www.delsolprimehomes.com/#organization"
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://delsolprimehomes.com/blog/${article.slug}`
+      "@id": `https://www.delsolprimehomes.com/blog/${article.slug}`
     },
     "inLanguage": article.language
   };
@@ -137,25 +137,25 @@ function generateBreadcrumbSchema(article: ArticleData) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "@id": `https://delsolprimehomes.com/blog/${article.slug}#breadcrumb`,
+    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#breadcrumb`,
     "itemListElement": [
       {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://delsolprimehomes.com/"
+        "item": "https://www.delsolprimehomes.com/"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Blog",
-        "item": "https://delsolprimehomes.com/blog/"
+        "item": "https://www.delsolprimehomes.com/blog/"
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": article.headline,
-        "item": `https://delsolprimehomes.com/blog/${article.slug}/`
+        "item": `https://www.delsolprimehomes.com/blog/${article.slug}/`
       }
     ]
   };
@@ -169,7 +169,7 @@ function generateFAQSchema(article: ArticleData) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": `https://delsolprimehomes.com/blog/${article.slug}#faq`,
+    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#faq`,
     "inLanguage": article.language,
     "mainEntity": article.faq_entities.map((faq: any) => ({
       "@type": "Question",
@@ -214,7 +214,7 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
     faqSchema ? `<script type="application/ld+json" data-schema="faq">${JSON.stringify(faqSchema, null, 2)}</script>` : ''
   ].filter(Boolean).join('\n  ');
 
-  const baseUrl = 'https://delsolprimehomes.com';
+  const baseUrl = 'https://www.delsolprimehomes.com';
   // Canonical always self-referencing (never cross-language)
   const canonicalUrl = `${baseUrl}/blog/${article.slug}`;
 
@@ -268,7 +268,7 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
   <meta property="og:title" content="${sanitizeForHTML(article.meta_title)}" />
   <meta property="og:description" content="${sanitizeForHTML(article.meta_description)}" />
   <meta property="og:image" content="${article.featured_image_url}" />
-  <meta property="og:url" content="https://delsolprimehomes.com/blog/${article.slug}" />
+  <meta property="og:url" content="https://www.delsolprimehomes.com/blog/${article.slug}" />
   
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />

@@ -20,8 +20,8 @@ const ORGANIZATION_SCHEMA = {
   "@type": "RealEstateAgent",
   "name": "Del Sol Prime Homes",
   "description": "Premium real estate agency specializing in Costa del Sol properties",
-  "url": "https://delsolprimehomes.com",
-  "logo": "https://delsolprimehomes.com/logo.png",
+  "url": "https://www.delsolprimehomes.com",
+  "logo": "https://www.delsolprimehomes.com/logo.png",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "Calle Águila Real 8, Bajo C",
@@ -83,7 +83,7 @@ export function generateArticleSchema(
   article: BlogArticle,
   author: Author | null,
   reviewer: Author | null,
-  baseUrl: string = "https://example.com"
+  baseUrl: string = "https://www.delsolprimehomes.com"
 ): any {
   const errors: SchemaValidationError[] = [];
   
@@ -165,7 +165,7 @@ export function generateSpeakableSchema(article: BlogArticle): any {
 
 export function generateBreadcrumbSchema(
   article: BlogArticle,
-  baseUrl: string = "https://example.com"
+  baseUrl: string = "https://www.delsolprimehomes.com"
 ): any {
   return {
     "@context": "https://schema.org",
@@ -207,9 +207,7 @@ export function generateFAQSchema(
     return null;
   }
   
-  const baseUrl = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : 'https://delsolprimehomes.com';
+  const baseUrl = 'https://www.delsolprimehomes.com';
   
   return {
     "@context": "https://schema.org",
@@ -270,7 +268,7 @@ export function generateAllSchemas(
   article: BlogArticle,
   author: Author | null,
   reviewer: Author | null,
-  baseUrl: string = "https://example.com"
+  baseUrl: string = "https://www.delsolprimehomes.com"
 ): GeneratedSchemas {
   const articleResult = generateArticleSchema(article, author, reviewer, baseUrl);
   const speakable = generateSpeakableSchema(article);

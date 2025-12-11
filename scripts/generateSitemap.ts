@@ -92,7 +92,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log(`🔗 Found ${clusterMap.size} clusters with siblings`);
   
   // 4. Generate XML
-  const baseUrl = 'https://delsolprimehomes.com';
+  const baseUrl = 'https://www.delsolprimehomes.com';
   const xmlNamespace = hreflangEnabled 
     ? `xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml"`
