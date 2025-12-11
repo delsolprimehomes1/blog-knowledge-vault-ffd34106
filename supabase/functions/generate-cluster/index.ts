@@ -952,25 +952,33 @@ Return ONLY valid JSON:
       article.meta_description = seoMeta.description;
       article.canonical_url = null;
 
-      // 5. SPEAKABLE ANSWER (40-60 words)
-      const speakablePrompt = `Write a 40-60 word speakable answer for this article:
+      // 5. SPEAKABLE ANSWER (40-60 words) - LANGUAGE-AWARE
+      const speakableLanguageNames: Record<string, string> = {
+        'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+        'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+        'fi': 'Finnish', 'no': 'Norwegian'
+      };
+      const speakableLangName = speakableLanguageNames[currentLanguage] || 'English';
+      
+      const speakablePrompt = `Write a 40-60 word speakable answer IN ${speakableLangName.toUpperCase()} for this article:
 
+Language: ${speakableLangName} (${currentLanguage})
 Question: ${plan.headline}
 Target Keyword: ${plan.targetKeyword}
 Content Focus: ${plan.contentAngle}
 
 Requirements:
-- Conversational tone (use "you" and "your")
+- MUST be written entirely in ${speakableLangName}, NOT English (unless article is English)
+- Conversational tone (use "you" and "your" equivalent in ${speakableLangName})
 - Present tense, active voice
 - Self-contained (no pronouns referring to previous context)
 - Actionable (tell reader what to DO)
 - No jargon
 - Exactly 40-60 words
 
-Example format:
-"To [action], you can [step 1], [step 2], and [step 3]. The process typically takes [timeframe] and [key benefit]. [Additional helpful detail]."
+CRITICAL: The response MUST be in ${speakableLangName}. Do not write in English unless the article language IS English.
 
-Return ONLY the speakable text, no JSON, no formatting, no quotes.`;
+Return ONLY the speakable text in ${speakableLangName}, no JSON, no formatting, no quotes.`;
 
       const speakableResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
