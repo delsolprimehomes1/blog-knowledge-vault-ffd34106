@@ -200,6 +200,17 @@ If no clear matches exist, return an empty array: []`;
       for (const cluster of clusters) {
         const newClusterId = crypto.randomUUID();
         const articles = cluster.articles as ArticleForMatching[];
+        const articleIds = articles.map(a => a.id);
+        
+        // FIX #1: Fetch ACTUAL current cluster_ids from database for rollback
+        const { data: currentArticles } = await supabase
+          .from('blog_articles')
+          .select('id, cluster_id')
+          .in('id', articleIds);
+        
+        const currentClusterMap = new Map(
+          currentArticles?.map(a => [a.id, a.cluster_id]) || []
+        );
         
         // Build translations JSONB
         const translations: Record<string, string> = {};
@@ -207,15 +218,17 @@ If no clear matches exist, return an empty array: []`;
           translations[article.language] = article.slug;
         }
 
-        // Store previous state for rollback
+        // Store previous state with ACTUAL cluster_ids from database
         const previousState = articles.map(a => ({
           id: a.id,
-          previousClusterId: a.cluster_id
+          previousClusterId: currentClusterMap.get(a.id) || null
         }));
 
         // Update each article in the cluster
+        let primaryWasSet = false;
         for (const article of articles) {
           const isPrimary = article.id === cluster.primaryArticleId;
+          if (isPrimary) primaryWasSet = true;
           
           const { error } = await supabase
             .from('blog_articles')
@@ -232,6 +245,15 @@ If no clear matches exist, return an empty array: []`;
           } else {
             updatedCount++;
           }
+        }
+
+        // FIX #2: Ensure at least one article is primary per cluster
+        if (!primaryWasSet && articles.length > 0) {
+          console.log(`Primary article not found in cluster, setting fallback primary: ${articles[0].id}`);
+          await supabase
+            .from('blog_articles')
+            .update({ is_primary: true })
+            .eq('id', articles[0].id);
         }
 
         appliedClusters.push({
