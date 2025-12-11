@@ -198,7 +198,7 @@ const BlogArticle = () => {
     ]
   };
 
-  const baseUrl = window.location.origin;
+  const baseUrl = 'https://www.delsolprimehomes.com';
   const currentUrl = `${baseUrl}/blog/${article.slug}`;
   
   // Phase 2: Determine canonical URL based on cluster primary

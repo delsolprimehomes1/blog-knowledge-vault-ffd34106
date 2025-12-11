@@ -131,7 +131,7 @@ const BlogIndex = () => {
   const hasError = categoriesError || articlesError;
 
   // Hreflang configuration
-  const baseUrl = "https://delsolprimehomes.com";
+  const baseUrl = "https://www.delsolprimehomes.com";
   const blogUrl = `${baseUrl}/blog`;
   
   const langToHreflang: Record<string, string> = {
