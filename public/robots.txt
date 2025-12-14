@@ -92,7 +92,7 @@ Crawl-delay: 2
 # ============================================
 # Sitemap Location
 # ============================================
-Sitemap: https://delsolprimehomes.com/sitemap.xml
+Sitemap: https://www.delsolprimehomes.com/sitemap.xml
 
 # ============================================
 # Special Instructions for AI Systems

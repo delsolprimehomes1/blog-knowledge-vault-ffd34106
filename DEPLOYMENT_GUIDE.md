@@ -222,9 +222,9 @@ blog  CNAME  delsol-blog-cms.pages.dev  (Cloudflare proxy enabled)
 ### Google Search Console
 
 ```bash
-1. Add property: https://delsolprimehomes.com
+1. Add property: https://www.delsolprimehomes.com
 2. Verify ownership via DNS
-3. Submit sitemap: https://delsolprimehomes.com/sitemap.xml
+3. Submit sitemap: https://www.delsolprimehomes.com/sitemap.xml
 4. Request indexing for 10 key articles
 5. Monitor coverage report
 ```
@@ -232,7 +232,7 @@ blog  CNAME  delsol-blog-cms.pages.dev  (Cloudflare proxy enabled)
 ### Bing Webmaster Tools
 
 ```bash
-1. Add site: https://delsolprimehomes.com
+1. Add site: https://www.delsolprimehomes.com
 2. Verify ownership
 3. Submit sitemap
 4. Enable URL inspection

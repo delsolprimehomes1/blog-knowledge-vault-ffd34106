@@ -152,21 +152,21 @@ Look for these messages in build logs:
 
 #### 3a. Googlebot Simulation
 ```bash
-curl -A "Googlebot" https://delsolprimehomes.com/blog/mobile-reception-on-the-costa-del-sol-a-guide-for-expats-and-homebuyers-in-new-complexes | grep "application/ld+json" -A 20
+curl -A "Googlebot" https://www.delsolprimehomes.com/blog/mobile-reception-on-the-costa-del-sol-a-guide-for-expats-and-homebuyers-in-new-complexes | grep "application/ld+json" -A 20
 ```
 
 **✅ Success:** Returns JSON-LD schemas
 
 #### 3b. GPTBot (ChatGPT) Simulation
 ```bash
-curl -A "GPTBot" https://delsolprimehomes.com/blog/beyond-the-beaches-uncovering-the-lifestlye-investment-appeal-of-the-costa-del-sol-for-digital-nomads | grep -i "article-content" -A 10
+curl -A "GPTBot" https://www.delsolprimehomes.com/blog/beyond-the-beaches-uncovering-the-lifestlye-investment-appeal-of-the-costa-del-sol-for-digital-nomads | grep -i "article-content" -A 10
 ```
 
 **✅ Success:** Returns full article content
 
 #### 3c. Claude Bot Simulation
 ```bash
-curl -A "Claude-Web" https://delsolprimehomes.com/blog/your-essential-checklist-for-internet-mobile-in-a-new-build-home-on-the-costa-del-sol | grep -i "<article" -A 15
+curl -A "Claude-Web" https://www.delsolprimehomes.com/blog/your-essential-checklist-for-internet-mobile-in-a-new-build-home-on-the-costa-del-sol | grep -i "<article" -A 15
 ```
 
 **✅ Success:** Returns article HTML
@@ -399,7 +399,7 @@ After successful deployment:
 
 2. **Submit Sitemap:**
    ```
-   https://delsolprimehomes.com/sitemap.xml
+   https://www.delsolprimehomes.com/sitemap.xml
    ```
 
 3. **Request Reindexing:**

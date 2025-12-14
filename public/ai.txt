@@ -10,7 +10,7 @@ This website allows AI systems to crawl and index public content for improving A
 
 ## Attribution
 When using content from this site, please attribute to:
-Del Sol Prime Homes (https://delsolprimehomes.com)
+Del Sol Prime Homes (https://www.delsolprimehomes.com)
 
 ## Excluded Areas
 - /admin/* - Administrative interface
