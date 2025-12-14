@@ -1,6 +1,15 @@
 // City Brochure Data Constants
 // All 7 Costa del Sol cities with unique content and imagery
 
+// AI-generated location-specific hero images
+import marbellaHero from '@/assets/brochures/marbella-hero.jpg';
+import esteponaHero from '@/assets/brochures/estepona-hero.jpg';
+import sotograndeHero from '@/assets/brochures/sotogrande-hero.jpg';
+import malagaHero from '@/assets/brochures/malaga-hero.jpg';
+import fuengirolaHero from '@/assets/brochures/fuengirola-hero.jpg';
+import benalmadenaHero from '@/assets/brochures/benalmadena-hero.jpg';
+import mijasHero from '@/assets/brochures/mijas-hero.jpg';
+
 export interface CityBrochureData {
   id: string;
   slug: string;
@@ -22,7 +31,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'marbella',
     name: 'Marbella',
     coordinates: { lat: 36.5099, lng: -4.8861 },
-    heroImage: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=2070&auto=format&fit=crop',
+    heroImage: marbellaHero,
     gallery: [
       'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?q=80&w=2070&auto=format&fit=crop', // Puerto Banus marina
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop', // Luxury villa
@@ -41,7 +50,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'estepona',
     name: 'Estepona',
     coordinates: { lat: 36.4263, lng: -5.1451 },
-    heroImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2070&auto=format&fit=crop',
+    heroImage: esteponaHero,
     gallery: [
       'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216?q=80&w=2070&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
@@ -58,7 +67,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'sotogrande',
     name: 'Sotogrande',
     coordinates: { lat: 36.2847, lng: -5.2833 },
-    heroImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
+    heroImage: sotograndeHero,
     gallery: [
       'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?q=80&w=2070&auto=format&fit=crop', // Golf
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
@@ -75,7 +84,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'malaga-city',
     name: 'Málaga City',
     coordinates: { lat: 36.7213, lng: -4.4214 },
-    heroImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2070&auto=format&fit=crop',
+    heroImage: malagaHero,
     gallery: [
       'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?q=80&w=2070&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
@@ -92,7 +101,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'fuengirola',
     name: 'Fuengirola',
     coordinates: { lat: 36.5440, lng: -4.6249 },
-    heroImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop',
+    heroImage: fuengirolaHero,
     gallery: [
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
@@ -108,7 +117,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'benalmadena',
     name: 'Benalmádena',
     coordinates: { lat: 36.5987, lng: -4.5168 },
-    heroImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
+    heroImage: benalmadenaHero,
     gallery: [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop',
@@ -124,7 +133,7 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     slug: 'mijas',
     name: 'Mijas',
     coordinates: { lat: 36.5958, lng: -4.6371 },
-    heroImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=2070&auto=format&fit=crop',
+    heroImage: mijasHero,
     gallery: [
       'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
