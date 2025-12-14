@@ -1,5 +1,11 @@
 import { Language, Area, BlogPost } from '../types/home';
 
+// Import location-specific hero images from brochures
+import marbellaHero from '@/assets/brochures/marbella-hero.jpg';
+import esteponaHero from '@/assets/brochures/estepona-hero.jpg';
+import sotograndeHero from '@/assets/brochures/sotogrande-hero.jpg';
+import malagaHero from '@/assets/brochures/malaga-hero.jpg';
+
 // Map of full language names
 export const LANGUAGE_NAMES: Record<Language, string> = {
   [Language.EN]: 'English',
@@ -52,25 +58,25 @@ export const FEATURED_AREAS: Area[] = [
   {
     id: 'marbella',
     name: 'Marbella',
-    image: 'https://picsum.photos/id/164/800/600', // Luxury boat/water feel
+    image: marbellaHero, // Puerto Banús marina with luxury yachts
     description: 'The jewel of the Costa del Sol. Luxury living, golden miles, and exclusive amenities.'
   },
   {
     id: 'estepona',
     name: 'Estepona',
-    image: 'https://picsum.photos/id/212/800/600', // Street/Architecture
+    image: esteponaHero, // Flower-lined old town streets
     description: 'The Garden of the Costa del Sol. Traditional charm meets modern luxury developments.'
   },
   {
     id: 'sotogrande',
     name: 'Sotogrande',
-    image: 'https://picsum.photos/id/69/800/600', // Greenery/Golf feel
+    image: sotograndeHero, // Marina with sailboats, golf courses
     description: 'Privacy and prestige. World-class polo, golf, and marina lifestyle.'
   },
   {
     id: 'malaga',
     name: 'Málaga City',
-    image: 'https://picsum.photos/id/122/800/600', // Cityscape
+    image: malagaHero, // Cathedral and historic center skyline
     description: 'A vibrant cultural hub blending history with futuristic urban living.'
   }
 ];
