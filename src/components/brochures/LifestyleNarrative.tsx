@@ -9,7 +9,8 @@ interface LifestyleNarrativeProps {
 
 export const LifestyleNarrative: React.FC<LifestyleNarrativeProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const lifestyleT = brochureT?.lifestyle || {};
 
   const lifestyleIcons = [
     { icon: Sun, label: '320 Days of Sun' },
@@ -28,26 +29,26 @@ export const LifestyleNarrative: React.FC<LifestyleNarrativeProps> = ({ city }) 
           {/* Text Content */}
           <div className="reveal-on-scroll">
             <span className="inline-block text-primary font-nav text-sm tracking-wider uppercase mb-4">
-              {brochureT?.lifestyle?.eyebrow || 'The Lifestyle'}
+              {lifestyleT.eyebrow || lifestyleT.title || 'The Lifestyle'}
             </span>
             
             <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6 leading-tight">
-              {brochureT?.lifestyle?.headline || `Experience Life in ${city.name}`}
+              {lifestyleT.headline || `Experience Life in ${city.name}`}
             </h2>
             
             <div className="space-y-6 text-muted-foreground text-lg leading-relaxed">
               <p>
-                {brochureT?.lifestyle?.paragraph1 || 
+                {lifestyleT.paragraph1 || 
                   `${city.name} offers a unique blend of Mediterranean charm and international sophistication. Here, world-class amenities meet authentic Andalusian culture, creating an unparalleled quality of life.`
                 }
               </p>
               <p>
-                {brochureT?.lifestyle?.paragraph2 || 
+                {lifestyleT.paragraph2 || 
                   `From sunrise beach walks to sunset dinners overlooking the sea, every day brings new experiences. The international community welcomes newcomers while preserving the warmth of Spanish hospitality.`
                 }
               </p>
               <p>
-                {brochureT?.lifestyle?.paragraph3 || 
+                {lifestyleT.paragraph3 || 
                   `Whether you're seeking year-round sunshine, exceptional dining, world-class golf, or simply a more relaxed pace of life — ${city.name} delivers on every front.`
                 }
               </p>

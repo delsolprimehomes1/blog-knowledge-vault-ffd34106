@@ -13,7 +13,8 @@ interface BrochureLeadFormProps {
 
 export const BrochureLeadForm: React.FC<BrochureLeadFormProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const leadFormT = brochureT?.leadForm || {};
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -82,13 +83,13 @@ export const BrochureLeadForm: React.FC<BrochureLeadFormProps> = ({ city }) => {
           {/* Left Side - CTA Content */}
           <div className="reveal-on-scroll">
             <span className="inline-block text-prime-gold font-nav text-sm tracking-wider uppercase mb-4">
-              {brochureT?.leadForm?.eyebrow || 'Start Your Journey'}
+              {leadFormT.eyebrow || 'Start Your Journey'}
             </span>
             <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
-              {brochureT?.leadForm?.headline || `Receive Curated Properties in ${city.name}`}
+              {leadFormT.headline || `Receive Curated Properties in ${city.name}`}
             </h2>
             <p className="text-white/70 text-lg mb-8 leading-relaxed">
-              {brochureT?.leadForm?.description || 
+              {leadFormT.description || 
                 `Tell us about your vision. Our ${city.name} specialists will prepare a personalized selection of properties that match your lifestyle and investment goals.`
               }
             </p>

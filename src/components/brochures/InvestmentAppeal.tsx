@@ -9,40 +9,26 @@ interface InvestmentAppealProps {
 
 export const InvestmentAppeal: React.FC<InvestmentAppealProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const investmentT = brochureT?.investment || {};
 
-  const investmentPoints = [
-    {
-      icon: TrendingUp,
-      title: brochureT?.investment?.points?.[0]?.title || 'Strong Capital Growth',
-      description: brochureT?.investment?.points?.[0]?.description || 'Consistent appreciation in premium locations with proven track record.',
-    },
-    {
-      icon: Banknote,
-      title: brochureT?.investment?.points?.[1]?.title || 'Rental Income Potential',
-      description: brochureT?.investment?.points?.[1]?.description || 'High-yield opportunities in the tourist and long-term rental market.',
-    },
-    {
-      icon: Globe,
-      title: brochureT?.investment?.points?.[2]?.title || 'International Demand',
-      description: brochureT?.investment?.points?.[2]?.description || 'Buyers from across Europe and beyond ensure sustained market liquidity.',
-    },
-    {
-      icon: Shield,
-      title: brochureT?.investment?.points?.[3]?.title || 'Legal Security',
-      description: brochureT?.investment?.points?.[3]?.description || 'Spanish property law protects buyers with clear title and guarantees.',
-    },
-    {
-      icon: Building2,
-      title: brochureT?.investment?.points?.[4]?.title || 'New-Build Quality',
-      description: brochureT?.investment?.points?.[4]?.description || 'Modern construction with 10-year structural warranties and energy efficiency.',
-    },
-    {
-      icon: Users,
-      title: brochureT?.investment?.points?.[5]?.title || 'Expert Guidance',
-      description: brochureT?.investment?.points?.[5]?.description || 'API-accredited advisors guide you through every step of the process.',
-    },
+  // Default investment points - used as fallback
+  const defaultPoints = [
+    { title: 'Strong Capital Growth', description: 'Consistent appreciation in premium locations with proven track record.' },
+    { title: 'Rental Income Potential', description: 'High-yield opportunities in the tourist and long-term rental market.' },
+    { title: 'International Demand', description: 'Buyers from across Europe and beyond ensure sustained market liquidity.' },
+    { title: 'Legal Security', description: 'Spanish property law protects buyers with clear title and guarantees.' },
+    { title: 'New-Build Quality', description: 'Modern construction with 10-year structural warranties and energy efficiency.' },
+    { title: 'Expert Guidance', description: 'API-accredited advisors guide you through every step of the process.' },
   ];
+
+  const icons = [TrendingUp, Banknote, Globe, Shield, Building2, Users];
+
+  const investmentPoints = icons.map((icon, index) => ({
+    icon,
+    title: investmentT?.points?.[index]?.title || defaultPoints[index].title,
+    description: investmentT?.points?.[index]?.description || defaultPoints[index].description,
+  }));
 
   return (
     <section className="py-24 md:py-32 bg-prime-950 text-white relative overflow-hidden">
@@ -56,13 +42,13 @@ export const InvestmentAppeal: React.FC<InvestmentAppealProps> = ({ city }) => {
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 reveal-on-scroll">
           <span className="inline-block text-prime-gold font-nav text-sm tracking-wider uppercase mb-4">
-            {brochureT?.investment?.eyebrow || 'Investment Opportunity'}
+            {investmentT.eyebrow || investmentT.title || 'Investment Opportunity'}
           </span>
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
-            {brochureT?.investment?.headline || `Why Investors Choose ${city.name}`}
+            {investmentT.headline || `Why Investors Choose ${city.name}`}
           </h2>
           <p className="text-lg text-white/70 leading-relaxed">
-            {brochureT?.investment?.description || 
+            {investmentT.description || 
               `${city.name} combines lifestyle appeal with solid investment fundamentals. Discover why discerning buyers consistently choose this exceptional destination.`
             }
           </p>

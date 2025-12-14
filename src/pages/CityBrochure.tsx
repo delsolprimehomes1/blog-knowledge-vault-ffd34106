@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { getCityBySlug } from '@/constants/brochures';
 import { generateBrochureSchemas, generateBrochureMetaTags } from '@/lib/brochureSchemaGenerator';
-import Header from '@/components/home/Header';
+import { Header } from '@/components/home/Header';
 import { Footer } from '@/components/home/Footer';
 import { BrochureHero } from '@/components/brochures/BrochureHero';
 import { LifestyleNarrative } from '@/components/brochures/LifestyleNarrative';
