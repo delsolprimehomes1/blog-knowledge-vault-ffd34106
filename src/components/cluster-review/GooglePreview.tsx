@@ -8,7 +8,7 @@ export const GooglePreview = ({ title, description, slug }: GooglePreviewProps) 
   return (
     <div className="border rounded-lg p-4 bg-muted/30 space-y-1">
       <div className="text-xs text-muted-foreground">
-        https://delsolprimehomes.com › blog › {slug || 'your-slug'}
+        https://www.delsolprimehomes.com › blog › {slug || 'your-slug'}
       </div>
       <div className="text-blue-600 text-lg font-medium hover:underline cursor-pointer">
         {title || "Your Meta Title Here"}

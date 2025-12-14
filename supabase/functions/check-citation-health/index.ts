@@ -28,7 +28,7 @@ async function checkCitationHealth(url: string): Promise<CitationHealthResult> {
       signal: controller.signal,
       redirect: 'follow',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DelSolPrimeBot/1.0; +https://delsolprimehomes.com)'
+        'User-Agent': 'Mozilla/5.0 (compatible; DelSolPrimeBot/1.0; +https://www.delsolprimehomes.com)'
       }
     });
     
@@ -44,7 +44,7 @@ async function checkCitationHealth(url: string): Promise<CitationHealthResult> {
           redirect: 'follow',
           signal: AbortSignal.timeout(15000),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; DelSolPrimeBot/1.0; +https://delsolprimehomes.com)'
+            'User-Agent': 'Mozilla/5.0 (compatible; DelSolPrimeBot/1.0; +https://www.delsolprimehomes.com)'
           }
         });
         
