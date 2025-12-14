@@ -150,7 +150,7 @@ const AEOGuide = () => {
   ],
   "related_posts": ["golden-visa-guide"],
   "hero_image": "https://example.com/image.jpg",
-  "canonical": "https://delsolprimehomes.com/blog/..."
+  "canonical": "https://www.delsolprimehomes.com/blog/..."
 }`}
                   </pre>
                 </div>
