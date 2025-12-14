@@ -99,7 +99,8 @@ const propertyTypeConfig: Record<string, { icon: React.ElementType; label: strin
 
 export const PropertyTypesTeaser: React.FC<PropertyTypesTeaserProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const propertyTypesT = brochureT?.propertyTypes || {};
 
   // Get property types for this city (max 5)
   const cityPropertyTypes = city.propertyTypes.slice(0, 5).map(type => ({
@@ -117,13 +118,13 @@ export const PropertyTypesTeaser: React.FC<PropertyTypesTeaserProps> = ({ city }
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 reveal-on-scroll">
           <span className="inline-block text-primary font-nav text-sm tracking-wider uppercase mb-4">
-            {brochureT?.propertyTypes?.eyebrow || 'Property Types'}
+            {propertyTypesT.eyebrow || propertyTypesT.title || 'Property Types'}
           </span>
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6 leading-tight">
-            {brochureT?.propertyTypes?.headline || `What You'll Find in ${city.name}`}
+            {propertyTypesT.headline || `What You'll Find in ${city.name}`}
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            {brochureT?.propertyTypes?.description || 
+            {propertyTypesT.description || 
               `From contemporary apartments to sprawling villas, ${city.name} offers exceptional properties to match every lifestyle and investment goal.`
             }
           </p>

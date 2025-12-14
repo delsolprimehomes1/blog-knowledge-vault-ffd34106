@@ -9,7 +9,8 @@ interface CityGalleryProps {
 
 export const CityGallery: React.FC<CityGalleryProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const galleryT = brochureT?.gallery || {};
   
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,13 +40,13 @@ export const CityGallery: React.FC<CityGalleryProps> = ({ city }) => {
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 reveal-on-scroll">
           <span className="inline-block text-primary font-nav text-sm tracking-wider uppercase mb-4">
-            {brochureT?.gallery?.eyebrow || 'Visual Journey'}
+            {galleryT.eyebrow || 'Visual Journey'}
           </span>
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6 leading-tight">
-            {brochureT?.gallery?.headline || `Discover ${city.name}`}
+            {galleryT.headline || `Discover ${city.name}`}
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            {brochureT?.gallery?.description || 
+            {galleryT.description || 
               `Experience the beauty and lifestyle that awaits you in ${city.name} through our carefully curated visual gallery.`
             }
           </p>

@@ -11,7 +11,8 @@ interface BrochureHeroProps {
 
 export const BrochureHero: React.FC<BrochureHeroProps> = ({ city }) => {
   const { t } = useTranslation();
-  const brochureT = t.brochures?.[city.slug as keyof typeof t.brochures] || t.brochures?.marbella;
+  const brochureT = (t.brochures as any)?.[city.slug] || (t.brochures as any)?.marbella || {};
+  const heroT = brochureT?.hero || {};
 
   return (
     <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
@@ -45,7 +46,7 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({ city }) => {
         {/* Eyebrow */}
         <div className="mb-6 animate-fade-in">
           <span className="inline-block px-4 py-2 bg-prime-gold/20 border border-prime-gold/30 rounded-full text-prime-goldLight text-sm font-nav tracking-wider uppercase">
-            {brochureT?.hero?.eyebrow || 'Costa del Sol'}
+            {heroT.eyebrow || 'Costa del Sol'}
           </span>
         </div>
 
@@ -56,12 +57,12 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({ city }) => {
 
         {/* Tagline */}
         <p className="text-xl md:text-2xl lg:text-3xl font-light text-white/90 mb-4 animate-fade-in-up font-serif italic">
-          {brochureT?.hero?.tagline || 'Where Luxury Meets the Mediterranean'}
+          {heroT.tagline || 'Where Luxury Meets the Mediterranean'}
         </p>
 
         {/* Value Statement */}
         <p className="text-base md:text-lg text-white/70 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up">
-          {brochureT?.hero?.description || `Discover exceptional investment opportunities and lifestyle properties in ${city.name}. Premium real estate with expert guidance.`}
+          {heroT.description || `Discover exceptional investment opportunities and lifestyle properties in ${city.name}. Premium real estate with expert guidance.`}
         </p>
 
         {/* CTAs */}
