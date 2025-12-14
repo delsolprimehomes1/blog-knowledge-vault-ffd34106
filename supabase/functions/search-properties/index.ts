@@ -112,10 +112,15 @@ serve(async (req) => {
                        prop.pictures?.[0]?.url || prop.images?.Picture?.[0]?.PictureURL || '';
 
       // Extract price based on transaction type (prioritize correct price field)
+      // FALLBACK: If sale price is 0, use rental price as indicator (proxy server issue workaround)
       const salePrice = parseFloat(prop.Price || prop.price || prop.SalePrice || prop.CurrentPrice || '0') || 0;
       const rentalPrice = parseFloat(prop.RentalPrice1 || prop.RentalPrice2 || '0') || 0;
       
-      const price = transactionType === 'rent' ? rentalPrice : salePrice;
+      // For sale: use sale price if available, fallback to rental price
+      // For rent: use rental price
+      const price = transactionType === 'rent' 
+        ? rentalPrice 
+        : (salePrice > 0 ? salePrice : rentalPrice);
 
       // Log price extraction for debugging
       console.log(`💰 Property ${prop.Reference}: transactionType=${transactionType}, salePrice=${salePrice}, rentalPrice=${rentalPrice}, selectedPrice=${price}`);
