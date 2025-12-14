@@ -10,7 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, ExternalLink, Plus, X, Loader2 } from 'lucide-react';
+import { Save, ExternalLink, Plus, X, Loader2, Image as ImageIcon } from 'lucide-react';
+
+interface GalleryItem {
+  title: string;
+  image: string;
+}
 
 interface CityBrochure {
   id: string;
@@ -20,12 +25,31 @@ interface CityBrochure {
   hero_headline: string | null;
   hero_subtitle: string | null;
   description: string | null;
-  gallery_images: string[];
+  gallery_images: GalleryItem[];
   features: string[];
   meta_title: string | null;
   meta_description: string | null;
   is_published: boolean;
 }
+
+// Parse gallery_images from database (handles both old string[] and new GalleryItem[] format)
+const parseGalleryImages = (data: unknown): GalleryItem[] => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  return data.map((item, index) => {
+    if (typeof item === 'string') {
+      // Legacy format: convert string URL to GalleryItem
+      return { title: '', image: item };
+    }
+    if (typeof item === 'object' && item !== null) {
+      return {
+        title: (item as GalleryItem).title || '',
+        image: (item as GalleryItem).image || '',
+      };
+    }
+    return { title: '', image: '' };
+  });
+};
 
 const BrochureManager: React.FC = () => {
   const { toast } = useToast();
@@ -33,7 +57,13 @@ const BrochureManager: React.FC = () => {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<CityBrochure>>({});
   const [newFeature, setNewFeature] = useState('');
-  const [newGalleryImage, setNewGalleryImage] = useState('');
+
+  // Initialize 3 empty gallery slots
+  const emptyGallerySlots: GalleryItem[] = [
+    { title: '', image: '' },
+    { title: '', image: '' },
+    { title: '', image: '' },
+  ];
 
   // Fetch all brochures
   const { data: brochures, isLoading } = useQuery({
@@ -44,7 +74,13 @@ const BrochureManager: React.FC = () => {
         .select('*')
         .order('name');
       if (error) throw error;
-      return data as CityBrochure[];
+      
+      // Parse gallery_images for each brochure
+      return data.map(brochure => ({
+        ...brochure,
+        gallery_images: parseGalleryImages(brochure.gallery_images),
+        features: Array.isArray(brochure.features) ? brochure.features : [],
+      })) as CityBrochure[];
     },
   });
 
@@ -58,7 +94,7 @@ const BrochureManager: React.FC = () => {
           hero_headline: data.hero_headline,
           hero_subtitle: data.hero_subtitle,
           description: data.description,
-          gallery_images: data.gallery_images,
+          gallery_images: JSON.parse(JSON.stringify(data.gallery_images || [])),
           features: data.features,
           meta_title: data.meta_title,
           meta_description: data.meta_description,
@@ -86,14 +122,30 @@ const BrochureManager: React.FC = () => {
     if (selectedCity && brochures) {
       const city = brochures.find((b) => b.slug === selectedCity);
       if (city) {
-        setEditData(city);
+        // Ensure we always have 3 gallery slots
+        const galleryWithSlots = [...city.gallery_images];
+        while (galleryWithSlots.length < 3) {
+          galleryWithSlots.push({ title: '', image: '' });
+        }
+        setEditData({
+          ...city,
+          gallery_images: galleryWithSlots.slice(0, 3),
+        });
       }
     }
   }, [selectedCity, brochures]);
 
   const handleSave = () => {
     if (!editData.id) return;
-    updateMutation.mutate(editData as CityBrochure);
+    // Filter out empty gallery items before saving
+    const cleanedGallery = (editData.gallery_images || []).map(item => ({
+      title: item.title || '',
+      image: item.image || '',
+    }));
+    updateMutation.mutate({
+      ...editData,
+      gallery_images: cleanedGallery,
+    } as CityBrochure);
   };
 
   const addFeature = () => {
@@ -111,19 +163,10 @@ const BrochureManager: React.FC = () => {
     setEditData({ ...editData, features });
   };
 
-  const addGalleryImage = () => {
-    if (!newGalleryImage.trim()) return;
-    setEditData({
-      ...editData,
-      gallery_images: [...(editData.gallery_images || []), newGalleryImage.trim()],
-    });
-    setNewGalleryImage('');
-  };
-
-  const removeGalleryImage = (index: number) => {
-    const images = [...(editData.gallery_images || [])];
-    images.splice(index, 1);
-    setEditData({ ...editData, gallery_images: images });
+  const updateGalleryItem = (index: number, field: 'title' | 'image', value: string) => {
+    const gallery = [...(editData.gallery_images || emptyGallerySlots)];
+    gallery[index] = { ...gallery[index], [field]: value };
+    setEditData({ ...editData, gallery_images: gallery });
   };
 
   if (isLoading) {
@@ -135,6 +178,8 @@ const BrochureManager: React.FC = () => {
       </AdminLayout>
     );
   }
+
+  const galleryItems = editData.gallery_images || emptyGallerySlots;
 
   return (
     <AdminLayout>
@@ -207,7 +252,7 @@ const BrochureManager: React.FC = () => {
                   <Tabs defaultValue="content">
                     <TabsList className="mb-6">
                       <TabsTrigger value="content">Content</TabsTrigger>
-                      <TabsTrigger value="gallery">Gallery</TabsTrigger>
+                      <TabsTrigger value="gallery">Gallery Cards</TabsTrigger>
                       <TabsTrigger value="features">Features</TabsTrigger>
                       <TabsTrigger value="seo">SEO</TabsTrigger>
                     </TabsList>
@@ -238,6 +283,13 @@ const BrochureManager: React.FC = () => {
                           }
                           placeholder="https://..."
                         />
+                        {editData.hero_image && (
+                          <img
+                            src={editData.hero_image}
+                            alt="Hero preview"
+                            className="w-full h-48 object-cover rounded-lg mt-2"
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -275,39 +327,56 @@ const BrochureManager: React.FC = () => {
                       </div>
                     </TabsContent>
 
-                    {/* Gallery Tab */}
+                    {/* Gallery Cards Tab */}
                     <TabsContent value="gallery" className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        {editData.gallery_images?.map((image, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={image}
-                              alt={`Gallery ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg"
-                            />
-                            <button
-                              onClick={() => removeGalleryImage(index)}
-                              className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Add 3 image cards that will display below the description section. Each card has a title and image.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[0, 1, 2].map((index) => (
+                          <div key={index} className="space-y-4 p-4 border rounded-lg">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                              <ImageIcon className="w-4 h-4" />
+                              Card {index + 1}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>Title</Label>
+                              <Input
+                                value={galleryItems[index]?.title || ''}
+                                onChange={(e) => updateGalleryItem(index, 'title', e.target.value)}
+                                placeholder="e.g., Smart Homes"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>Image URL</Label>
+                              <Input
+                                value={galleryItems[index]?.image || ''}
+                                onChange={(e) => updateGalleryItem(index, 'image', e.target.value)}
+                                placeholder="https://..."
+                              />
+                            </div>
+                            
+                            {galleryItems[index]?.image && (
+                              <img
+                                src={galleryItems[index].image}
+                                alt={galleryItems[index].title || `Card ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                            )}
                           </div>
                         ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newGalleryImage}
-                          onChange={(e) => setNewGalleryImage(e.target.value)}
-                          placeholder="Image URL..."
-                        />
-                        <Button onClick={addGalleryImage} variant="outline">
-                          <Plus className="w-4 h-4 mr-2" /> Add Image
-                        </Button>
                       </div>
                     </TabsContent>
 
                     {/* Features Tab */}
                     <TabsContent value="features" className="space-y-6">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Features appear in the 4th slot of the gallery grid, next to the 3 image cards.
+                      </p>
+                      
                       <div className="space-y-2">
                         {editData.features?.map((feature, index) => (
                           <div

@@ -8,7 +8,6 @@ import { Footer } from '@/components/home/Footer';
 import { BrochureHero } from '@/components/brochures/BrochureHero';
 import { BrochureDescription } from '@/components/brochures/BrochureDescription';
 import { BrochureGallery } from '@/components/brochures/BrochureGallery';
-import { BrochureFeatures } from '@/components/brochures/BrochureFeatures';
 import { BrochureOptInForm } from '@/components/brochures/BrochureOptInForm';
 import { BrochureChatbot } from '@/components/brochures/BrochureChatbot';
 import NotFound from './NotFound';
@@ -33,6 +32,11 @@ const FALLBACK_IMAGES: Record<string, string> = {
   'malaga-city': malagaHero,
 };
 
+interface GalleryItem {
+  title: string;
+  image: string;
+}
+
 interface CityBrochureData {
   id: string;
   slug: string;
@@ -41,12 +45,31 @@ interface CityBrochureData {
   hero_headline: string | null;
   hero_subtitle: string | null;
   description: string | null;
-  gallery_images: string[];
+  gallery_images: unknown;
   features: string[];
   meta_title: string | null;
   meta_description: string | null;
   is_published: boolean;
 }
+
+// Parse gallery_images from database (handles both old string[] and new GalleryItem[] format)
+const parseGalleryImages = (data: unknown): GalleryItem[] => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  return data.map((item) => {
+    if (typeof item === 'string') {
+      // Legacy format: convert string URL to GalleryItem
+      return { title: '', image: item };
+    }
+    if (typeof item === 'object' && item !== null) {
+      return {
+        title: (item as GalleryItem).title || '',
+        image: (item as GalleryItem).image || '',
+      };
+    }
+    return { title: '', image: '' };
+  });
+};
 
 const CityBrochure: React.FC = () => {
   const { citySlug } = useParams<{ citySlug: string }>();
@@ -102,7 +125,7 @@ const CityBrochure: React.FC = () => {
 
   // Get hero image with fallback
   const heroImage = city.hero_image || FALLBACK_IMAGES[city.slug] || FALLBACK_IMAGES.marbella;
-  const galleryImages = city.gallery_images?.length > 0 ? city.gallery_images : [heroImage];
+  const galleryImages = parseGalleryImages(city.gallery_images);
   const features = city.features || [];
   const description = city.description || `Discover exceptional real estate opportunities in ${city.name}.`;
 
@@ -153,13 +176,10 @@ const CityBrochure: React.FC = () => {
         {/* 2. City/Property Description */}
         <BrochureDescription description={description} />
 
-        {/* 3. Image Gallery */}
-        <BrochureGallery images={galleryImages} cityName={city.name} />
+        {/* 3. Image Gallery with Features */}
+        <BrochureGallery images={galleryImages} features={features} cityName={city.name} />
 
-        {/* 4. Features List */}
-        <BrochureFeatures features={features} cityName={city.name} />
-
-        {/* 5. Brochure Opt-In Form */}
+        {/* 4. Brochure Opt-In Form */}
         <BrochureOptInForm ref={formRef} cityName={city.name} citySlug={city.slug} />
       </main>
 
