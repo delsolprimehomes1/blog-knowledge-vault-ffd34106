@@ -34,7 +34,7 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({ city }) => {
           <nav className="flex items-center gap-2 text-sm text-white/70">
             <Link to="/" className="hover:text-white transition-colors">Home</Link>
             <ChevronRight size={14} />
-            <Link to="/brochures/marbella" className="hover:text-white transition-colors">Locations</Link>
+            <Link to="/location/marbella" className="hover:text-white transition-colors">Locations</Link>
             <ChevronRight size={14} />
             <span className="text-prime-gold font-medium">{city.name}</span>
           </nav>

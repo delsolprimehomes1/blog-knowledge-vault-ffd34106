@@ -107,13 +107,13 @@ const generateBreadcrumbSchema = (city: CityBrochureData) => ({
       '@type': 'ListItem',
       position: 2,
       name: 'Locations',
-      item: `${BASE_URL}/brochures/marbella`,
+      item: `${BASE_URL}/location/marbella`,
     },
     {
       '@type': 'ListItem',
       position: 3,
       name: city.name,
-      item: `${BASE_URL}/brochures/${city.slug}`,
+      item: `${BASE_URL}/location/${city.slug}`,
     },
   ],
 });
@@ -162,7 +162,7 @@ const generateSpeakableSchema = (city: CityBrochureData) => ({
   '@type': 'WebPage',
   name: `Luxury Properties in ${city.name} | Del Sol Prime Homes`,
   description: `Discover exceptional real estate opportunities in ${city.name}. Expert guidance for international buyers seeking luxury properties on Spain's Costa del Sol.`,
-  url: `${BASE_URL}/brochures/${city.slug}`,
+  url: `${BASE_URL}/location/${city.slug}`,
   speakable: {
     '@type': 'SpeakableSpecification',
     cssSelector: ['.brochure-hero h1', '.brochure-hero p', '.lifestyle-narrative h2', '.lifestyle-narrative p'],
@@ -177,5 +177,5 @@ export const generateBrochureMetaTags = (city: CityBrochureData) => ({
   ogTitle: `${city.name} - Premium Real Estate on the Costa del Sol`,
   ogDescription: `Explore luxury properties in ${city.name}. From beachfront apartments to exclusive villas, find your dream home with expert guidance.`,
   ogImage: city.heroImage,
-  canonical: `${BASE_URL}/brochures/${city.slug}`,
+  canonical: `${BASE_URL}/location/${city.slug}`,
 });

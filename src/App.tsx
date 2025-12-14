@@ -58,7 +58,7 @@ const App = () => (
           <Route path="/sitemap" element={<Sitemap />} />
           <Route path="/property-finder" element={<PropertyFinder />} />
           <Route path="/property/:reference" element={<PropertyDetail />} />
-          <Route path="/brochures/:citySlug" element={<CityBrochure />} />
+          <Route path="/location/:citySlug" element={<CityBrochure />} />
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
