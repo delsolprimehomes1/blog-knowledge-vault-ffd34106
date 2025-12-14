@@ -112,9 +112,13 @@ serve(async (req) => {
                        prop.pictures?.[0]?.url || prop.images?.Picture?.[0]?.PictureURL || '';
 
       // Extract price based on transaction type (prioritize correct price field)
-      const price = transactionType === 'rent'
-        ? parseFloat(prop.RentalPrice1 || prop.RentalPrice2 || prop.Price || prop.price || '0') || 0
-        : parseFloat(prop.Price || prop.price || prop.SalePrice || prop.CurrentPrice || '0') || 0;
+      const salePrice = parseFloat(prop.Price || prop.price || prop.SalePrice || prop.CurrentPrice || '0') || 0;
+      const rentalPrice = parseFloat(prop.RentalPrice1 || prop.RentalPrice2 || '0') || 0;
+      
+      const price = transactionType === 'rent' ? rentalPrice : salePrice;
+
+      // Log price extraction for debugging
+      console.log(`💰 Property ${prop.Reference}: transactionType=${transactionType}, salePrice=${salePrice}, rentalPrice=${rentalPrice}, selectedPrice=${price}`);
 
       // Generate title from available data
       const title = prop.Title || prop.Name || prop.PropertyName || 
@@ -145,12 +149,27 @@ serve(async (req) => {
       };
     });
 
-    console.log(`✅ Found ${properties.length} properties`);
+    console.log(`📊 Mapped ${properties.length} properties before filtering`);
+
+    // SAFETY NET: Filter out €0 priced properties for sale searches (likely rental-only listings)
+    const filteredProperties = properties.filter(prop => {
+      if (transactionType === 'sale' && prop.price === 0) {
+        console.log(`🚫 Filtering out ${prop.reference} - €0 price for sale search`);
+        return false;
+      }
+      if (transactionType === 'rent' && prop.price === 0) {
+        console.log(`🚫 Filtering out ${prop.reference} - €0 price for rent search`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`✅ Found ${filteredProperties.length} valid properties (filtered ${properties.length - filteredProperties.length} with €0 price)`);
 
     return new Response(
       JSON.stringify({
-        properties,
-        total: data.TotalResults || data.QueryInfo?.TotalResults || data.total || properties.length,
+        properties: filteredProperties,
+        total: data.TotalResults || data.QueryInfo?.TotalResults || data.total || filteredProperties.length,
         page,
         limit,
       }),
