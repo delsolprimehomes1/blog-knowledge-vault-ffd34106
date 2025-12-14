@@ -162,4 +162,40 @@ export const en = {
       gdpr: "GDPR Compliance",
     },
   },
+  brochures: {
+    marbella: {
+      hero: {
+        eyebrow: 'Costa del Sol',
+        tagline: 'Where Luxury Meets the Mediterranean',
+        description: 'Discover exceptional investment opportunities and lifestyle properties in Marbella. Premium real estate with expert guidance from API-accredited advisors.',
+      },
+      lifestyle: {
+        eyebrow: 'The Lifestyle',
+        headline: 'Experience Life in Marbella',
+        paragraph1: 'Marbella offers a unique blend of Mediterranean charm and international sophistication. Here, world-class amenities meet authentic Andalusian culture, creating an unparalleled quality of life.',
+        paragraph2: 'From sunrise beach walks to sunset dinners overlooking the sea, every day brings new experiences. The international community welcomes newcomers while preserving the warmth of Spanish hospitality.',
+        paragraph3: 'Whether you\'re seeking year-round sunshine, exceptional dining, world-class golf, or simply a more relaxed pace of life — Marbella delivers on every front.',
+      },
+      investment: {
+        eyebrow: 'Investment Opportunity',
+        headline: 'Why Investors Choose Marbella',
+        description: 'Marbella combines lifestyle appeal with solid investment fundamentals. Discover why discerning buyers consistently choose this exceptional destination.',
+      },
+      propertyTypes: {
+        eyebrow: 'Property Types',
+        headline: 'What You\'ll Find in Marbella',
+        description: 'From contemporary apartments to sprawling villas, Marbella offers exceptional properties to match every lifestyle and investment goal.',
+      },
+      gallery: {
+        eyebrow: 'Visual Journey',
+        headline: 'Discover Marbella',
+        description: 'Experience the beauty and lifestyle that awaits you in Marbella through our carefully curated visual gallery.',
+      },
+      leadForm: {
+        eyebrow: 'Start Your Journey',
+        headline: 'Receive Curated Properties in Marbella',
+        description: 'Tell us about your vision. Our Marbella specialists will prepare a personalized selection of properties that match your lifestyle and investment goals.',
+      },
+    },
+  },
 };

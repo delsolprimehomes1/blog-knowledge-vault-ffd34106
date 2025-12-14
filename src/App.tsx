@@ -31,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import PropertyFinder from "./pages/PropertyFinder";
 import PropertyDetail from "./pages/PropertyDetail";
+import CityBrochure from "./pages/CityBrochure";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/sitemap" element={<Sitemap />} />
           <Route path="/property-finder" element={<PropertyFinder />} />
           <Route path="/property/:reference" element={<PropertyDetail />} />
+          <Route path="/brochures/:citySlug" element={<CityBrochure />} />
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
