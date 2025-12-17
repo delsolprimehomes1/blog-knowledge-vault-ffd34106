@@ -192,6 +192,269 @@ function sanitizeForHTML(text: string): string {
 }
 
 /**
+ * Critical inline CSS for static pages - ensures pages look good without JS
+ */
+const CRITICAL_CSS = `
+  :root {
+    --prime-gold: 43 74% 49%;
+    --prime-950: 220 20% 10%;
+    --foreground: 220 20% 10%;
+    --muted-foreground: 220 10% 45%;
+    --background: 0 0% 100%;
+  }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.7;
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  .static-header {
+    background: hsl(var(--prime-950));
+    padding: 1rem 0;
+    border-bottom: 1px solid hsl(var(--prime-gold) / 0.3);
+  }
+  
+  .static-header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .static-logo {
+    color: hsl(var(--prime-gold));
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  
+  .static-nav {
+    display: flex;
+    gap: 1.5rem;
+  }
+  
+  .static-nav a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+  }
+  
+  .static-nav a:hover { color: hsl(var(--prime-gold)); }
+  
+  .static-article {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+  
+  .static-article h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: hsl(var(--foreground));
+    margin-bottom: 1rem;
+  }
+  
+  .static-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid hsl(var(--prime-gold) / 0.2);
+  }
+  
+  .static-featured-image {
+    width: 100%;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+  }
+  
+  .static-featured-image img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    display: block;
+  }
+  
+  .static-featured-image figcaption {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+    margin-top: 0.75rem;
+    font-style: italic;
+  }
+  
+  .speakable-box {
+    background: linear-gradient(135deg, hsl(var(--prime-gold) / 0.1), hsl(var(--prime-gold) / 0.05));
+    border-left: 4px solid hsl(var(--prime-gold));
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .speakable-box-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: hsl(var(--prime-gold));
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .speakable-answer {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: hsl(var(--foreground));
+  }
+  
+  .article-content {
+    font-size: 1.125rem;
+    line-height: 1.8;
+  }
+  
+  .article-content h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 2.5rem 0 1rem;
+    color: hsl(var(--foreground));
+  }
+  
+  .article-content h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin: 2rem 0 0.75rem;
+  }
+  
+  .article-content p { margin-bottom: 1.25rem; }
+  
+  .article-content ul, .article-content ol {
+    margin-bottom: 1.25rem;
+    padding-left: 1.5rem;
+  }
+  
+  .article-content li { margin-bottom: 0.5rem; }
+  
+  .article-content a {
+    color: hsl(var(--prime-gold));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  
+  .article-content a:hover { opacity: 0.8; }
+  
+  .article-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1.5rem 0;
+  }
+  
+  .article-content blockquote {
+    border-left: 3px solid hsl(var(--prime-gold));
+    padding-left: 1.5rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .faq-section {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid hsl(var(--prime-gold) / 0.2);
+  }
+  
+  .faq-section h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .faq-item {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: hsl(var(--prime-gold) / 0.05);
+    border-radius: 0.5rem;
+  }
+  
+  .faq-item h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: hsl(var(--foreground));
+  }
+  
+  .faq-item p {
+    color: hsl(var(--muted-foreground));
+    line-height: 1.6;
+  }
+  
+  .static-footer {
+    background: hsl(var(--prime-950));
+    color: rgba(255,255,255,0.7);
+    padding: 3rem 0 2rem;
+    margin-top: 4rem;
+  }
+  
+  .static-footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    text-align: center;
+  }
+  
+  .static-footer-logo {
+    color: hsl(var(--prime-gold));
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+  
+  .static-footer p {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .static-footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .static-footer-links a {
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+  
+  .static-footer-links a:hover { color: hsl(var(--prime-gold)); }
+  
+  @media (max-width: 640px) {
+    .static-nav { display: none; }
+    .static-article { padding: 2rem 1rem 3rem; }
+    .article-content { font-size: 1rem; }
+  }
+`;
+
+/**
  * Generate static HTML for an article
  * @param article - Article data
  * @param enhancedHreflang - Whether to include hreflang tags (controlled by feature flag)
@@ -252,6 +515,11 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
     hreflangLinks = '\n' + hreflangLinksArray.join('\n');
   }
 
+  // Format publish date for display
+  const publishDate = article.date_published 
+    ? new Date(article.date_published).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="${article.language}">
 <head>
@@ -263,12 +531,24 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
   
   <link rel="canonical" href="${canonicalUrl}" />${hreflangLinks}
   
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Critical CSS for static rendering -->
+  <style>${CRITICAL_CSS}</style>
+  
   <!-- Open Graph -->
   <meta property="og:type" content="article" />
   <meta property="og:title" content="${sanitizeForHTML(article.meta_title)}" />
   <meta property="og:description" content="${sanitizeForHTML(article.meta_description)}" />
   <meta property="og:image" content="${article.featured_image_url}" />
-  <meta property="og:url" content="https://www.delsolprimehomes.com/blog/${article.slug}" />
+  <meta property="og:url" content="${baseUrl}/blog/${article.slug}" />
+  <meta property="og:site_name" content="Del Sol Prime Homes" />
   
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -278,22 +558,33 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
   
   <!-- JSON-LD Schemas -->
   ${schemaScripts}
-  
-  <!-- Preconnect to improve performance -->
-  <link rel="preconnect" href="https://kazggnufaoicopvmwhdl.supabase.co">
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 </head>
 <body>
+  <!-- Static Header -->
+  <header class="static-header">
+    <div class="static-header-inner">
+      <a href="/" class="static-logo">Del Sol Prime Homes</a>
+      <nav class="static-nav">
+        <a href="/">Home</a>
+        <a href="/blog">Blog</a>
+        <a href="/property-finder">Properties</a>
+      </nav>
+    </div>
+  </header>
+
   <div id="root">
-    <!-- Pre-rendered content for SEO -->
-    <article class="static-content" data-article-id="${article.id}">
-      <header>
-        <h1>${sanitizeForHTML(article.headline)}</h1>
-        ${article.read_time ? `<p>Reading time: ${article.read_time} minutes</p>` : ''}
-      </header>
+    <!-- Pre-rendered content for SEO and no-JS browsers -->
+    <article class="static-article static-content" data-article-id="${article.id}">
+      <h1>${sanitizeForHTML(article.headline)}</h1>
+      
+      <div class="static-meta">
+        ${article.author?.name ? `<span>By ${sanitizeForHTML(article.author.name)}</span>` : ''}
+        ${publishDate ? `<span>${publishDate}</span>` : ''}
+        ${article.read_time ? `<span>${article.read_time} min read</span>` : ''}
+      </div>
       
       ${article.featured_image_url ? `
-      <figure>
+      <figure class="static-featured-image">
         <img 
           src="${article.featured_image_url}" 
           alt="${sanitizeForHTML(article.featured_image_alt)}"
@@ -303,6 +594,13 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
         />
         ${article.featured_image_caption ? `<figcaption>${sanitizeForHTML(article.featured_image_caption)}</figcaption>` : ''}
       </figure>
+      ` : ''}
+      
+      ${article.speakable_answer ? `
+      <div class="speakable-box">
+        <div class="speakable-box-label">Quick Answer</div>
+        <div class="speakable-answer">${sanitizeForHTML(article.speakable_answer)}</div>
+      </div>
       ` : ''}
       
       <div class="article-content">
@@ -323,10 +621,23 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
     </article>
   </div>
   
-  <!-- React will hydrate this content -->
-  <script type="module" src="/src/main.tsx"></script>
+  <!-- Static Footer -->
+  <footer class="static-footer">
+    <div class="static-footer-inner">
+      <a href="/" class="static-footer-logo">Del Sol Prime Homes</a>
+      <p>Premium Real Estate on the Costa del Sol</p>
+      <p>Marbella, Estepona, Fuengirola, Benalmádena, Mijas</p>
+      <div class="static-footer-links">
+        <a href="/blog">Blog</a>
+        <a href="/property-finder">Properties</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+      <p style="margin-top: 1.5rem; opacity: 0.6;">© ${new Date().getFullYear()} Del Sol Prime Homes. All rights reserved.</p>
+    </div>
+  </footer>
 </body>
 </html>`;
+}
 }
 
 /**
