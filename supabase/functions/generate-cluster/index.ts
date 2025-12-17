@@ -591,30 +591,40 @@ async function generateCluster(
     await updateProgress(supabase, jobId, 1, 'Generating article structure...');
     console.log(`[Job ${jobId}] Step 1: Generating structure`);
 
+    // Language name mapping for structure generation
+    const structureLanguageName = {
+      'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+      'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+      'fi': 'Finnish', 'no': 'Norwegian'
+    }[language] || 'English';
+
     const structurePrompt = `You are an expert SEO content strategist for a luxury real estate agency in Costa del Sol, Spain.
 
 Create a content cluster structure for the topic: "${topic}"
-Language: ${language}
+Language: ${language} (${structureLanguageName})
 Target audience: ${targetAudience}
 Primary keyword: ${primaryKeyword}
 
+CRITICAL LANGUAGE REQUIREMENT: ALL headlines, target keywords, and content angles MUST be written in ${structureLanguageName}. Do NOT write in English unless the target language IS English.
+
 Generate 6 article titles following this funnel structure:
-- 3 TOFU (Top of Funnel) - Awareness stage, educational, broad topics (e.g., "What is Costa del Sol Like for...")
-- 2 MOFU (Middle of Funnel) - Consideration stage, comparison, detailed guides (e.g., "How to Choose...")
-- 1 BOFU (Bottom of Funnel) - Decision stage, action-oriented (e.g., "Complete Guide to Buying...")
+- 3 TOFU (Top of Funnel) - Awareness stage, educational, broad topics
+- 2 MOFU (Middle of Funnel) - Consideration stage, comparison, detailed guides
+- 1 BOFU (Bottom of Funnel) - Decision stage, action-oriented
 
-Each article must include the location "Costa del Sol" in the headline.
+Each article must include the location "Costa del Sol" in the headline (keep "Costa del Sol" as-is, it's a proper noun).
 
-CRITICAL: You MUST return ONLY a valid JSON object with this EXACT structure. Do NOT include markdown code blocks, explanations, or any other text:
+CRITICAL: You MUST return ONLY a valid JSON object with this EXACT structure. Do NOT include markdown code blocks, explanations, or any other text.
+CRITICAL: All text content (headline, targetKeyword, contentAngle) MUST be in ${structureLanguageName}.
 
 {
   "articles": [
     {
       "funnelStage": "TOFU",
-      "headline": "What is Costa del Sol Like for International Buyers?",
-      "targetKeyword": "costa del sol for international buyers",
+      "headline": "Headline in ${structureLanguageName} with Costa del Sol",
+      "targetKeyword": "keyword phrase in ${structureLanguageName}",
       "searchIntent": "informational",
-      "contentAngle": "Overview of Costa del Sol lifestyle, climate, culture for foreign buyers"
+      "contentAngle": "Content angle description in ${structureLanguageName}"
     }
   ]
 }
@@ -894,25 +904,33 @@ Return ONLY the category name exactly as shown above. No explanation, no JSON, j
       
       article.category = finalCategory;
 
-      // 4. SEO META TAGS
-      const seoPrompt = `Create SEO meta tags for this article:
+      // 4. SEO META TAGS - Language-aware
+      const seoLanguageName = {
+        'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+        'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+        'fi': 'Finnish', 'no': 'Norwegian'
+      }[language] || 'English';
 
+      const seoPrompt = `Create SEO meta tags for this article.
+
+CRITICAL: Meta title and meta description MUST be written in ${seoLanguageName}. Do NOT write in English unless the article language is English.
+
+Article Language: ${seoLanguageName}
 Headline: ${plan.headline}
 Target Keyword: ${plan.targetKeyword}
 Content Angle: ${plan.contentAngle}
-Language: ${language}
 
 Requirements:
-- Meta Title: Include primary keyword, location "Costa del Sol", and year 2025
+- Meta Title: MUST be in ${seoLanguageName}, include primary keyword, location "Costa del Sol", and year 2025
 - Max 60 characters (strict limit)
-- Meta Description: Compelling summary with CTA
+- Meta Description: MUST be in ${seoLanguageName}, compelling summary with CTA
 - Max 160 characters (strict limit)
-- Include numbers or specific benefits (e.g., "5 steps", "Complete guide", "Expert tips")
+- Include numbers or specific benefits
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with text in ${seoLanguageName}:
 {
-  "title": "Title here (max 60 chars)",
-  "description": "Description with benefits and CTA (max 160 chars)"
+  "title": "Title in ${seoLanguageName} (max 60 chars)",
+  "description": "Description in ${seoLanguageName} with benefits and CTA (max 160 chars)"
 }`;
 
       const seoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {

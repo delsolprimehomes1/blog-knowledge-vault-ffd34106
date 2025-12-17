@@ -583,24 +583,33 @@ Return ONLY the category name exactly as shown above. No explanation, no JSON, j
         
         article.category = finalCategory;
 
-        // 4. SEO META TAGS
-        const seoPrompt = `Create SEO meta tags for this article:
+        // 4. SEO META TAGS - Language-aware
+        const seoLanguageMap: Record<string, string> = {
+          'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+          'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+          'fi': 'Finnish', 'no': 'Norwegian'
+        };
+        const seoLanguageName = seoLanguageMap[job.language as string] || 'English';
 
+        const seoPrompt = `Create SEO meta tags for this article.
+
+CRITICAL: Meta title and meta description MUST be written in ${seoLanguageName}. Do NOT write in English unless the article language is English.
+
+Article Language: ${seoLanguageName}
 Headline: ${plan.headline}
 Target Keyword: ${plan.targetKeyword}
 Content Angle: ${plan.contentAngle}
-Language: ${job.language}
 
 Requirements:
-- Meta Title: Include primary keyword, location "Costa del Sol", and year 2025
+- Meta Title: MUST be in ${seoLanguageName}, include primary keyword, location "Costa del Sol", and year 2025
 - Max 60 characters (strict limit)
-- Meta Description: Compelling summary with CTA
+- Meta Description: MUST be in ${seoLanguageName}, compelling summary with CTA
 - Max 160 characters (strict limit)
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with text in ${seoLanguageName}:
 {
-  "title": "Title here (max 60 chars)",
-  "description": "Description with benefits and CTA (max 160 chars)"
+  "title": "Title in ${seoLanguageName} (max 60 chars)",
+  "description": "Description in ${seoLanguageName} with benefits and CTA (max 160 chars)"
 }`;
 
         const seoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
