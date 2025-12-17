@@ -1577,6 +1577,7 @@ export type Database = {
           answer_main: string
           author_id: string | null
           canonical_url: string | null
+          category: string | null
           created_at: string | null
           faq_type: string
           featured_image_alt: string
@@ -1602,6 +1603,7 @@ export type Database = {
           answer_main: string
           author_id?: string | null
           canonical_url?: string | null
+          category?: string | null
           created_at?: string | null
           faq_type: string
           featured_image_alt: string
@@ -1627,6 +1629,7 @@ export type Database = {
           answer_main?: string
           author_id?: string | null
           canonical_url?: string | null
+          category?: string | null
           created_at?: string | null
           faq_type?: string
           featured_image_alt?: string

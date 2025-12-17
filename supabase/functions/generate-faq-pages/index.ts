@@ -64,10 +64,10 @@ serve(async (req) => {
       job = data;
     }
 
-    // Fetch articles
+    // Fetch articles with category
     const { data: articles, error: articlesError } = await supabase
       .from('blog_articles')
-      .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id')
+      .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
       .in('id', articleIds)
       .eq('status', 'published');
 
@@ -204,6 +204,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
                 featured_image_caption: article.featured_image_caption,
                 source_article_slug: article.slug,
                 author_id: article.author_id,
+                category: article.category,
                 status: 'draft',
               })
               .select()

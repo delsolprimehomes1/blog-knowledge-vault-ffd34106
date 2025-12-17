@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, ChevronRight, Sparkles, HelpCircle } from 'lucide-react';
+import { Search, ChevronRight, Sparkles, HelpCircle, BookOpen, TrendingUp, Scale, MapPin, BarChart3, Building } from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -25,9 +25,19 @@ const LANGUAGES = [
   { code: 'no', name: 'Norwegian' },
 ];
 
+const CATEGORY_CONFIG: Record<string, { icon: React.ComponentType<any>; color: string }> = {
+  'Buying Guides': { icon: BookOpen, color: 'bg-blue-500' },
+  'Investment Strategies': { icon: TrendingUp, color: 'bg-green-500' },
+  'Legal & Regulations': { icon: Scale, color: 'bg-purple-500' },
+  'Location Insights': { icon: MapPin, color: 'bg-orange-500' },
+  'Market Analysis': { icon: BarChart3, color: 'bg-rose-500' },
+  'Property Management': { icon: Building, color: 'bg-cyan-500' },
+};
+
 export default function FAQIndex() {
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isFocused, setIsFocused] = useState(false);
 
   const { data: faqPages = [], isLoading } = useQuery({
@@ -49,10 +59,43 @@ export default function FAQIndex() {
     },
   });
 
-  const filteredFaqs = faqPages.filter((faq: any) =>
-    faq.question_main.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faq.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Get unique categories from FAQs
+  const categories = useMemo(() => {
+    const cats = [...new Set(faqPages.map((faq: any) => faq.category).filter(Boolean))];
+    return cats.sort();
+  }, [faqPages]);
+
+  // Filter FAQs by search and category
+  const filteredFaqs = useMemo(() => {
+    return faqPages.filter((faq: any) => {
+      const matchesSearch = 
+        faq.question_main.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        faq.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || faq.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [faqPages, searchTerm, categoryFilter]);
+
+  // Group FAQs by category
+  const faqsByCategory = useMemo(() => {
+    const grouped: Record<string, any[]> = {};
+    filteredFaqs.forEach((faq: any) => {
+      const cat = faq.category || 'Uncategorized';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(faq);
+    });
+    return grouped;
+  }, [filteredFaqs]);
+
+  // Get category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: faqPages.length };
+    faqPages.forEach((faq: any) => {
+      const cat = faq.category || 'Uncategorized';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [faqPages]);
 
   const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '');
 
@@ -144,7 +187,51 @@ export default function FAQIndex() {
           </div>
         </section>
 
-        {/* FAQ Cards Grid */}
+        {/* Category Tabs */}
+        <section className="py-8 border-b border-border bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className={`px-5 py-2.5 rounded-full font-nav text-sm font-medium transition-all duration-300 ${
+                  categoryFilter === 'all'
+                    ? 'bg-prime-gold text-prime-950 shadow-lg shadow-prime-gold/30'
+                    : 'bg-white text-muted-foreground hover:bg-prime-gold/10 hover:text-prime-950 border border-border'
+                }`}
+              >
+                All Categories
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-prime-950/10 text-xs">
+                  {categoryCounts.all || 0}
+                </span>
+              </button>
+              {categories.map((category) => {
+                const config = CATEGORY_CONFIG[category as string] || { icon: HelpCircle, color: 'bg-gray-500' };
+                const Icon = config.icon;
+                return (
+                  <button
+                    key={category as string}
+                    onClick={() => setCategoryFilter(category as string)}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-nav text-sm font-medium transition-all duration-300 ${
+                      categoryFilter === category
+                        ? 'bg-prime-gold text-prime-950 shadow-lg shadow-prime-gold/30'
+                        : 'bg-white text-muted-foreground hover:bg-prime-gold/10 hover:text-prime-950 border border-border'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {category as string}
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                      categoryFilter === category ? 'bg-prime-950/10' : 'bg-muted'
+                    }`}>
+                      {categoryCounts[category as string] || 0}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Cards by Category */}
         <section className="py-16 md:py-20">
           <div className="container mx-auto px-4">
             {isLoading ? (
@@ -168,57 +255,44 @@ export default function FAQIndex() {
                 <h3 className="text-xl font-display font-semibold mb-2">No FAQs Found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filter to find what you're looking for.</p>
               </div>
+            ) : categoryFilter === 'all' ? (
+              // Show grouped by category when "All" is selected
+              <div className="space-y-16">
+                {Object.entries(faqsByCategory).map(([category, faqs]) => {
+                  const config = CATEGORY_CONFIG[category] || { icon: HelpCircle, color: 'bg-gray-500' };
+                  const Icon = config.icon;
+                  return (
+                    <div key={category}>
+                      {/* Category Header */}
+                      <div className="flex items-center gap-4 mb-8">
+                        <div className={`w-12 h-12 ${config.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                          <Icon className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+                            {category}
+                          </h2>
+                          <p className="text-muted-foreground text-sm">
+                            {faqs.length} question{faqs.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* FAQ Cards Grid */}
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                        {faqs.map((faq: any, index: number) => (
+                          <FAQCard key={faq.id} faq={faq} index={index} stripHtml={stripHtml} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
+              // Show flat grid when specific category is selected
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                 {filteredFaqs.map((faq: any, index: number) => (
-                  <Link 
-                    key={faq.id} 
-                    to={`/faq/${faq.slug}`}
-                    className="animate-fade-in-up"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <Card className="overflow-hidden h-full border-0 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 group">
-                      {faq.featured_image_url && (
-                        <div className="relative h-52 overflow-hidden">
-                          <img
-                            src={faq.featured_image_url}
-                            alt={faq.featured_image_alt || faq.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                          />
-                          {/* Gradient Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-prime-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                          
-                          {/* Badges */}
-                          <div className="absolute top-4 left-4 flex gap-2">
-                            <Badge className="bg-white/95 backdrop-blur-sm text-prime-950 border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold">
-                              {faq.language.toUpperCase()}
-                            </Badge>
-                            <Badge
-                              className={`backdrop-blur-sm border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold ${
-                                faq.faq_type === 'core' 
-                                  ? 'bg-prime-gold text-prime-950' 
-                                  : 'bg-white/95 text-prime-950'
-                              }`}
-                            >
-                              {faq.faq_type === 'core' ? 'Guide' : 'Tips'}
-                            </Badge>
-                          </div>
-                        </div>
-                      )}
-                      <CardContent className="p-6">
-                        <h2 className="font-display font-bold text-lg text-foreground mb-3 line-clamp-2 group-hover:text-prime-gold transition-colors duration-300">
-                          {faq.question_main}
-                        </h2>
-                        <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-5">
-                          {stripHtml(faq.answer_main).substring(0, 150)}...
-                        </p>
-                        <div className="flex items-center text-prime-gold text-sm font-nav font-semibold group-hover:translate-x-1 transition-transform duration-300">
-                          Read Answer
-                          <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                  <FAQCard key={faq.id} faq={faq} index={index} stripHtml={stripHtml} />
                 ))}
               </div>
             )}
@@ -228,5 +302,67 @@ export default function FAQIndex() {
 
       <Footer />
     </>
+  );
+}
+
+// Extracted FAQ Card component for reuse
+function FAQCard({ faq, index, stripHtml }: { faq: any; index: number; stripHtml: (html: string) => string }) {
+  return (
+    <Link 
+      to={`/faq/${faq.slug}`}
+      className="animate-fade-in-up"
+      style={{ animationDelay: `${index * 0.05}s` }}
+    >
+      <Card className="overflow-hidden h-full border-0 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 group">
+        {faq.featured_image_url && (
+          <div className="relative h-52 overflow-hidden">
+            <img
+              src={faq.featured_image_url}
+              alt={faq.featured_image_alt || faq.title}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+            />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-prime-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Badges */}
+            <div className="absolute top-4 left-4 flex gap-2">
+              <Badge className="bg-white/95 backdrop-blur-sm text-prime-950 border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold">
+                {faq.language.toUpperCase()}
+              </Badge>
+              <Badge
+                className={`backdrop-blur-sm border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold ${
+                  faq.faq_type === 'core' 
+                    ? 'bg-prime-gold text-prime-950' 
+                    : 'bg-white/95 text-prime-950'
+                }`}
+              >
+                {faq.faq_type === 'core' ? 'Guide' : 'Tips'}
+              </Badge>
+            </div>
+
+            {/* Category Badge */}
+            {faq.category && (
+              <div className="absolute bottom-4 left-4">
+                <Badge className="bg-prime-950/80 backdrop-blur-sm text-white border-0 shadow-sm px-3 py-1 font-nav text-xs">
+                  {faq.category}
+                </Badge>
+              </div>
+            )}
+          </div>
+        )}
+        <CardContent className="p-6">
+          <h2 className="font-display font-bold text-lg text-foreground mb-3 line-clamp-2 group-hover:text-prime-gold transition-colors duration-300">
+            {faq.question_main}
+          </h2>
+          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-5">
+            {stripHtml(faq.answer_main).substring(0, 150)}...
+          </p>
+          <div className="flex items-center text-prime-gold text-sm font-nav font-semibold group-hover:translate-x-1 transition-transform duration-300">
+            Read Answer
+            <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
