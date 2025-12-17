@@ -1,5 +1,5 @@
 // City Brochure Data Constants
-// All 7 Costa del Sol cities with unique content and imagery
+// All 10 Costa del Sol cities with unique content and imagery
 
 // AI-generated location-specific hero images
 import marbellaHero from '@/assets/brochures/marbella-hero.jpg';
@@ -9,6 +9,9 @@ import malagaHero from '@/assets/brochures/malaga-hero.jpg';
 import fuengirolaHero from '@/assets/brochures/fuengirola-hero.jpg';
 import benalmadenaHero from '@/assets/brochures/benalmadena-hero.jpg';
 import mijasHero from '@/assets/brochures/mijas-hero.jpg';
+import casaresHero from '@/assets/brochures/casares-hero.jpg';
+import manilvaHero from '@/assets/brochures/manilva-hero.jpg';
+import torremolinosHero from '@/assets/brochures/torremolinos-hero.jpg';
 
 export interface CityBrochureData {
   id: string;
@@ -143,6 +146,54 @@ export const CITY_BROCHURES: Record<string, CityBrochureData> = {
     neighborhoods: ['Mijas Pueblo', 'La Cala de Mijas', 'Mijas Golf', 'Riviera del Sol', 'Calahonda'],
     investmentHighlights: ['authentic-andalusia', 'golf-variety', 'mountain-sea-views', 'value'],
     lifestyleKeywords: ['white-village', 'mountains', 'authentic', 'donkeys', 'views', 'traditional'],
+  },
+  casares: {
+    id: 'casares',
+    slug: 'casares',
+    name: 'Casares',
+    coordinates: { lat: 36.4444, lng: -5.2739 },
+    heroImage: casaresHero,
+    gallery: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop',
+    ],
+    propertyTypes: ['village-houses', 'golf-villas', 'new-developments', 'country-estates'],
+    neighborhoods: ['White Village', 'Casares Costa', 'Secadero', 'Doña Julia Golf'],
+    investmentHighlights: ['authentic-pueblo', 'golf-lifestyle', 'mountain-views', 'value-growth'],
+    lifestyleKeywords: ['white-village', 'authentic', 'mountains', 'golf', 'tranquil', 'traditional'],
+  },
+  manilva: {
+    id: 'manilva',
+    slug: 'manilva',
+    name: 'Manilva',
+    coordinates: { lat: 36.3756, lng: -5.2497 },
+    heroImage: manilvaHero,
+    gallery: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop',
+    ],
+    propertyTypes: ['marina-apartments', 'beachfront', 'townhouses', 'new-developments'],
+    neighborhoods: ['Manilva Pueblo', 'San Luis de Sabinillas', 'Duquesa Marina', 'Castillo de la Duquesa'],
+    investmentHighlights: ['marina-lifestyle', 'wine-culture', 'beaches', 'value-proposition'],
+    lifestyleKeywords: ['marina', 'vineyards', 'authentic', 'beaches', 'peaceful', 'wine'],
+  },
+  torremolinos: {
+    id: 'torremolinos',
+    slug: 'torremolinos',
+    name: 'Torremolinos',
+    coordinates: { lat: 36.6221, lng: -4.5008 },
+    heroImage: torremolinosHero,
+    gallery: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2070&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop',
+    ],
+    propertyTypes: ['beachfront-apartments', 'city-apartments', 'new-developments', 'penthouses'],
+    neighborhoods: ['La Carihuela', 'Centro', 'Playamar', 'El Bajondillo', 'Montemar'],
+    investmentHighlights: ['beach-lifestyle', 'rental-demand', 'airport-access', 'vibrant-nightlife'],
+    lifestyleKeywords: ['beaches', 'nightlife', 'accessibility', 'promenade', 'tourism', 'vibrant'],
   },
 };
 
