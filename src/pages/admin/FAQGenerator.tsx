@@ -14,7 +14,8 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2 } from 'lucide-react';
+import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 
 const LANGUAGES = [
@@ -169,6 +170,30 @@ export default function FAQGenerator() {
       toast.error(`Failed to delete: ${error.message}`);
     },
   });
+
+  // Bulk publish mutation
+  const bulkPublishMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase
+        .from('faq_pages')
+        .update({ status: 'published', updated_at: new Date().toISOString() })
+        .eq('status', 'draft')
+        .select('id');
+      if (error) throw error;
+      return data?.length || 0;
+    },
+    onSuccess: (count) => {
+      toast.success(`Published ${count} FAQ pages`);
+      refetchFaqPages();
+    },
+    onError: (error) => {
+      toast.error(`Failed to publish: ${error.message}`);
+    },
+  });
+
+  // Count drafts and published
+  const draftCount = faqPages.filter((faq: any) => faq.status === 'draft').length;
+  const publishedCount = faqPages.filter((faq: any) => faq.status === 'published').length;
 
   // Regenerate section mutation
   const regenerateSectionMutation = useMutation({
@@ -430,11 +455,56 @@ export default function FAQGenerator() {
 
           <TabsContent value="results" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Generated FAQ Pages</CardTitle>
-                <CardDescription>
-                  Review, edit, and publish generated FAQ pages
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle>Generated FAQ Pages</CardTitle>
+                  <CardDescription>
+                    Review, edit, and publish generated FAQ pages
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                      {draftCount} Draft
+                    </Badge>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                      {publishedCount} Published
+                    </Badge>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        disabled={draftCount === 0 || bulkPublishMutation.isPending}
+                        className="bg-prime-gold hover:bg-prime-gold/90 text-prime-950"
+                      >
+                        {bulkPublishMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        Publish All Drafts
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Publish All Draft FAQ Pages?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will publish {draftCount} draft FAQ page{draftCount !== 1 ? 's' : ''}. 
+                          They will become publicly accessible on your website.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => bulkPublishMutation.mutate()}
+                          className="bg-prime-gold hover:bg-prime-gold/90 text-prime-950"
+                        >
+                          Publish All
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="border rounded-lg">
