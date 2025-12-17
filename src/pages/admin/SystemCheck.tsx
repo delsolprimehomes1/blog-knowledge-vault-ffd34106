@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Download, ChevronDown, ChevronRight, BookOpen, Search, RefreshCw, CheckCircle2, XCircle, FileCheck } from "lucide-react";
+import { Play, Download, ChevronDown, ChevronRight, BookOpen, Search, RefreshCw, CheckCircle2, XCircle, FileCheck, Wrench, ExternalLink, Link2, User, MessageSquare, Languages, Globe, FileText } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 import { TranslationSyncTool } from "@/components/admin/TranslationSyncTool";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   PhaseTest,
   testPhase1,
@@ -69,6 +70,11 @@ export default function SystemCheck() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pass' | 'fail'>('all');
   const [filterLanguage, setFilterLanguage] = useState<string>('all');
 
+  // Bulk fix state
+  const [isFixingCanonicals, setIsFixingCanonicals] = useState(false);
+  const [isFixingAuthors, setIsFixingAuthors] = useState(false);
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string>('');
+
   const phases = [
     { phase: 1, name: 'Database Schema & Content Model', testFn: testPhase1 },
     { phase: 2, name: 'CMS Dashboard UI', testFn: testPhase2 },
@@ -93,13 +99,26 @@ export default function SystemCheck() {
   ];
 
   // Query for published articles
-  const { data: articles } = useQuery({
+  const { data: articles, refetch: refetchArticles } = useQuery({
     queryKey: ['published-articles-validation'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
         .select('id, slug, headline, language, funnel_stage, cta_article_ids, faq_entities, speakable_answer, translations, canonical_url, author_id, cluster_id')
         .eq('status', 'published');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Query for authors
+  const { data: authors } = useQuery({
+    queryKey: ['authors-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('authors')
+        .select('id, name')
+        .order('name');
       if (error) throw error;
       return data || [];
     }
@@ -270,6 +289,73 @@ export default function SystemCheck() {
     }
   };
 
+  // Bulk fix functions
+  const fixCanonicalUrls = async () => {
+    const articlesNeedingCanonical = validationResults.filter(r => !r.hasCanonical);
+    if (articlesNeedingCanonical.length === 0) {
+      toast.info('All articles already have canonical URLs');
+      return;
+    }
+
+    setIsFixingCanonicals(true);
+    try {
+      const updates = articlesNeedingCanonical.map(article => ({
+        id: article.id,
+        canonical_url: `https://www.delsolprimehomes.com/blog/${article.slug}`
+      }));
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('blog_articles')
+          .update({ canonical_url: update.canonical_url })
+          .eq('id', update.id);
+        if (error) throw error;
+      }
+
+      toast.success(`Set canonical URLs for ${updates.length} articles`);
+      await refetchArticles();
+      runValidation();
+    } catch (error) {
+      toast.error('Failed to update canonical URLs');
+      console.error(error);
+    } finally {
+      setIsFixingCanonicals(false);
+    }
+  };
+
+  const fixAuthors = async () => {
+    if (!selectedAuthorId) {
+      toast.error('Please select an author first');
+      return;
+    }
+
+    const articlesNeedingAuthor = validationResults.filter(r => !r.hasSchema);
+    if (articlesNeedingAuthor.length === 0) {
+      toast.info('All articles already have authors assigned');
+      return;
+    }
+
+    setIsFixingAuthors(true);
+    try {
+      const ids = articlesNeedingAuthor.map(a => a.id);
+      const { error } = await supabase
+        .from('blog_articles')
+        .update({ author_id: selectedAuthorId })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      toast.success(`Assigned author to ${ids.length} articles`);
+      await refetchArticles();
+      runValidation();
+    } catch (error) {
+      toast.error('Failed to assign author');
+      console.error(error);
+    } finally {
+      setIsFixingAuthors(false);
+    }
+  };
+
   // Filter validation results
   const filteredResults = validationResults.filter(r => {
     const matchesSearch = r.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -287,6 +373,14 @@ export default function SystemCheck() {
   const avgScore = validationResults.length > 0 
     ? Math.round(validationResults.reduce((acc, r) => acc + r.score, 0) / validationResults.length) 
     : 0;
+
+  // Issue counts
+  const missingCTA = validationResults.filter(r => !r.hasMidCTA).length;
+  const missingFAQ = validationResults.filter(r => !r.hasFAQ).length;
+  const missingSpeakable = validationResults.filter(r => !r.hasSpeakable).length;
+  const missingHreflang = validationResults.filter(r => !r.hasHreflang).length;
+  const missingCanonical = validationResults.filter(r => !r.hasCanonical).length;
+  const missingAuthor = validationResults.filter(r => !r.hasSchema).length;
 
   return (
     <AdminLayout>
@@ -543,6 +637,134 @@ export default function SystemCheck() {
                     <p className="text-sm text-muted-foreground">Average Score</p>
                   </Card>
                 </div>
+
+                {/* Bulk Fix Actions */}
+                {failingCount > 0 && (
+                  <Card className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Wrench className="h-5 w-5 text-amber-600" />
+                      <h3 className="text-lg font-semibold">Bulk Fix Actions</h3>
+                    </div>
+
+                    {/* Issue Counts */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingCTA}</p>
+                          <p className="text-xs text-muted-foreground">Missing CTA</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingFAQ}</p>
+                          <p className="text-xs text-muted-foreground">Missing FAQ</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingSpeakable}</p>
+                          <p className="text-xs text-muted-foreground">Missing Speakable</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <Languages className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingHreflang}</p>
+                          <p className="text-xs text-muted-foreground">Missing Hreflang</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingCanonical}</p>
+                          <p className="text-xs text-muted-foreground">Missing Canonical</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xl font-bold">{missingAuthor}</p>
+                          <p className="text-xs text-muted-foreground">Missing Author</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Links to Existing Tools */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm text-muted-foreground">Use Existing Tools</h4>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="sm" asChild disabled={missingFAQ === 0}>
+                            <Link to="/admin/faq-generator">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Fix FAQs ({missingFAQ})
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild disabled={missingSpeakable === 0}>
+                            <Link to="/admin/bulk-speakable-regeneration">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Fix Speakable ({missingSpeakable})
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild disabled={missingHreflang === 0}>
+                            <Link to="/admin/bulk-article-linker">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Fix Hreflang ({missingHreflang})
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Direct Database Fixes */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm text-muted-foreground">Quick Database Fixes</h4>
+                        <div className="flex flex-wrap gap-2">
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={fixCanonicalUrls}
+                            disabled={isFixingCanonicals || missingCanonical === 0}
+                          >
+                            {isFixingCanonicals ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Link2 className="h-4 w-4 mr-2" />
+                            )}
+                            Set Canonical URLs ({missingCanonical})
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select value={selectedAuthorId} onValueChange={setSelectedAuthorId}>
+                            <SelectTrigger className="w-48 h-9">
+                              <SelectValue placeholder="Select author..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {authors?.map(author => (
+                                <SelectItem key={author.id} value={author.id}>{author.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={fixAuthors}
+                            disabled={isFixingAuthors || missingAuthor === 0 || !selectedAuthorId}
+                          >
+                            {isFixingAuthors ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <User className="h-4 w-4 mr-2" />
+                            )}
+                            Assign Author ({missingAuthor})
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
 
                 {/* Filters */}
                 <div className="flex gap-4 items-center">
