@@ -1,0 +1,2 @@
+# This directory holds static assets accessible at /assets/
+# Logo will be copied here during build for static page access

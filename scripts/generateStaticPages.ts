@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import type { Database } from '../src/integrations/supabase/types';
 
@@ -32,6 +32,42 @@ interface ArticleData {
   translations: Record<string, string>;
   author?: any;
   reviewer?: any;
+}
+
+interface ProductionAssets {
+  css: string[];
+  js: string[];
+}
+
+/**
+ * Extract production asset paths from built index.html
+ */
+function getProductionAssets(distDir: string): ProductionAssets {
+  const indexPath = join(distDir, 'index.html');
+  
+  if (!existsSync(indexPath)) {
+    console.log('⚠️ Built index.html not found, skipping asset injection');
+    return { css: [], js: [] };
+  }
+  
+  const indexHtml = readFileSync(indexPath, 'utf-8');
+  
+  // Extract CSS links (href="/assets/...")
+  const cssMatches = indexHtml.match(/href="(\/assets\/[^"]+\.css)"/g) || [];
+  const css = cssMatches.map(m => {
+    const match = m.match(/href="([^"]+)"/);
+    return match ? match[1] : '';
+  }).filter(Boolean);
+  
+  // Extract JS scripts (src="/assets/...")
+  const jsMatches = indexHtml.match(/src="(\/assets\/[^"]+\.js)"/g) || [];
+  const js = jsMatches.map(m => {
+    const match = m.match(/src="([^"]+)"/);
+    return match ? match[1] : '';
+  }).filter(Boolean);
+  
+  console.log(`📦 Found production assets: ${css.length} CSS, ${js.length} JS files`);
+  return { css, js };
 }
 
 function generateOrganizationSchema() {
@@ -193,6 +229,7 @@ function sanitizeForHTML(text: string): string {
 
 /**
  * Critical inline CSS for static pages - ensures pages look good without JS
+ * Includes all brand typography (Playfair Display, Lato, Raleway)
  */
 const CRITICAL_CSS = `
   :root {
@@ -213,10 +250,24 @@ const CRITICAL_CSS = `
     -webkit-font-smoothing: antialiased;
   }
   
+  /* Smooth transition when React takes over */
+  #root {
+    animation: staticFadeIn 0.3s ease-out;
+  }
+  
+  @keyframes staticFadeIn {
+    from { opacity: 0.97; }
+    to { opacity: 1; }
+  }
+  
+  /* Static Header - Enhanced with logo */
   .static-header {
     background: hsl(var(--prime-950));
     padding: 1rem 0;
     border-bottom: 1px solid hsl(var(--prime-gold) / 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
   
   .static-header-inner {
@@ -226,9 +277,22 @@ const CRITICAL_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 2rem;
   }
   
-  .static-logo {
+  .static-logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+  }
+  
+  .static-logo-img {
+    height: 40px;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  
+  .static-logo-text {
     color: hsl(var(--prime-gold));
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 1.25rem;
@@ -239,17 +303,42 @@ const CRITICAL_CSS = `
   .static-nav {
     display: flex;
     gap: 1.5rem;
+    align-items: center;
   }
   
   .static-nav a {
     color: rgba(255,255,255,0.8);
     text-decoration: none;
+    font-family: 'Raleway', sans-serif;
     font-size: 0.875rem;
+    font-weight: 500;
     transition: color 0.2s;
   }
   
-  .static-nav a:hover { color: hsl(var(--prime-gold)); }
+  .static-nav a:hover,
+  .static-nav a.active { 
+    color: hsl(var(--prime-gold)); 
+  }
   
+  .static-cta {
+    display: inline-block;
+    background: hsl(var(--prime-gold));
+    color: hsl(var(--prime-950));
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.375rem;
+    font-family: 'Raleway', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  
+  .static-cta:hover { 
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  
+  /* Article Layout */
   .static-article {
     max-width: 800px;
     margin: 0 auto;
@@ -297,12 +386,14 @@ const CRITICAL_CSS = `
     font-style: italic;
   }
   
+  /* Speakable Box - Enhanced styling */
   .speakable-box {
     background: linear-gradient(135deg, hsl(var(--prime-gold) / 0.1), hsl(var(--prime-gold) / 0.05));
     border-left: 4px solid hsl(var(--prime-gold));
     border-radius: 0.5rem;
     padding: 1.5rem;
     margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
   
   .speakable-box-label {
@@ -312,6 +403,7 @@ const CRITICAL_CSS = `
     color: hsl(var(--prime-gold));
     margin-bottom: 0.5rem;
     font-weight: 600;
+    font-family: 'Raleway', sans-serif;
   }
   
   .speakable-answer {
@@ -320,6 +412,7 @@ const CRITICAL_CSS = `
     color: hsl(var(--foreground));
   }
   
+  /* Article Content */
   .article-content {
     font-size: 1.125rem;
     line-height: 1.8;
@@ -338,6 +431,13 @@ const CRITICAL_CSS = `
     font-size: 1.375rem;
     font-weight: 600;
     margin: 2rem 0 0.75rem;
+  }
+  
+  .article-content h4 {
+    font-family: 'Lato', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 1.5rem 0 0.5rem;
   }
   
   .article-content p { margin-bottom: 1.25rem; }
@@ -372,6 +472,54 @@ const CRITICAL_CSS = `
     color: hsl(var(--muted-foreground));
   }
   
+  /* Table styling */
+  .article-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+  }
+  
+  .article-content th, .article-content td {
+    padding: 0.75rem 1rem;
+    border: 1px solid hsl(var(--prime-gold) / 0.2);
+    text-align: left;
+  }
+  
+  .article-content th {
+    background: hsl(var(--prime-gold) / 0.1);
+    font-weight: 600;
+  }
+  
+  .article-content tr:nth-child(even) {
+    background: hsl(var(--prime-gold) / 0.03);
+  }
+  
+  /* Code block styling */
+  .article-content pre {
+    background: hsl(var(--prime-950));
+    color: #e5e5e5;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    font-size: 0.875rem;
+  }
+  
+  .article-content code {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.9em;
+  }
+  
+  .article-content p code,
+  .article-content li code {
+    background: hsl(var(--prime-gold) / 0.1);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: hsl(var(--foreground));
+  }
+  
+  /* FAQ Section */
   .faq-section {
     margin-top: 3rem;
     padding-top: 2rem;
@@ -389,6 +537,7 @@ const CRITICAL_CSS = `
     padding: 1.25rem;
     background: hsl(var(--prime-gold) / 0.05);
     border-radius: 0.5rem;
+    border-left: 3px solid hsl(var(--prime-gold) / 0.5);
   }
   
   .faq-item h3 {
@@ -403,6 +552,7 @@ const CRITICAL_CSS = `
     line-height: 1.6;
   }
   
+  /* Enhanced Footer with Grid Layout */
   .static-footer {
     background: hsl(var(--prime-950));
     color: rgba(255,255,255,0.7);
@@ -414,7 +564,18 @@ const CRITICAL_CSS = `
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 1.5rem;
-    text-align: center;
+  }
+  
+  .static-footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2.5rem;
+    text-align: left;
+    margin-bottom: 2rem;
+  }
+  
+  .static-footer-brand {
+    grid-column: span 1;
   }
   
   .static-footer-logo {
@@ -423,34 +584,78 @@ const CRITICAL_CSS = `
     font-size: 1.5rem;
     font-weight: 700;
     text-decoration: none;
-    display: inline-block;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+  
+  .static-footer-brand p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    opacity: 0.8;
+  }
+  
+  .static-footer h4 {
+    color: hsl(var(--prime-gold));
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     margin-bottom: 1rem;
   }
   
-  .static-footer p {
+  .static-footer-contact p {
     font-size: 0.875rem;
     margin-bottom: 0.5rem;
-  }
-  
-  .static-footer-links {
     display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .static-footer-links a {
-    color: rgba(255,255,255,0.6);
+    display: block;
+    color: rgba(255,255,255,0.7);
     text-decoration: none;
     font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    transition: color 0.2s;
   }
   
   .static-footer-links a:hover { color: hsl(var(--prime-gold)); }
   
-  @media (max-width: 640px) {
+  .static-footer-bottom {
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+  }
+  
+  .static-footer-bottom p {
+    font-size: 0.8125rem;
+    opacity: 0.6;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
     .static-nav { display: none; }
+    .static-cta { display: none; }
     .static-article { padding: 2rem 1rem 3rem; }
     .article-content { font-size: 1rem; }
+    .static-footer-grid {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    .static-footer-contact p {
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .static-article h1 {
+      font-size: 1.75rem;
+    }
+    .speakable-box {
+      padding: 1.25rem;
+    }
   }
 `;
 
@@ -458,8 +663,9 @@ const CRITICAL_CSS = `
  * Generate static HTML for an article
  * @param article - Article data
  * @param enhancedHreflang - Whether to include hreflang tags (controlled by feature flag)
+ * @param productionAssets - Production CSS/JS asset paths for React hydration
  */
-function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): string {
+function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, productionAssets: ProductionAssets): string {
   const organizationSchema = generateOrganizationSchema();
   const authorSchema = generateAuthorSchema(article.author);
   const articleSchema = generateArticleSchema(article);
@@ -520,8 +726,17 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
     ? new Date(article.date_published).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
+  // Generate production asset links
+  const cssLinks = productionAssets.css.map(href => 
+    `<link rel="stylesheet" href="${href}" />`
+  ).join('\n  ');
+  
+  const jsScripts = productionAssets.js.map(src => 
+    `<script type="module" src="${src}"></script>`
+  ).join('\n  ');
+
   return `<!DOCTYPE html>
-<html lang="${article.language}">
+<html lang="${article.language}" data-static="true">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -533,14 +748,18 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
   
-  <!-- Google Fonts -->
+  <!-- Google Fonts - All brand fonts (Playfair Display, Lato, Raleway) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;600;700&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Critical CSS for static rendering -->
+  <!-- Critical CSS for static rendering (works without JS) -->
   <style>${CRITICAL_CSS}</style>
+  
+  <!-- Production CSS (for React hydration) -->
+  ${cssLinks}
   
   <!-- Open Graph -->
   <meta property="og:type" content="article" />
@@ -560,20 +779,25 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
   ${schemaScripts}
 </head>
 <body>
-  <!-- Static Header -->
+  <!-- Static Header - Always visible, even without JS -->
   <header class="static-header">
     <div class="static-header-inner">
-      <a href="/" class="static-logo">Del Sol Prime Homes</a>
+      <a href="/" class="static-logo-link">
+        <img src="/assets/logo-new.png" alt="Del Sol Prime Homes" class="static-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+        <span class="static-logo-text" style="display:none;">Del Sol Prime Homes</span>
+      </a>
       <nav class="static-nav">
         <a href="/">Home</a>
-        <a href="/blog">Blog</a>
+        <a href="/blog" class="active">Blog</a>
         <a href="/property-finder">Properties</a>
+        <a href="/faq">FAQ</a>
       </nav>
+      <a href="/#contact" class="static-cta">Book a Call</a>
     </div>
   </header>
 
   <div id="root">
-    <!-- Pre-rendered content for SEO and no-JS browsers -->
+    <!-- Pre-rendered content for SEO, AI crawlers, and no-JS browsers -->
     <article class="static-article static-content" data-article-id="${article.id}">
       <h1>${sanitizeForHTML(article.headline)}</h1>
       
@@ -621,20 +845,41 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
     </article>
   </div>
   
-  <!-- Static Footer -->
+  <!-- Static Footer - Always visible, even without JS -->
   <footer class="static-footer">
     <div class="static-footer-inner">
-      <a href="/" class="static-footer-logo">Del Sol Prime Homes</a>
-      <p>Premium Real Estate on the Costa del Sol</p>
-      <p>Marbella, Estepona, Fuengirola, Benalmádena, Mijas</p>
-      <div class="static-footer-links">
-        <a href="/blog">Blog</a>
-        <a href="/property-finder">Properties</a>
-        <a href="/privacy">Privacy Policy</a>
+      <div class="static-footer-grid">
+        <div class="static-footer-brand">
+          <a href="/" class="static-footer-logo">Del Sol Prime Homes</a>
+          <p>Your trusted partner for luxury real estate investments on the Costa del Sol.</p>
+        </div>
+        <div class="static-footer-contact">
+          <h4>Contact Us</h4>
+          <p>📍 Marbella, Costa del Sol, Spain</p>
+          <p>📧 info@delsolprimehomes.com</p>
+          <p>📞 +34 952 123 456</p>
+        </div>
+        <div class="static-footer-links">
+          <h4>Quick Links</h4>
+          <a href="/blog">Blog</a>
+          <a href="/property-finder">Properties</a>
+          <a href="/faq">FAQ</a>
+          <a href="/brochure/marbella">Marbella Guide</a>
+        </div>
+        <div class="static-footer-links">
+          <h4>Legal</h4>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms of Service</a>
+        </div>
       </div>
-      <p style="margin-top: 1.5rem; opacity: 0.6;">© ${new Date().getFullYear()} Del Sol Prime Homes. All rights reserved.</p>
+      <div class="static-footer-bottom">
+        <p>© ${new Date().getFullYear()} Del Sol Prime Homes. All rights reserved.</p>
+      </div>
     </div>
   </footer>
+  
+  <!-- Production JS (React hydration - enhances the static page when JS loads) -->
+  ${jsScripts}
 </body>
 </html>`;
 }
@@ -662,10 +907,50 @@ async function checkFeatureFlag(flagName: string): Promise<boolean> {
   }
 }
 
+/**
+ * Ensure logo is available in public/assets for static pages
+ */
+function ensureLogoInPublicAssets(distDir: string) {
+  const sourceLogo = join(process.cwd(), 'src', 'assets', 'logo-new.png');
+  const destDir = join(distDir, 'assets');
+  const destLogo = join(destDir, 'logo-new.png');
+  
+  // Also copy to public folder root for broader compatibility
+  const publicAssetsDir = join(process.cwd(), 'public', 'assets');
+  const publicLogo = join(publicAssetsDir, 'logo-new.png');
+  
+  try {
+    // Create dest directories if needed
+    if (!existsSync(destDir)) {
+      mkdirSync(destDir, { recursive: true });
+    }
+    if (!existsSync(publicAssetsDir)) {
+      mkdirSync(publicAssetsDir, { recursive: true });
+    }
+    
+    // Copy logo if source exists
+    if (existsSync(sourceLogo)) {
+      copyFileSync(sourceLogo, destLogo);
+      copyFileSync(sourceLogo, publicLogo);
+      console.log('✅ Logo copied to public/assets and dist/assets');
+    } else {
+      console.log('⚠️ Source logo not found at:', sourceLogo);
+    }
+  } catch (err) {
+    console.error('❌ Error copying logo:', err);
+  }
+}
+
 export async function generateStaticPages(distDir: string) {
   console.log('🚀 Starting static page generation...');
   
   try {
+    // Ensure logo is available
+    ensureLogoInPublicAssets(distDir);
+    
+    // Get production assets from built index.html
+    const productionAssets = getProductionAssets(distDir);
+    
     // Check feature flag for enhanced hreflang
     const enhancedHreflang = await checkFeatureFlag('enhanced_hreflang');
     console.log(`🏳️ Feature flag 'enhanced_hreflang': ${enhancedHreflang ? 'ENABLED' : 'DISABLED'}`);
@@ -697,7 +982,7 @@ export async function generateStaticPages(distDir: string) {
 
     for (const article of articles) {
       try {
-        const html = generateStaticHTML(article as any, enhancedHreflang);
+        const html = generateStaticHTML(article as any, enhancedHreflang, productionAssets);
         const filePath = join(distDir, 'blog', article.slug, 'index.html');
         
         // Create directory if it doesn't exist
@@ -707,7 +992,9 @@ export async function generateStaticPages(distDir: string) {
         writeFileSync(filePath, html, 'utf-8');
         
         generated++;
-        console.log(`✅ Generated: /blog/${article.slug}`);
+        if (generated % 100 === 0) {
+          console.log(`✅ Generated: ${generated} pages...`);
+        }
       } catch (err) {
         failed++;
         console.error(`❌ Failed to generate /blog/${article.slug}:`, err);
@@ -716,6 +1003,7 @@ export async function generateStaticPages(distDir: string) {
 
     console.log(`\n✨ Static generation complete!`);
     console.log(`   ✅ Generated: ${generated} pages`);
+    console.log(`   📦 Production assets injected: ${productionAssets.css.length} CSS, ${productionAssets.js.length} JS`);
     if (failed > 0) {
       console.log(`   ❌ Failed: ${failed} pages`);
     }
