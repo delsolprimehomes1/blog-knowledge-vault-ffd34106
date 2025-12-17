@@ -2000,16 +2000,27 @@ Return ONLY valid JSON:
 
       // 11. FAQ ENTITIES (for MOFU/BOFU)
       if (plan.funnelStage !== 'TOFU') {
-        const faqPrompt = `Generate 3-5 FAQ entities for this article:
-Headline: ${plan.headline}
-Content: ${article.detailed_content.substring(0, 500)}...
+        // Language-aware FAQ generation
+        const faqLanguageName = {
+          'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+          'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+          'fi': 'Finnish', 'no': 'Norwegian'
+        }[language] || 'English';
+        
+        const faqPrompt = `Generate 3-5 FAQ entities for this article.
 
-Return ONLY valid JSON:
+CRITICAL: Both questions AND answers MUST be written in ${faqLanguageName}. Do NOT write in English unless the article language is English.
+
+Article Language: ${faqLanguageName}
+Headline: ${plan.headline}
+Content Summary: ${article.detailed_content.substring(0, 500)}...
+
+Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
 {
   "faqs": [
     {
-      "question": "Question here?",
-      "answer": "Concise answer (2-3 sentences)"
+      "question": "Question in ${faqLanguageName}?",
+      "answer": "Concise answer in ${faqLanguageName} (2-3 sentences)"
     }
   ]
 }`;
