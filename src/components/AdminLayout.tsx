@@ -54,7 +54,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-card">
         <div className="flex h-16 items-center border-b px-6 justify-center">
-          <img src={logo} alt="Del Sol Prime Homes" className="h-10" />
+          <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
         </div>
         <nav className="flex-1 space-y-1 p-4">
           <NavLinks />
@@ -72,14 +72,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex h-16 items-center px-6 border-b justify-center">
-                <img src={logo} alt="Del Sol Prime Homes" className="h-10" />
+                <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
               </div>
               <nav className="flex-1 space-y-1 p-4">
                 <NavLinks />
               </nav>
             </SheetContent>
           </Sheet>
-          <img src={logo} alt="Del Sol Prime Homes" className="h-10" />
+          <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
         </header>
 
         {/* Main Content */}
