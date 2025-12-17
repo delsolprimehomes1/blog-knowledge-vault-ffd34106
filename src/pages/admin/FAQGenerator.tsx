@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload } from 'lucide-react';
+import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 
@@ -31,6 +31,8 @@ const LANGUAGES = [
   { code: 'no', name: 'Norwegian' },
 ];
 
+const ITEMS_PER_PAGE = 50;
+
 export default function FAQGenerator() {
   const queryClient = useQueryClient();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
@@ -41,6 +43,7 @@ export default function FAQGenerator() {
   const [activeTab, setActiveTab] = useState('select');
   const [jobId, setJobId] = useState<string | null>(null);
   const [editingFaq, setEditingFaq] = useState<any | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch published articles
   const { data: articles = [], isLoading: articlesLoading } = useQuery({
@@ -224,18 +227,39 @@ export default function FAQGenerator() {
     return matchesSearch && matchesLanguage && matchesCategory;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredArticles.length);
+  const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, languageFilter, categoryFilter]);
+
   const toggleArticle = (id: string) => {
     setSelectedArticles((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
     );
   };
 
-  const toggleAllArticles = () => {
-    if (selectedArticles.length === filteredArticles.length) {
-      setSelectedArticles([]);
+  // Toggle all on current page
+  const toggleAllOnPage = () => {
+    const pageArticleIds = paginatedArticles.map((a) => a.id);
+    const allPageSelected = pageArticleIds.every((id) => selectedArticles.includes(id));
+    
+    if (allPageSelected) {
+      setSelectedArticles((prev) => prev.filter((id) => !pageArticleIds.includes(id)));
     } else {
-      setSelectedArticles(filteredArticles.map((a) => a.id));
+      setSelectedArticles((prev) => [...new Set([...prev, ...pageArticleIds])]);
     }
+  };
+
+  // Select all filtered articles
+  const selectAllFiltered = () => {
+    const allFilteredIds = filteredArticles.map((a) => a.id);
+    setSelectedArticles(allFilteredIds);
   };
 
   const toggleLanguage = (code: string) => {
@@ -345,6 +369,24 @@ export default function FAQGenerator() {
                   </div>
                 </div>
 
+                {/* Results count and bulk select */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Showing {filteredArticles.length > 0 ? startIndex + 1 : 0}-{endIndex} of {filteredArticles.length} articles
+                    {searchTerm && ` matching "${searchTerm}"`}
+                  </span>
+                  {filteredArticles.length > ITEMS_PER_PAGE && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllFiltered}
+                      disabled={selectedArticles.length === filteredArticles.length}
+                    >
+                      Select all {filteredArticles.length} matching articles
+                    </Button>
+                  )}
+                </div>
+
                 {/* Articles Table */}
                 <div className="border rounded-lg">
                   <Table>
@@ -352,8 +394,8 @@ export default function FAQGenerator() {
                       <TableRow>
                         <TableHead className="w-12">
                           <Checkbox
-                            checked={selectedArticles.length === filteredArticles.length && filteredArticles.length > 0}
-                            onCheckedChange={toggleAllArticles}
+                            checked={paginatedArticles.length > 0 && paginatedArticles.every((a) => selectedArticles.includes(a.id))}
+                            onCheckedChange={toggleAllOnPage}
                           />
                         </TableHead>
                         <TableHead>Title</TableHead>
@@ -377,7 +419,7 @@ export default function FAQGenerator() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredArticles.slice(0, 50).map((article) => (
+                        paginatedArticles.map((article) => (
                           <TableRow key={article.id}>
                             <TableCell>
                               <Checkbox
@@ -409,6 +451,68 @@ export default function FAQGenerator() {
                   </Table>
                 </div>
 
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-9"
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          <span className="px-2">...</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-9"
+                            onClick={() => setCurrentPage(totalPages)}
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
                 {/* Generate Button */}
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
@@ -417,17 +521,27 @@ export default function FAQGenerator() {
                       <> • Will generate {selectedArticles.length * 2} FAQ pages per language</>
                     )}
                   </p>
-                  <Button
-                    onClick={() => generateMutation.mutate()}
-                    disabled={selectedArticles.length === 0 || generateMutation.isPending}
-                  >
-                    {generateMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileQuestion className="mr-2 h-4 w-4" />
+                  <div className="flex gap-2">
+                    {selectedArticles.length > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedArticles([])}
+                      >
+                        Clear Selection
+                      </Button>
                     )}
-                    Generate 2 FAQ Pages
-                  </Button>
+                    <Button
+                      onClick={() => generateMutation.mutate()}
+                      disabled={selectedArticles.length === 0 || generateMutation.isPending}
+                    >
+                      {generateMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileQuestion className="mr-2 h-4 w-4" />
+                      )}
+                      Generate 2 FAQ Pages
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
