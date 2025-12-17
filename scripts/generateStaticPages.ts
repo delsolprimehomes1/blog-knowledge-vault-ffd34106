@@ -552,101 +552,12 @@ const CRITICAL_CSS = `
     line-height: 1.6;
   }
   
-  /* Enhanced Footer with Grid Layout */
-  .static-footer {
-    background: hsl(var(--prime-950));
-    color: rgba(255,255,255,0.7);
-    padding: 3rem 0 2rem;
-    margin-top: 4rem;
-  }
-  
-  .static-footer-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-  
-  .static-footer-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2.5rem;
-    text-align: left;
-    margin-bottom: 2rem;
-  }
-  
-  .static-footer-brand {
-    grid-column: span 1;
-  }
-  
-  .static-footer-logo {
-    color: hsl(var(--prime-gold));
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 1.5rem;
-    font-weight: 700;
-    text-decoration: none;
-    display: block;
-    margin-bottom: 0.75rem;
-  }
-  
-  .static-footer-brand p {
-    font-size: 0.875rem;
-    line-height: 1.6;
-    opacity: 0.8;
-  }
-  
-  .static-footer h4 {
-    color: hsl(var(--prime-gold));
-    font-family: 'Raleway', sans-serif;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 1rem;
-  }
-  
-  .static-footer-contact p {
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .static-footer-links a {
-    display: block;
-    color: rgba(255,255,255,0.7);
-    text-decoration: none;
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-    transition: color 0.2s;
-  }
-  
-  .static-footer-links a:hover { color: hsl(var(--prime-gold)); }
-  
-  .static-footer-bottom {
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    text-align: center;
-  }
-  
-  .static-footer-bottom p {
-    font-size: 0.8125rem;
-    opacity: 0.6;
-  }
-  
   /* Responsive */
   @media (max-width: 768px) {
     .static-nav { display: none; }
     .static-cta { display: none; }
     .static-article { padding: 2rem 1rem 3rem; }
     .article-content { font-size: 1rem; }
-    .static-footer-grid {
-      grid-template-columns: 1fr;
-      text-align: center;
-    }
-    .static-footer-contact p {
-      justify-content: center;
-    }
   }
   
   @media (max-width: 480px) {
@@ -845,38 +756,6 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
     </article>
   </div>
   
-  <!-- Static Footer - Always visible, even without JS -->
-  <footer class="static-footer">
-    <div class="static-footer-inner">
-      <div class="static-footer-grid">
-        <div class="static-footer-brand">
-          <a href="/" class="static-footer-logo">Del Sol Prime Homes</a>
-          <p>Your trusted partner for luxury real estate investments on the Costa del Sol.</p>
-        </div>
-        <div class="static-footer-contact">
-          <h4>Contact Us</h4>
-          <p>📍 Marbella, Costa del Sol, Spain</p>
-          <p>📧 info@delsolprimehomes.com</p>
-          <p>📞 +34 952 123 456</p>
-        </div>
-        <div class="static-footer-links">
-          <h4>Quick Links</h4>
-          <a href="/blog">Blog</a>
-          <a href="/property-finder">Properties</a>
-          <a href="/faq">FAQ</a>
-          <a href="/brochure/marbella">Marbella Guide</a>
-        </div>
-        <div class="static-footer-links">
-          <h4>Legal</h4>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-        </div>
-      </div>
-      <div class="static-footer-bottom">
-        <p>© ${new Date().getFullYear()} Del Sol Prime Homes. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
   
   <!-- Production JS (React hydration - enhances the static page when JS loads) -->
   ${jsScripts}
