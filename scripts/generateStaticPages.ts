@@ -638,7 +638,6 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean): st
 </body>
 </html>`;
 }
-}
 
 /**
  * Check if a feature flag is enabled
