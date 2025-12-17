@@ -989,16 +989,28 @@ Return ONLY valid JSON:
         article.citation_status = 'pending';
         article.citation_failure_reason = 'Citations to be added during post-generation review';
 
-        // 11. FAQs (for MOFU/BOFU)
+        // 11. FAQs (for MOFU/BOFU) - Language-aware
         if (plan.funnelStage !== 'TOFU') {
-          const faqPrompt = `Generate 3-5 FAQ entities for: ${plan.headline}
+          const languageMap: Record<string, string> = {
+            'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
+            'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
+            'fi': 'Finnish', 'no': 'Norwegian'
+          };
+          const faqLanguageName = languageMap[job.language as string] || 'English';
+          
+          const faqPrompt = `Generate 3-5 FAQ entities for this article.
 
-Return ONLY valid JSON:
+CRITICAL: Both questions AND answers MUST be written in ${faqLanguageName}. Do NOT write in English unless the article language is English.
+
+Article Language: ${faqLanguageName}
+Headline: ${plan.headline}
+
+Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
 {
   "faqs": [
     {
-      "question": "Question?",
-      "answer": "Concise answer (2-3 sentences)"
+      "question": "Question in ${faqLanguageName}?",
+      "answer": "Concise answer in ${faqLanguageName} (2-3 sentences)"
     }
   ]
 }`;
