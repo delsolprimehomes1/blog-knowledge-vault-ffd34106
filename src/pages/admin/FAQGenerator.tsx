@@ -44,6 +44,7 @@ export default function FAQGenerator() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [editingFaq, setEditingFaq] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch published articles
   const { data: articles = [], isLoading: articlesLoading } = useQuery({
@@ -577,6 +578,20 @@ export default function FAQGenerator() {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isRefreshing}
+                    onClick={async () => {
+                      setIsRefreshing(true);
+                      await refetchFaqPages();
+                      setIsRefreshing(false);
+                      toast.success('FAQ list refreshed');
+                    }}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
                   <div className="flex gap-2">
                     <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                       {draftCount} Draft
