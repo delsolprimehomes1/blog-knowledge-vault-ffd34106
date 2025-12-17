@@ -45,6 +45,7 @@ interface ValidationResult {
   slug: string;
   headline: string;
   language: string;
+  funnel_stage: string;
   hasMidCTA: boolean;
   hasFAQ: boolean;
   hasSpeakable: boolean;
@@ -73,6 +74,7 @@ export default function SystemCheck() {
   // Bulk fix state
   const [isFixingCanonicals, setIsFixingCanonicals] = useState(false);
   const [isFixingAuthors, setIsFixingAuthors] = useState(false);
+  const [isFixingCTAs, setIsFixingCTAs] = useState(false);
   const [selectedAuthorId, setSelectedAuthorId] = useState<string>('');
 
   const phases = [
@@ -213,6 +215,7 @@ export default function SystemCheck() {
         slug: article.slug,
         headline: article.headline,
         language: article.language,
+        funnel_stage: article.funnel_stage || '',
         hasMidCTA,
         hasFAQ,
         hasSpeakable,
@@ -361,6 +364,83 @@ export default function SystemCheck() {
       console.error(error);
     } finally {
       setIsFixingAuthors(false);
+    }
+  };
+
+  const fixCTAs = async () => {
+    const articlesNeedingCTA = validationResults.filter(r => !r.hasMidCTA);
+    if (articlesNeedingCTA.length === 0) {
+      toast.info('All articles already have CTAs configured');
+      return;
+    }
+
+    setIsFixingCTAs(true);
+    try {
+      // Get all published articles grouped by language and funnel stage for CTA candidates
+      const { data: allArticles, error: fetchError } = await supabase
+        .from('blog_articles')
+        .select('id, slug, headline, language, funnel_stage, category')
+        .eq('status', 'published');
+      
+      if (fetchError) throw fetchError;
+
+      // Group articles by language and funnel stage
+      const articlesByLangStage: Record<string, Record<string, typeof allArticles>> = {};
+      for (const article of allArticles || []) {
+        const lang = article.language;
+        const stage = article.funnel_stage;
+        if (!articlesByLangStage[lang]) articlesByLangStage[lang] = {};
+        if (!articlesByLangStage[lang][stage]) articlesByLangStage[lang][stage] = [];
+        articlesByLangStage[lang][stage].push(article);
+      }
+
+      let fixedCount = 0;
+      for (const article of articlesNeedingCTA) {
+        // BOFU articles use contact CTA, not article CTAs
+        if (article.funnel_stage === 'BOFU') continue;
+
+        // Determine target stage
+        const targetStage = article.funnel_stage === 'TOFU' ? 'MOFU' : 'BOFU';
+        
+        // Get candidates from same language and target stage
+        const candidates = articlesByLangStage[article.language]?.[targetStage] || [];
+        
+        if (candidates.length === 0) continue;
+
+        // Prefer same category, then fall back to any
+        const originalArticle = allArticles?.find(a => a.id === article.id);
+        const sameCategory = candidates.filter(c => c.category === originalArticle?.category && c.id !== article.id);
+        const otherCategory = candidates.filter(c => c.category !== originalArticle?.category && c.id !== article.id);
+        
+        // Pick up to 2 CTAs (prefer same category)
+        const ctaIds: string[] = [];
+        for (const c of [...sameCategory, ...otherCategory]) {
+          if (ctaIds.length >= 2) break;
+          if (!ctaIds.includes(c.id)) ctaIds.push(c.id);
+        }
+
+        if (ctaIds.length > 0) {
+          const { error: updateError } = await supabase
+            .from('blog_articles')
+            .update({ cta_article_ids: ctaIds })
+            .eq('id', article.id);
+          
+          if (updateError) {
+            console.error(`Failed to update CTAs for ${article.slug}:`, updateError);
+          } else {
+            fixedCount++;
+          }
+        }
+      }
+
+      toast.success(`Set CTAs for ${fixedCount} articles`);
+      await refetchArticles();
+      runValidation();
+    } catch (error) {
+      toast.error('Failed to set CTAs');
+      console.error(error);
+    } finally {
+      setIsFixingCTAs(false);
     }
   };
 
@@ -742,6 +822,19 @@ export default function SystemCheck() {
                               <Link2 className="h-4 w-4 mr-2" />
                             )}
                             Set Canonical URLs ({missingCanonical})
+                          </Button>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={fixCTAs}
+                            disabled={isFixingCTAs || missingCTA === 0}
+                          >
+                            {isFixingCTAs ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                            )}
+                            Set CTAs ({missingCTA})
                           </Button>
                         </div>
                         <div className="flex items-center gap-2">
