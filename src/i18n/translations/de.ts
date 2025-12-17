@@ -12,6 +12,7 @@ export const de = {
     aboutUs: "Über Uns",
     buyersGuide: "Käuferhandbuch",
     blog: "Blog",
+    faq: "FAQ",
   },
   hero: {
     trustBadges: {

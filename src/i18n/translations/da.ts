@@ -12,6 +12,7 @@ export const da = {
     aboutUs: "Om Os",
     buyersGuide: "Købers Guide",
     blog: "Blog",
+    faq: "FAQ",
   },
   hero: {
     trustBadges: {

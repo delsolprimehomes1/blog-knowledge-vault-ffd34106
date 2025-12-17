@@ -12,6 +12,7 @@ export const pl = {
     aboutUs: "O Nas",
     buyersGuide: "Przewodnik Kupującego",
     blog: "Blog",
+    faq: "FAQ",
   },
   hero: {
     trustBadges: {

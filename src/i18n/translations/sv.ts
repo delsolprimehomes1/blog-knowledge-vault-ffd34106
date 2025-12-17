@@ -12,6 +12,7 @@ export const sv = {
     aboutUs: "Om Oss",
     buyersGuide: "Köparguide",
     blog: "Blogg",
+    faq: "FAQ",
   },
   hero: {
     trustBadges: {
