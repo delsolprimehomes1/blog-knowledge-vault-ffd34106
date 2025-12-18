@@ -25,9 +25,20 @@ interface CitationHealth {
   times_failed: number;
 }
 
+interface ServerStats {
+  total: number;
+  healthy: number;
+  broken: number;
+  unreachable: number;
+  redirected: number;
+  slow: number;
+  unchecked: number;
+}
+
 interface CitationHealthAnalysisProps {
   healthData: CitationHealth[];
   onFindReplacement: (url: string) => void;
+  serverStats?: ServerStats;
 }
 
 const StatCard = ({ 
@@ -65,12 +76,22 @@ const StatCard = ({
   );
 };
 
-export const CitationHealthAnalysis = ({ healthData, onFindReplacement }: CitationHealthAnalysisProps) => {
-  const stats = healthData.reduce((acc, item) => {
-    const key = item.status || 'unchecked';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+export const CitationHealthAnalysis = ({ healthData, onFindReplacement, serverStats }: CitationHealthAnalysisProps) => {
+  // Use server stats if provided (accurate), otherwise fall back to client calculation (limited to 1000 rows)
+  const stats = serverStats 
+    ? {
+        unchecked: serverStats.unchecked,
+        healthy: serverStats.healthy,
+        broken: serverStats.broken,
+        unreachable: serverStats.unreachable,
+        redirected: serverStats.redirected,
+        slow: serverStats.slow
+      }
+    : healthData.reduce((acc, item) => {
+        const key = item.status || 'unchecked';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
   const getStatusBadge = (status: CitationHealth['status']) => {
     if (status === null) return <Badge variant="outline"><Clock className="mr-1 h-3 w-3" />Unchecked</Badge>;

@@ -125,7 +125,15 @@ const CitationHealth = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_citation_health_stats");
       if (error) throw error;
-      return data as { total: number; healthy: number; broken: number; unchecked: number };
+      return data as { 
+        total: number; 
+        healthy: number; 
+        broken: number; 
+        unreachable: number;
+        redirected: number;
+        slow: number;
+        unchecked: number 
+      };
     },
   });
 
@@ -497,6 +505,7 @@ const CitationHealth = () => {
           <CitationHealthAnalysis 
             healthData={healthData} 
             onFindReplacement={handleFindReplacement}
+            serverStats={statsData}
           />
         )}
 
