@@ -5,6 +5,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to safely extract domain from URL
+function extractDomainSafe(url: string): string | null {
+  try {
+    // Clean the URL first - remove leading colons or spaces
+    const cleanedUrl = url.trim().replace(/^[:\s]+/, '');
+    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
+      return null;
+    }
+    return new URL(cleanedUrl).hostname.replace('www.', '');
+  } catch {
+    return null;
+  }
+}
+
+// Helper to validate URL
+function isValidUrl(url: string): boolean {
+  try {
+    const cleanedUrl = url.trim().replace(/^[:\s]+/, '');
+    if (!cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
+      return false;
+    }
+    new URL(cleanedUrl);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -34,6 +62,7 @@ Deno.serve(async (req) => {
     const truthSet = new Map<string, Set<string>>();
     const urlToSource = new Map<string, string>();
     let totalCitations = 0;
+    let skippedInvalidUrls = 0;
 
     for (const article of articles) {
       if (!article.external_citations) continue;
@@ -42,8 +71,16 @@ Deno.serve(async (req) => {
       for (const citation of citations) {
         if (!citation.url) continue;
         
-        totalCitations++;
         const url = citation.url.trim();
+        
+        // Validate URL before adding
+        if (!isValidUrl(url)) {
+          console.log(`⚠️ Skipping invalid URL: ${url.substring(0, 50)}...`);
+          skippedInvalidUrls++;
+          continue;
+        }
+        
+        totalCitations++;
         
         if (!truthSet.has(url)) {
           truthSet.set(url, new Set());
@@ -53,7 +90,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`✅ Scanned ${articles.length} articles, found ${truthSet.size} unique URLs (${totalCitations} total citations)`);
+    console.log(`✅ Scanned ${articles.length} articles, found ${truthSet.size} unique URLs (${totalCitations} total citations, ${skippedInvalidUrls} invalid skipped)`);
 
     // Step 2: Compare with health table
     console.log('🔍 Step 2: Comparing with external_citation_health table...');
@@ -135,26 +172,32 @@ Deno.serve(async (req) => {
 
     let newHealthRecords = 0;
     if (missingUrls.length > 0) {
+      // Use null status initially - let the health check determine status
       const newRecords = missingUrls.map(url => ({
         url,
         source_name: urlToSource.get(url) || 'Unknown',
-        status: 'pending',
+        status: null, // null is allowed, 'pending' is not a valid enum value
         first_seen_at: new Date().toISOString(),
         last_checked_at: null,
         times_verified: 0,
         times_failed: 0,
       }));
 
-      const { error: insertError, count } = await supabase
-        .from('external_citation_health')
-        .insert(newRecords);
+      // Insert in batches of 100 to avoid potential issues
+      for (let i = 0; i < newRecords.length; i += 100) {
+        const batch = newRecords.slice(i, i + 100);
+        const { error: insertError } = await supabase
+          .from('external_citation_health')
+          .insert(batch);
 
-      if (!insertError && count !== null) {
-        newHealthRecords = count;
-        console.log(`✅ Created ${newHealthRecords} new health records`);
-      } else if (insertError) {
-        console.error('Failed to insert new health records:', insertError);
+        if (insertError) {
+          console.error(`Failed to insert batch ${i/100 + 1}:`, insertError);
+        } else {
+          newHealthRecords += batch.length;
+        }
       }
+      
+      console.log(`✅ Created ${newHealthRecords} new health records`);
     } else {
       console.log('✨ All URLs already tracked');
     }
@@ -165,7 +208,7 @@ Deno.serve(async (req) => {
     // First, delete all existing tracking records
     await supabase.from('citation_usage_tracking').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-    // Build new tracking records
+    // Build new tracking records - only for valid URLs
     const trackingRecords: any[] = [];
     for (const article of articles) {
       if (!article.external_citations) continue;
@@ -174,11 +217,17 @@ Deno.serve(async (req) => {
       citations.forEach((citation, index) => {
         if (!citation.url) return;
         
-        const domain = new URL(citation.url).hostname.replace('www.', '');
+        const url = citation.url.trim();
+        
+        // Skip invalid URLs
+        if (!isValidUrl(url)) return;
+        
+        const domain = extractDomainSafe(url);
+        if (!domain) return;
         
         trackingRecords.push({
           article_id: article.id,
-          citation_url: citation.url.trim(),
+          citation_url: url,
           citation_source: citation.source || 'Unknown',
           citation_domain: domain,
           anchor_text: citation.text || null,
@@ -192,16 +241,20 @@ Deno.serve(async (req) => {
 
     let trackingRecordsUpdated = 0;
     if (trackingRecords.length > 0) {
-      const { error: trackInsertError, count } = await supabase
-        .from('citation_usage_tracking')
-        .insert(trackingRecords);
+      // Insert in batches
+      for (let i = 0; i < trackingRecords.length; i += 100) {
+        const batch = trackingRecords.slice(i, i + 100);
+        const { error: trackInsertError } = await supabase
+          .from('citation_usage_tracking')
+          .insert(batch);
 
-      if (!trackInsertError && count !== null) {
-        trackingRecordsUpdated = count;
-        console.log(`✅ Created ${trackingRecordsUpdated} tracking records`);
-      } else if (trackInsertError) {
-        console.error('Failed to insert tracking records:', trackInsertError);
+        if (trackInsertError) {
+          console.error(`Failed to insert tracking batch ${i/100 + 1}:`, trackInsertError);
+        } else {
+          trackingRecordsUpdated += batch.length;
+        }
       }
+      console.log(`✅ Created ${trackingRecordsUpdated} tracking records`);
     }
 
     // Step 6: Return sync report
@@ -210,6 +263,7 @@ Deno.serve(async (req) => {
       articlesScanned: articles.length,
       uniqueUrlsFound: truthSet.size,
       totalCitations,
+      skippedInvalidUrls,
       staleEntriesDeleted: deletedHealth + deletedReplacements + deletedTracking,
       newHealthRecordsCreated: newHealthRecords,
       trackingRecordsUpdated,

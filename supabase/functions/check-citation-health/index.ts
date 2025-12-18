@@ -143,7 +143,7 @@ Respond in JSON format:
         'Authorization': `Bearer ${perplexityKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-chat',
+        model: 'sonar',
         messages: [
           {
             role: 'system',
