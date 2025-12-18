@@ -689,7 +689,9 @@ serve(async (req) => {
       auto_apply = true,
       use_approved_domains_only = true,
       diversity_threshold = 20,
-      max_citations_per_article = 5
+      max_citations_per_article = 5,
+      limit = 10,
+      max_articles = 5
     } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -702,7 +704,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚀 Starting intelligent citation enhancement with tiered batch search...');
+    console.log(`🚀 Starting intelligent citation enhancement (limit: ${limit}, max_articles: ${max_articles})...`);
 
     // Get domain usage stats
     const { data: usageStats } = await supabase
@@ -716,7 +718,7 @@ serve(async (req) => {
       .from('external_citation_health')
       .select('url, status')
       .in('status', ['dead', 'broken', 'redirect_broken'])
-      .limit(50);
+      .limit(limit);
 
     if (brokenError) throw brokenError;
 
@@ -739,8 +741,8 @@ serve(async (req) => {
       });
     }
 
-    const articlesToFix = Array.from(articlesMap.values()).slice(0, 20);
-    console.log(`📝 Processing ${articlesToFix.length} articles`);
+    const articlesToFix = Array.from(articlesMap.values()).slice(0, max_articles);
+    console.log(`📝 Processing ${articlesToFix.length} articles (max: ${max_articles})`);
 
     let totalCitationsAdded = 0;
     let articlesUpdated = 0;

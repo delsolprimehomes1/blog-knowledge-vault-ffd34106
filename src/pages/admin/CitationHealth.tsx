@@ -16,6 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Activity, AlertCircle, CheckCircle2, ExternalLink, Loader2, RefreshCw,
   TrendingDown, TrendingUp, XCircle, Clock, ArrowRight, ThumbsUp, ThumbsDown, Play, Undo2
 } from "lucide-react";
@@ -71,6 +78,7 @@ const CitationHealth = () => {
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkResults, setBulkResults] = useState<any[]>([]);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
+  const [batchSize, setBatchSize] = useState<number>(5);
 
   const { data: healthData, isLoading } = useQuery({
     queryKey: ["citation-health"],
@@ -244,7 +252,9 @@ const CitationHealth = () => {
           auto_apply: true,
           use_approved_domains_only: true,
           diversity_threshold: 20,
-          max_citations_per_article: 5
+          max_citations_per_article: 5,
+          limit: batchSize,
+          max_articles: Math.ceil(batchSize / 2)
         }
       });
 
@@ -256,8 +266,9 @@ const CitationHealth = () => {
       setAutoFixProgress(null);
       
       if (result.success) {
-        toast.success(`✨ Intelligent citation enhancement complete!`, {
-          description: `Enhanced ${result.articlesUpdated} articles with ${result.citationsAdded} new citations from ${result.domainsUsed} diverse approved sources.`,
+        const remaining = stats.broken - (result.citationsAdded || 0);
+        toast.success(`✨ Fixed ${result.citationsAdded || 0} broken links!`, {
+          description: `Enhanced ${result.articlesUpdated} articles. ${remaining > 0 ? `${remaining} broken links remaining - run again to fix more.` : 'All broken links fixed!'}`,
           duration: 6000
         });
       }
@@ -269,7 +280,9 @@ const CitationHealth = () => {
       queryClient.invalidateQueries({ queryKey: ['article-revisions'] });
     },
     onError: () => {
-      toast.error("Auto-fix failed");
+      setIsAutoFixing(false);
+      setAutoFixProgress(null);
+      toast.error("Auto-fix failed - try a smaller batch size");
     }
   });
 
@@ -381,17 +394,30 @@ const CitationHealth = () => {
                 </>
               )}
             </Button>
-            <Button 
-              onClick={() => autoFixBrokenLinks.mutate()}
-              disabled={autoFixBrokenLinks.isPending || stats.broken === 0}
-              variant="default"
-            >
-              {autoFixBrokenLinks.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fixing...</>
-              ) : (
-                <>🔧 Auto-Fix Broken Links</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={batchSize.toString()} onValueChange={(v) => setBatchSize(parseInt(v))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue placeholder="Batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={() => autoFixBrokenLinks.mutate()}
+                disabled={autoFixBrokenLinks.isPending || stats.broken === 0}
+                variant="default"
+              >
+                {autoFixBrokenLinks.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fixing {batchSize}...</>
+                ) : (
+                  <>🔧 Auto-Fix ({batchSize})</>
+                )}
+              </Button>
+            </div>
             <Button 
               onClick={() => { setIsRunningCheck(true); runHealthCheck.mutateAsync().finally(() => setIsRunningCheck(false)); }} 
               disabled={isRunningCheck}
