@@ -77,7 +77,6 @@ const CitationHealth = () => {
   } | null>(null);
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkResults, setBulkResults] = useState<any[]>([]);
-  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 });
   const [batchSize, setBatchSize] = useState<number>(5);
 
   const { data: healthData, isLoading } = useQuery({
@@ -138,40 +137,27 @@ const CitationHealth = () => {
 
   const runHealthCheck = useMutation({
     mutationFn: async () => {
-      setCheckProgress({ current: 0, total: 100 });
-      
       const { data, error } = await supabase.functions.invoke("check-citation-health");
       if (error) throw error;
-      
-      // Fetch actual database state after check completes
-      const { data: actualHealth } = await supabase
-        .from('external_citation_health')
-        .select('status')
-        .gte('last_checked_at', new Date(Date.now() - 60000).toISOString());
-      
-      // Calculate real counts from database
-      const realCounts = {
-        healthy: actualHealth?.filter(h => h.status === 'healthy').length || 0,
-        broken: actualHealth?.filter(h => h.status === 'broken').length || 0,
-        unreachable: actualHealth?.filter(h => h.status === 'unreachable').length || 0,
-        redirected: actualHealth?.filter(h => h.status === 'redirected').length || 0,
-        slow: actualHealth?.filter(h => h.status === 'slow').length || 0,
-      };
-      
-      setCheckProgress({ current: 100, total: 100 });
-      return { ...data, realCounts };
+      return data;
     },
     onSuccess: (data) => {
-      const { realCounts } = data;
-      const problemCount = (realCounts?.broken || 0) + (realCounts?.unreachable || 0);
-      toast.success("Citation health check complete!", { 
-        description: `Checked ${data.checked} citations. Found ${problemCount} broken links.` 
-      });
+      const problemCount = (data?.broken || 0) + (data?.unreachable || 0);
+      const remaining = data?.remaining || 0;
+      
+      if (remaining > 0) {
+        toast.success(`Batch complete! ${data.checked} checked, ${remaining} remaining`, { 
+          description: `Found ${data.healthy || 0} healthy, ${problemCount} broken. Click again to continue.` 
+        });
+      } else {
+        toast.success("All citations checked!", { 
+          description: `Found ${data.healthy || 0} healthy, ${problemCount} broken links.` 
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["citation-health"] });
-      setCheckProgress({ current: 0, total: 0 });
     },
-    onError: () => {
-      setCheckProgress({ current: 0, total: 0 });
+    onError: (error: Error) => {
+      toast.error(`Health check failed: ${error.message}`);
     }
   });
 
@@ -429,20 +415,6 @@ const CitationHealth = () => {
             </Button>
           </div>
         </div>
-
-        {isRunningCheck && checkProgress.total > 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Checking citations...</span>
-                  <span>{Math.round((checkProgress.current / checkProgress.total) * 100)}%</span>
-                </div>
-                <Progress value={(checkProgress.current / checkProgress.total) * 100} />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {stats.unchecked > 0 && (
           <Alert>

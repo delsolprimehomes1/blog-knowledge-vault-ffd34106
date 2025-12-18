@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const BATCH_SIZE = 25; // Process 25 URLs per run to avoid timeout
+const DELAY_MS = 200; // 200ms between requests
+
 interface CitationHealthResult {
   url: string;
   status: 'healthy' | 'broken' | 'redirected' | 'slow' | 'unreachable';
@@ -21,10 +24,10 @@ async function checkCitationHealth(url: string): Promise<CitationHealthResult> {
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout per URL
     
     const response = await fetch(url, {
-      method: 'HEAD', // Use HEAD for faster checks
+      method: 'HEAD',
       signal: controller.signal,
       redirect: 'follow',
       headers: {
@@ -42,7 +45,7 @@ async function checkCitationHealth(url: string): Promise<CitationHealthResult> {
         const getResponse = await fetch(url, {
           method: 'GET',
           redirect: 'follow',
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(10000),
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; DelSolPrimeBot/1.0; +https://www.delsolprimehomes.com)'
           }
@@ -102,133 +105,59 @@ async function checkCitationHealth(url: string): Promise<CitationHealthResult> {
   }
 }
 
-async function findBetterCitation(originalUrl: string, context: string): Promise<{
-  replacementUrl: string;
-  replacementSource: string;
-  reason: string;
-  confidenceScore: number;
-} | null> {
-  const perplexityKey = Deno.env.get('PERPLEXITY_API_KEY');
-  
-  if (!perplexityKey) {
-    console.log('⚠️ PERPLEXITY_API_KEY not set, skipping replacement suggestion');
-    return null;
-  }
-  
-  try {
-    const prompt = `The following citation URL is broken or inaccessible: ${originalUrl}
-
-Context where it was used: ${context}
-
-Please find a reliable alternative source that covers the same topic. Provide:
-1. A working URL to a credible source
-2. The name of the source
-3. Brief reason why this is a good replacement
-4. Confidence score (0-100) that this replacement is relevant
-
-Prefer: government sources (.gov), educational institutions (.edu), established news organizations, industry authorities.
-
-Respond in JSON format:
-{
-  "url": "https://...",
-  "source": "Source Name",
-  "reason": "Brief explanation",
-  "confidence": 85
-}`;
-
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${perplexityKey}`,
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a citation research assistant. Find high-quality replacement sources for broken citations.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 500,
-      }),
-    });
-    
-    if (!response.ok) {
-      console.error('Perplexity API error:', await response.text());
-      return null;
-    }
-    
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) return null;
-    
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    
-    const suggestion = JSON.parse(jsonMatch[0]);
-    
-    return {
-      replacementUrl: suggestion.url,
-      replacementSource: suggestion.source,
-      reason: suggestion.reason,
-      confidenceScore: suggestion.confidence,
-    };
-    
-  } catch (error) {
-    console.error('Error finding replacement citation:', error);
-    return null;
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🔍 Starting citation health check...');
+    console.log('🔍 Starting citation health check (batch mode)...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch all unique citations from tracking table
+    // First, check how many unchecked citations exist
+    const { count: uncheckedCount } = await supabase
+      .from('external_citation_health')
+      .select('*', { count: 'exact', head: true })
+      .is('status', null);
+
+    console.log(`📊 Total unchecked citations: ${uncheckedCount || 0}`);
+
+    // Fetch batch of unchecked citations from external_citation_health table
     const { data: citations, error: fetchError } = await supabase
-      .from('citation_usage_tracking')
-      .select('citation_url, citation_source, anchor_text, article_id')
-      .eq('is_active', true);
+      .from('external_citation_health')
+      .select('url, source_name')
+      .is('status', null)
+      .limit(BATCH_SIZE);
 
     if (fetchError) throw fetchError;
 
     if (!citations || citations.length === 0) {
-      console.log('No citations to check');
+      console.log('✅ No unchecked citations remaining');
       return new Response(
-        JSON.stringify({ success: true, checked: 0, message: 'No citations found' }),
+        JSON.stringify({ 
+          success: true, 
+          checked: 0, 
+          remaining: 0,
+          message: 'All citations have been checked' 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`📊 Checking ${citations.length} citations...`);
+    console.log(`🔄 Processing batch of ${citations.length} citations...`);
 
-    // Get unique URLs
-    const uniqueUrls = [...new Set(citations.map(c => c.citation_url))];
-    
     let healthyCount = 0;
     let brokenCount = 0;
     let redirectedCount = 0;
     let slowCount = 0;
+    let unreachableCount = 0;
 
-    // Check each URL (with rate limiting)
-    for (const url of uniqueUrls) {
-      const healthResult = await checkCitationHealth(url);
+    // Check each URL in the batch
+    for (const citation of citations) {
+      const healthResult = await checkCitationHealth(citation.url);
       
       // Fetch existing record to get current counter values
       const { data: existingHealth } = await supabase
@@ -244,12 +173,10 @@ serve(async (req) => {
       const newTimesVerified = (existingHealth?.times_verified || 0) + (isSuccessful ? 1 : 0);
       const newTimesFailed = (existingHealth?.times_failed || 0) + (isFailed ? 1 : 0);
       
-      // Update external_citation_health table
-      const { error: upsertError } = await supabase
+      // Update the record with health status
+      const { error: updateError } = await supabase
         .from('external_citation_health')
-        .upsert({
-          url: healthResult.url,
-          source_name: citations.find(c => c.citation_url === url)?.citation_source || 'Unknown',
+        .update({
           last_checked_at: new Date().toISOString(),
           status: healthResult.status,
           http_status_code: healthResult.httpStatusCode,
@@ -258,64 +185,50 @@ serve(async (req) => {
           page_title: healthResult.pageTitle,
           times_verified: newTimesVerified,
           times_failed: newTimesFailed,
-        }, {
-          onConflict: 'url'
-        });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('url', healthResult.url);
 
-      if (upsertError) {
-        console.error(`Error updating health for ${url}:`, upsertError);
+      if (updateError) {
+        console.error(`Error updating health for ${citation.url}:`, updateError);
+      } else {
+        console.log(`✓ ${healthResult.status}: ${citation.url}`);
       }
 
       // Track counts
       switch (healthResult.status) {
         case 'healthy': healthyCount++; break;
-        case 'broken': 
-        case 'unreachable': 
-          brokenCount++; 
-          
-          // Find replacement suggestion for broken links
-          const citationContext = citations.find(c => c.citation_url === url)?.anchor_text || '';
-          const replacement = await findBetterCitation(url, citationContext);
-          
-          if (replacement) {
-            console.log(`💡 Found replacement for ${url}`);
-            
-            await supabase.from('dead_link_replacements').upsert({
-              original_url: url,
-              original_source: citations.find(c => c.citation_url === url)?.citation_source || 'Unknown',
-              replacement_url: replacement.replacementUrl,
-              replacement_source: replacement.replacementSource,
-              replacement_reason: replacement.reason,
-              confidence_score: replacement.confidenceScore,
-              suggested_by: 'automated-health-check',
-              status: 'pending',
-            }, {
-              onConflict: 'original_url'
-            });
-          }
-          break;
+        case 'broken': brokenCount++; break;
+        case 'unreachable': unreachableCount++; break;
         case 'redirected': redirectedCount++; break;
         case 'slow': slowCount++; break;
       }
 
-      // Rate limiting: wait 500ms between requests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Rate limiting between requests
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS));
     }
 
-    console.log('✅ Citation health check complete');
+    const remainingUnchecked = (uncheckedCount || 0) - citations.length;
+
+    console.log('✅ Batch health check complete');
+    console.log(`   Checked: ${citations.length}`);
     console.log(`   Healthy: ${healthyCount}`);
     console.log(`   Broken: ${brokenCount}`);
+    console.log(`   Unreachable: ${unreachableCount}`);
     console.log(`   Redirected: ${redirectedCount}`);
     console.log(`   Slow: ${slowCount}`);
+    console.log(`   Remaining unchecked: ${remainingUnchecked}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        checked: uniqueUrls.length,
+        checked: citations.length,
         healthy: healthyCount,
         broken: brokenCount,
+        unreachable: unreachableCount,
         redirected: redirectedCount,
         slow: slowCount,
+        remaining: remainingUnchecked,
         timestamp: new Date().toISOString(),
       }),
       {
