@@ -15,7 +15,7 @@ const navigation = [
   { name: "Authors", href: "/admin/authors", icon: Users },
   { name: "AI Tools", href: "/admin/ai-tools", icon: Bot },
   { name: "Cluster Generator", href: "/admin/cluster-generator", icon: Sparkles },
-  { name: "FAQ Generator", href: "/admin/faq-generator", icon: HelpCircle },
+  { name: "Q&A Generator", href: "/admin/qa-generator", icon: HelpCircle },
   { name: "Bulk Article Linker", href: "/admin/tools/bulk-article-linker", icon: Link2 },
   { name: "Batch Image Generation", href: "/admin/tools/batch-image-generation", icon: Image },
   { name: "Speakable Fixes", href: "/admin/tools/bulk-speakable-regeneration", icon: Languages },
