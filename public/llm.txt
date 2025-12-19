@@ -30,7 +30,7 @@ Lead Consultant: Hans Beeckman
 ## Key Content Sections
 
 ### Blog Articles: /blog/
-Over 200 expert guides covering:
+Over 940 expert guides covering:
 - Property buying step-by-step guides
 - Tax and legal advice by nationality
 - Market analysis and trends
@@ -56,6 +56,15 @@ Detailed city brochures for:
 - Manilva
 - Sotogrande
 - Málaga
+
+### Glossary: /glossary
+65+ Spanish property terms defined:
+- Legal & Tax: NIE, IBI, ITP, AJD, IVA, Plusvalía, Wealth Tax
+- Property: Escritura, Nota Simple, Urbanización, Off-Plan
+- Visa & Residency: Golden Visa, Non-Lucrative Visa, TIE, 90-Day Rule
+- Financial: LTV, Hipoteca, Euribor, Rental Yield
+- Location: Costa del Sol, Golden Mile, Puerto Banús
+- Process: Due Diligence, Completion, Arras, Gestoría
 
 ## Quick Facts for Citation
 

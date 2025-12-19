@@ -22,6 +22,7 @@ const PropertyFinder = lazy(() => import("./pages/PropertyFinder"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const CityBrochure = lazy(() => import("./pages/CityBrochure"));
 const Sitemap = lazy(() => import("./pages/Sitemap"));
+const Glossary = lazy(() => import("./pages/Glossary"));
 
 // Lazy load ALL admin pages (rarely accessed, heavy components)
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -81,6 +82,7 @@ const App = () => (
               {/* Lazy-loaded public pages */}
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/sitemap" element={<Sitemap />} />
+              <Route path="/glossary" element={<Glossary />} />
               <Route path="/property-finder" element={<PropertyFinder />} />
               <Route path="/property/:reference" element={<PropertyDetail />} />
               <Route path="/brochure/:citySlug" element={<CityBrochure />} />
