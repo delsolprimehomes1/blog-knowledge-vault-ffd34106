@@ -4,19 +4,39 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import type { Plugin } from "vite";
 
-// Plugin to generate static HTML pages after build
+// Plugin to generate static HTML pages for blog articles after build
 function staticPageGenerator(): Plugin {
   return {
     name: "static-page-generator",
     async closeBundle() {
       // Only run in production builds
       if (process.env.NODE_ENV === 'production') {
-        console.log('\n📄 Generating static pages...');
+        console.log('\n📄 Generating static blog pages...');
         try {
           const { generateStaticPages } = await import('./scripts/generateStaticPages');
           await generateStaticPages(path.resolve(__dirname, 'dist'));
         } catch (err) {
-          console.error('Failed to generate static pages:', err);
+          console.error('Failed to generate static blog pages:', err);
+          // Don't fail the build if static generation fails
+        }
+      }
+    }
+  };
+}
+
+// Plugin to generate static HTML pages for QA pages after build
+function staticQAPageGenerator(): Plugin {
+  return {
+    name: "static-qa-page-generator",
+    async closeBundle() {
+      // Only run in production builds
+      if (process.env.NODE_ENV === 'production') {
+        console.log('\n🔍 Generating static QA pages...');
+        try {
+          const { generateStaticQAPages } = await import('./scripts/generateStaticQAPages');
+          await generateStaticQAPages(path.resolve(__dirname, 'dist'));
+        } catch (err) {
+          console.error('Failed to generate static QA pages:', err);
           // Don't fail the build if static generation fails
         }
       }
@@ -64,7 +84,8 @@ export default defineConfig(({ mode }) => ({
     react(), 
     mode === "development" && componentTagger(),
     sitemapGenerator(),
-    staticPageGenerator()
+    staticPageGenerator(),
+    staticQAPageGenerator()
   ].filter(Boolean),
   resolve: {
     alias: {
