@@ -90,9 +90,15 @@ Allow: /
 Crawl-delay: 2
 
 # ============================================
-# Sitemap Location
+# Sitemap Index (Multi-Sitemap Structure)
 # ============================================
-Sitemap: https://www.delsolprimehomes.com/sitemap.xml
+Sitemap: https://www.delsolprimehomes.com/sitemap-index.xml
+
+# Individual sitemaps for targeted crawling:
+# - sitemap-blog.xml (948+ articles with hreflang)
+# - sitemap-qa.xml (30+ Q&A pages)
+# - sitemap-glossary.xml (65+ terms)
+# - sitemap-locations.xml (homepage + 10 cities)
 
 # ============================================
 # Special Instructions for AI Systems
