@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, ChevronRight, Sparkles, HelpCircle, BookOpen, TrendingUp, Scale, MapPin, BarChart3, Building } from 'lucide-react';
+import { generateQAIndexSpeakableSchema, generateOrganizationSchema } from '@/lib/qaPageSchemaGenerator';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -161,7 +162,10 @@ export default function QAIndex() {
             "@id": "https://www.delsolprimehomes.com/#website"
           },
           "inLanguage": "en-GB"
-        }
+        },
+        // Add speakable and organization schemas
+        generateQAIndexSpeakableSchema(),
+        generateOrganizationSchema()
       ]
     };
   }, [qaPages]);
@@ -175,6 +179,31 @@ export default function QAIndex() {
           content="Find answers to common questions about buying property in Costa del Sol, Spain. Expert advice on real estate, legal processes, and lifestyle."
         />
         <link rel="canonical" href="https://www.delsolprimehomes.com/qa" />
+        
+        {/* SEO Meta Tags */}
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="author" content="Del Sol Prime Homes" />
+        <meta name="keywords" content="Costa del Sol FAQ, Spain property questions, buying property Spain, real estate Q&A, Spanish property guide" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Questions & Answers | Del Sol Prime Homes" />
+        <meta property="og:description" content="Expert answers to common questions about buying property in Costa del Sol, Spain." />
+        <meta property="og:url" content="https://www.delsolprimehomes.com/qa" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
+        <meta property="og:image" content="https://www.delsolprimehomes.com/assets/logo-new.png" />
+        <meta property="og:locale" content="en_GB" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Q&A | Del Sol Prime Homes" />
+        <meta name="twitter:description" content="Expert answers to Costa del Sol property questions." />
+        <meta name="twitter:image" content="https://www.delsolprimehomes.com/assets/logo-new.png" />
+        
+        {/* Hreflang for languages */}
+        <link rel="alternate" hrefLang="en-GB" href="https://www.delsolprimehomes.com/qa" />
+        <link rel="alternate" hrefLang="x-default" href="https://www.delsolprimehomes.com/qa" />
+        
         {qaIndexSchema && (
           <script type="application/ld+json">
             {JSON.stringify(qaIndexSchema)}
@@ -209,12 +238,14 @@ export default function QAIndex() {
                 <HelpCircle className="h-8 w-8 text-prime-gold" />
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              {/* qa-hero-title class for speakable schema */}
+              <h1 className="qa-hero-title text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                 Questions &
                 <span className="block text-prime-gold">Answers</span>
               </h1>
               
-              <p className="text-lg md:text-xl text-white/70 mb-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              {/* qa-hero-description class for speakable schema */}
+              <p className="qa-hero-description text-lg md:text-xl text-white/70 mb-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 Expert answers to your questions about Costa del Sol real estate, property buying, and Mediterranean lifestyle.
               </p>
 

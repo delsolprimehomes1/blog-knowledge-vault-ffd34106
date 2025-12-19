@@ -38,11 +38,28 @@ Over 940 expert guides covering:
 - Investment strategies
 
 ### Q&A Section: /qa/
-Expert answers to common questions:
-- Property buying FAQs
-- Tax questions
-- Legal requirements
-- Visa and residency queries
+Expert answers to common questions organized by category:
+- Buying Guides: Step-by-step property purchase guidance
+- Investment Strategies: ROI analysis, rental yields, market timing
+- Legal & Regulations: NIE, Golden Visa, residency, taxes
+- Location Insights: Area comparisons, lifestyle factors
+- Market Analysis: Price trends, demand forecasts
+- Property Management: Rental, maintenance, community fees
+
+Features:
+- 50+ expert Q&A pages
+- Available in 10 languages
+- FAQPage schema for rich snippets
+- SpeakableSpecification for voice assistants
+- Author attribution for E-E-A-T
+- Related questions for deeper exploration
+
+Popular Questions:
+- How much does it cost to buy property in Spain?
+- What is the Golden Visa minimum investment?
+- Can UK citizens buy property in Spain after Brexit?
+- What is an NIE number and how do I get one?
+- What are Spanish property taxes?
 
 ### Location Guides: /brochure/
 Detailed city brochures for:

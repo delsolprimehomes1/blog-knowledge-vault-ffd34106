@@ -44,6 +44,51 @@ export function generateFAQPageSchema(qaPage: QAPage) {
   };
 }
 
+// Organization schema with expertise signals for E-E-A-T
+export function generateOrganizationSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${BASE_URL}/#organization`,
+    name: 'Del Sol Prime Homes',
+    url: BASE_URL,
+    logo: `${BASE_URL}/assets/logo-new.png`,
+    sameAs: ['https://www.linkedin.com/company/del-sol-prime-homes'],
+    knowsAbout: [
+      'Costa del Sol Real Estate',
+      'Spanish Property Law',
+      'Golden Visa Spain',
+      'Spanish Property Taxes',
+      'NIE Number Application',
+      'Spanish Mortgages for Non-Residents',
+    ],
+    areaServed: {
+      '@type': 'Place',
+      name: 'Costa del Sol, Andalusia, Spain',
+    },
+    expertise: [
+      'UK & Irish Buyer Assistance',
+      'Post-Brexit Property Guidance',
+      'Investment Property Analysis',
+      'Legal Due Diligence',
+    ],
+  };
+}
+
+// Speakable schema for QA Index page
+export function generateQAIndexSpeakableSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    '@id': `${BASE_URL}/qa#speakable`,
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['.qa-hero-title', '.qa-hero-description'],
+    },
+    inLanguage: 'en-GB',
+  };
+}
+
 export function generateWebPageSchema(qaPage: QAPage, author: Author | null) {
   return {
     '@context': 'https://schema.org',
@@ -123,14 +168,17 @@ export function generateQASpeakableSchema(qaPage: QAPage) {
 }
 
 export function generateAllQASchemas(qaPage: QAPage, author: Author | null) {
+  const graphItems: any[] = [
+    generateFAQPageSchema(qaPage),
+    generateWebPageSchema(qaPage, author),
+    generateQABreadcrumbSchema(qaPage),
+    generateQASpeakableSchema(qaPage),
+    generateOrganizationSchema(),
+  ];
+
   return {
     '@context': 'https://schema.org',
-    '@graph': [
-      generateFAQPageSchema(qaPage),
-      generateWebPageSchema(qaPage, author),
-      generateQABreadcrumbSchema(qaPage),
-      generateQASpeakableSchema(qaPage),
-    ],
+    '@graph': graphItems,
   };
 }
 

@@ -135,6 +135,11 @@ export default function QAPage() {
         <meta name="description" content={qaPage.meta_description} />
         <link rel="canonical" href={`${BASE_URL}/qa/${qaPage.slug}`} />
         
+        {/* SEO Meta Tags */}
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="author" content={author?.name || "Del Sol Prime Homes"} />
+        <meta name="keywords" content={`${qaPage.category || 'Costa del Sol'}, Spain property, real estate Q&A, ${qaPage.question_main.split(' ').slice(0, 5).join(' ')}`} />
+        
         {/* Hreflang for translations */}
         <link rel="alternate" hrefLang={langCode} href={`${BASE_URL}/qa/${qaPage.slug}`} />
         {siblings.map((sibling: any) => (
@@ -152,9 +157,21 @@ export default function QAPage() {
         <meta property="og:description" content={qaPage.meta_description} />
         <meta property="og:url" content={`${BASE_URL}/qa/${qaPage.slug}`} />
         <meta property="og:type" content="article" />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
+        <meta property="og:locale" content={langCode.replace('-', '_')} />
         {qaPage.featured_image_url && (
           <meta property="og:image" content={qaPage.featured_image_url} />
         )}
+        {qaPage.featured_image_url && <meta property="og:image:alt" content={qaPage.featured_image_alt || qaPage.question_main} />}
+        <meta property="article:published_time" content={qaPage.created_at} />
+        <meta property="article:modified_time" content={qaPage.updated_at} />
+        {author && <meta property="article:author" content={author.name} />}
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={qaPage.meta_title} />
+        <meta name="twitter:description" content={qaPage.meta_description} />
+        {qaPage.featured_image_url && <meta name="twitter:image" content={qaPage.featured_image_url} />}
 
         {/* JSON-LD - uses FAQPage schema type for SEO */}
         <script type="application/ld+json">{JSON.stringify(schemas)}</script>
@@ -206,8 +223,8 @@ export default function QAPage() {
                 </Badge>
               </div>
 
-              {/* Main Question (H1) */}
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              {/* Main Question (H1) - qa-question-main class for speakable schema */}
+              <h1 className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 {qaPage.question_main}
               </h1>
             </div>
