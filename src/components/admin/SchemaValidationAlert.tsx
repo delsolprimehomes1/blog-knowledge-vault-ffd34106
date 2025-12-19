@@ -32,7 +32,7 @@ export const SchemaValidationAlert = ({ article, author, reviewer }: SchemaValid
             <Badge variant="outline" className="bg-white dark:bg-background">
               ✅ Breadcrumb Schema
             </Badge>
-            {article.faq_entities && article.faq_entities.length > 0 && (
+            {article.qa_entities && article.qa_entities.length > 0 && (
               <Badge variant="outline" className="bg-white dark:bg-background">
                 ✅ FAQ Schema
               </Badge>

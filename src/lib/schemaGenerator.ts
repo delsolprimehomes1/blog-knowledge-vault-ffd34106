@@ -203,7 +203,7 @@ export function generateFAQSchema(
   article: BlogArticle,
   author: Author | null
 ): any | null {
-  if (!article.faq_entities || article.faq_entities.length === 0) {
+  if (!article.qa_entities || article.qa_entities.length === 0) {
     return null;
   }
   
@@ -214,7 +214,7 @@ export function generateFAQSchema(
     "@type": "FAQPage",
     "@id": `${baseUrl}/blog/${article.slug}#faq`,
     "inLanguage": article.language,
-    "mainEntity": article.faq_entities.map(faq => ({
+    "mainEntity": article.qa_entities.map(faq => ({
       "@type": "Question",
       "name": faq.question,
       "acceptedAnswer": {
@@ -250,13 +250,13 @@ export function validateSchemaRequirements(article: BlogArticle): SchemaValidati
   }
   
   // FAQ schema validation (if FAQ is enabled)
-  if (article.faq_entities && article.faq_entities.length > 0) {
-    article.faq_entities.forEach((faq, index) => {
-      if (!faq.question) {
-        errors.push({ field: `faq_entities[${index}].question`, message: "Question is required for FAQ schema", severity: "error" });
+  if (article.qa_entities && article.qa_entities.length > 0) {
+    article.qa_entities.forEach((qa, index) => {
+      if (!qa.question) {
+        errors.push({ field: `qa_entities[${index}].question`, message: "Question is required for FAQ schema", severity: "error" });
       }
-      if (!faq.answer) {
-        errors.push({ field: `faq_entities[${index}].answer`, message: "Answer is required for FAQ schema", severity: "error" });
+      if (!qa.answer) {
+        errors.push({ field: `qa_entities[${index}].answer`, message: "Answer is required for FAQ schema", severity: "error" });
       }
     });
   }

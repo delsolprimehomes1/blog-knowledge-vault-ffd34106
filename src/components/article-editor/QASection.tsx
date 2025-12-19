@@ -7,59 +7,59 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertCircle, Plus, Trash2, ChevronUp, ChevronDown, Code } from "lucide-react";
-import { FAQEntity } from "@/types/blog";
+import { QAEntity } from "@/types/blog";
 
-interface FAQSectionProps {
-  faqEntities: FAQEntity[];
-  onFaqEntitiesChange: (entities: FAQEntity[]) => void;
+interface QASectionProps {
+  qaEntities: QAEntity[];
+  onQaEntitiesChange: (entities: QAEntity[]) => void;
 }
 
-export const FAQSection = ({
-  faqEntities,
-  onFaqEntitiesChange,
-}: FAQSectionProps) => {
-  const [isEnabled, setIsEnabled] = useState(faqEntities.length > 0);
+export const QASection = ({
+  qaEntities,
+  onQaEntitiesChange,
+}: QASectionProps) => {
+  const [isEnabled, setIsEnabled] = useState(qaEntities.length > 0);
   const [showSchema, setShowSchema] = useState(false);
 
   const handleToggle = (enabled: boolean) => {
     setIsEnabled(enabled);
     if (!enabled) {
-      onFaqEntitiesChange([]);
-    } else if (faqEntities.length === 0) {
-      onFaqEntitiesChange([{ question: "", answer: "" }]);
+      onQaEntitiesChange([]);
+    } else if (qaEntities.length === 0) {
+      onQaEntitiesChange([{ question: "", answer: "" }]);
     }
   };
 
   const addQuestion = () => {
-    if (faqEntities.length < 6) {
-      onFaqEntitiesChange([...faqEntities, { question: "", answer: "" }]);
+    if (qaEntities.length < 6) {
+      onQaEntitiesChange([...qaEntities, { question: "", answer: "" }]);
     }
   };
 
-  const updateQuestion = (index: number, field: keyof FAQEntity, value: string) => {
-    const updated = [...faqEntities];
+  const updateQuestion = (index: number, field: keyof QAEntity, value: string) => {
+    const updated = [...qaEntities];
     updated[index] = { ...updated[index], [field]: value };
-    onFaqEntitiesChange(updated);
+    onQaEntitiesChange(updated);
   };
 
   const removeQuestion = (index: number) => {
-    onFaqEntitiesChange(faqEntities.filter((_, i) => i !== index));
+    onQaEntitiesChange(qaEntities.filter((_, i) => i !== index));
   };
 
   const moveQuestion = (index: number, direction: "up" | "down") => {
     const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= faqEntities.length) return;
+    if (newIndex < 0 || newIndex >= qaEntities.length) return;
 
-    const updated = [...faqEntities];
+    const updated = [...qaEntities];
     [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    onFaqEntitiesChange(updated);
+    onQaEntitiesChange(updated);
   };
 
   const generateSchema = () => {
     return {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      "mainEntity": faqEntities
+      "mainEntity": qaEntities
         .filter(faq => faq.question && faq.answer)
         .map(faq => ({
           "@type": "Question",
@@ -95,7 +95,7 @@ export const FAQSection = ({
 
       {isEnabled && (
         <CardContent className="space-y-4">
-          {faqEntities.map((faq, index) => (
+          {qaEntities.map((faq, index) => (
             <div key={index} className="p-4 border rounded-lg space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="font-semibold">Question {index + 1}</Label>
@@ -114,7 +114,7 @@ export const FAQSection = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => moveQuestion(index, "down")}
-                    disabled={index === faqEntities.length - 1}
+                    disabled={index === qaEntities.length - 1}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -153,7 +153,7 @@ export const FAQSection = ({
             </div>
           ))}
 
-          {faqEntities.length < 6 && (
+          {qaEntities.length < 6 && (
             <Button
               type="button"
               variant="outline"
@@ -165,14 +165,14 @@ export const FAQSection = ({
             </Button>
           )}
 
-          {faqEntities.length > 0 && faqEntities.length < 3 && (
+          {qaEntities.length > 0 && qaEntities.length < 3 && (
             <p className="text-sm text-amber-600 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               Minimum 3 Q&A pairs recommended for FAQ schema
             </p>
           )}
 
-          {faqEntities.length >= 3 && (
+          {qaEntities.length >= 3 && (
             <Collapsible open={showSchema} onOpenChange={setShowSchema}>
               <CollapsibleTrigger asChild>
                 <Button type="button" variant="outline" className="w-full">
@@ -189,7 +189,7 @@ export const FAQSection = ({
           )}
 
           <p className="text-sm text-muted-foreground">
-            {faqEntities.length} of 3-6 Q&A pairs added
+            {qaEntities.length} of 3-6 Q&A pairs added
           </p>
         </CardContent>
       )}

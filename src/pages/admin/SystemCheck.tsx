@@ -106,7 +106,7 @@ export default function SystemCheck() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
-        .select('id, slug, headline, language, funnel_stage, cta_article_ids, faq_entities, speakable_answer, translations, canonical_url, author_id, cluster_id')
+        .select('id, slug, headline, language, funnel_stage, cta_article_ids, qa_entities, speakable_answer, translations, canonical_url, author_id, cluster_id')
         .eq('status', 'published');
       if (error) throw error;
       return data || [];
@@ -178,8 +178,8 @@ export default function SystemCheck() {
       if (!hasMidCTA) issues.push('Missing mid-article CTA configuration');
 
       // Check hasFAQ
-      const faqEntities = article.faq_entities as unknown[];
-      const hasFAQ = faqEntities && Array.isArray(faqEntities) && faqEntities.length > 0;
+      const qaEntities = article.qa_entities as unknown[];
+      const hasFAQ = qaEntities && Array.isArray(qaEntities) && qaEntities.length > 0;
       if (!hasFAQ) issues.push('No FAQ entities');
 
       // Check hasSpeakable

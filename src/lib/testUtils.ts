@@ -298,7 +298,7 @@ export async function testPhase5(): Promise<TestResult[]> {
         detailed_content: '<p>Test</p>',
         featured_image_url: 'https://example.com/image.jpg',
         featured_image_alt: 'Test',
-        faq_entities: testFAQ,
+        qa_entities: testFAQ,
         status: 'draft'
       })
       .select()
@@ -310,7 +310,7 @@ export async function testPhase5(): Promise<TestResult[]> {
       name: 'FAQ Data Storage',
       status: 'pass',
       message: '✓ FAQ entities can be saved to JSONB field',
-      details: JSON.stringify(data.faq_entities, null, 2)
+      details: JSON.stringify(data.qa_entities, null, 2)
     });
 
     await supabase.from('blog_articles').delete().eq('id', data.id);
@@ -1662,7 +1662,7 @@ export async function testPhase19(): Promise<TestResult[]> {
   try {
     const { data: article } = await supabase
       .from('blog_articles')
-      .select('faq_entities')
+      .select('qa_entities')
       .eq('status', 'published')
       .limit(1)
       .maybeSingle();
@@ -1675,9 +1675,9 @@ export async function testPhase19(): Promise<TestResult[]> {
         details: 'Purpose: Enables rich snippets and voice search answers.\n\nPublish articles with FAQ sections to enable this feature.'
       });
     } else {
-      const faqEntities = article.faq_entities as any[] | null;
-      const hasFAQs = faqEntities && Array.isArray(faqEntities) && faqEntities.length > 0;
-      const faqCount = hasFAQs ? faqEntities.length : 0;
+      const qaEntities = article.qa_entities as any[] | null;
+      const hasFAQs = qaEntities && Array.isArray(qaEntities) && qaEntities.length > 0;
+      const faqCount = hasFAQs ? qaEntities.length : 0;
       
       results.push({
         name: '⚠ FAQ Schema (Optional)',

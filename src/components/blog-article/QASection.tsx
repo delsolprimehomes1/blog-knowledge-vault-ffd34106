@@ -1,4 +1,4 @@
-import { FAQEntity } from "@/types/blog";
+import { QAEntity } from "@/types/blog";
 import {
   Accordion,
   AccordionContent,
@@ -6,11 +6,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-interface FAQSectionProps {
-  faqs: FAQEntity[];
+interface QASectionProps {
+  faqs: QAEntity[];
 }
 
-export const FAQSection = ({ faqs }: FAQSectionProps) => {
+export const QASection = ({ faqs }: QASectionProps) => {
   if (!faqs || faqs.length === 0) return null;
 
   return (

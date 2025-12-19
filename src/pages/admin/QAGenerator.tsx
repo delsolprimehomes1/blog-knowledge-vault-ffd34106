@@ -70,12 +70,12 @@ export default function FAQGenerator() {
     },
   });
 
-  // Fetch generated FAQ pages
-  const { data: faqPages = [], refetch: refetchFaqPages } = useQuery({
-    queryKey: ['faq-pages'],
+  // Fetch generated QA pages
+  const { data: qaPages = [], refetch: refetchQaPages } = useQuery({
+    queryKey: ['qa-pages'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('faq_pages')
+        .from('qa_pages')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -89,16 +89,16 @@ export default function FAQGenerator() {
     if (!jobId) return;
     
     const interval = setInterval(async () => {
-      const response = await supabase.functions.invoke('check-faq-job-status', {
+      const response = await supabase.functions.invoke('check-qa-job-status', {
         body: { jobId },
       });
       
       if (response.data?.status === 'completed') {
         clearInterval(interval);
-        toast.success(`Generated ${response.data.generatedFaqPages} FAQ pages!`);
+        toast.success(`Generated ${response.data.generatedQaPages} QA pages!`);
         setJobId(null);
         setActiveTab('results');
-        refetchFaqPages();
+        refetchQaPages();
       } else if (response.data?.status === 'failed') {
         clearInterval(interval);
         toast.error(response.data.error || 'Generation failed');
@@ -107,12 +107,12 @@ export default function FAQGenerator() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [jobId, refetchFaqPages]);
+  }, [jobId, refetchQaPages]);
 
-  // Generate FAQ pages mutation
+  // Generate QA pages mutation
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const response = await supabase.functions.invoke('generate-faq-pages', {
+      const response = await supabase.functions.invoke('generate-qa-pages', {
         body: {
           articleIds: selectedArticles,
           mode: selectedArticles.length > 1 ? 'bulk' : 'single',
@@ -125,50 +125,50 @@ export default function FAQGenerator() {
     onSuccess: (data) => {
       setJobId(data.jobId);
       setActiveTab('progress');
-      toast.info('FAQ generation started...');
+      toast.info('QA page generation started...');
     },
     onError: (error) => {
       toast.error(`Failed to start generation: ${error.message}`);
     },
   });
 
-  // Update FAQ page mutation
-  const updateFaqMutation = useMutation({
-    mutationFn: async (faq: any) => {
+  // Update QA page mutation
+  const updateQaMutation = useMutation({
+    mutationFn: async (qa: any) => {
       const { error } = await supabase
-        .from('faq_pages')
+        .from('qa_pages')
         .update({
-          title: faq.title,
-          question_main: faq.question_main,
-          answer_main: faq.answer_main,
-          speakable_answer: faq.speakable_answer,
-          meta_title: faq.meta_title,
-          meta_description: faq.meta_description,
-          status: faq.status,
+          title: qa.title,
+          question_main: qa.question_main,
+          answer_main: qa.answer_main,
+          speakable_answer: qa.speakable_answer,
+          meta_title: qa.meta_title,
+          meta_description: qa.meta_description,
+          status: qa.status,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', faq.id);
+        .eq('id', qa.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('FAQ page updated');
+      toast.success('QA page updated');
       setEditingFaq(null);
-      refetchFaqPages();
+      refetchQaPages();
     },
     onError: (error) => {
       toast.error(`Failed to update: ${error.message}`);
     },
   });
 
-  // Delete FAQ page mutation
-  const deleteFaqMutation = useMutation({
+  // Delete QA page mutation
+  const deleteQaMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('faq_pages').delete().eq('id', id);
+      const { error } = await supabase.from('qa_pages').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('FAQ page deleted');
-      refetchFaqPages();
+      toast.success('QA page deleted');
+      refetchQaPages();
     },
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
@@ -179,7 +179,7 @@ export default function FAQGenerator() {
   const bulkPublishMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
-        .from('faq_pages')
+        .from('qa_pages')
         .update({ status: 'published', updated_at: new Date().toISOString() })
         .eq('status', 'draft')
         .select('id');
@@ -187,8 +187,8 @@ export default function FAQGenerator() {
       return data?.length || 0;
     },
     onSuccess: (count) => {
-      toast.success(`Published ${count} FAQ pages`);
-      refetchFaqPages();
+      toast.success(`Published ${count} QA pages`);
+      refetchQaPages();
     },
     onError: (error) => {
       toast.error(`Failed to publish: ${error.message}`);
@@ -196,24 +196,24 @@ export default function FAQGenerator() {
   });
 
   // Count drafts and published
-  const draftCount = faqPages.filter((faq: any) => faq.status === 'draft').length;
-  const publishedCount = faqPages.filter((faq: any) => faq.status === 'published').length;
+  const draftCount = qaPages.filter((qa: any) => qa.status === 'draft').length;
+  const publishedCount = qaPages.filter((qa: any) => qa.status === 'published').length;
 
   // Regenerate section mutation
   const regenerateSectionMutation = useMutation({
-    mutationFn: async ({ faqPageId, section }: { faqPageId: string; section: string }) => {
-      const response = await supabase.functions.invoke('regenerate-faq-section', {
-        body: { faqPageId, section },
+    mutationFn: async ({ qaPageId, section }: { qaPageId: string; section: string }) => {
+      const response = await supabase.functions.invoke('regenerate-qa-section', {
+        body: { qaPageId, section },
       });
       if (response.error) throw response.error;
       return response.data;
     },
     onSuccess: (data) => {
       toast.success('Section regenerated');
-      if (editingFaq && data.faqPage) {
-        setEditingFaq(data.faqPage);
+      if (editingFaq && data.qaPage) {
+        setEditingFaq(data.qaPage);
       }
-      refetchFaqPages();
+      refetchQaPages();
     },
     onError: (error) => {
       toast.error(`Failed to regenerate: ${error.message}`);
@@ -282,9 +282,9 @@ export default function FAQGenerator() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">FAQ Page Generator</h1>
+            <h1 className="text-3xl font-bold">QA Page Generator</h1>
             <p className="text-muted-foreground">
-              Generate standalone FAQ pages from published blog articles
+              Generate standalone QA pages from published blog articles
             </p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export default function FAQGenerator() {
             <TabsTrigger value="progress" disabled={!jobId}>
               Progress {jobId && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             </TabsTrigger>
-            <TabsTrigger value="results">Generated FAQs ({faqPages.length})</TabsTrigger>
+            <TabsTrigger value="results">Generated QAs ({qaPages.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="select" className="space-y-4">
@@ -584,9 +584,9 @@ export default function FAQGenerator() {
                     disabled={isRefreshing}
                     onClick={async () => {
                       setIsRefreshing(true);
-                      await refetchFaqPages();
+                      await refetchQaPages();
                       setIsRefreshing(false);
-                      toast.success('FAQ list refreshed');
+                      toast.success('QA list refreshed');
                     }}
                   >
                     <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -649,14 +649,14 @@ export default function FAQGenerator() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {faqPages.length === 0 ? (
+                      {qaPages.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            No FAQ pages generated yet
+                            No QA pages generated yet
                           </TableCell>
                         </TableRow>
                       ) : (
-                        faqPages.map((faq: any) => (
+                        qaPages.map((faq: any) => (
                           <TableRow key={faq.id}>
                             <TableCell className="font-medium max-w-[250px] truncate">
                               {faq.title}
@@ -700,8 +700,8 @@ export default function FAQGenerator() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => {
-                                    if (confirm('Delete this FAQ page?')) {
-                                      deleteFaqMutation.mutate(faq.id);
+                                    if (confirm('Delete this QA page?')) {
+                                      deleteQaMutation.mutate(faq.id);
                                     }
                                   }}
                                 >
@@ -748,7 +748,7 @@ export default function FAQGenerator() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ faqPageId: editingFaq.id, section: 'answer' })}
+                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'answer' })}
                       disabled={regenerateSectionMutation.isPending}
                     >
                       <RefreshCw className="mr-1 h-3 w-3" />
@@ -767,7 +767,7 @@ export default function FAQGenerator() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ faqPageId: editingFaq.id, section: 'speakable' })}
+                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'speakable' })}
                       disabled={regenerateSectionMutation.isPending}
                     >
                       <RefreshCw className="mr-1 h-3 w-3" />
@@ -822,10 +822,10 @@ export default function FAQGenerator() {
                 Cancel
               </Button>
               <Button
-                onClick={() => updateFaqMutation.mutate(editingFaq)}
-                disabled={updateFaqMutation.isPending}
+                onClick={() => updateQaMutation.mutate(editingFaq)}
+                disabled={updateQaMutation.isPending}
               >
-                {updateFaqMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {updateQaMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Changes
               </Button>
             </DialogFooter>

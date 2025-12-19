@@ -23,14 +23,14 @@ import {
   getCharCountStatus,
   uploadImage 
 } from "@/lib/articleUtils";
-import { Language, FunnelStage, ArticleStatus, InternalLink, ExternalCitation, FAQEntity } from "@/types/blog";
+import { Language, FunnelStage, ArticleStatus, InternalLink, ExternalCitation, QAEntity } from "@/types/blog";
 import { EEATSection } from "@/components/article-editor/EEATSection";
 import { ContentSection } from "@/components/article-editor/ContentSection";
 import { ExternalCitationsSection } from "@/components/article-editor/ExternalCitationsSection";
 import { InternalLinksSection } from "@/components/article-editor/InternalLinksSection";
 import { RelatedArticlesSection } from "@/components/article-editor/RelatedArticlesSection";
 import { FunnelCTASection } from "@/components/article-editor/FunnelCTASection";
-import { FAQSection } from "@/components/article-editor/FAQSection";
+import { QASection } from "@/components/article-editor/QASection";
 import { TranslationsSection } from "@/components/article-editor/TranslationsSection";
 import { SchemaPreviewSection } from "@/components/article-editor/SchemaPreviewSection";
 import { SEOPreviewSection } from "@/components/article-editor/SEOPreviewSection";
@@ -73,7 +73,7 @@ const ArticleEditor = () => {
   const [externalCitations, setExternalCitations] = useState<ExternalCitation[]>([]);
   const [relatedArticleIds, setRelatedArticleIds] = useState<string[]>([]);
   const [ctaArticleIds, setCtaArticleIds] = useState<string[]>([]);
-  const [faqEntities, setFaqEntities] = useState<FAQEntity[]>([]);
+  const [qaEntities, setQaEntities] = useState<QAEntity[]>([]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
   const [imageUploading, setImageUploading] = useState(false);
@@ -178,7 +178,7 @@ const ArticleEditor = () => {
       setExternalCitations((article.external_citations as unknown as ExternalCitation[]) || []);
       setRelatedArticleIds(article.related_article_ids || []);
       setCtaArticleIds(article.cta_article_ids || []);
-      setFaqEntities((article.faq_entities as unknown as FAQEntity[]) || []);
+      setQaEntities((article.qa_entities as unknown as QAEntity[]) || []);
       setTranslations((article.translations as Record<string, string>) || {});
     }
   }, [article]);
@@ -292,7 +292,7 @@ const ArticleEditor = () => {
         external_citations: externalCitations as any,
         related_article_ids: relatedArticleIds,
         cta_article_ids: ctaArticleIds,
-        faq_entities: faqEntities.length > 0 ? (faqEntities as any) : null,
+        qa_entities: qaEntities.length > 0 ? (qaEntities as any) : null,
         translations: translations,
         read_time: Math.ceil(contentWords / 200),
         date_modified: new Date().toISOString(),
@@ -416,7 +416,7 @@ const ArticleEditor = () => {
             author_id: authorId,
             reviewer_id: reviewerId,
             external_citations: externalCitations,
-            faq_entities: faqEntities,
+            qa_entities: qaEntities,
             date_published: article?.date_published,
             date_modified: article?.date_modified,
           } as any}
@@ -799,10 +799,10 @@ const ArticleEditor = () => {
           onSelectedIdsChange={setCtaArticleIds}
         />
 
-        {/* Section 10: FAQ Entities */}
-        <FAQSection
-          faqEntities={faqEntities}
-          onFaqEntitiesChange={setFaqEntities}
+        {/* Section 10: QA Entities */}
+        <QASection
+          qaEntities={qaEntities}
+          onQaEntitiesChange={setQaEntities}
         />
 
         {/* Section 11: Translations */}
@@ -832,7 +832,7 @@ const ArticleEditor = () => {
             reviewer_id: reviewerId,
             date_published: article?.date_published || "",
             date_modified: article?.date_modified || "",
-            faq_entities: faqEntities,
+            qa_entities: qaEntities,
             external_citations: externalCitations,
             status,
           }}
