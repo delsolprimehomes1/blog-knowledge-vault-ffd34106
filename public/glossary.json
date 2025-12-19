@@ -1,0 +1,456 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "total_terms": 65,
+  "categories": {
+    "legal_tax": {
+      "title": "Legal & Tax Terms",
+      "description": "Spanish legal and tax terminology for property transactions",
+      "terms": [
+        {
+          "term": "NIE",
+          "full_name": "Número de Identidad de Extranjero",
+          "definition": "A tax identification number required for all foreigners conducting financial transactions in Spain, including property purchases, opening bank accounts, and signing contracts.",
+          "related_terms": ["TIE", "NIF"],
+          "see_also": ["/blog/nie-number-spain-guide", "/qa/what-is-nie-number"]
+        },
+        {
+          "term": "NIF",
+          "full_name": "Número de Identificación Fiscal",
+          "definition": "The Spanish tax identification number for residents. For Spanish nationals, this is the same as their DNI number.",
+          "related_terms": ["NIE", "DNI"],
+          "see_also": []
+        },
+        {
+          "term": "TIE",
+          "full_name": "Tarjeta de Identidad de Extranjero",
+          "definition": "The physical residence card issued to non-EU foreigners living in Spain, containing their NIE number and residence permit details.",
+          "related_terms": ["NIE", "Residencia"],
+          "see_also": ["/blog/spain-residency-options"]
+        },
+        {
+          "term": "IBI",
+          "full_name": "Impuesto sobre Bienes Inmuebles",
+          "definition": "Annual municipal property tax in Spain, typically 0.4% to 1.1% of the cadastral value. Paid yearly to the local town hall.",
+          "related_terms": ["Catastral Value", "Plusvalía"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        },
+        {
+          "term": "ITP",
+          "full_name": "Impuesto de Transmisiones Patrimoniales",
+          "definition": "Transfer tax paid when purchasing resale properties in Spain. In Andalusia, this is 7% of the declared purchase price.",
+          "related_terms": ["AJD", "IVA"],
+          "see_also": ["/blog/buying-costs-spain"]
+        },
+        {
+          "term": "AJD",
+          "full_name": "Actos Jurídicos Documentados",
+          "definition": "Stamp duty tax in Spain, charged at 1.2% in Andalusia on new-build properties and mortgages.",
+          "related_terms": ["ITP", "IVA"],
+          "see_also": ["/blog/buying-costs-spain"]
+        },
+        {
+          "term": "IVA",
+          "full_name": "Impuesto sobre el Valor Añadido",
+          "definition": "Value Added Tax charged on new-build properties in Spain at 10% of the purchase price (21% for commercial properties).",
+          "related_terms": ["ITP", "AJD"],
+          "see_also": ["/blog/buying-costs-spain"]
+        },
+        {
+          "term": "Plusvalía",
+          "full_name": "Impuesto sobre el Incremento de Valor de los Terrenos",
+          "definition": "Municipal capital gains tax on the increased land value since the last sale. Traditionally paid by the seller but negotiable.",
+          "related_terms": ["IBI", "Capital Gains"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        },
+        {
+          "term": "Catastral Value",
+          "full_name": "Valor Catastral",
+          "definition": "The official administrative value of a property used to calculate IBI and other taxes. Usually significantly lower than market value.",
+          "related_terms": ["IBI", "Catastro"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        },
+        {
+          "term": "Catastro",
+          "full_name": "Catastro Inmobiliario",
+          "definition": "The Spanish property registry that maintains records of all properties including boundaries, size, and cadastral values.",
+          "related_terms": ["Registro de la Propiedad", "Catastral Value"],
+          "see_also": []
+        },
+        {
+          "term": "IRNR",
+          "full_name": "Impuesto sobre la Renta de No Residentes",
+          "definition": "Non-resident income tax in Spain. Property owners must pay annually even if not renting out (imputed income). Rate is 19% for EU residents, 24% for others.",
+          "related_terms": ["Modelo 210", "Non-Resident Tax"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        },
+        {
+          "term": "Modelo 210",
+          "full_name": "Tax Form 210",
+          "definition": "The Spanish tax form used by non-residents to declare and pay income tax on Spanish property, including rental income and imputed income.",
+          "related_terms": ["IRNR", "Fiscal Representative"],
+          "see_also": []
+        },
+        {
+          "term": "Fiscal Representative",
+          "full_name": "Representante Fiscal",
+          "definition": "A tax representative in Spain who handles tax obligations for non-residents, including filing Modelo 210 and receiving official communications.",
+          "related_terms": ["Modelo 210", "IRNR"],
+          "see_also": []
+        },
+        {
+          "term": "Wealth Tax",
+          "full_name": "Impuesto sobre el Patrimonio",
+          "definition": "Annual tax on net assets exceeding €700,000 (threshold varies by region). Rates range from 0.2% to 3.5% depending on total wealth.",
+          "related_terms": ["IRNR", "IBI"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        }
+      ]
+    },
+    "property": {
+      "title": "Property Terms",
+      "description": "Real estate and property-specific terminology in Spain",
+      "terms": [
+        {
+          "term": "Escritura",
+          "full_name": "Escritura Pública",
+          "definition": "The public deed of sale signed before a notary that officially transfers property ownership. This document is then registered in the Property Registry.",
+          "related_terms": ["Notario", "Registro de la Propiedad"],
+          "see_also": ["/blog/buying-property-spain-uk-buyers"]
+        },
+        {
+          "term": "Nota Simple",
+          "full_name": "Nota Simple Informativa",
+          "definition": "An official extract from the Property Registry showing current ownership, charges, and encumbrances on a property. Essential for due diligence.",
+          "related_terms": ["Registro de la Propiedad", "Due Diligence"],
+          "see_also": []
+        },
+        {
+          "term": "Registro de la Propiedad",
+          "full_name": "Land Registry",
+          "definition": "The Spanish Property Registry where all property ownership and charges are officially recorded. Registration provides legal protection for ownership.",
+          "related_terms": ["Nota Simple", "Escritura"],
+          "see_also": []
+        },
+        {
+          "term": "Notario",
+          "full_name": "Notary Public",
+          "definition": "A public official who authenticates the property sale deed, verifies identities, and ensures legal requirements are met. Notary fees are regulated by government.",
+          "related_terms": ["Escritura", "Completion"],
+          "see_also": []
+        },
+        {
+          "term": "Off-Plan",
+          "full_name": "Sobre Plano",
+          "definition": "Purchasing a property before construction is complete, typically at a lower price with staged payments. Buyers benefit from BFA bank guarantees protecting deposits.",
+          "related_terms": ["New-Build", "BFA Guarantee"],
+          "see_also": []
+        },
+        {
+          "term": "New-Build",
+          "full_name": "Obra Nueva",
+          "definition": "A newly constructed property being sold for the first time. Subject to 10% IVA instead of 7% ITP, plus 1.2% AJD stamp duty.",
+          "related_terms": ["Off-Plan", "IVA"],
+          "see_also": []
+        },
+        {
+          "term": "Resale",
+          "full_name": "Segunda Mano",
+          "definition": "A previously owned property being sold by its current owner. Subject to 7% ITP transfer tax in Andalusia instead of IVA.",
+          "related_terms": ["ITP", "Second-Hand"],
+          "see_also": []
+        },
+        {
+          "term": "Urbanización",
+          "full_name": "Urbanization/Development",
+          "definition": "A planned residential development or gated community, typically with shared amenities like pools, gardens, and 24-hour security.",
+          "related_terms": ["Community Fees", "Comunidad"],
+          "see_also": []
+        },
+        {
+          "term": "Community Fees",
+          "full_name": "Cuota de Comunidad",
+          "definition": "Monthly or quarterly fees paid to maintain shared areas in an urbanization or apartment building, including pools, gardens, lifts, and security.",
+          "related_terms": ["Urbanización", "Comunidad"],
+          "see_also": []
+        },
+        {
+          "term": "Comunidad",
+          "full_name": "Comunidad de Propietarios",
+          "definition": "The community of property owners in a building or urbanization who collectively manage shared areas and make decisions at AGMs.",
+          "related_terms": ["Community Fees", "AGM"],
+          "see_also": []
+        },
+        {
+          "term": "Arras",
+          "full_name": "Contrato de Arras",
+          "definition": "A reservation or deposit contract in Spain. Arras penitenciales allows buyer to withdraw losing the deposit, or seller to withdraw paying double.",
+          "related_terms": ["Deposit", "Private Contract"],
+          "see_also": []
+        },
+        {
+          "term": "Licencia de Primera Ocupación",
+          "full_name": "First Occupation License",
+          "definition": "Official certificate confirming a new-build property meets all building regulations and is fit for habitation. Required to connect utilities.",
+          "related_terms": ["New-Build", "Habitation Certificate"],
+          "see_also": []
+        },
+        {
+          "term": "Certificado Energético",
+          "full_name": "Energy Performance Certificate",
+          "definition": "Mandatory certificate rating a property's energy efficiency from A (most efficient) to G. Required for all property sales and rentals.",
+          "related_terms": ["EPC", "Energy Rating"],
+          "see_also": []
+        },
+        {
+          "term": "Referencia Catastral",
+          "full_name": "Cadastral Reference",
+          "definition": "A unique 20-character code identifying a property in the Spanish Catastro system. Essential for tax purposes and property identification.",
+          "related_terms": ["Catastro", "Catastral Value"],
+          "see_also": []
+        }
+      ]
+    },
+    "visa_residency": {
+      "title": "Visa & Residency Terms",
+      "description": "Immigration and residency terminology for Spain",
+      "terms": [
+        {
+          "term": "Golden Visa",
+          "full_name": "Visado de Oro / Investor Visa",
+          "definition": "A Spanish residence permit granted to non-EU investors who purchase property worth €500,000 or more. Allows residence and Schengen travel without requiring minimum stay.",
+          "related_terms": ["Investor Visa", "Schengen"],
+          "see_also": ["/blog/golden-visa-spain-guide"]
+        },
+        {
+          "term": "Non-Lucrative Visa",
+          "full_name": "Visado No Lucrativo",
+          "definition": "A residence visa for non-EU nationals who can prove sufficient passive income (approximately €28,800/year) without working in Spain.",
+          "related_terms": ["Residency", "Passive Income"],
+          "see_also": ["/blog/spain-residency-options"]
+        },
+        {
+          "term": "Digital Nomad Visa",
+          "full_name": "Visado para Teletrabajo Internacional",
+          "definition": "Spanish visa for remote workers employed by or running businesses outside Spain. Requires minimum income of approximately €28,800/year from non-Spanish sources.",
+          "related_terms": ["Remote Worker", "Freelancer Visa"],
+          "see_also": ["/blog/spain-residency-options"]
+        },
+        {
+          "term": "Empadronamiento",
+          "full_name": "Municipal Registration",
+          "definition": "Registration with your local town hall confirming your address in Spain. Required for many administrative procedures including healthcare access.",
+          "related_terms": ["Padrón", "Town Hall"],
+          "see_also": []
+        },
+        {
+          "term": "Residencia",
+          "full_name": "Residence Permit",
+          "definition": "Official permission to reside in Spain. EU citizens register after 3 months; non-EU citizens require a visa and residence card (TIE).",
+          "related_terms": ["TIE", "NIE"],
+          "see_also": ["/blog/spain-residency-options"]
+        },
+        {
+          "term": "90-Day Rule",
+          "full_name": "Schengen 90/180 Day Rule",
+          "definition": "Non-EU visitors can stay in the Schengen area for a maximum of 90 days within any 180-day period without a visa. Applies to UK citizens post-Brexit.",
+          "related_terms": ["Schengen", "Brexit"],
+          "see_also": ["/blog/buying-property-spain-uk-buyers"]
+        },
+        {
+          "term": "Schengen Area",
+          "full_name": "Schengen Zone",
+          "definition": "A group of 27 European countries with no internal border controls. Spain is a member, allowing free movement within the zone.",
+          "related_terms": ["90-Day Rule", "EU"],
+          "see_also": []
+        },
+        {
+          "term": "Long-Term Residence",
+          "full_name": "Residencia de Larga Duración",
+          "definition": "Permanent residence status granted after 5 years of legal residence in Spain. Provides same rights as Spanish citizens except voting.",
+          "related_terms": ["Permanent Residency", "5-Year Rule"],
+          "see_also": []
+        }
+      ]
+    },
+    "financial": {
+      "title": "Financial Terms",
+      "description": "Banking, mortgage, and financial terminology",
+      "terms": [
+        {
+          "term": "LTV",
+          "full_name": "Loan-to-Value Ratio",
+          "definition": "The percentage of property value that a bank will lend as a mortgage. Spanish banks typically offer 60-70% LTV for non-residents, 80% for residents.",
+          "related_terms": ["Mortgage", "Hipoteca"],
+          "see_also": ["/blog/spanish-mortgage-guide"]
+        },
+        {
+          "term": "Hipoteca",
+          "full_name": "Mortgage",
+          "definition": "A Spanish mortgage loan secured against property. Non-residents can obtain mortgages from Spanish banks with appropriate documentation.",
+          "related_terms": ["LTV", "Interest Rate"],
+          "see_also": ["/blog/spanish-mortgage-guide"]
+        },
+        {
+          "term": "Euribor",
+          "full_name": "Euro Interbank Offered Rate",
+          "definition": "The benchmark interest rate for euro lending between European banks. Variable rate mortgages in Spain are typically priced as Euribor plus a margin.",
+          "related_terms": ["Variable Rate", "Interest Rate"],
+          "see_also": ["/blog/spanish-mortgage-guide"]
+        },
+        {
+          "term": "Fixed Rate Mortgage",
+          "full_name": "Hipoteca Tipo Fijo",
+          "definition": "A mortgage where the interest rate remains constant throughout the term. Provides payment certainty but typically starts higher than variable rates.",
+          "related_terms": ["Variable Rate", "Hipoteca"],
+          "see_also": ["/blog/spanish-mortgage-guide"]
+        },
+        {
+          "term": "Variable Rate Mortgage",
+          "full_name": "Hipoteca Tipo Variable",
+          "definition": "A mortgage where the interest rate is reviewed periodically (usually annually) based on Euribor plus a fixed margin.",
+          "related_terms": ["Euribor", "Fixed Rate"],
+          "see_also": ["/blog/spanish-mortgage-guide"]
+        },
+        {
+          "term": "Rental Yield",
+          "full_name": "Rentabilidad por Alquiler",
+          "definition": "The annual rental income expressed as a percentage of property value. Costa del Sol typically sees 4-6% for long-term rentals, 8-12% for holiday lets.",
+          "related_terms": ["ROI", "Investment"],
+          "see_also": ["/blog/costa-del-sol-rental-yields"]
+        },
+        {
+          "term": "Capital Gains Tax",
+          "full_name": "Impuesto sobre Ganancias Patrimoniales",
+          "definition": "Tax on profit from selling property in Spain. Rates are 19% on first €6,000, then 21-28% on higher amounts. Various allowances may apply.",
+          "related_terms": ["Plusvalía", "Property Sale"],
+          "see_also": ["/blog/spanish-property-taxes-guide"]
+        },
+        {
+          "term": "Bank Guarantee",
+          "full_name": "Aval Bancario / BFA Guarantee",
+          "definition": "For off-plan purchases, developers must provide bank guarantees protecting buyer deposits until completion or refunding if the project fails.",
+          "related_terms": ["Off-Plan", "Deposit Protection"],
+          "see_also": []
+        },
+        {
+          "term": "Power of Attorney",
+          "full_name": "Poder Notarial",
+          "definition": "Legal document authorizing another person (typically a lawyer) to act on your behalf for property transactions. Essential for remote purchases.",
+          "related_terms": ["Notario", "Legal Representation"],
+          "see_also": []
+        }
+      ]
+    },
+    "location": {
+      "title": "Location Terms",
+      "description": "Geographic and location-specific terminology for Costa del Sol",
+      "terms": [
+        {
+          "term": "Costa del Sol",
+          "full_name": "Coast of the Sun",
+          "definition": "The 150km Mediterranean coastline in southern Spain stretching from Málaga to Gibraltar. Known for 320+ days of sunshine annually and popular with international buyers.",
+          "related_terms": ["Andalusia", "Málaga Province"],
+          "see_also": ["/brochure/marbella", "/brochure/estepona"]
+        },
+        {
+          "term": "Andalusia",
+          "full_name": "Andalucía",
+          "definition": "The autonomous community in southern Spain that includes the Costa del Sol. Has its own tax rates and property regulations.",
+          "related_terms": ["Costa del Sol", "Spain"],
+          "see_also": []
+        },
+        {
+          "term": "Golden Mile",
+          "full_name": "Milla de Oro",
+          "definition": "The prestigious stretch between Marbella town and Puerto Banús, home to some of the most exclusive properties, hotels, and beach clubs on the Costa del Sol.",
+          "related_terms": ["Marbella", "Puerto Banús"],
+          "see_also": ["/brochure/marbella"]
+        },
+        {
+          "term": "New Golden Mile",
+          "full_name": "Nueva Milla de Oro",
+          "definition": "The coastal stretch between San Pedro and Estepona, offering similar beachfront lifestyle to Marbella's Golden Mile at more accessible prices.",
+          "related_terms": ["Estepona", "Beachfront"],
+          "see_also": ["/brochure/estepona"]
+        },
+        {
+          "term": "Puerto Banús",
+          "full_name": "Puerto José Banús",
+          "definition": "The famous luxury marina in Marbella known for superyachts, designer boutiques, and upscale nightlife. A landmark of Costa del Sol's jet-set lifestyle.",
+          "related_terms": ["Marbella", "Golden Mile"],
+          "see_also": ["/brochure/marbella"]
+        },
+        {
+          "term": "Pueblo",
+          "full_name": "Village/Town",
+          "definition": "Traditional Spanish village, often a 'pueblo blanco' (white village) with whitewashed buildings and narrow streets. Many are protected historical areas.",
+          "related_terms": ["Pueblo Blanco", "Old Town"],
+          "see_also": ["/brochure/mijas", "/brochure/casares"]
+        },
+        {
+          "term": "Chiringuito",
+          "full_name": "Beach Bar/Restaurant",
+          "definition": "A beachfront bar or restaurant serving food and drinks, typically specializing in fresh seafood and paella. A quintessential Costa del Sol experience.",
+          "related_terms": ["Beach", "Seafood"],
+          "see_also": []
+        },
+        {
+          "term": "Paseo Marítimo",
+          "full_name": "Seafront Promenade",
+          "definition": "The beachfront promenade found in most Costa del Sol towns, ideal for walking, cycling, and enjoying the Mediterranean views.",
+          "related_terms": ["Beachfront", "Promenade"],
+          "see_also": []
+        }
+      ]
+    },
+    "process": {
+      "title": "Process Terms",
+      "description": "Property buying process and procedural terminology",
+      "terms": [
+        {
+          "term": "Due Diligence",
+          "full_name": "Diligencia Debida",
+          "definition": "The investigation process before purchasing property, including legal checks on ownership, planning permissions, debts, and building compliance.",
+          "related_terms": ["Nota Simple", "Legal Check"],
+          "see_also": ["/blog/buying-property-spain-uk-buyers"]
+        },
+        {
+          "term": "Completion",
+          "full_name": "Firma de Escritura",
+          "definition": "The final stage of property purchase when buyer and seller sign the deed before a notary, funds are transferred, and keys are handed over.",
+          "related_terms": ["Escritura", "Notario"],
+          "see_also": []
+        },
+        {
+          "term": "Reservation Fee",
+          "full_name": "Señal de Reserva",
+          "definition": "An initial payment (typically €3,000-€10,000) to take a property off the market while contracts are prepared. Usually deducted from final price.",
+          "related_terms": ["Deposit", "Arras"],
+          "see_also": []
+        },
+        {
+          "term": "Private Contract",
+          "full_name": "Contrato Privado de Compraventa",
+          "definition": "A binding private purchase agreement between buyer and seller, typically signed after due diligence with a 10% deposit paid.",
+          "related_terms": ["Arras", "Deposit"],
+          "see_also": []
+        },
+        {
+          "term": "Conveyancing",
+          "full_name": "Transmisión de Propiedad",
+          "definition": "The legal process of transferring property ownership from seller to buyer, including all documentation, checks, and registrations.",
+          "related_terms": ["Lawyer", "Legal Process"],
+          "see_also": []
+        },
+        {
+          "term": "Gestoría",
+          "full_name": "Administrative Agency",
+          "definition": "A Spanish administrative services company that handles paperwork and bureaucratic procedures like NIE applications, tax filings, and utility connections.",
+          "related_terms": ["NIE", "Administration"],
+          "see_also": []
+        }
+      ]
+    }
+  }
+}

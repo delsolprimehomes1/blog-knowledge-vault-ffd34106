@@ -41,14 +41,14 @@
       "type": "blog",
       "url_pattern": "/blog/{slug}",
       "description": "In-depth guides on Costa del Sol property buying",
-      "count": 200,
+      "count": 948,
       "schema_types": ["BlogPosting", "FAQPage", "BreadcrumbList"]
     },
     {
       "type": "qa",
       "url_pattern": "/qa/{slug}",
       "description": "Expert answers to common Costa del Sol property questions",
-      "count": 50,
+      "count": 30,
       "schema_types": ["FAQPage", "WebPage"]
     },
     {
@@ -57,6 +57,13 @@
       "description": "Detailed city guides for Costa del Sol locations",
       "count": 10,
       "schema_types": ["WebPage", "Place"]
+    },
+    {
+      "type": "glossary",
+      "url_pattern": "/glossary",
+      "description": "Comprehensive glossary of 65+ Spanish real estate, tax, and legal terms",
+      "count": 65,
+      "schema_types": ["DefinedTermSet", "DefinedTerm", "WebPage"]
     }
   ],
   "high_value_pages": [

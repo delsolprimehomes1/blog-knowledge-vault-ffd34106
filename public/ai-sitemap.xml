@@ -25,6 +25,16 @@
     <priority>0.9</priority>
     <ai:content-type>ai-policy</ai:content-type>
   </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/glossary</loc>
+    <lastmod>2025-01-15</lastmod>
+    <priority>0.95</priority>
+    <ai:content-type>glossary</ai:content-type>
+    <ai:topics>definitions, NIE, IBI, golden-visa, spanish-property-terms, real-estate-glossary</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:term-count>65+</ai:term-count>
+  </url>
 
   <!-- Core Landing Pages -->
   <url>
