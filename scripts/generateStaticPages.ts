@@ -4,14 +4,8 @@ import { writeFileSync, mkdirSync, readFileSync, existsSync, copyFileSync } from
 import { join, dirname } from 'path';
 import type { Database } from '../src/integrations/supabase/types';
 
-// Hardcoded fallback values for build environments where env vars may not be available
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://kazggnufaoicopvmwhdl.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemdnbnVmYW9pY29wdm13aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MzM0ODEsImV4cCI6MjA3NjEwOTQ4MX0.acQwC_xPXFXvOwwn7IATeg6OwQ2HWlu52x76iqUdhB4';
-
-console.log('🔧 Static Pages - Supabase config:', { 
-  url: SUPABASE_URL.includes('kazggnuf') ? 'Using project URL' : 'Using env URL',
-  key: SUPABASE_ANON_KEY.startsWith('eyJhbG') ? 'Key present' : 'Key missing'
-});
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
 
 const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 

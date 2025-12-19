@@ -30,13 +30,32 @@ function Home() {
     }
   }, []);
 
-  // Intersection Observer for Animations - DISABLED temporarily for debugging
+  // Intersection Observer for Animations
   useEffect(() => {
-    // Just make all reveal-on-scroll elements visible immediately
-    const elements = document.querySelectorAll<HTMLElement>(".reveal-on-scroll");
-    elements.forEach((el) => {
-      el.classList.add("visible");
+    const elements = document.querySelectorAll('.reveal-on-scroll');
+    
+    // We do NOT hide elements immediately to ensure content is always visible.
+    // Instead, we let the observer handle the 'visible' class if it works.
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.remove('pending-reveal');
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target); 
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    elements.forEach(el => {
+      // Only apply 'pending-reveal' (opacity 0) if we are sure we are observing it
+      el.classList.add('pending-reveal');
+      observer.observe(el);
     });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   return (

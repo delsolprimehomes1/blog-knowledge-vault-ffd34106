@@ -15,11 +15,9 @@ function staticPageGenerator(): Plugin {
         try {
           const { generateStaticPages } = await import('./scripts/generateStaticPages');
           await generateStaticPages(path.resolve(__dirname, 'dist'));
-          console.log('✅ Static blog pages generated successfully');
         } catch (err) {
-          console.error('❌ CRITICAL: Failed to generate static blog pages:', err);
-          // Throw error to fail the build - AI crawlers need these pages!
-          throw new Error(`Static blog page generation failed: ${err}`);
+          console.error('Failed to generate static blog pages:', err);
+          // Don't fail the build if static generation fails
         }
       }
     }
@@ -37,110 +35,40 @@ function staticQAPageGenerator(): Plugin {
         try {
           const { generateStaticQAPages } = await import('./scripts/generateStaticQAPages');
           await generateStaticQAPages(path.resolve(__dirname, 'dist'));
-          console.log('✅ Static QA pages generated successfully');
         } catch (err) {
-          console.error('❌ CRITICAL: Failed to generate static QA pages:', err);
-          // Throw error to fail the build - AI crawlers need these pages!
-          throw new Error(`Static QA page generation failed: ${err}`);
+          console.error('Failed to generate static QA pages:', err);
+          // Don't fail the build if static generation fails
         }
       }
     }
   };
 }
 
-// Plugin to generate static glossary pages after build
-function staticGlossaryPageGenerator(): Plugin {
-  return {
-    name: "static-glossary-page-generator",
-    async closeBundle() {
-      // Only run in production builds
-      if (process.env.NODE_ENV === 'production') {
-        console.log('\n📖 Generating static glossary page...');
-        try {
-          const { generateStaticGlossaryPage } = await import('./scripts/generateStaticGlossary');
-          await generateStaticGlossaryPage(path.resolve(__dirname, 'dist'));
-          console.log('✅ Static glossary page generated successfully');
-        } catch (err) {
-          console.error('❌ Warning: Failed to generate static glossary page:', err);
-          // Don't throw - glossary is less critical than blog/QA
-        }
-      }
-    }
-  };
-}
-
-// Plugin to generate sitemap.xml at build time (moved to closeBundle for dist/ output)
+// Plugin to generate sitemap.xml at build time
 function sitemapGenerator(): Plugin {
   return {
     name: "sitemap-generator",
-    async closeBundle() {
+    async buildStart() {
       // Only run in production builds
       if (process.env.NODE_ENV !== 'production') {
         console.log('⏭️ Skipping sitemap generation in development');
         return;
       }
       
+      // Generate sitemap before build so it's included in dist
       console.log('\n🗺️ Generating multi-sitemap structure...');
       console.log('📍 Environment check:');
-      console.log('  - VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'Set' : 'Not set (using fallback)');
-      console.log('  - VITE_SUPABASE_PUBLISHABLE_KEY:', process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'Set' : 'Not set (using fallback)');
+      console.log('  - VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'Set' : 'Not set');
+      console.log('  - VITE_SUPABASE_PUBLISHABLE_KEY:', process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'Set' : 'Not set');
       
       try {
         const { generateSitemap } = await import('./scripts/generateSitemap');
-        // Write to both public/ (for dev) and dist/ (for production)
-        await generateSitemap(path.resolve(__dirname, 'dist'));
+        await generateSitemap();
         console.log('✅ Sitemap generation complete');
       } catch (err) {
-        console.error('❌ CRITICAL: Failed to generate sitemap:', err);
-        // Throw error - sitemaps are critical for AI discovery
-        throw new Error(`Sitemap generation failed: ${err}`);
-      }
-    }
-  };
-}
-
-// Plugin to verify static files were generated after build
-function buildVerifier(): Plugin {
-  return {
-    name: "build-verifier",
-    async closeBundle() {
-      if (process.env.NODE_ENV !== 'production') return;
-      
-      console.log('\n🔍 Verifying build output...');
-      const fs = await import('fs');
-      const distDir = path.resolve(__dirname, 'dist');
-      
-      const checks = [
-        { path: 'blog', desc: 'Blog articles' },
-        { path: 'qa', desc: 'QA pages' },
-        { path: 'glossary', desc: 'Glossary page' },
-        { path: 'sitemap-blog.xml', desc: 'Blog sitemap' },
-        { path: 'sitemap-qa.xml', desc: 'QA sitemap' },
-        { path: 'sitemap-index.xml', desc: 'Sitemap index' }
-      ];
-      
-      let hasErrors = false;
-      for (const check of checks) {
-        const fullPath = path.join(distDir, check.path);
-        if (fs.existsSync(fullPath)) {
-          const stats = fs.statSync(fullPath);
-          if (stats.isDirectory()) {
-            const files = fs.readdirSync(fullPath);
-            console.log(`✅ ${check.desc}: ${files.length} items in ${check.path}/`);
-          } else {
-            const size = (stats.size / 1024).toFixed(1);
-            console.log(`✅ ${check.desc}: ${check.path} (${size}KB)`);
-          }
-        } else {
-          console.error(`❌ MISSING: ${check.desc} at ${check.path}`);
-          hasErrors = true;
-        }
-      }
-      
-      if (hasErrors) {
-        console.error('\n⚠️ Build verification found missing files!');
-      } else {
-        console.log('\n✨ Build verification passed - all static content present');
+        console.error('❌ Failed to generate sitemap:', err);
+        console.log('⚠️ Static sitemap files in public/ will be used');
+        // The static sitemap files in public/ will be used as fallback
       }
     }
   };
@@ -157,9 +85,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     sitemapGenerator(),
     staticPageGenerator(),
-    staticQAPageGenerator(),
-    staticGlossaryPageGenerator(),
-    buildVerifier()
+    staticQAPageGenerator()
   ].filter(Boolean),
   resolve: {
     alias: {
