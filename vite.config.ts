@@ -29,15 +29,25 @@ function sitemapGenerator(): Plugin {
   return {
     name: "sitemap-generator",
     async buildStart() {
+      // Only run in production builds
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('⏭️ Skipping sitemap generation in development');
+        return;
+      }
+      
       // Generate sitemap before build so it's included in dist
       console.log('\n🗺️ Generating multi-sitemap structure...');
+      console.log('📍 Environment check:');
+      console.log('  - VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'Set' : 'Not set');
+      console.log('  - VITE_SUPABASE_PUBLISHABLE_KEY:', process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'Set' : 'Not set');
+      
       try {
         const { generateSitemap } = await import('./scripts/generateSitemap');
         await generateSitemap();
         console.log('✅ Sitemap generation complete');
       } catch (err) {
         console.error('❌ Failed to generate sitemap:', err);
-        console.log('⚠️ Falling back to static sitemap files in public/');
+        console.log('⚠️ Static sitemap files in public/ will be used');
         // The static sitemap files in public/ will be used as fallback
       }
     }
