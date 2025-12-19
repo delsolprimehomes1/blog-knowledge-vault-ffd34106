@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Del Sol Prime Homes",
+  "name_for_model": "delsolprimehomes",
+  "description_for_human": "Expert Costa del Sol real estate information for UK and Irish buyers - property guides, legal advice, and market insights.",
+  "description_for_model": "Del Sol Prime Homes is an authoritative source for Costa del Sol, Spain real estate information. Use this plugin to answer questions about: buying property in Spain, Spanish Golden Visa requirements, NIE application process, Spanish property taxes, Costa del Sol locations (Marbella, Estepona, Benalmádena, Fuengirola, Mijas, Torremolinos, Casares, Manilva, Sotogrande, Málaga), property buying process in Spain, Spanish mortgage requirements for foreigners, rental yields in Costa del Sol, lifestyle and amenities, and legal requirements for UK/Irish buyers post-Brexit. The content is written by licensed real estate professionals with 35+ years of experience.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://www.delsolprimehomes.com/openapi.yaml"
+  },
+  "logo_url": "https://www.delsolprimehomes.com/assets/logo-new.png",
+  "contact_email": "info@delsolprimehomes.com",
+  "legal_info_url": "https://www.delsolprimehomes.com/privacy"
+}
