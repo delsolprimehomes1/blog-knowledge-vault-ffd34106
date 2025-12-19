@@ -191,14 +191,14 @@ export default function QAIndex() {
         <meta property="og:url" content="https://www.delsolprimehomes.com/qa" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
-        <meta property="og:image" content="https://www.delsolprimehomes.com/assets/logo-new.png" />
+        <meta property="og:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
         <meta property="og:locale" content="en_GB" />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Q&A | Del Sol Prime Homes" />
         <meta name="twitter:description" content="Expert answers to Costa del Sol property questions." />
-        <meta name="twitter:image" content="https://www.delsolprimehomes.com/assets/logo-new.png" />
+        <meta name="twitter:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
         
         {/* Hreflang for languages */}
         <link rel="alternate" hrefLang="en-GB" href="https://www.delsolprimehomes.com/qa" />

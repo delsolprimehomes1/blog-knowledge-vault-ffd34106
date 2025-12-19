@@ -49,7 +49,7 @@
       "url_pattern": "/qa/{slug}",
       "description": "Expert answers to common Costa del Sol property questions",
       "count": 30,
-      "schema_types": ["FAQPage", "WebPage"]
+      "schema_types": ["FAQPage", "WebPage", "SpeakableSpecification", "Organization"]
     },
     {
       "type": "location_guide",
