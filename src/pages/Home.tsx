@@ -30,65 +30,13 @@ function Home() {
     }
   }, []);
 
-  // Intersection Observer for Animations
+  // Intersection Observer for Animations - DISABLED temporarily for debugging
   useEffect(() => {
-    const elements = Array.from(
-      document.querySelectorAll<HTMLElement>(".reveal-on-scroll")
-    );
-
-    if (elements.length === 0) return;
-
-    const revealNow = (el: HTMLElement) => {
-      el.classList.remove("pending-reveal");
-      el.classList.add("visible");
-    };
-
-    // Fallback: if IntersectionObserver isn't available, keep everything visible.
-    if (typeof IntersectionObserver === "undefined") {
-      elements.forEach(revealNow);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            revealNow(entry.target as HTMLElement);
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
-    );
-
-    // Ensure above-the-fold content never starts hidden.
+    // Just make all reveal-on-scroll elements visible immediately
+    const elements = document.querySelectorAll<HTMLElement>(".reveal-on-scroll");
     elements.forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      const isInInitialViewport = rect.top < window.innerHeight && rect.bottom > 0;
-
-      if (isInInitialViewport) {
-        revealNow(el);
-        return;
-      }
-
-      el.classList.add("pending-reveal");
-      observer.observe(el);
+      el.classList.add("visible");
     });
-
-    // Safety net: if an in-viewport element somehow remains hidden, reveal it shortly after.
-    const safetyTimer = window.setTimeout(() => {
-      elements.forEach((el) => {
-        if (!el.classList.contains("pending-reveal")) return;
-        const rect = el.getBoundingClientRect();
-        const isInViewportNow = rect.top < window.innerHeight && rect.bottom > 0;
-        if (isInViewportNow) revealNow(el);
-      });
-    }, 800);
-
-    return () => {
-      window.clearTimeout(safetyTimer);
-      observer.disconnect();
-    };
   }, []);
 
   return (
