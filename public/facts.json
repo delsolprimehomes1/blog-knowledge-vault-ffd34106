@@ -1,0 +1,244 @@
+{
+  "version": "1.0",
+  "source": "Del Sol Prime Homes",
+  "url": "https://www.delsolprimehomes.com",
+  "last_updated": "2025-01-15",
+  "expert": {
+    "name": "Hans Beeckman",
+    "title": "Licensed Real Estate Consultant",
+    "years_experience": 35,
+    "credentials": ["API Certified", "Costa del Sol Specialist"]
+  },
+  "categories": {
+    "golden_visa": {
+      "title": "Spanish Golden Visa Facts",
+      "facts": [
+        {
+          "fact": "Spain's Golden Visa requires a minimum property investment of €500,000",
+          "source": "Spanish Immigration Law",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Golden Visa holders can include spouse, children under 18, and dependent parents",
+          "source": "Spanish Immigration Law",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Golden Visa allows visa-free travel to all 27 Schengen countries",
+          "source": "Schengen Agreement",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Golden Visa can lead to permanent residency after 5 years",
+          "source": "Spanish Immigration Law",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Processing time for Golden Visa is typically 2-3 months",
+          "source": "Del Sol Prime Homes client data",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "property_prices": {
+      "title": "Costa del Sol Property Prices 2025",
+      "facts": [
+        {
+          "fact": "Average property price in Marbella: €4,500-€6,000 per square meter",
+          "source": "Idealista market data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Average property price in Estepona: €2,800-€3,500 per square meter",
+          "source": "Idealista market data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Average property price in Fuengirola: €2,500-€3,200 per square meter",
+          "source": "Idealista market data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Costa del Sol property prices increased 8-12% in 2024",
+          "source": "Spanish Property Registry",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Luxury beachfront properties in Marbella start from €2 million",
+          "source": "Del Sol Prime Homes listings",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "rental_yields": {
+      "title": "Costa del Sol Rental Yields",
+      "facts": [
+        {
+          "fact": "Average long-term rental yield in Costa del Sol: 4-6% annually",
+          "source": "Del Sol Prime Homes analysis",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Holiday rental yields can reach 8-12% in peak season",
+          "source": "AirDNA market data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Marbella short-term rental occupancy rate: 70-80% annually",
+          "source": "AirDNA market data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Average daily rate for holiday rentals in Marbella: €150-€300",
+          "source": "Booking.com data",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "buying_costs": {
+      "title": "Spanish Property Buying Costs",
+      "facts": [
+        {
+          "fact": "Transfer tax (ITP) for resale properties in Andalusia: 7%",
+          "source": "Junta de Andalucía",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "VAT (IVA) for new-build properties: 10%",
+          "source": "Spanish Tax Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Stamp duty (AJD) in Andalusia: 1.2%",
+          "source": "Junta de Andalucía",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Notary and registry fees: approximately 1% of purchase price",
+          "source": "Spanish Notary Association",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Legal fees typically range from 1-1.5% of purchase price",
+          "source": "Del Sol Prime Homes",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Total buying costs for resale property: approximately 10-12%",
+          "source": "Del Sol Prime Homes",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "annual_taxes": {
+      "title": "Spanish Property Annual Taxes",
+      "facts": [
+        {
+          "fact": "IBI (property tax) typically 0.4-1.1% of cadastral value annually",
+          "source": "Spanish Tax Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Non-resident income tax on property: 19% (EU) or 24% (non-EU) of deemed rental value",
+          "source": "Spanish Tax Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Wealth tax threshold in Andalusia: €700,000 (main residence exempt up to €300,000)",
+          "source": "Junta de Andalucía",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Community fees for apartments average €100-€300 per month",
+          "source": "Del Sol Prime Homes",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "nie_process": {
+      "title": "NIE Number Process",
+      "facts": [
+        {
+          "fact": "NIE (Número de Identidad de Extranjero) is mandatory for any financial transaction in Spain",
+          "source": "Spanish National Police",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "NIE application can be done at Spanish consulate or in Spain",
+          "source": "Spanish National Police",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "NIE processing time: 1-4 weeks depending on location",
+          "source": "Del Sol Prime Homes client data",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "NIE application fee: approximately €12",
+          "source": "Spanish National Police",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "mortgage_info": {
+      "title": "Spanish Mortgages for Foreigners",
+      "facts": [
+        {
+          "fact": "Non-residents can typically borrow up to 60-70% of property value",
+          "source": "Spanish Banking Association",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Spanish mortgage interest rates for non-residents: 3-5% (2025)",
+          "source": "Bank of Spain",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Maximum mortgage term for non-residents: typically 20-25 years",
+          "source": "Spanish Banking Association",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Minimum income requirement: mortgage payment should not exceed 35% of net income",
+          "source": "Spanish Banking Association",
+          "last_verified": "2025-01"
+        }
+      ]
+    },
+    "climate_lifestyle": {
+      "title": "Costa del Sol Climate & Lifestyle",
+      "facts": [
+        {
+          "fact": "Costa del Sol enjoys over 320 days of sunshine per year",
+          "source": "Spanish Meteorological Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Average winter temperature: 12-18°C (54-64°F)",
+          "source": "Spanish Meteorological Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Average summer temperature: 25-30°C (77-86°F)",
+          "source": "Spanish Meteorological Agency",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Costa del Sol has over 70 golf courses",
+          "source": "Costa del Sol Tourism Board",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Málaga Airport serves over 100 direct destinations",
+          "source": "AENA",
+          "last_verified": "2025-01"
+        },
+        {
+          "fact": "Flight time from London to Málaga: approximately 2 hours 45 minutes",
+          "source": "Flight data",
+          "last_verified": "2025-01"
+        }
+      ]
+    }
+  }
+}

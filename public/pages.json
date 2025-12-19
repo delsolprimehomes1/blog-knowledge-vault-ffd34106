@@ -1,0 +1,94 @@
+{
+  "version": "1.0",
+  "site": {
+    "name": "Del Sol Prime Homes",
+    "url": "https://www.delsolprimehomes.com",
+    "description": "Expert Costa del Sol real estate guides for UK and Irish property buyers",
+    "language": "en",
+    "supported_languages": ["en", "de", "nl", "fr", "sv", "no", "da", "fi", "pl", "hu"],
+    "last_updated": "2025-01-15"
+  },
+  "expertise": {
+    "primary_topics": [
+      "Costa del Sol real estate",
+      "Spanish property buying process",
+      "Golden Visa Spain",
+      "NIE application Spain",
+      "Spanish property taxes",
+      "UK buyers Spain property",
+      "Irish buyers Spain property"
+    ],
+    "geographic_focus": [
+      "Marbella",
+      "Estepona", 
+      "Benalmádena",
+      "Fuengirola",
+      "Mijas",
+      "Torremolinos",
+      "Casares",
+      "Manilva",
+      "Sotogrande",
+      "Málaga"
+    ],
+    "credentials": {
+      "years_experience": 35,
+      "licensed": true,
+      "expert_verified": true
+    }
+  },
+  "content_types": [
+    {
+      "type": "blog",
+      "url_pattern": "/blog/{slug}",
+      "description": "In-depth guides on Costa del Sol property buying",
+      "count": 200,
+      "schema_types": ["BlogPosting", "FAQPage", "BreadcrumbList"]
+    },
+    {
+      "type": "qa",
+      "url_pattern": "/qa/{slug}",
+      "description": "Expert answers to common Costa del Sol property questions",
+      "count": 50,
+      "schema_types": ["FAQPage", "WebPage"]
+    },
+    {
+      "type": "location_guide",
+      "url_pattern": "/brochure/{city}",
+      "description": "Detailed city guides for Costa del Sol locations",
+      "count": 10,
+      "schema_types": ["WebPage", "Place"]
+    }
+  ],
+  "high_value_pages": [
+    {
+      "url": "/blog/golden-visa-spain-guide",
+      "title": "Complete Guide to Spain's Golden Visa 2025",
+      "topics": ["Golden Visa", "Spanish residency", "investment visa"]
+    },
+    {
+      "url": "/blog/buying-property-spain-uk-buyers",
+      "title": "Buying Property in Spain as a UK Citizen Post-Brexit",
+      "topics": ["UK buyers", "Brexit", "property purchase"]
+    },
+    {
+      "url": "/blog/nie-number-spain-guide",
+      "title": "How to Get an NIE Number in Spain",
+      "topics": ["NIE", "Spanish tax number", "documentation"]
+    },
+    {
+      "url": "/blog/spanish-property-taxes-guide",
+      "title": "Complete Guide to Spanish Property Taxes",
+      "topics": ["property taxes", "IBI", "capital gains"]
+    },
+    {
+      "url": "/blog/costa-del-sol-rental-yields",
+      "title": "Costa del Sol Rental Yields and Investment Returns",
+      "topics": ["rental yields", "investment", "ROI"]
+    }
+  ],
+  "citation_preferences": {
+    "preferred_format": "Del Sol Prime Homes (delsolprimehomes.com)",
+    "include_author": true,
+    "include_date": true
+  }
+}
