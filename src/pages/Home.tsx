@@ -7,7 +7,7 @@ import { QuickSearch } from '../components/home/sections/QuickSearch';
 import { MiniAbout, USPSection } from '../components/home/sections/ContentBlocks';
 import { FeaturedAreas } from '../components/home/sections/FeaturedAreas';
 import { Process } from '../components/home/sections/Process';
-import { Reviews, BlogTeaser } from '../components/home/sections/ReviewsAndBlog';
+import { Reviews, BlogTeaser, GlossaryTeaser } from '../components/home/sections/ReviewsAndBlog';
 import { Section } from '../components/home/ui/Section';
 import { Button } from '../components/home/ui/Button';
 import { getStructuredData } from '../constants/home';
@@ -91,7 +91,10 @@ function Home() {
         {/* 8. Blog */}
         <BlogTeaser />
 
-        {/* 9. Final CTA */}
+        {/* 9. Glossary */}
+        <GlossaryTeaser />
+
+        {/* 10. Final CTA */}
         <Section background="dark" className="text-center relative overflow-hidden">
            {/* Abstract Background Element */}
            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-prime-800 via-prime-900 to-prime-950 -z-0"></div>

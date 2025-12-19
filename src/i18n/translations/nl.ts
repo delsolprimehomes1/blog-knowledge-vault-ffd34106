@@ -133,6 +133,13 @@ export const nl = {
     cta: "Bezoek de Blog",
     readArticle: "Lees Artikel",
   },
+  glossaryTeaser: {
+    eyebrow: "Essentiële Termen",
+    headline: "Begrijp Spaanse Vastgoedterminologie",
+    description: "Navigeer met vertrouwen door het aankoopproces. Onze woordenlijst legt NIE-nummers, belastingen, juridische termen en alles wat u moet weten uit.",
+    cta: "Verken Volledige Woordenlijst",
+    featuredTerms: "Populaire Termen",
+  },
   finalCta: {
     headline: "Klaar om Uw",
     headlineHighlight: "Droomhuis te Vinden?",
@@ -154,6 +161,7 @@ export const nl = {
       ourTeam: "Ons Team",
       buyersGuide: "Kopershandleiding",
       blogInsights: "Blog & Inzichten",
+      glossary: "Vastgoed Woordenlijst",
     },
     legal: {
       privacy: "Privacybeleid",

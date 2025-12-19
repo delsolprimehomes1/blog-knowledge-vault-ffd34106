@@ -133,6 +133,13 @@ export const pl = {
     cta: "Odwiedź Blog",
     readArticle: "Przeczytaj Artykuł",
   },
+  glossaryTeaser: {
+    eyebrow: "Podstawowe Terminy",
+    headline: "Zrozum Hiszpańską Terminologię Nieruchomości",
+    description: "Z pewnością poruszaj się w procesie zakupu. Nasz słownik wyjaśnia numery NIE, podatki, terminy prawne i wszystko, co musisz wiedzieć.",
+    cta: "Przeglądaj Pełny Słownik",
+    featuredTerms: "Popularne Terminy",
+  },
   finalCta: {
     headline: "Gotowy Znaleźć Swój",
     headlineHighlight: "Dom Marzeń?",
@@ -154,6 +161,7 @@ export const pl = {
       ourTeam: "Nasz Zespół",
       buyersGuide: "Przewodnik Kupującego",
       blogInsights: "Blog i Spostrzeżenia",
+      glossary: "Słownik Nieruchomości",
     },
     legal: {
       privacy: "Polityka Prywatności",

@@ -133,6 +133,13 @@ export const en = {
     cta: "Visit the Blog",
     readArticle: "Read Article",
   },
+  glossaryTeaser: {
+    eyebrow: "Essential Terms",
+    headline: "Understand Spanish Property Terminology",
+    description: "Navigate the buying process with confidence. Our glossary explains NIE numbers, taxes, legal terms, and everything you need to know.",
+    cta: "Explore Full Glossary",
+    featuredTerms: "Popular Terms",
+  },
   finalCta: {
     headline: "Ready to Find Your",
     headlineHighlight: "Dream Home?",
@@ -154,6 +161,7 @@ export const en = {
       ourTeam: "Our Team",
       buyersGuide: "Buyers Guide",
       blogInsights: "Blog & Insights",
+      glossary: "Property Glossary",
     },
     legal: {
       privacy: "Privacy Policy",

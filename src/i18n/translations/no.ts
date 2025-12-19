@@ -133,6 +133,13 @@ export const no = {
     cta: "Besøk Bloggen",
     readArticle: "Les Artikkel",
   },
+  glossaryTeaser: {
+    eyebrow: "Viktige Begreper",
+    headline: "Forstå Spansk Eiendomsterminologi",
+    description: "Naviger i kjøpsprosessen med tillit. Vår ordliste forklarer NIE-numre, skatter, juridiske begreper og alt du trenger å vite.",
+    cta: "Utforsk Full Ordliste",
+    featuredTerms: "Populære Begreper",
+  },
   finalCta: {
     headline: "Klar til å Finne Ditt",
     headlineHighlight: "Drømmehjem?",
@@ -154,6 +161,7 @@ export const no = {
       ourTeam: "Vårt Team",
       buyersGuide: "Kjøperguide",
       blogInsights: "Blogg & Innsikt",
+      glossary: "Eiendomsordliste",
     },
     legal: {
       privacy: "Personvernerklæring",

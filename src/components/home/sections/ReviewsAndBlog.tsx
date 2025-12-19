@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Section } from '../ui/Section';
 import { Button } from '../ui/Button';
 import { LATEST_POSTS } from '../../../constants/home';
-import { Star, Quote, ArrowRight } from 'lucide-react';
+import { Star, Quote, ArrowRight, Book, Scale, Home, Plane, Wallet } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
 
 export const Reviews: React.FC = () => {
@@ -84,6 +84,73 @@ export const BlogTeaser: React.FC = () => {
             {t.blogTeaser.cta}
           </Button>
         </Link>
+      </div>
+    </Section>
+  );
+};
+
+const FEATURED_TERMS = [
+  { term: "NIE", icon: Scale, description: "Tax identification number required for all property transactions in Spain." },
+  { term: "Golden Visa", icon: Plane, description: "Residency permit for non-EU investors purchasing property over €500,000." },
+  { term: "IBI", icon: Home, description: "Annual property tax (Impuesto sobre Bienes Inmuebles) paid to local councils." },
+  { term: "Escritura", icon: Book, description: "Official public deed signed before a notary when purchasing property." },
+];
+
+export const GlossaryTeaser: React.FC = () => {
+  const { t } = useTranslation();
+  
+  return (
+    <Section background="light" className="relative overflow-hidden">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-prime-100/50 via-transparent to-transparent" />
+      
+      <div className="relative z-10">
+        <div className="text-center mb-16 reveal-on-scroll">
+          <span className="text-prime-gold font-bold uppercase tracking-widest text-xs mb-3 block">
+            {t.glossaryTeaser?.eyebrow || "Essential Terms"}
+          </span>
+          <h2 className="text-4xl font-serif font-bold text-prime-900 mb-4">
+            {t.glossaryTeaser?.headline || "Understand Spanish Property Terminology"}
+          </h2>
+          <p className="text-slate-600 font-light text-lg max-w-2xl mx-auto">
+            {t.glossaryTeaser?.description || "Navigate the buying process with confidence. Our glossary explains NIE numbers, taxes, legal terms, and everything you need to know."}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {FEATURED_TERMS.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <Link 
+                key={item.term} 
+                to={`/glossary#${item.term.toLowerCase().replace(/\s+/g, '-')}`}
+                className={`group bg-white rounded-2xl p-6 border border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-2 transition-all duration-500 reveal-on-scroll stagger-${idx + 1}`}
+              >
+                <div className="w-12 h-12 rounded-xl bg-prime-50 flex items-center justify-center mb-4 group-hover:bg-prime-gold group-hover:text-white transition-colors duration-300">
+                  <Icon size={24} className="text-prime-gold group-hover:text-white transition-colors" />
+                </div>
+                <h3 className="text-xl font-bold text-prime-900 mb-2 group-hover:text-prime-gold transition-colors">
+                  {item.term}
+                </h3>
+                <p className="text-slate-600 text-sm font-light leading-relaxed">
+                  {item.description}
+                </p>
+                <div className="mt-4 flex items-center gap-1 text-prime-gold text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  Learn more <ArrowRight size={14} />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="text-center reveal-on-scroll">
+          <Link to="/glossary">
+            <Button variant="primary" size="lg" className="group">
+              {t.glossaryTeaser?.cta || "Explore Full Glossary"} 
+              <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </Section>
   );

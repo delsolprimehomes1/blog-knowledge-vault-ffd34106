@@ -133,6 +133,13 @@ export const fi = {
     cta: "Vieraile Blogissa",
     readArticle: "Lue Artikkeli",
   },
+  glossaryTeaser: {
+    eyebrow: "Tärkeät Termit",
+    headline: "Ymmärrä Espanjalaista Kiinteistöterminologiaa",
+    description: "Navigoi ostoprosessissa luottavaisesti. Sanastomme selittää NIE-numerot, verot, oikeudelliset termit ja kaiken mitä sinun tulee tietää.",
+    cta: "Tutustu Koko Sanastoon",
+    featuredTerms: "Suosittuja Termejä",
+  },
   finalCta: {
     headline: "Valmis Löytämään",
     headlineHighlight: "Unelmiesi Kodin?",
@@ -154,6 +161,7 @@ export const fi = {
       ourTeam: "Tiimimme",
       buyersGuide: "Ostajan Opas",
       blogInsights: "Blogi & Näkemyksiä",
+      glossary: "Kiinteistösanasto",
     },
     legal: {
       privacy: "Tietosuojakäytäntö",

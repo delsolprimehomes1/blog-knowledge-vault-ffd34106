@@ -133,6 +133,13 @@ export const sv = {
     cta: "Besök Bloggen",
     readArticle: "Läs Artikel",
   },
+  glossaryTeaser: {
+    eyebrow: "Viktiga Termer",
+    headline: "Förstå Spansk Fastighetsterminologi",
+    description: "Navigera köpprocessen med tillförsikt. Vår ordlista förklarar NIE-nummer, skatter, juridiska termer och allt du behöver veta.",
+    cta: "Utforska Hela Ordlistan",
+    featuredTerms: "Populära Termer",
+  },
   finalCta: {
     headline: "Redo att Hitta Ditt",
     headlineHighlight: "Drömhem?",
@@ -154,6 +161,7 @@ export const sv = {
       ourTeam: "Vårt Team",
       buyersGuide: "Köparguide",
       blogInsights: "Blogg & Insikter",
+      glossary: "Fastighetsordlista",
     },
     legal: {
       privacy: "Integritetspolicy",

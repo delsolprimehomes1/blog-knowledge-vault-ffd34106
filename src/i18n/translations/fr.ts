@@ -133,6 +133,13 @@ export const fr = {
     cta: "Visiter le Blog",
     readArticle: "Lire l'Article",
   },
+  glossaryTeaser: {
+    eyebrow: "Termes Essentiels",
+    headline: "Comprendre la Terminologie Immobilière Espagnole",
+    description: "Naviguez dans le processus d'achat en toute confiance. Notre glossaire explique les numéros NIE, les taxes, les termes juridiques et tout ce que vous devez savoir.",
+    cta: "Explorer le Glossaire Complet",
+    featuredTerms: "Termes Populaires",
+  },
   finalCta: {
     headline: "Prêt à Trouver Votre",
     headlineHighlight: "Maison de Rêve?",
@@ -154,6 +161,7 @@ export const fr = {
       ourTeam: "Notre Équipe",
       buyersGuide: "Guide Acheteur",
       blogInsights: "Blog & Insights",
+      glossary: "Glossaire Immobilier",
     },
     legal: {
       privacy: "Politique de Confidentialité",

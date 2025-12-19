@@ -133,6 +133,13 @@ export const hu = {
     cta: "Látogass el a Blogra",
     readArticle: "Olvass Cikket",
   },
+  glossaryTeaser: {
+    eyebrow: "Alapvető Kifejezések",
+    headline: "Ismerd Meg a Spanyol Ingatlanteminológiát",
+    description: "Navigálj magabiztosan a vásárlási folyamatban. Szószedetünk elmagyarázza a NIE-számokat, adókat, jogi kifejezéseket és mindent, amit tudnod kell.",
+    cta: "Fedezd Fel a Teljes Szószedetet",
+    featuredTerms: "Népszerű Kifejezések",
+  },
   finalCta: {
     headline: "Készen Állsz Megtalálni",
     headlineHighlight: "Álmaid Otthonát?",
@@ -154,6 +161,7 @@ export const hu = {
       ourTeam: "Csapatunk",
       buyersGuide: "Vásárlói Útmutató",
       blogInsights: "Blog & Betekintések",
+      glossary: "Ingatlan Szószedet",
     },
     legal: {
       privacy: "Adatvédelmi Irányelvek",
