@@ -12,7 +12,7 @@ export const fi = {
     aboutUs: "Tietoa Meistä",
     buyersGuide: "Ostajan Opas",
     blog: "Blogi",
-    faq: "UKK",
+    qa: "Q&A",
   },
   hero: {
     trustBadges: {

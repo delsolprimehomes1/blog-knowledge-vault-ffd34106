@@ -86,11 +86,11 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
             {t.nav.blog}
             <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
           </Link>
-          <Link 
-            to="/faq"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
-          >
-            {t.nav.faq}
+        <Link 
+          to="/qa"
+          className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+        >
+          {t.nav.qa}
             <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
           </Link>
         </nav>
@@ -176,11 +176,11 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           {t.nav.blog}
         </Link>
         <Link 
-          to="/faq"
+          to="/qa"
           onClick={() => setIsMobileMenuOpen(false)}
           className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
         >
-          {t.nav.faq}
+          {t.nav.qa}
         </Link>
         
         <div className="flex flex-col gap-4 mt-4">

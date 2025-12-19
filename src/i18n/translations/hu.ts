@@ -12,7 +12,7 @@ export const hu = {
     aboutUs: "Rólunk",
     buyersGuide: "Vásárlói Útmutató",
     blog: "Blog",
-    faq: "GYIK",
+    qa: "Q&A",
   },
   hero: {
     trustBadges: {

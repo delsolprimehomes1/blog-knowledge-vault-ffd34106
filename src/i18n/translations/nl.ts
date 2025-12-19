@@ -12,7 +12,7 @@ export const nl = {
     aboutUs: "Over Ons",
     buyersGuide: "Kopershandleiding",
     blog: "Blog",
-    faq: "FAQ",
+    qa: "Q&A",
   },
   hero: {
     trustBadges: {
