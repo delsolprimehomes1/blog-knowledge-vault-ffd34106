@@ -86,3 +86,9 @@ verify_jwt = false
 
 [functions.regenerate-faq-section]
 verify_jwt = false
+
+[functions.fix-redirected-citations]
+verify_jwt = false
+
+[functions.apply-bulk-approved]
+verify_jwt = false

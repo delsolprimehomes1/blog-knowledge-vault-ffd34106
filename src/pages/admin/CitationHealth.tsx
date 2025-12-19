@@ -24,10 +24,11 @@ import {
 } from "@/components/ui/select";
 import {
   Activity, AlertCircle, CheckCircle2, ExternalLink, Loader2, RefreshCw,
-  TrendingDown, TrendingUp, XCircle, Clock, ArrowRight, ThumbsUp, ThumbsDown, Play, Undo2
+  TrendingDown, TrendingUp, XCircle, Clock, ArrowRight, ThumbsUp, ThumbsDown, Play, Undo2,
+  Zap, Target, Square, ArrowUpRight
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ChangePreviewModal } from "@/components/admin/ChangePreviewModal";
 import { BulkReplacementDialog } from "@/components/admin/BulkReplacementDialog";
@@ -87,6 +88,18 @@ const CitationHealth = () => {
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkResults, setBulkResults] = useState<any[]>([]);
   const [batchSize, setBatchSize] = useState<number>(5);
+
+  // Continuous check mode state
+  const [isContinuousCheck, setIsContinuousCheck] = useState(false);
+  const [continuousProgress, setContinuousProgress] = useState({ checked: 0, total: 0, remaining: 0 });
+  const continuousCheckRef = useRef(false);
+
+  // Fix redirects state
+  const [isFixingRedirects, setIsFixingRedirects] = useState(false);
+
+  // Apply all approved state
+  const [isApplyingAll, setIsApplyingAll] = useState(false);
+  const [applyAllProgress, setApplyAllProgress] = useState({ applied: 0, total: 0 });
 
   // Debounced refetch to avoid excessive updates
   const debouncedRefetch = useMemo(
@@ -223,6 +236,108 @@ const CitationHealth = () => {
     },
     onError: (error: Error) => {
       toast.error(`Health check failed: ${error.message}`);
+    }
+  });
+
+  // Continuous health check
+  const startContinuousCheck = async () => {
+    continuousCheckRef.current = true;
+    setIsContinuousCheck(true);
+    setContinuousProgress({ checked: 0, total: statsData?.unchecked || 0, remaining: statsData?.unchecked || 0 });
+
+    let totalChecked = 0;
+    let remaining = statsData?.unchecked || 0;
+
+    while (continuousCheckRef.current && remaining > 0) {
+      try {
+        const { data, error } = await supabase.functions.invoke("check-citation-health");
+        if (error) throw error;
+
+        totalChecked += data.checked || 0;
+        remaining = data.remaining || 0;
+        
+        setContinuousProgress({ 
+          checked: totalChecked, 
+          total: statsData?.unchecked || 0, 
+          remaining 
+        });
+
+        await queryClient.refetchQueries({ queryKey: ["citation-health-stats"] });
+        
+        // Small delay between batches
+        await new Promise(r => setTimeout(r, 500));
+      } catch (err) {
+        console.error('Continuous check error:', err);
+        toast.error('Health check batch failed, retrying...');
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    setIsContinuousCheck(false);
+    continuousCheckRef.current = false;
+    toast.success(`Continuous check complete! Checked ${totalChecked} citations.`);
+    queryClient.invalidateQueries({ queryKey: ["citation-health"] });
+    queryClient.invalidateQueries({ queryKey: ["citation-health-stats"] });
+  };
+
+  const stopContinuousCheck = () => {
+    continuousCheckRef.current = false;
+    setIsContinuousCheck(false);
+    toast.info('Stopping continuous check...');
+  };
+
+  // Fix redirected citations
+  const fixRedirects = useMutation({
+    mutationFn: async () => {
+      setIsFixingRedirects(true);
+      const { data, error } = await supabase.functions.invoke('fix-redirected-citations');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setIsFixingRedirects(false);
+      toast.success(`Fixed ${data.fixed} redirected citations!`, {
+        description: `Updated ${data.articlesUpdated} articles`
+      });
+      queryClient.invalidateQueries({ queryKey: ['citation-health'] });
+      queryClient.invalidateQueries({ queryKey: ['citation-health-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['blog-articles'] });
+    },
+    onError: (error: Error) => {
+      setIsFixingRedirects(false);
+      toast.error(`Fix redirects failed: ${error.message}`);
+    }
+  });
+
+  // Apply all approved replacements
+  const applyAllApproved = useMutation({
+    mutationFn: async () => {
+      setIsApplyingAll(true);
+      const total = approvedReplacements?.length || 0;
+      setApplyAllProgress({ applied: 0, total });
+
+      const { data, error } = await supabase.functions.invoke('apply-bulk-approved', {
+        body: { batchSize: 100 }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setIsApplyingAll(false);
+      setApplyAllProgress({ applied: data.applied, total: data.total });
+      toast.success(`Applied ${data.applied} replacements!`, {
+        description: `Updated ${data.articlesUpdated} articles`
+      });
+      queryClient.invalidateQueries({ queryKey: ['dead-link-replacements'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-replacements'] });
+      queryClient.invalidateQueries({ queryKey: ['applied-replacements'] });
+      queryClient.invalidateQueries({ queryKey: ['citation-health'] });
+      queryClient.invalidateQueries({ queryKey: ['citation-health-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['blog-articles'] });
+    },
+    onError: (error: Error) => {
+      setIsApplyingAll(false);
+      toast.error(`Apply all failed: ${error.message}`);
     }
   });
 
@@ -404,10 +519,15 @@ const CitationHealth = () => {
   };
 
   // Use server-side stats for accurate counts
-  const stats = statsData || { total: 0, healthy: 0, broken: 0, unchecked: 0 };
+  const stats = statsData || { total: 0, healthy: 0, broken: 0, unchecked: 0, redirected: 0, unreachable: 0 };
 
   const checkedCount = stats.total - stats.unchecked;
   const healthPercentage = checkedCount > 0 ? Math.round((stats.healthy / checkedCount) * 100) : 0;
+
+  // Calculate projected health score after actions
+  const projectedHealthy = stats.healthy + (stats.redirected || 0) + Math.min(stats.broken, approvedReplacements?.length || 0);
+  const projectedChecked = checkedCount + stats.unchecked;
+  const projectedHealthPercentage = projectedChecked > 0 ? Math.round((projectedHealthy / projectedChecked) * 100) : 0;
 
   const getStatusBadge = (status: CitationHealth['status']) => {
     if (status === null) return <Badge variant="outline"><Clock className="mr-1 h-3 w-3" />Unchecked</Badge>;
@@ -485,21 +605,175 @@ const CitationHealth = () => {
           </div>
         </div>
 
-        {stats.unchecked > 0 && (
-          <Alert>
-            <Clock className="h-4 w-4" />
-            <AlertTitle>Citations Need Health Check</AlertTitle>
-            <AlertDescription>
-              {stats.unchecked.toLocaleString()} citations have never been verified. Click "Run Health Check" to verify their status.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Priority Actions Panel */}
+        <Card className="border-2 border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Priority Actions to Reach 90% Health
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Current:</span>
+                <Badge variant={healthPercentage >= 90 ? "default" : healthPercentage >= 70 ? "secondary" : "destructive"} className="text-lg px-3 py-1">
+                  {healthPercentage}%
+                </Badge>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Projected:</span>
+                <Badge variant="outline" className="text-lg px-3 py-1 border-green-500 text-green-600">
+                  ~{projectedHealthPercentage}%
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Continuous Check */}
+            {stats.unchecked > 0 && (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-amber-500/20">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Check {stats.unchecked.toLocaleString()} Unchecked Citations</p>
+                    <p className="text-sm text-muted-foreground">Verify all citations to get accurate health data</p>
+                  </div>
+                </div>
+                {isContinuousCheck ? (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{continuousProgress.checked.toLocaleString()} / {continuousProgress.total.toLocaleString()}</p>
+                      <Progress value={(continuousProgress.checked / continuousProgress.total) * 100} className="w-32 h-2" />
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={stopContinuousCheck}>
+                      <Square className="h-4 w-4 mr-1" />
+                      Stop
+                    </Button>
+                  </div>
+                ) : (
+                  <Button onClick={startContinuousCheck} className="bg-amber-600 hover:bg-amber-700">
+                    <Zap className="h-4 w-4 mr-2" />
+                    Start Continuous Check
+                  </Button>
+                )}
+              </div>
+            )}
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card><CardHeader><CardTitle className="text-sm">Total Citations</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.total.toLocaleString()}</div></CardContent></Card>
-          <Card><CardHeader><CardTitle className="text-sm">Unchecked</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-amber-600">{stats.unchecked.toLocaleString()}</div><p className="text-xs text-muted-foreground mt-1">Never verified</p></CardContent></Card>
-          <Card><CardHeader><CardTitle className="text-sm">Health Score</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{healthPercentage}%</div><p className="text-xs text-muted-foreground mt-1">{stats.healthy.toLocaleString()} of {checkedCount.toLocaleString()} checked</p></CardContent></Card>
-          <Card><CardHeader><CardTitle className="text-sm">Needs Attention</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{stats.broken}</div><p className="text-xs text-muted-foreground mt-1">Broken or unreachable</p></CardContent></Card>
+            {/* Fix Redirects */}
+            {(stats.redirected || 0) > 0 && (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-blue-500/20">
+                    <ArrowUpRight className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Fix {stats.redirected} Redirected URLs</p>
+                    <p className="text-sm text-muted-foreground">Auto-update URLs to their final destinations</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => fixRedirects.mutate()} 
+                  disabled={isFixingRedirects}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isFixingRedirects ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Fixing...</>
+                  ) : (
+                    <><ArrowUpRight className="h-4 w-4 mr-2" />Fix All Redirects</>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Apply Approved Replacements */}
+            {(approvedReplacements?.length || 0) > 0 && (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-green-500/20">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Apply {approvedReplacements?.length} Approved Replacements</p>
+                    <p className="text-sm text-muted-foreground">Replace broken links with verified alternatives</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => applyAllApproved.mutate()} 
+                  disabled={isApplyingAll}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isApplyingAll ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Applying...</>
+                  ) : (
+                    <><Play className="h-4 w-4 mr-2" />Apply All Approved</>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* All done message */}
+            {stats.unchecked === 0 && (stats.redirected || 0) === 0 && (approvedReplacements?.length || 0) === 0 && (
+              <div className="flex items-center justify-center p-6 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-3 text-green-600">
+                  <CheckCircle2 className="h-6 w-6" />
+                  <p className="font-medium">All priority actions completed! Health score: {healthPercentage}%</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4 md:grid-cols-5">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Total Citations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Unchecked</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600">{stats.unchecked.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">Never verified</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Health Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-bold ${healthPercentage >= 90 ? 'text-green-600' : healthPercentage >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {healthPercentage}%
+                </span>
+                <span className="text-xs text-muted-foreground">/ 90% target</span>
+              </div>
+              <Progress value={healthPercentage} className="h-2 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">{stats.healthy.toLocaleString()} of {checkedCount.toLocaleString()} checked</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Redirected</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.redirected || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Can auto-fix</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Needs Attention</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.broken}</div>
+              <p className="text-xs text-muted-foreground mt-1">Broken or unreachable</p>
+            </CardContent>
+          </Card>
         </div>
 
         {healthData && healthData.length > 0 && (
@@ -534,7 +808,25 @@ const CitationHealth = () => {
           <TabsContent value="approved">
             {approvedReplacements && approvedReplacements.length > 0 ? (
               <Card>
-                <CardHeader><div className="flex justify-between"><CardTitle>Ready to Apply</CardTitle>{selectedReplacements.length > 0 && <Button onClick={handleBulkApply}><Play className="h-4 w-4 mr-2" />Apply ({selectedReplacements.length})</Button>}</div></CardHeader>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Ready to Apply</CardTitle>
+                    <div className="flex gap-2">
+                      {selectedReplacements.length > 0 && (
+                        <Button onClick={handleBulkApply} variant="outline">
+                          <Play className="h-4 w-4 mr-2" />Apply Selected ({selectedReplacements.length})
+                        </Button>
+                      )}
+                      <Button onClick={() => applyAllApproved.mutate()} disabled={isApplyingAll}>
+                        {isApplyingAll ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Applying All...</>
+                        ) : (
+                          <><Zap className="h-4 w-4 mr-2" />Apply All ({approvedReplacements.length})</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   {approvedReplacements.map(r => (
                     <Card key={r.id}><CardContent className="pt-4 flex gap-3">
