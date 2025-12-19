@@ -168,7 +168,7 @@ function generateSpeakableSchema(qa: QAPageData) {
   return {
     "@context": "https://schema.org",
     "@type": "SpeakableSpecification",
-    "cssSelector": [".speakable-answer", ".qa-question"]
+    "cssSelector": [".speakable-answer", ".qa-question-main"]
   };
 }
 
@@ -423,7 +423,7 @@ function generateStaticHTML(qa: QAPageData, enhancedHreflang: boolean, productio
     <article class="static-qa-page static-content" data-qa-id="${qa.id}">
       <h1>${sanitizeForHTML(qa.title)}</h1>
       
-      <div class="qa-question">${sanitizeForHTML(qa.question_main)}</div>
+      <div class="qa-question qa-question-main">${sanitizeForHTML(qa.question_main)}</div>
       
       ${qa.speakable_answer ? `
       <div class="speakable-box">

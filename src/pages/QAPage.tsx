@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ChevronRight, Calendar, ExternalLink, Sparkles } from 'lucide-react';
+import { ChevronRight, Calendar, ExternalLink, Sparkles, Linkedin, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
 import { Author, QAEntity } from '@/types/blog';
@@ -258,12 +258,32 @@ export default function QAPage() {
                 />
               )}
               <div className="flex-1">
-                <p className="font-display font-semibold text-foreground">{author.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-display font-semibold text-foreground">{author.name}</p>
+                  {author.linkedin_url && (
+                    <a
+                      href={author.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#0A66C2] hover:text-[#004182] transition-colors"
+                      aria-label={`View ${author.name}'s LinkedIn profile`}
+                    >
+                      <Linkedin className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">{author.job_title}</p>
               </div>
-              <div className="flex items-center text-sm text-muted-foreground bg-white/50 px-4 py-2 rounded-full">
-                <Calendar className="h-4 w-4 mr-2 text-prime-gold" />
-                {format(new Date(qaPage.updated_at), 'MMMM d, yyyy')}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                {/* Last Reviewed Badge */}
+                <div className="flex items-center text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  <span className="font-medium">Verified</span>
+                </div>
+                <div className="flex items-center text-sm text-muted-foreground bg-white/50 px-4 py-2 rounded-full">
+                  <Calendar className="h-4 w-4 mr-2 text-prime-gold" />
+                  {format(new Date(qaPage.updated_at), 'MMMM d, yyyy')}
+                </div>
               </div>
             </div>
           )}
