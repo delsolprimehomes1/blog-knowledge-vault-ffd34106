@@ -8,14 +8,12 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LanguageProvider } from "@/i18n";
 import { ScrollToTop } from "@/components/ScrollToTop";
 
-// Eager load critical pages (landing pages)
-import Home from "./pages/Home";
-import BlogIndex from "./pages/BlogIndex";
-import QAIndex from "./pages/QAIndex";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-
-// Lazy load heavy public pages
+// ALL pages lazy loaded to prevent module loading crashes
+const Home = lazy(() => import("./pages/Home"));
+const BlogIndex = lazy(() => import("./pages/BlogIndex"));
+const QAIndex = lazy(() => import("./pages/QAIndex"));
+const Auth = lazy(() => import("./pages/Auth"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const QAPage = lazy(() => import("./pages/QAPage"));
 const PropertyFinder = lazy(() => import("./pages/PropertyFinder"));
@@ -23,8 +21,6 @@ const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const CityBrochure = lazy(() => import("./pages/CityBrochure"));
 const Sitemap = lazy(() => import("./pages/Sitemap"));
 const Glossary = lazy(() => import("./pages/Glossary"));
-
-// Lazy load ALL admin pages (rarely accessed, heavy components)
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Articles = lazy(() => import("./pages/admin/Articles"));
 const ArticleEditor = lazy(() => import("./pages/admin/ArticleEditor"));
@@ -44,23 +40,18 @@ const BulkArticleLinker = lazy(() => import("./pages/admin/BulkArticleLinker"));
 const BrochureManager = lazy(() => import("./pages/admin/BrochureManager"));
 const QAGenerator = lazy(() => import("./pages/admin/QAGenerator"));
 
-// Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-muted-foreground text-sm">Loading...</p>
+  <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+    <div style={{ textAlign: "center" }}>
+      <div style={{ width: "32px", height: "32px", border: "3px solid #e2e8f0", borderTopColor: "#c5a059", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px" }} />
+      <p style={{ color: "#64748b", margin: 0 }}>Loading...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   </div>
 );
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-    },
-  },
+  defaultOptions: { queries: { staleTime: 1000 * 60 * 5, refetchOnWindowFocus: false } },
 });
 
 const App = () => (
@@ -73,13 +64,10 @@ const App = () => (
           <ScrollToTop />
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Eager-loaded critical pages */}
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/qa" element={<QAIndex />} />
-              
-              {/* Lazy-loaded public pages */}
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/sitemap" element={<Sitemap />} />
               <Route path="/glossary" element={<Glossary />} />
@@ -87,8 +75,6 @@ const App = () => (
               <Route path="/property/:reference" element={<PropertyDetail />} />
               <Route path="/brochure/:citySlug" element={<CityBrochure />} />
               <Route path="/qa/:slug" element={<QAPage />} />
-              
-              {/* Protected Admin Routes - All lazy loaded */}
               <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/admin/articles" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
               <Route path="/admin/articles/new" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />
@@ -108,8 +94,6 @@ const App = () => (
               <Route path="/admin/bulk-internal-links" element={<ProtectedRoute><BulkInternalLinks /></ProtectedRoute>} />
               <Route path="/admin/brochures" element={<ProtectedRoute><BrochureManager /></ProtectedRoute>} />
               <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
-              
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
