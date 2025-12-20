@@ -28,34 +28,36 @@ Produce content as JSON with this exact structure:
   "meta_description": "Meta description under 160 characters with target keyword naturally integrated",
   "speakable_answer": "50-80 word neutral, factual, citation-ready summary answering 'Which is better and why?'. Non-salesy, suitable for voice assistants.",
   "quick_comparison_table": [
-    {"criterion": "Cost", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Pros", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Cons", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Best for", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Risks", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Time to results", "option_a_value": "...", "option_b_value": "..."},
-    {"criterion": "Flexibility", "option_a_value": "...", "option_b_value": "..."}
+    {"criterion": "Cost", "option_a_value": "Brief 10-15 word summary", "option_b_value": "Brief 10-15 word summary"},
+    {"criterion": "Pros", "option_a_value": "2-3 key benefits, comma-separated", "option_b_value": "2-3 key benefits, comma-separated"},
+    {"criterion": "Cons", "option_a_value": "1-2 drawbacks, brief", "option_b_value": "1-2 drawbacks, brief"},
+    {"criterion": "Best for", "option_a_value": "One-liner ideal buyer type", "option_b_value": "One-liner ideal buyer type"},
+    {"criterion": "Risks", "option_a_value": "Main risk in 5-10 words", "option_b_value": "Main risk in 5-10 words"},
+    {"criterion": "Time to results", "option_a_value": "Brief timeline", "option_b_value": "Brief timeline"},
+    {"criterion": "Flexibility", "option_a_value": "Brief flexibility note", "option_b_value": "Brief flexibility note"}
   ],
-  "option_a_overview": "Valid HTML content (use <p>, <ul>, <li>, <strong>, <h3> tags). Cover: What it is, When it makes sense, Ideal user, Common mistakes, Hidden risks (500+ words)",
-  "option_b_overview": "Valid HTML content with same structure for Option B (500+ words)",
-  "side_by_side_breakdown": "Valid HTML comparing: Cost, Expertise required, Control, Risk level, Long-term value, Who should avoid it",
-  "use_case_scenarios": "Valid HTML answering: When Option A wins, When Option B wins, When neither is ideal",
-  "final_verdict": "Valid HTML balanced recommendation depending on user goals",
+  "option_a_overview": "CONCISE HTML (MAX 300 WORDS). Use <p>, <h3>, <ul>, <li>, <strong>. Include ONLY: What it is (1 paragraph), When it makes sense (1 paragraph), Ideal user (1 short list of 3-4 bullet points). Do NOT include common mistakes or hidden risks here.",
+  "option_b_overview": "CONCISE HTML (MAX 300 WORDS). Same structure as option_a_overview.",
+  "side_by_side_breakdown": "CONCISE HTML (MAX 400 WORDS). Brief bullet-point comparison covering: Cost, Expertise required, Control level, Risk factors, Long-term value. Use <ul><li> format, not paragraphs.",
+  "use_case_scenarios": "CONCISE HTML (MAX 250 WORDS). Three short scenarios: When Option A wins, When Option B wins, When neither is ideal. 2-3 sentences each.",
+  "final_verdict": "HTML (MAX 150 WORDS). Balanced recommendation depending on user goals. Direct and actionable.",
   "qa_entities": [
-    {"question": "Natural language question", "answer": "Clear, objective answer in plain text"},
+    {"question": "Natural language question", "answer": "Clear, objective answer in 30-50 words"},
     {"question": "...", "answer": "..."}
   ],
   "suggested_slug": "url-friendly-slug",
   "image_prompt": "Professional real estate photography style image showing: [describe a visual that represents the comparison topic]. Modern, clean, Costa del Sol setting. No text overlays."
 }
 
-CRITICAL HTML FORMATTING RULES:
-- Return ONLY valid HTML for content fields (option_a_overview, option_b_overview, side_by_side_breakdown, use_case_scenarios, final_verdict)
-- DO NOT use markdown syntax like *, **, -, #
-- USE proper HTML tags: <p>, <ul>, <li>, <strong>, <em>, <h3>, <h4>
-- Every list must use <ul><li>...</li></ul> format
-- Wrap paragraphs in <p> tags
-- Use <strong> for emphasis, not **
+CRITICAL RULES:
+1. CONCISENESS IS KEY: AI systems extract short, focused content. Long content gets diluted.
+2. WORD LIMITS ARE STRICT: option_a_overview and option_b_overview MAX 300 words each. side_by_side_breakdown MAX 400 words. use_case_scenarios MAX 250 words. final_verdict MAX 150 words.
+3. NO MARKDOWN in HTML fields. Use ONLY: <p>, <ul>, <li>, <strong>, <em>, <h3>, <h4>
+4. Every list must use <ul><li>...</li></ul> format
+5. Wrap paragraphs in <p> tags
+6. Use <strong> for emphasis, not **
+7. NO fluff, filler words, or repetitive content
+8. Each sentence must add unique value
 
 Tone: Authoritative, Neutral, Evidence-based, Human-readable, AI-friendly. Avoid hype, exaggeration, or sales language.
 
@@ -89,8 +91,8 @@ serve(async (req) => {
       .replace('[AUDIENCE]', target_audience || 'property buyers and investors');
 
     const systemPrompt = language !== 'en' 
-      ? `Generate all content in ${language} language. The structure and field names must remain in English, but all values/content must be in ${language}.`
-      : 'Generate all content in English.';
+      ? `Generate all content in ${language} language. The structure and field names must remain in English, but all values/content must be in ${language}. STRICTLY follow all word limits specified in the prompt.`
+      : 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
 
     console.log('Generating comparison:', { option_a, option_b, niche, language });
 
@@ -107,7 +109,7 @@ serve(async (req) => {
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 8000,
+        max_tokens: 6000, // Reduced to encourage conciseness
       }),
     });
 

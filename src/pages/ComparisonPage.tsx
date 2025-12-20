@@ -12,13 +12,17 @@ import { OptionCard } from "@/components/comparison/OptionCard";
 import { VerdictSection } from "@/components/comparison/VerdictSection";
 import { ComparisonFAQ } from "@/components/comparison/ComparisonFAQ";
 import { CTASection } from "@/components/comparison/CTASection";
+import { TLDRSummary } from "@/components/comparison/TLDRSummary";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 import { generateAllComparisonSchemas, ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
-import { ArrowRight, BookOpen, Layers } from "lucide-react";
+import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function ComparisonPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [showFullBreakdown, setShowFullBreakdown] = useState(false);
+  const [showUseCases, setShowUseCases] = useState(false);
 
   const { data: comparison, isLoading, error } = useQuery({
     queryKey: ['comparison', slug],
@@ -51,7 +55,6 @@ export default function ComparisonPage() {
   });
 
   const handleChatClick = () => {
-    // The chatbot widget will be shown - user can click it
     const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
     if (widget) widget.click();
   };
@@ -150,12 +153,22 @@ export default function ComparisonPage() {
         />
 
         <article className="container mx-auto px-4 py-12 max-w-5xl">
-          {/* Speakable Answer */}
+          {/* Speakable Answer - Most important for AI */}
           <SpeakableBox 
             answer={comparison.speakable_answer}
             optionA={comparison.option_a}
             optionB={comparison.option_b}
           />
+
+          {/* TL;DR Summary - Quick extraction point for AI */}
+          <TLDRSummary
+            optionA={comparison.option_a}
+            optionB={comparison.option_b}
+            quickComparisonTable={quickComparisonTable}
+          />
+
+          {/* FAQ Section - Moved UP for better AI extraction */}
+          <ComparisonFAQ faqs={qaEntities} />
 
           {/* Quick Comparison Table */}
           <ComparisonTable 
@@ -164,7 +177,7 @@ export default function ComparisonPage() {
             optionB={comparison.option_b}
           />
 
-          {/* Option Overviews - Side by Side */}
+          {/* Option Overviews - With collapsible details */}
           <div className="grid lg:grid-cols-2 gap-6 mt-12">
             {comparison.option_a_overview && (
               <OptionCard 
@@ -182,43 +195,73 @@ export default function ComparisonPage() {
             )}
           </div>
 
-          {/* Side-by-Side Breakdown */}
+          {/* Side-by-Side Breakdown - Collapsible for shorter initial load */}
           {comparison.side_by_side_breakdown && (
             <section className="mt-12">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-xl">
-                  <Layers className="h-5 w-5 text-primary" />
+              <button
+                onClick={() => setShowFullBreakdown(!showFullBreakdown)}
+                className="w-full flex items-center justify-between gap-3 p-4 bg-muted/30 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-xl">
+                    <Layers className="h-5 w-5 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground">Side-by-Side Breakdown</h2>
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">Side-by-Side Breakdown</h2>
+                <ChevronDown className={cn(
+                  "h-5 w-5 text-muted-foreground transition-transform",
+                  showFullBreakdown && "rotate-180"
+                )} />
+              </button>
+              
+              <div className={cn(
+                "overflow-hidden transition-all duration-300",
+                showFullBreakdown ? "max-h-[3000px] opacity-100 mt-4" : "max-h-0 opacity-0"
+              )}>
+                <div 
+                  className="prose prose-lg max-w-none text-muted-foreground bg-muted/30 p-6 rounded-2xl border border-border/50
+                    prose-headings:text-foreground prose-headings:font-semibold
+                    prose-strong:text-foreground prose-strong:font-semibold
+                    prose-ul:my-4 prose-li:my-1
+                    prose-p:my-3 prose-p:leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: markdownToHtml(comparison.side_by_side_breakdown) }}
+                />
               </div>
-              <div 
-                className="prose prose-lg max-w-none text-muted-foreground bg-muted/30 p-6 rounded-2xl border border-border/50
-                  prose-headings:text-foreground prose-headings:font-semibold
-                  prose-strong:text-foreground prose-strong:font-semibold
-                  prose-ul:my-4 prose-li:my-1
-                  prose-p:my-3 prose-p:leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(comparison.side_by_side_breakdown) }}
-              />
             </section>
           )}
 
-          {/* Use Case Scenarios */}
+          {/* Use Case Scenarios - Collapsible */}
           {comparison.use_case_scenarios && (
-            <section className="mt-12">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-xl">
-                  <BookOpen className="h-5 w-5 text-primary" />
+            <section className="mt-6">
+              <button
+                onClick={() => setShowUseCases(!showUseCases)}
+                className="w-full flex items-center justify-between gap-3 p-4 bg-muted/30 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-xl">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-bold text-foreground">When to Choose Each Option</h2>
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">When to Choose Each Option</h2>
+                <ChevronDown className={cn(
+                  "h-5 w-5 text-muted-foreground transition-transform",
+                  showUseCases && "rotate-180"
+                )} />
+              </button>
+              
+              <div className={cn(
+                "overflow-hidden transition-all duration-300",
+                showUseCases ? "max-h-[3000px] opacity-100 mt-4" : "max-h-0 opacity-0"
+              )}>
+                <div 
+                  className="prose prose-lg max-w-none text-muted-foreground bg-muted/30 p-6 rounded-2xl border border-border/50
+                    prose-headings:text-foreground prose-headings:font-semibold
+                    prose-strong:text-foreground prose-strong:font-semibold
+                    prose-ul:my-4 prose-li:my-1
+                    prose-p:my-3 prose-p:leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: markdownToHtml(comparison.use_case_scenarios) }}
+                />
               </div>
-              <div 
-                className="prose prose-lg max-w-none text-muted-foreground bg-muted/30 p-6 rounded-2xl border border-border/50
-                  prose-headings:text-foreground prose-headings:font-semibold
-                  prose-strong:text-foreground prose-strong:font-semibold
-                  prose-ul:my-4 prose-li:my-1
-                  prose-p:my-3 prose-p:leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(comparison.use_case_scenarios) }}
-              />
             </section>
           )}
 
@@ -228,9 +271,6 @@ export default function ComparisonPage() {
             optionB={comparison.option_b}
             onChatClick={handleChatClick}
           />
-
-          {/* FAQ Section */}
-          <ComparisonFAQ faqs={qaEntities} />
 
           {/* Final Verdict */}
           <VerdictSection verdict={comparison.final_verdict} />
