@@ -1,4 +1,4 @@
-import { markdownToHtml } from "@/lib/markdownToHtml";
+import { CollapsibleDetails } from "./CollapsibleDetails";
 
 interface OptionCardProps {
   title: string;
@@ -26,15 +26,8 @@ export function OptionCard({ title, content, variant }: OptionCardProps) {
       {/* Divider */}
       <div className={`h-1 w-16 rounded-full mb-4 ${isPrimary ? 'bg-primary/50' : 'bg-secondary/50'}`} />
       
-      {/* Content */}
-      <div 
-        className="prose prose-lg max-w-none text-muted-foreground 
-          prose-headings:text-foreground prose-headings:font-semibold 
-          prose-strong:text-foreground prose-strong:font-semibold
-          prose-ul:my-4 prose-li:my-1
-          prose-p:my-3 prose-p:leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: markdownToHtml(content) }}
-      />
+      {/* Content with collapsible sections */}
+      <CollapsibleDetails content={content} variant={variant} />
     </div>
   );
 }
