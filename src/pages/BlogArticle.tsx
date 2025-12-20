@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArticleHeader } from "@/components/blog-article/ArticleHeader";
 import { SpeakableBox } from "@/components/blog-article/SpeakableBox";
+import { QuickSummary } from "@/components/blog-article/QuickSummary";
 import { TableOfContents } from "@/components/blog-article/TableOfContents";
 import { ArticleContent } from "@/components/blog-article/ArticleContent";
 import { InternalLinksSection } from "@/components/blog-article/InternalLinksSection";
@@ -194,6 +195,7 @@ const BlogArticle = () => {
       schemas.speakable,
       schemas.breadcrumb,
       ...(schemas.faq ? [schemas.faq] : []),
+      ...(schemas.webPageElement ? [schemas.webPageElement] : []),
       schemas.organization
     ]
   };
@@ -324,6 +326,15 @@ const BlogArticle = () => {
 
             <SpeakableBox answer={article.speakable_answer} language={article.language} />
 
+            {/* Quick Summary for BOFU articles */}
+            {article.funnel_stage === "BOFU" && (
+              <QuickSummary
+                headline={article.headline}
+                bottomLine={article.speakable_answer}
+                readTime={article.read_time || undefined}
+              />
+            )}
+
             <ArticleContent
               content={article.detailed_content}
               featuredImageUrl={article.featured_image_url}
@@ -351,7 +362,11 @@ const BlogArticle = () => {
             />
 
             {article.qa_entities && (
-              <QASection faqs={article.qa_entities as QAEntity[]} />
+              <QASection 
+                faqs={article.qa_entities as QAEntity[]} 
+                topic={article.headline}
+                language={article.language}
+              />
             )}
 
             {author && <AuthorBio author={author} />}
