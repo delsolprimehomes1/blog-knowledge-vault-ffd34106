@@ -50,6 +50,7 @@ const BrochureManager = lazy(() => import("./pages/admin/BrochureManager"));
 const QAGenerator = lazy(() => import("./pages/admin/QAGenerator"));
 const ComparisonGenerator = lazy(() => import("./pages/admin/ComparisonGenerator"));
 const LocationGenerator = lazy(() => import("./pages/admin/LocationGenerator"));
+const LocationPages = lazy(() => import("./pages/admin/LocationPages"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -122,6 +123,7 @@ const App = () => (
               <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
               <Route path="/admin/comparison-generator" element={<ProtectedRoute><ComparisonGenerator /></ProtectedRoute>} />
               <Route path="/admin/location-generator" element={<ProtectedRoute><LocationGenerator /></ProtectedRoute>} />
+              <Route path="/admin/location-pages" element={<ProtectedRoute><LocationPages /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
