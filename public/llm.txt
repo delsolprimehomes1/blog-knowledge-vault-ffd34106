@@ -74,6 +74,28 @@ Detailed city brochures for:
 - Sotogrande
 - Málaga
 
+### Location Intelligence: /locations/
+AI-citation-ready location intelligence pages featuring:
+- **Property Buying Guides**: Step-by-step guides for each city with market data
+- **Investment Analysis**: ROI calculations, rental yields, growth projections
+- **Best Areas for Demographics**: Guides for families, retirees, investors, expats
+- **Cost Breakdowns**: Detailed property costs, taxes, fees by location
+- **Market Overviews**: Current trends, price per m², demand analysis
+- **Area Comparisons**: Neighborhood pros/cons, lifestyle factors
+
+Features:
+- SpeakableSpecification for voice assistant citations
+- FAQPage schema for each location
+- Place + RealEstateAgent JSON-LD schemas
+- Multi-language support (10 languages)
+- Expert-authored with author attribution
+
+Example URLs:
+- /locations/marbella/buying-guide
+- /locations/estepona/investment-analysis
+- /locations/mijas/best-areas-for-families
+- /locations/fuengirola/cost-of-living
+
 ### Glossary: /glossary
 65+ Spanish property terms defined:
 - Legal & Tax: NIE, IBI, ITP, AJD, IVA, Plusvalía, Wealth Tax

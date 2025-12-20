@@ -24,6 +24,22 @@ import {
 } from "@/lib/locationSchemaGenerator";
 import type { Author } from "@/types/blog";
 
+// Language code mapping for hreflang
+const langToHreflang: Record<string, string> = {
+  en: 'en-GB',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  fr: 'fr-FR',
+  pl: 'pl-PL',
+  sv: 'sv-SE',
+  da: 'da-DK',
+  hu: 'hu-HU',
+  fi: 'fi-FI',
+  no: 'nb-NO'
+};
+
+const BASE_URL = 'https://www.delsolprimehomes.com';
+
 const LocationPage = () => {
   const { citySlug, topicSlug } = useParams<{ citySlug: string; topicSlug: string }>();
 
@@ -48,6 +64,23 @@ const LocationPage = () => {
     enabled: !!citySlug && !!topicSlug,
   });
 
+  // Fetch sibling pages for hreflang (same city/topic, different languages)
+  const { data: siblingPages } = useQuery({
+    queryKey: ['location-page-siblings', citySlug, topicSlug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('location_pages')
+        .select('city_slug, topic_slug, language')
+        .eq('city_slug', citySlug)
+        .eq('topic_slug', topicSlug)
+        .eq('status', 'published');
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!citySlug && !!topicSlug,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -66,6 +99,7 @@ const LocationPage = () => {
   const qaEntities = (page.qa_entities as unknown as QAEntity[]) || [];
 
   const author = page.author as Author | null;
+  const currentUrl = `${BASE_URL}/locations/${citySlug}/${topicSlug}`;
   
   // Build location page object for schema generation
   const locationPageData: LocationPageType = {
@@ -79,19 +113,48 @@ const LocationPage = () => {
   
   const schemas = generateAllLocationSchemas(locationPageData, author);
 
+  // Build hreflang links from sibling pages
+  const currentLangCode = langToHreflang[page.language] || page.language;
+  const englishSibling = siblingPages?.find(s => s.language === 'en');
+  const xDefaultUrl = englishSibling 
+    ? `${BASE_URL}/locations/${englishSibling.city_slug}/${englishSibling.topic_slug}` 
+    : currentUrl;
+
   return (
     <>
       <Helmet>
         <title>{page.meta_title}</title>
         <meta name="description" content={page.meta_description} />
-        <link rel="canonical" href={`https://www.delsolprimehomes.com/locations/${citySlug}/${topicSlug}`} />
+        <link rel="canonical" href={currentUrl} />
+        
+        {/* Hreflang Tags */}
+        <link rel="alternate" hrefLang={currentLangCode} href={currentUrl} />
+        {siblingPages?.filter(s => s.language !== page.language).map(sibling => (
+          <link 
+            key={sibling.language}
+            rel="alternate" 
+            hrefLang={langToHreflang[sibling.language] || sibling.language} 
+            href={`${BASE_URL}/locations/${sibling.city_slug}/${sibling.topic_slug}`} 
+          />
+        ))}
+        <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />
         
         {/* Open Graph */}
         <meta property="og:title" content={page.meta_title} />
         <meta property="og:description" content={page.meta_description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://www.delsolprimehomes.com/locations/${citySlug}/${topicSlug}`} />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:locale" content={currentLangCode.replace('-', '_')} />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
         {page.featured_image_url && <meta property="og:image" content={page.featured_image_url} />}
+        {page.featured_image_alt && <meta property="og:image:alt" content={page.featured_image_alt} />}
+        
+        {/* Twitter Cards */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={page.meta_title} />
+        <meta name="twitter:description" content={page.meta_description} />
+        {page.featured_image_url && <meta name="twitter:image" content={page.featured_image_url} />}
+        {page.featured_image_alt && <meta name="twitter:image:alt" content={page.featured_image_alt} />}
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">{JSON.stringify(schemas.place)}</script>

@@ -214,4 +214,52 @@
     <ai:topics>malaga-city, culture, picasso, urban-living</ai:topics>
   </url>
 
+  <!-- Location Intelligence Section (AI-Optimized Location Pages) -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/locations</loc>
+    <lastmod>2025-01-15</lastmod>
+    <priority>0.9</priority>
+    <ai:content-type>location-intelligence-index</ai:content-type>
+    <ai:topics>location-guides, buying-guides, investment-analysis, area-comparisons, cost-breakdowns</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>WebPage, Place, RealEstateAgent, FAQPage, SpeakableSpecification</ai:schema-types>
+  </url>
+
+  <!-- Dynamic Location Intelligence Pages by Intent Type -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/locations/marbella/buying-guide</loc>
+    <priority>0.9</priority>
+    <ai:content-type>location-intelligence</ai:content-type>
+    <ai:topics>marbella, buying-guide, property-purchase, market-overview, best-areas</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:intent-type>buying-guide</ai:intent-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/locations/estepona/investment-analysis</loc>
+    <priority>0.9</priority>
+    <ai:content-type>location-intelligence</ai:content-type>
+    <ai:topics>estepona, investment, rental-yields, roi, capital-growth</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:intent-type>investment-analysis</ai:intent-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/locations/mijas/best-areas-for-families</loc>
+    <priority>0.85</priority>
+    <ai:content-type>location-intelligence</ai:content-type>
+    <ai:topics>mijas, families, schools, safe-areas, community</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:intent-type>demographic-specific</ai:intent-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/locations/fuengirola/cost-of-living</loc>
+    <priority>0.85</priority>
+    <ai:content-type>location-intelligence</ai:content-type>
+    <ai:topics>fuengirola, cost-of-living, expenses, budget, relocation-costs</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:intent-type>cost-analysis</ai:intent-type>
+  </url>
+
 </urlset>
