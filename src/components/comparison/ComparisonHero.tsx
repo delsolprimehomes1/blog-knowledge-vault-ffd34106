@@ -21,7 +21,7 @@ export function ComparisonHero({
   featuredImageCaption,
 }: ComparisonHeroProps) {
   return (
-    <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 overflow-hidden pt-24 md:pt-28">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-10 left-10 w-64 h-64 rounded-full bg-primary blur-3xl" />
