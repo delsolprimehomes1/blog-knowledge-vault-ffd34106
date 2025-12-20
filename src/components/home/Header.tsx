@@ -5,6 +5,7 @@ import { Language } from '../../types/home';
 import { LANGUAGE_NAMES } from '../../constants/home';
 import { Button } from './ui/Button';
 import { useTranslation } from '../../i18n';
+import { useActiveNavigation } from '../../hooks/useActiveNavigation';
 
 interface HeaderProps {
   variant?: 'transparent' | 'solid';
@@ -13,6 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
   const { t, currentLanguage, setLanguage } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { isActive, isAnchorActive } = useActiveNavigation();
   
   // Use solid styling when variant is 'solid' OR when scrolled
   const isLightBackground = variant === 'solid' || isScrolled;
@@ -26,6 +28,22 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Helper to get nav link classes with active state
+  const getNavLinkClasses = (isItemActive: boolean) => {
+    const baseClasses = 'text-sm font-medium transition-colors duration-300 relative group font-nav';
+    const colorClasses = isLightBackground ? 'text-slate-700' : 'text-white/90';
+    const activeClasses = isItemActive ? 'text-prime-gold' : `hover:text-prime-gold ${colorClasses}`;
+    return `${baseClasses} ${activeClasses}`;
+  };
+
+  // Helper to get underline classes with active state
+  const getUnderlineClasses = (isItemActive: boolean) => {
+    const baseClasses = 'absolute -bottom-1 left-0 h-px bg-prime-gold transition-all duration-300';
+    return isItemActive 
+      ? `${baseClasses} w-full` 
+      : `${baseClasses} w-0 group-hover:w-full`;
+  };
 
   return (
     <header 
@@ -53,52 +71,52 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
         <nav className="hidden lg:flex items-center gap-10">
           <Link 
             to="/property-finder"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+            className={getNavLinkClasses(isActive('/property-finder'))}
           >
             {t.nav.properties}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            <span className={getUnderlineClasses(isActive('/property-finder'))}></span>
           </Link>
           <a 
             href="#areas"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+            className={getNavLinkClasses(isAnchorActive('#areas'))}
           >
             {t.nav.areas}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            <span className={getUnderlineClasses(isAnchorActive('#areas'))}></span>
           </a>
           <a 
             href="#about"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+            className={getNavLinkClasses(isAnchorActive('#about'))}
           >
             {t.nav.aboutUs}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            <span className={getUnderlineClasses(isAnchorActive('#about'))}></span>
           </a>
           <a 
             href="#guide"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+            className={getNavLinkClasses(isAnchorActive('#guide'))}
           >
             {t.nav.buyersGuide}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            <span className={getUnderlineClasses(isAnchorActive('#guide'))}></span>
           </a>
           <Link 
             to="/blog"
-            className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+            className={getNavLinkClasses(isActive('/blog'))}
           >
             {t.nav.blog}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
-          </Link>
-        <Link 
-          to="/qa"
-          className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
-        >
-          {t.nav.qa}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            <span className={getUnderlineClasses(isActive('/blog'))}></span>
           </Link>
           <Link 
-          to="/compare"
-          className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
-        >
-          {t.nav.compare}
-            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+            to="/qa"
+            className={getNavLinkClasses(isActive('/qa'))}
+          >
+            {t.nav.qa}
+            <span className={getUnderlineClasses(isActive('/qa'))}></span>
+          </Link>
+          <Link 
+            to="/compare"
+            className={getNavLinkClasses(isActive('/compare'))}
+          >
+            {t.nav.compare}
+            <span className={getUnderlineClasses(isActive('/compare'))}></span>
           </Link>
         </nav>
 
@@ -150,49 +168,49 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
         <Link 
           to="/property-finder"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/property-finder') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.properties}
         </Link>
         <a 
           href="#areas"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#areas') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.areas}
         </a>
         <a 
           href="#about"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#about') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.aboutUs}
         </a>
         <a 
           href="#guide"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#guide') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.buyersGuide}
         </a>
         <Link 
           to="/blog"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/blog') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.blog}
         </Link>
         <Link 
           to="/qa"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/qa') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.qa}
         </Link>
         <Link 
           to="/compare"
           onClick={() => setIsMobileMenuOpen(false)}
-          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/compare') ? 'text-prime-gold' : 'text-slate-800'}`}
         >
           {t.nav.compare}
         </Link>
