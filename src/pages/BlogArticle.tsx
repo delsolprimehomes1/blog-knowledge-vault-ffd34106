@@ -332,6 +332,7 @@ const BlogArticle = () => {
                 headline={article.headline}
                 bottomLine={article.speakable_answer}
                 readTime={article.read_time || undefined}
+                language={article.language}
               />
             )}
 

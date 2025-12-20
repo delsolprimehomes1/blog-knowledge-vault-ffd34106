@@ -5,6 +5,7 @@ interface QuickSummaryProps {
   keyTakeaways?: string[];
   bottomLine: string;
   readTime?: number;
+  language?: string;
 }
 
 const labelTranslations: Record<string, { title: string; bottomLineLabel: string; readTimeLabel: string }> = {
@@ -58,10 +59,9 @@ export const QuickSummary = ({
   headline, 
   keyTakeaways, 
   bottomLine, 
-  readTime 
+  readTime,
+  language = 'en'
 }: QuickSummaryProps) => {
-  // Detect language from common patterns (could be enhanced with prop)
-  const language = 'en'; // Default, could be passed as prop
   const labels = labelTranslations[language] || labelTranslations.en;
   
   const takeaways = keyTakeaways && keyTakeaways.length > 0 
