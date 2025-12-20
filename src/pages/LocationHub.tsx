@@ -1,27 +1,15 @@
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, MapPin, Compass, ChevronDown, TrendingUp, Users, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, MapPin, Compass, ChevronDown, TrendingUp, Users, Home, ImagePlus, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { OptimizedImage } from "@/components/OptimizedImage";
-
-// City images mapping
-const CITY_IMAGES: Record<string, string> = {
-  'marbella': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-  'estepona': 'https://images.unsplash.com/photo-1512753360435-329c4535a9a7?w=800&q=80',
-  'fuengirola': 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&q=80',
-  'malaga': 'https://images.unsplash.com/photo-1561632669-7f55f7975606?w=800&q=80',
-  'mijas': 'https://images.unsplash.com/photo-1509840841025-9088ba78a826?w=800&q=80',
-  'benalmadena': 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800&q=80',
-  'torremolinos': 'https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?w=800&q=80',
-  'nerja': 'https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=800&q=80',
-  'sotogrande': 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-  'manilva': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-};
+import { toast } from "sonner";
 
 const STATS = [
   { icon: Home, label: "Properties", value: "5,000+", suffix: "" },
@@ -29,8 +17,22 @@ const STATS = [
   { icon: TrendingUp, label: "Avg. ROI", value: "8.5", suffix: "%" },
 ];
 
+interface CityData {
+  city_slug: string;
+  city_name: string;
+  region: string;
+  count: number;
+  image?: string;
+  imageAlt?: string;
+  needsImage: boolean;
+  pageId?: string;
+  topicSlug?: string;
+}
+
 const LocationHub = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [generatingCity, setGeneratingCity] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -41,18 +43,21 @@ const LocationHub = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('location_pages')
-        .select('city_slug, city_name, region, featured_image_url')
+        .select('id, city_slug, city_name, region, topic_slug, featured_image_url, featured_image_alt')
         .eq('status', 'published');
 
       if (error) throw error;
 
-      const cityMap = new Map<string, { city_slug: string; city_name: string; region: string; count: number; image?: string }>();
+      const cityMap = new Map<string, CityData>();
       data?.forEach(page => {
         const existing = cityMap.get(page.city_slug);
         if (existing) {
           existing.count++;
+          // Prefer pages with images
           if (!existing.image && page.featured_image_url) {
             existing.image = page.featured_image_url;
+            existing.imageAlt = page.featured_image_alt || undefined;
+            existing.needsImage = false;
           }
         } else {
           cityMap.set(page.city_slug, {
@@ -60,7 +65,11 @@ const LocationHub = () => {
             city_name: page.city_name,
             region: page.region,
             count: 1,
-            image: page.featured_image_url || CITY_IMAGES[page.city_slug]
+            image: page.featured_image_url || undefined,
+            imageAlt: page.featured_image_alt || undefined,
+            needsImage: !page.featured_image_url,
+            pageId: page.id,
+            topicSlug: page.topic_slug
           });
         }
       });
@@ -68,6 +77,37 @@ const LocationHub = () => {
       return Array.from(cityMap.values()).sort((a, b) => b.count - a.count);
     },
   });
+
+  const generateImageMutation = useMutation({
+    mutationFn: async (city: CityData) => {
+      const { data, error } = await supabase.functions.invoke('generate-location-image', {
+        body: {
+          location_page_id: city.pageId,
+          city_name: city.city_name,
+          city_slug: city.city_slug,
+          topic_slug: city.topicSlug || 'overview'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, city) => {
+      toast.success(`Generated image for ${city.city_name}`);
+      queryClient.invalidateQueries({ queryKey: ['location-cities'] });
+    },
+    onError: (error: Error, city) => {
+      toast.error(`Failed to generate image for ${city.city_name}: ${error.message}`);
+    },
+    onSettled: () => {
+      setGeneratingCity(null);
+    }
+  });
+
+  const handleGenerateImage = (city: CityData) => {
+    setGeneratingCity(city.city_slug);
+    generateImageMutation.mutate(city);
+  };
 
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight - 100, behavior: 'smooth' });
@@ -218,11 +258,37 @@ const LocationHub = () => {
                     {city.image ? (
                       <OptimizedImage
                         src={city.image}
-                        alt={`Aerial view of ${city.city_name}, Costa del Sol showing Mediterranean coastline and property areas`}
+                        alt={city.imageAlt || `Aerial view of ${city.city_name}, Costa del Sol showing Mediterranean coastline and property areas`}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20" />
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                        {city.needsImage && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 z-10"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleGenerateImage(city);
+                            }}
+                            disabled={generatingCity === city.city_slug}
+                          >
+                            {generatingCity === city.city_slug ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <ImagePlus className="w-4 h-4 mr-2" />
+                                Generate Image
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     )}
                     {/* Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
