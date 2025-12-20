@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Scale, Trash2, Eye, CheckCircle, Edit } from "lucide-react";
+import { Loader2, Scale, Trash2, Eye, CheckCircle, Zap, Link as LinkIcon, Quote } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const LANGUAGES = [
@@ -41,6 +41,34 @@ const SUGGESTED_COMPARISONS = [
   { a: 'Urban Apartment', b: 'Rural Villa' },
 ];
 
+// Phase 3 MOFU Comparisons with internal linking keywords
+const PHASE3_MOFU_COMPARISONS = [
+  {
+    optionA: 'New-Build Property',
+    optionB: 'Resale Property',
+    targetAudience: 'first-time buyers and investors comparing property types in Costa del Sol',
+    niche: 'real-estate',
+    relatedKeywords: ['property buying costs', 'Spanish mortgage', 'NIE number'],
+    description: 'Comprehensive guide comparing off-plan/new-build vs resale properties',
+  },
+  {
+    optionA: 'Golden Mile',
+    optionB: 'Nueva Andalucía',
+    targetAudience: 'luxury property buyers comparing premium Marbella neighborhoods',
+    niche: 'real-estate',
+    relatedKeywords: ['golden visa', 'property investment', 'Marbella real estate'],
+    description: 'Location comparison for high-end Marbella property seekers',
+  },
+  {
+    optionA: 'Costa del Sol',
+    optionB: 'Algarve Portugal',
+    targetAudience: 'international property investors comparing Mediterranean destinations',
+    niche: 'real-estate',
+    relatedKeywords: ['golden visa spain', 'property buying costs', 'tax comparison'],
+    description: 'Destination comparison for European property investors',
+  },
+];
+
 export default function ComparisonGenerator() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -51,6 +79,8 @@ export default function ComparisonGenerator() {
   const [targetAudience, setTargetAudience] = useState('property buyers and investors');
   const [language, setLanguage] = useState('en');
   const [generatedComparison, setGeneratedComparison] = useState<any>(null);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: '' });
 
   // Fetch existing comparisons
   const { data: comparisons, isLoading: loadingComparisons } = useQuery({
@@ -65,11 +95,31 @@ export default function ComparisonGenerator() {
     },
   });
 
-  // Generate comparison
+  // Check which Phase 3 comparisons are missing
+  const missingPhase3 = PHASE3_MOFU_COMPARISONS.filter(mofu => {
+    const exists = comparisons?.some(c => 
+      (c.option_a.toLowerCase().includes(mofu.optionA.toLowerCase().split(' ')[0]) &&
+       c.option_b.toLowerCase().includes(mofu.optionB.toLowerCase().split(' ')[0])) ||
+      (c.option_a.toLowerCase().includes(mofu.optionB.toLowerCase().split(' ')[0]) &&
+       c.option_b.toLowerCase().includes(mofu.optionA.toLowerCase().split(' ')[0]))
+    );
+    return !exists;
+  });
+
+  // Generate comparison with internal links and citations
   const generateMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (params?: { optionA: string; optionB: string; targetAudience: string; niche: string }) => {
+      const opts = params || { optionA, optionB, targetAudience, niche };
       const { data, error } = await supabase.functions.invoke('generate-comparison', {
-        body: { option_a: optionA, option_b: optionB, niche, target_audience: targetAudience, language }
+        body: { 
+          option_a: opts.optionA, 
+          option_b: opts.optionB, 
+          niche: opts.niche, 
+          target_audience: opts.targetAudience, 
+          language,
+          include_internal_links: true,
+          include_citations: true,
+        }
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -143,6 +193,70 @@ export default function ComparisonGenerator() {
     },
   });
 
+  // Bulk generate all missing Phase 3 comparisons
+  const handleBulkGenerate = async () => {
+    if (missingPhase3.length === 0) {
+      toast({ title: "All Phase 3 pages exist", description: "No new comparisons to generate." });
+      return;
+    }
+
+    setBulkGenerating(true);
+    setBulkProgress({ current: 0, total: missingPhase3.length, status: 'Starting...' });
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < missingPhase3.length; i++) {
+      const mofu = missingPhase3[i];
+      setBulkProgress({ 
+        current: i + 1, 
+        total: missingPhase3.length, 
+        status: `Generating: ${mofu.optionA} vs ${mofu.optionB}` 
+      });
+
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-comparison', {
+          body: { 
+            option_a: mofu.optionA, 
+            option_b: mofu.optionB, 
+            niche: mofu.niche, 
+            target_audience: mofu.targetAudience, 
+            language: 'en',
+            include_internal_links: true,
+            include_citations: true,
+          }
+        });
+
+        if (error || data.error) throw error || new Error(data.error);
+
+        // Save as draft
+        const { error: saveError } = await supabase
+          .from('comparison_pages')
+          .insert({
+            ...data.comparison,
+            status: 'draft',
+            date_modified: new Date().toISOString(),
+          });
+
+        if (saveError) throw saveError;
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to generate ${mofu.optionA} vs ${mofu.optionB}:`, err);
+        errorCount++;
+      }
+    }
+
+    setBulkGenerating(false);
+    setBulkProgress({ current: 0, total: 0, status: '' });
+    queryClient.invalidateQueries({ queryKey: ['admin-comparisons'] });
+
+    toast({ 
+      title: "Bulk generation complete", 
+      description: `Generated ${successCount} comparisons. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
+      variant: errorCount > 0 ? 'destructive' : 'default',
+    });
+  };
+
   const handleSuggestionClick = (suggestion: { a: string; b: string }) => {
     setOptionA(suggestion.a);
     setOptionB(suggestion.b);
@@ -159,13 +273,130 @@ export default function ComparisonGenerator() {
           </div>
         </div>
 
-        <Tabs defaultValue="generate" className="space-y-6">
+        <Tabs defaultValue="phase3" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="generate">Generate New</TabsTrigger>
+            <TabsTrigger value="phase3" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Phase 3 MOFU
+            </TabsTrigger>
+            <TabsTrigger value="generate">Generate Custom</TabsTrigger>
             <TabsTrigger value="manage">
               Manage ({comparisons?.length || 0})
             </TabsTrigger>
           </TabsList>
+
+          {/* Phase 3 MOFU Bulk Generation */}
+          <TabsContent value="phase3" className="space-y-6">
+            <Card className="border-primary/50 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-primary" />
+                      Phase 3: MOFU Expansion
+                    </CardTitle>
+                    <CardDescription>
+                      Generate missing comparison pages with automatic internal linking to BOFU content
+                    </CardDescription>
+                  </div>
+                  <Badge variant={missingPhase3.length === 0 ? "default" : "secondary"}>
+                    {missingPhase3.length === 0 ? 'All Complete' : `${missingPhase3.length} Missing`}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Phase 3 Comparison Cards */}
+                <div className="grid gap-4">
+                  {PHASE3_MOFU_COMPARISONS.map((mofu, i) => {
+                    const exists = !missingPhase3.includes(mofu);
+                    return (
+                      <div key={i} className={`p-4 rounded-lg border ${exists ? 'bg-green-50 border-green-200' : 'bg-background border-border'}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold flex items-center gap-2">
+                              {mofu.optionA} vs {mofu.optionB}
+                              {exists && <CheckCircle className="h-4 w-4 text-green-600" />}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">{mofu.description}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <LinkIcon className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Links to: {mofu.relatedKeywords.join(', ')}</span>
+                            </div>
+                          </div>
+                          {!exists && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setOptionA(mofu.optionA);
+                                setOptionB(mofu.optionB);
+                                setTargetAudience(mofu.targetAudience);
+                                setNiche(mofu.niche);
+                                generateMutation.mutate({ 
+                                  optionA: mofu.optionA, 
+                                  optionB: mofu.optionB, 
+                                  targetAudience: mofu.targetAudience, 
+                                  niche: mofu.niche 
+                                });
+                              }}
+                              disabled={generateMutation.isPending}
+                            >
+                              Generate
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bulk Generate Button */}
+                {missingPhase3.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={handleBulkGenerate}
+                      disabled={bulkGenerating}
+                    >
+                      {bulkGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {bulkProgress.status} ({bulkProgress.current}/{bulkProgress.total})
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-4 w-4 mr-2" />
+                          Generate All {missingPhase3.length} Missing Comparisons
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Comparisons will be saved as drafts for review before publishing
+                    </p>
+                  </div>
+                )}
+
+                {/* Features */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div className="flex items-start gap-2">
+                    <LinkIcon className="h-4 w-4 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Internal Linking</p>
+                      <p className="text-xs text-muted-foreground">Auto-links to BOFU articles (Golden Visa, Costs, NIE)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Quote className="h-4 w-4 text-primary mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">External Citations</p>
+                      <p className="text-xs text-muted-foreground">Sources from approved domains only</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="generate" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
@@ -233,7 +464,7 @@ export default function ComparisonGenerator() {
 
                   <Button
                     className="w-full"
-                    onClick={() => generateMutation.mutate()}
+                    onClick={() => generateMutation.mutate({ optionA, optionB, targetAudience, niche })}
                     disabled={!optionA || !optionB || generateMutation.isPending}
                   >
                     {generateMutation.isPending ? (

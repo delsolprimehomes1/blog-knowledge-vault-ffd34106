@@ -69,7 +69,15 @@ serve(async (req) => {
   }
 
   try {
-    const { option_a, option_b, niche, target_audience, language = 'en' } = await req.json();
+    const { 
+      option_a, 
+      option_b, 
+      niche, 
+      target_audience, 
+      language = 'en',
+      include_internal_links = false,
+      include_citations = false,
+    } = await req.json();
 
     if (!option_a || !option_b) {
       return new Response(
@@ -83,6 +91,41 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
+    // Fetch internal BOFU articles for linking
+    let bofuArticles: any[] = [];
+    let approvedDomains: any[] = [];
+    
+    if (include_internal_links || include_citations) {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+        // Fetch BOFU articles for internal linking
+        const articlesResponse = await fetch(`${SUPABASE_URL}/rest/v1/blog_articles?status=eq.published&funnel_stage=eq.bofu&select=headline,slug,meta_description,language&limit=20`, {
+          headers: {
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          }
+        });
+        
+        if (articlesResponse.ok) {
+          bofuArticles = await articlesResponse.json();
+        }
+        
+        // Fetch approved domains for citations
+        const domainsResponse = await fetch(`${SUPABASE_URL}/rest/v1/approved_domains?is_allowed=eq.true&select=domain,category,language,trust_score&order=trust_score.desc&limit=30`, {
+          headers: {
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          }
+        });
+        
+        if (domainsResponse.ok) {
+          approvedDomains = await domainsResponse.json();
+        }
+      }
+    }
+
     // Build the prompt
     const prompt = MASTER_PROMPT
       .replace(/\[OPTION_A\]/g, option_a)
@@ -94,7 +137,7 @@ serve(async (req) => {
       ? `Generate all content in ${language} language. The structure and field names must remain in English, but all values/content must be in ${language}. STRICTLY follow all word limits specified in the prompt.`
       : 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
 
-    console.log('Generating comparison:', { option_a, option_b, niche, language });
+    console.log('Generating comparison:', { option_a, option_b, niche, language, include_internal_links, include_citations });
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -109,7 +152,7 @@ serve(async (req) => {
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 6000, // Reduced to encourage conciseness
+        max_tokens: 6000,
       }),
     });
 
@@ -154,6 +197,50 @@ serve(async (req) => {
       throw new Error('Failed to parse AI response as JSON');
     }
 
+    // Generate internal links from BOFU articles
+    const internalLinks: any[] = [];
+    if (include_internal_links && bofuArticles.length > 0) {
+      const topicKeywords = [option_a.toLowerCase(), option_b.toLowerCase(), 'property', 'investment', 'spain', 'costa del sol'];
+      
+      bofuArticles.forEach(article => {
+        const headline = article.headline?.toLowerCase() || '';
+        const slug = article.slug?.toLowerCase() || '';
+        
+        // Check if article is relevant to the comparison topic
+        const isRelevant = topicKeywords.some(keyword => 
+          headline.includes(keyword) || slug.includes(keyword.replace(/\s+/g, '-'))
+        );
+        
+        if (isRelevant || internalLinks.length < 4) {
+          internalLinks.push({
+            url: `/blog/${article.slug}`,
+            anchor_text: article.headline,
+            context: article.meta_description,
+            relevance: isRelevant ? 'high' : 'medium',
+          });
+        }
+      });
+    }
+
+    // Generate external citations from approved domains
+    const externalCitations: any[] = [];
+    if (include_citations && approvedDomains.length > 0) {
+      // Filter domains relevant to topic and language
+      const relevantDomains = approvedDomains.filter(d => 
+        d.language === language || d.language === null || d.language === 'en'
+      ).slice(0, 5);
+      
+      relevantDomains.forEach(domain => {
+        externalCitations.push({
+          source: domain.domain,
+          url: `https://${domain.domain}`,
+          category: domain.category,
+          trust_score: domain.trust_score,
+          suggested_anchor: `Source: ${domain.domain}`,
+        });
+      });
+    }
+
     // Build the comparison object
     const comparison = {
       option_a,
@@ -174,10 +261,15 @@ serve(async (req) => {
       use_case_scenarios: parsed.use_case_scenarios,
       final_verdict: parsed.final_verdict,
       qa_entities: parsed.qa_entities || [],
+      internal_links: internalLinks,
+      external_citations: externalCitations,
       status: 'draft',
     };
 
-    console.log('Generated comparison successfully:', comparison.slug);
+    console.log('Generated comparison successfully:', comparison.slug, {
+      internalLinksCount: internalLinks.length,
+      externalCitationsCount: externalCitations.length,
+    });
 
     return new Response(
       JSON.stringify({ success: true, comparison }),
