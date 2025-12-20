@@ -13,6 +13,7 @@ export const nl = {
     buyersGuide: "Kopershandleiding",
     blog: "Blog",
     qa: "Q&A",
+    compare: "Vergelijk",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const nl = {
       buyersGuide: "Kopershandleiding",
       blogInsights: "Blog & Inzichten",
       glossary: "Vastgoed Woordenlijst",
+      comparisons: "Vergelijkingen",
     },
     legal: {
       privacy: "Privacybeleid",

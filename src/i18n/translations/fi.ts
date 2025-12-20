@@ -13,6 +13,7 @@ export const fi = {
     buyersGuide: "Ostajan Opas",
     blog: "Blogi",
     qa: "Q&A",
+    compare: "Vertaa",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const fi = {
       buyersGuide: "Ostajan Opas",
       blogInsights: "Blogi & Näkemyksiä",
       glossary: "Kiinteistösanasto",
+      comparisons: "Vertailut",
     },
     legal: {
       privacy: "Tietosuojakäytäntö",

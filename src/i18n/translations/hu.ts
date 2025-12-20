@@ -13,6 +13,7 @@ export const hu = {
     buyersGuide: "Vásárlói Útmutató",
     blog: "Blog",
     qa: "Q&A",
+    compare: "Összehasonlítás",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const hu = {
       buyersGuide: "Vásárlói Útmutató",
       blogInsights: "Blog & Betekintések",
       glossary: "Ingatlan Szószedet",
+      comparisons: "Összehasonlítások",
     },
     legal: {
       privacy: "Adatvédelmi Irányelvek",

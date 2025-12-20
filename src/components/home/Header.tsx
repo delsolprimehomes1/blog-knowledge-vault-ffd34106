@@ -93,6 +93,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           {t.nav.qa}
             <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
           </Link>
+          <Link 
+          to="/compare"
+          className={`text-sm font-medium hover:text-prime-gold transition-colors duration-300 relative group font-nav ${isLightBackground ? 'text-slate-700' : 'text-white/90'}`}
+        >
+          {t.nav.compare}
+            <span className="absolute -bottom-1 left-0 w-0 h-px bg-prime-gold transition-all duration-300 group-hover:w-full"></span>
+          </Link>
         </nav>
 
         {/* Actions */}
@@ -181,6 +188,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
         >
           {t.nav.qa}
+        </Link>
+        <Link 
+          to="/compare"
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="text-2xl font-serif font-medium text-slate-800 border-b border-slate-100 pb-4 font-nav"
+        >
+          {t.nav.compare}
         </Link>
         
         <div className="flex flex-col gap-4 mt-4">

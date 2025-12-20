@@ -13,6 +13,7 @@ export const fr = {
     buyersGuide: "Guide Acheteur",
     blog: "Blog",
     qa: "Q&A",
+    compare: "Comparer",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const fr = {
       buyersGuide: "Guide Acheteur",
       blogInsights: "Blog & Insights",
       glossary: "Glossaire Immobilier",
+      comparisons: "Comparaisons",
     },
     legal: {
       privacy: "Politique de Confidentialité",

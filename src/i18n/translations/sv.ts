@@ -13,6 +13,7 @@ export const sv = {
     buyersGuide: "Köparguide",
     blog: "Blogg",
     qa: "Q&A",
+    compare: "Jämför",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const sv = {
       buyersGuide: "Köparguide",
       blogInsights: "Blogg & Insikter",
       glossary: "Fastighetsordlista",
+      comparisons: "Jämförelser",
     },
     legal: {
       privacy: "Integritetspolicy",

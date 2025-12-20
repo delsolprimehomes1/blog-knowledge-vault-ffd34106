@@ -13,6 +13,7 @@ export const no = {
     buyersGuide: "Kjøperguide",
     blog: "Blogg",
     qa: "Q&A",
+    compare: "Sammenlign",
   },
   hero: {
     trustBadges: {
@@ -162,6 +163,7 @@ export const no = {
       buyersGuide: "Kjøperguide",
       blogInsights: "Blogg & Innsikt",
       glossary: "Eiendomsordliste",
+      comparisons: "Sammenligninger",
     },
     legal: {
       privacy: "Personvernerklæring",
