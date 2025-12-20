@@ -262,4 +262,56 @@
     <ai:intent-type>cost-analysis</ai:intent-type>
   </url>
 
+  <!-- Comparison Content Section (AI-Optimized Decision Guides) -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/compare</loc>
+    <lastmod>2025-01-15</lastmod>
+    <priority>0.9</priority>
+    <ai:content-type>comparison-index</ai:content-type>
+    <ai:topics>property-comparisons, location-comparisons, investment-decisions, decision-guides</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>CollectionPage, ItemList, SpeakableSpecification</ai:schema-types>
+  </url>
+
+  <!-- Dynamic Comparison Pages by Topic -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/compare/apartment-vs-villa</loc>
+    <priority>0.9</priority>
+    <ai:content-type>comparison</ai:content-type>
+    <ai:topics>apartment, villa, property-type, investment, lifestyle</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Article, FAQPage, Table, SpeakableSpecification</ai:schema-types>
+    <ai:comparison-type>property-type</ai:comparison-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/compare/marbella-vs-estepona</loc>
+    <priority>0.9</priority>
+    <ai:content-type>comparison</ai:content-type>
+    <ai:topics>marbella, estepona, location-comparison, property-prices, lifestyle</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Article, FAQPage, Table, SpeakableSpecification</ai:schema-types>
+    <ai:comparison-type>location</ai:comparison-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/compare/new-build-vs-resale</loc>
+    <priority>0.85</priority>
+    <ai:content-type>comparison</ai:content-type>
+    <ai:topics>new-build, resale, off-plan, property-purchase, investment</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Article, FAQPage, Table, SpeakableSpecification</ai:schema-types>
+    <ai:comparison-type>property-condition</ai:comparison-type>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/compare/rental-investment-vs-personal-use</loc>
+    <priority>0.85</priority>
+    <ai:content-type>comparison</ai:content-type>
+    <ai:topics>rental-investment, personal-use, roi, lifestyle, property-strategy</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Article, FAQPage, Table, SpeakableSpecification</ai:schema-types>
+    <ai:comparison-type>investment-strategy</ai:comparison-type>
+  </url>
+
 </urlset>

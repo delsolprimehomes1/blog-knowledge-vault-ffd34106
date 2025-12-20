@@ -57,6 +57,16 @@ interface LocationPageData {
   date_published: string | null;
 }
 
+interface ComparisonPageData {
+  slug: string;
+  language: string;
+  option_a: string;
+  option_b: string;
+  niche: string | null;
+  updated_at: string | null;
+  date_published: string | null;
+}
+
 interface GlossaryTerm {
   term: string;
   definition: string;
@@ -116,6 +126,10 @@ function generateSitemapIndex(lastmods: Record<string, string>): string {
   <sitemap>
     <loc>${BASE_URL}/sitemap-location-pages.xml</loc>
     <lastmod>${lastmods.locationPages}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>${BASE_URL}/sitemap-comparison.xml</loc>
+    <lastmod>${lastmods.comparison}</lastmod>
   </sitemap>
 </sitemapindex>`;
 }
@@ -374,6 +388,79 @@ ${pageUrls}
 </urlset>`;
 }
 
+// Generate comparison pages sitemap
+function generateComparisonSitemap(
+  comparisonPages: ComparisonPageData[],
+  hreflangEnabled: boolean
+): string {
+  // Group by option_a + option_b + niche for hreflang (same comparison, different language)
+  const pageGroups = new Map<string, ComparisonPageData[]>();
+  comparisonPages.forEach((page) => {
+    const key = `${page.option_a}|${page.option_b}|${page.niche || ''}`;
+    const existing = pageGroups.get(key) || [];
+    existing.push(page);
+    pageGroups.set(key, existing);
+  });
+
+  const compareIndexHreflang = hreflangEnabled ? `
+    <xhtml:link rel="alternate" hreflang="en-GB" href="${BASE_URL}/compare" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${BASE_URL}/compare" />` : '';
+
+  const pageUrls = comparisonPages.map((page) => {
+    const lastmod = page.updated_at || page.date_published || new Date().toISOString();
+    const lastmodFormatted = new Date(lastmod).toISOString().split('T')[0];
+    const currentUrl = `${BASE_URL}/compare/${page.slug}`;
+    
+    let hreflangLinks = '';
+    
+    if (hreflangEnabled) {
+      const currentLangCode = langToHreflang[page.language] || page.language;
+      hreflangLinks = `\n    <xhtml:link rel="alternate" hreflang="${currentLangCode}" href="${currentUrl}" />`;
+      
+      // Find sibling pages (same comparison topic, different language)
+      const key = `${page.option_a}|${page.option_b}|${page.niche || ''}`;
+      const siblings = pageGroups.get(key);
+      if (siblings && siblings.length > 1) {
+        siblings.forEach((sibling) => {
+          if (sibling.language !== page.language) {
+            const langCode = langToHreflang[sibling.language] || sibling.language;
+            hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${BASE_URL}/compare/${sibling.slug}" />`;
+          }
+        });
+      }
+      
+      // x-default to English version or current
+      const englishVersion = siblings?.find((s) => s.language === 'en');
+      const xDefaultUrl = englishVersion 
+        ? `${BASE_URL}/compare/${englishVersion.slug}`
+        : currentUrl;
+      hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultUrl}" />`;
+    }
+    
+    return `  <url>
+    <loc>${currentUrl}</loc>
+    <lastmod>${lastmodFormatted}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>${hreflangLinks}
+  </url>`;
+  }).join('\n');
+
+  return `${xmlHeader(hreflangEnabled)}
+  
+  <!-- Comparison Index -->
+  <url>
+    <loc>${BASE_URL}/compare</loc>
+    <lastmod>${getToday()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>${compareIndexHreflang}
+  </url>
+  
+  <!-- Comparison Pages (${comparisonPages.length} total) -->
+${pageUrls}
+  
+</urlset>`;
+}
+
 // Main sitemap generation function
 export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log('\n🗺️ Starting multi-sitemap generation...');
@@ -424,6 +511,19 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   
   console.log(`📍 Found ${locationPages?.length || 0} location intelligence pages`);
   
+  // Fetch published comparison pages
+  const { data: comparisonPages, error: compError } = await supabase
+    .from('comparison_pages')
+    .select('slug, language, option_a, option_b, niche, updated_at, date_published')
+    .eq('status', 'published')
+    .order('updated_at', { ascending: false });
+  
+  if (compError) {
+    console.error('❌ Failed to fetch comparison pages:', compError);
+  }
+  
+  console.log(`⚖️ Found ${comparisonPages?.length || 0} comparison pages`);
+  
   // Load glossary terms
   const glossaryTerms = loadGlossaryTerms();
   console.log(`📖 Found ${glossaryTerms.length} glossary terms`);
@@ -448,13 +548,17 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const locationPagesLastmod = locationPages?.[0]?.updated_at 
     ? new Date(locationPages[0].updated_at).toISOString().split('T')[0]
     : getToday();
+  const comparisonLastmod = comparisonPages?.[0]?.updated_at 
+    ? new Date(comparisonPages[0].updated_at).toISOString().split('T')[0]
+    : getToday();
   
   const lastmods = {
     blog: blogLastmod,
     qa: qaLastmod,
     glossary: getToday(),
     locations: getToday(),
-    locationPages: locationPagesLastmod
+    locationPages: locationPagesLastmod,
+    comparison: comparisonLastmod
   };
   
   // Generate all sitemaps
@@ -464,6 +568,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const glossarySitemap = generateGlossarySitemap(glossaryTerms);
   const locationsSitemap = generateLocationsSitemap(hreflangEnabled);
   const locationPagesSitemap = generateLocationPagesSitemap(locationPages || [], hreflangEnabled);
+  const comparisonSitemap = generateComparisonSitemap(comparisonPages || [], hreflangEnabled);
   
   // Write all files
   writeFileSync(join(outputPath, 'sitemap-index.xml'), sitemapIndex, 'utf-8');
@@ -472,21 +577,23 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   writeFileSync(join(outputPath, 'sitemap-glossary.xml'), glossarySitemap, 'utf-8');
   writeFileSync(join(outputPath, 'sitemap-locations.xml'), locationsSitemap, 'utf-8');
   writeFileSync(join(outputPath, 'sitemap-location-pages.xml'), locationPagesSitemap, 'utf-8');
+  writeFileSync(join(outputPath, 'sitemap-comparison.xml'), comparisonSitemap, 'utf-8');
   
   // Also keep sitemap.xml as a copy of the index for legacy compatibility
   writeFileSync(join(outputPath, 'sitemap.xml'), sitemapIndex, 'utf-8');
   
   console.log(`\n✅ Multi-sitemap generation complete!`);
   console.log(`📊 Summary:`);
-  console.log(`   • sitemap-index.xml (5 sitemaps)`);
+  console.log(`   • sitemap-index.xml (6 sitemaps)`);
   console.log(`   • sitemap-blog.xml (${(articles?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap-qa.xml (${(qaPages?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap-glossary.xml (${glossaryTerms.length + 1} URLs)`);
   console.log(`   • sitemap-locations.xml (${LOCATION_CITIES.length + 1} URLs)`);
   console.log(`   • sitemap-location-pages.xml (${(locationPages?.length || 0) + 1} URLs)`);
+  console.log(`   • sitemap-comparison.xml (${(comparisonPages?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap.xml (legacy alias → index)`);
   
-  const totalUrls = (articles?.length || 0) + (qaPages?.length || 0) + glossaryTerms.length + LOCATION_CITIES.length + (locationPages?.length || 0) + 5;
+  const totalUrls = (articles?.length || 0) + (qaPages?.length || 0) + glossaryTerms.length + LOCATION_CITIES.length + (locationPages?.length || 0) + (comparisonPages?.length || 0) + 6;
   console.log(`\n📍 Total URLs across all sitemaps: ${totalUrls}`);
 }
 

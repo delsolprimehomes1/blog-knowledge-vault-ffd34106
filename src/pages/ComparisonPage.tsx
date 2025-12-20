@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
@@ -19,6 +19,35 @@ import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const BASE_URL = 'https://www.delsolprimehomes.com';
+
+// Language code to hreflang mapping
+const langToHreflang: Record<string, string> = {
+  en: 'en-GB',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  fr: 'fr-FR',
+  pl: 'pl-PL',
+  sv: 'sv-SE',
+  da: 'da-DK',
+  hu: 'hu-HU',
+  fi: 'fi-FI',
+  no: 'nb-NO'
+};
+
+// Language to OG locale mapping
+const langToOgLocale: Record<string, string> = {
+  en: 'en_GB',
+  de: 'de_DE',
+  nl: 'nl_NL',
+  fr: 'fr_FR',
+  pl: 'pl_PL',
+  sv: 'sv_SE',
+  da: 'da_DK',
+  hu: 'hu_HU',
+  fi: 'fi_FI',
+  no: 'nb_NO'
+};
 export default function ComparisonPage() {
   const { slug } = useParams<{ slug: string }>();
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
@@ -53,6 +82,34 @@ export default function ComparisonPage() {
     },
     enabled: !!comparison?.author_id,
   });
+
+  // Fetch sibling pages for hreflang (same option_a + option_b + niche, different language)
+  const { data: siblingPages } = useQuery({
+    queryKey: ['comparison-siblings', comparison?.option_a, comparison?.option_b, comparison?.niche],
+    queryFn: async () => {
+      if (!comparison) return [];
+      const query = supabase
+        .from('comparison_pages')
+        .select('slug, language')
+        .eq('option_a', comparison.option_a)
+        .eq('option_b', comparison.option_b)
+        .eq('status', 'published');
+      
+      if (comparison.niche) {
+        query.eq('niche', comparison.niche);
+      }
+      
+      const { data } = await query;
+      return data || [];
+    },
+    enabled: !!comparison,
+  });
+
+  // Get OG locale
+  const ogLocale = useMemo(() => {
+    if (!comparison?.language) return 'en_GB';
+    return langToOgLocale[comparison.language] || 'en_GB';
+  }, [comparison?.language]);
 
   const handleChatClick = () => {
     const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
@@ -102,16 +159,45 @@ export default function ComparisonPage() {
       <Helmet>
         <title>{comparison.meta_title}</title>
         <meta name="description" content={comparison.meta_description} />
-        <link rel="canonical" href={`https://www.delsolprimehomes.com/compare/${comparison.slug}`} />
+        <link rel="canonical" href={`${BASE_URL}/compare/${comparison.slug}`} />
         
-        {/* Open Graph */}
+        {/* Open Graph - Enhanced */}
         <meta property="og:title" content={comparison.meta_title} />
         <meta property="og:description" content={comparison.meta_description} />
-        <meta property="og:url" content={`https://www.delsolprimehomes.com/compare/${comparison.slug}`} />
+        <meta property="og:url" content={`${BASE_URL}/compare/${comparison.slug}`} />
         <meta property="og:type" content="article" />
+        <meta property="og:locale" content={ogLocale} />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
         {comparison.featured_image_url && (
-          <meta property="og:image" content={comparison.featured_image_url} />
+          <>
+            <meta property="og:image" content={comparison.featured_image_url} />
+            <meta property="og:image:alt" content={comparison.featured_image_alt || `${comparison.option_a} vs ${comparison.option_b} comparison`} />
+          </>
         )}
+        
+        {/* Twitter Cards */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@delsolprimehomes" />
+        <meta name="twitter:title" content={comparison.meta_title} />
+        <meta name="twitter:description" content={comparison.meta_description} />
+        {comparison.featured_image_url && (
+          <meta name="twitter:image" content={comparison.featured_image_url} />
+        )}
+        
+        {/* Hreflang Tags */}
+        {siblingPages && siblingPages.map((sibling) => (
+          <link 
+            key={sibling.slug}
+            rel="alternate" 
+            hrefLang={langToHreflang[sibling.language] || sibling.language} 
+            href={`${BASE_URL}/compare/${sibling.slug}`} 
+          />
+        ))}
+        <link 
+          rel="alternate" 
+          hrefLang="x-default" 
+          href={`${BASE_URL}/compare/${siblingPages?.find(s => s.language === 'en')?.slug || comparison.slug}`} 
+        />
         
         {/* JSON-LD Schemas */}
         <script type="application/ld+json">
@@ -134,6 +220,11 @@ export default function ComparisonPage() {
         {schemas.image && (
           <script type="application/ld+json">
             {JSON.stringify(schemas.image)}
+          </script>
+        )}
+        {schemas.table && (
+          <script type="application/ld+json">
+            {JSON.stringify(schemas.table)}
           </script>
         )}
       </Helmet>

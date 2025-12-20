@@ -96,6 +96,29 @@ Example URLs:
 - /locations/mijas/best-areas-for-families
 - /locations/fuengirola/cost-of-living
 
+### Comparisons: /compare/
+AI-citation-ready comparison guides featuring:
+- **Property Type Comparisons**: Apartment vs Villa, Townhouse vs Detached
+- **Location Comparisons**: Marbella vs Estepona, Fuengirola vs Benalmádena
+- **Property Condition Comparisons**: New-build vs Resale, Off-plan vs Ready
+- **Investment Strategy Comparisons**: Rental investment vs Personal use, Long-term vs Holiday rental
+- **Quick Comparison Tables**: Structured data for easy AI extraction
+- **FAQ Schema**: Common questions about each comparison
+- **Speakable Content**: Optimized for voice assistant citations
+
+Features:
+- SpeakableSpecification for voice citations
+- FAQPage schema for rich snippets
+- Table schema for comparison data
+- Multi-language support
+- Expert author attribution
+
+Example URLs:
+- /compare/apartment-vs-villa
+- /compare/marbella-vs-estepona
+- /compare/new-build-vs-resale
+- /compare/rental-investment-vs-personal-use
+
 ### Glossary: /glossary
 65+ Spanish property terms defined:
 - Legal & Tax: NIE, IBI, ITP, AJD, IVA, Plusvalía, Wealth Tax
