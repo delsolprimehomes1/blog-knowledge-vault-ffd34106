@@ -47,6 +47,16 @@ interface QAPageData {
   created_at: string | null;
 }
 
+interface LocationPageData {
+  city_slug: string;
+  topic_slug: string;
+  city_name: string;
+  language: string;
+  intent_type: string;
+  updated_at: string | null;
+  date_published: string | null;
+}
+
 interface GlossaryTerm {
   term: string;
   definition: string;
@@ -102,6 +112,10 @@ function generateSitemapIndex(lastmods: Record<string, string>): string {
   <sitemap>
     <loc>${BASE_URL}/sitemap-locations.xml</loc>
     <lastmod>${lastmods.locations}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>${BASE_URL}/sitemap-location-pages.xml</loc>
+    <lastmod>${lastmods.locationPages}</lastmod>
   </sitemap>
 </sitemapindex>`;
 }
@@ -287,6 +301,79 @@ function loadGlossaryTerms(): GlossaryTerm[] {
   }
 }
 
+// Generate location pages sitemap (from location_pages table)
+function generateLocationPagesSitemap(
+  locationPages: LocationPageData[],
+  hreflangEnabled: boolean
+): string {
+  // Group by city_slug + topic_slug for hreflang
+  const pageGroups = new Map<string, LocationPageData[]>();
+  locationPages.forEach((page) => {
+    const key = `${page.city_slug}/${page.topic_slug}`;
+    const existing = pageGroups.get(key) || [];
+    existing.push(page);
+    pageGroups.set(key, existing);
+  });
+
+  const locationIndexHreflang = hreflangEnabled ? `
+    <xhtml:link rel="alternate" hreflang="en-GB" href="${BASE_URL}/locations" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${BASE_URL}/locations" />` : '';
+
+  const pageUrls = locationPages.map((page) => {
+    const lastmod = page.updated_at || page.date_published || new Date().toISOString();
+    const lastmodFormatted = new Date(lastmod).toISOString().split('T')[0];
+    const currentUrl = `${BASE_URL}/locations/${page.city_slug}/${page.topic_slug}`;
+    
+    let hreflangLinks = '';
+    
+    if (hreflangEnabled) {
+      const currentLangCode = langToHreflang[page.language] || page.language;
+      hreflangLinks = `\n    <xhtml:link rel="alternate" hreflang="${currentLangCode}" href="${currentUrl}" />`;
+      
+      // Find sibling pages (same city/topic, different language)
+      const key = `${page.city_slug}/${page.topic_slug}`;
+      const siblings = pageGroups.get(key);
+      if (siblings && siblings.length > 1) {
+        siblings.forEach((sibling) => {
+          if (sibling.language !== page.language) {
+            const langCode = langToHreflang[sibling.language] || sibling.language;
+            hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${BASE_URL}/locations/${sibling.city_slug}/${sibling.topic_slug}" />`;
+          }
+        });
+      }
+      
+      // x-default to English version or current
+      const englishVersion = siblings?.find((s) => s.language === 'en');
+      const xDefaultUrl = englishVersion 
+        ? `${BASE_URL}/locations/${englishVersion.city_slug}/${englishVersion.topic_slug}`
+        : currentUrl;
+      hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultUrl}" />`;
+    }
+    
+    return `  <url>
+    <loc>${currentUrl}</loc>
+    <lastmod>${lastmodFormatted}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>${hreflangLinks}
+  </url>`;
+  }).join('\n');
+
+  return `${xmlHeader(hreflangEnabled)}
+  
+  <!-- Location Intelligence Index -->
+  <url>
+    <loc>${BASE_URL}/locations</loc>
+    <lastmod>${getToday()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>${locationIndexHreflang}
+  </url>
+  
+  <!-- Location Intelligence Pages (${locationPages.length} total) -->
+${pageUrls}
+  
+</urlset>`;
+}
+
 // Main sitemap generation function
 export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log('\n🗺️ Starting multi-sitemap generation...');
@@ -324,6 +411,19 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   
   console.log(`🔍 Found ${qaPages?.length || 0} Q&A pages`);
   
+  // Fetch published location pages
+  const { data: locationPages, error: locError } = await supabase
+    .from('location_pages')
+    .select('city_slug, topic_slug, city_name, language, intent_type, updated_at, date_published')
+    .eq('status', 'published')
+    .order('updated_at', { ascending: false });
+  
+  if (locError) {
+    console.error('❌ Failed to fetch location pages:', locError);
+  }
+  
+  console.log(`📍 Found ${locationPages?.length || 0} location intelligence pages`);
+  
   // Load glossary terms
   const glossaryTerms = loadGlossaryTerms();
   console.log(`📖 Found ${glossaryTerms.length} glossary terms`);
@@ -345,12 +445,16 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const qaLastmod = qaPages?.[0]?.updated_at 
     ? new Date(qaPages[0].updated_at).toISOString().split('T')[0]
     : getToday();
+  const locationPagesLastmod = locationPages?.[0]?.updated_at 
+    ? new Date(locationPages[0].updated_at).toISOString().split('T')[0]
+    : getToday();
   
   const lastmods = {
     blog: blogLastmod,
     qa: qaLastmod,
     glossary: getToday(),
-    locations: getToday()
+    locations: getToday(),
+    locationPages: locationPagesLastmod
   };
   
   // Generate all sitemaps
@@ -359,6 +463,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const qaSitemap = generateQASitemap(qaPages || [], hreflangEnabled);
   const glossarySitemap = generateGlossarySitemap(glossaryTerms);
   const locationsSitemap = generateLocationsSitemap(hreflangEnabled);
+  const locationPagesSitemap = generateLocationPagesSitemap(locationPages || [], hreflangEnabled);
   
   // Write all files
   writeFileSync(join(outputPath, 'sitemap-index.xml'), sitemapIndex, 'utf-8');
@@ -366,20 +471,22 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   writeFileSync(join(outputPath, 'sitemap-qa.xml'), qaSitemap, 'utf-8');
   writeFileSync(join(outputPath, 'sitemap-glossary.xml'), glossarySitemap, 'utf-8');
   writeFileSync(join(outputPath, 'sitemap-locations.xml'), locationsSitemap, 'utf-8');
+  writeFileSync(join(outputPath, 'sitemap-location-pages.xml'), locationPagesSitemap, 'utf-8');
   
   // Also keep sitemap.xml as a copy of the index for legacy compatibility
   writeFileSync(join(outputPath, 'sitemap.xml'), sitemapIndex, 'utf-8');
   
   console.log(`\n✅ Multi-sitemap generation complete!`);
   console.log(`📊 Summary:`);
-  console.log(`   • sitemap-index.xml (4 sitemaps)`);
+  console.log(`   • sitemap-index.xml (5 sitemaps)`);
   console.log(`   • sitemap-blog.xml (${(articles?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap-qa.xml (${(qaPages?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap-glossary.xml (${glossaryTerms.length + 1} URLs)`);
   console.log(`   • sitemap-locations.xml (${LOCATION_CITIES.length + 1} URLs)`);
+  console.log(`   • sitemap-location-pages.xml (${(locationPages?.length || 0) + 1} URLs)`);
   console.log(`   • sitemap.xml (legacy alias → index)`);
   
-  const totalUrls = (articles?.length || 0) + (qaPages?.length || 0) + glossaryTerms.length + LOCATION_CITIES.length + 4;
+  const totalUrls = (articles?.length || 0) + (qaPages?.length || 0) + glossaryTerms.length + LOCATION_CITIES.length + (locationPages?.length || 0) + 5;
   console.log(`\n📍 Total URLs across all sitemaps: ${totalUrls}`);
 }
 
