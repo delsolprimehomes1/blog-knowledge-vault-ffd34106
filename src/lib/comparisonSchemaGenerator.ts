@@ -188,6 +188,21 @@ export function generateComparisonTableSchema(comparison: ComparisonPage): any |
   };
 }
 
+export function generateComparisonImageSchema(comparison: ComparisonPage): any | null {
+  if (!comparison.featured_image_url) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageObject",
+    "url": comparison.featured_image_url,
+    "name": comparison.featured_image_alt || `${comparison.option_a} vs ${comparison.option_b} comparison`,
+    "description": comparison.featured_image_caption || `Visual comparison of ${comparison.option_a} and ${comparison.option_b} for ${comparison.target_audience || 'property buyers'}`,
+    "caption": comparison.featured_image_caption,
+    "contentUrl": comparison.featured_image_url,
+    "inLanguage": comparison.language
+  };
+}
+
 export interface GeneratedComparisonSchemas {
   article: any;
   speakable: any;
@@ -195,6 +210,7 @@ export interface GeneratedComparisonSchemas {
   breadcrumb: any;
   table: any | null;
   organization: any;
+  image: any | null;
 }
 
 export function generateAllComparisonSchemas(
@@ -207,6 +223,7 @@ export function generateAllComparisonSchemas(
     faq: generateComparisonFAQSchema(comparison),
     breadcrumb: generateComparisonBreadcrumbSchema(comparison),
     table: generateComparisonTableSchema(comparison),
-    organization: ORGANIZATION_SCHEMA
+    organization: ORGANIZATION_SCHEMA,
+    image: generateComparisonImageSchema(comparison)
   };
 }

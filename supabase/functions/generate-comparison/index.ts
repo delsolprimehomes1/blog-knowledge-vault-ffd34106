@@ -36,17 +36,26 @@ Produce content as JSON with this exact structure:
     {"criterion": "Time to results", "option_a_value": "...", "option_b_value": "..."},
     {"criterion": "Flexibility", "option_a_value": "...", "option_b_value": "..."}
   ],
-  "option_a_overview": "HTML content covering: What it is, When it makes sense, Ideal user, Common mistakes, Hidden risks (500+ words)",
-  "option_b_overview": "HTML content with same structure for Option B (500+ words)",
-  "side_by_side_breakdown": "HTML comparing: Cost, Expertise required, Control, Risk level, Long-term value, Who should avoid it",
-  "use_case_scenarios": "HTML answering: When Option A wins, When Option B wins, When neither is ideal",
-  "final_verdict": "HTML balanced recommendation depending on user goals",
+  "option_a_overview": "Valid HTML content (use <p>, <ul>, <li>, <strong>, <h3> tags). Cover: What it is, When it makes sense, Ideal user, Common mistakes, Hidden risks (500+ words)",
+  "option_b_overview": "Valid HTML content with same structure for Option B (500+ words)",
+  "side_by_side_breakdown": "Valid HTML comparing: Cost, Expertise required, Control, Risk level, Long-term value, Who should avoid it",
+  "use_case_scenarios": "Valid HTML answering: When Option A wins, When Option B wins, When neither is ideal",
+  "final_verdict": "Valid HTML balanced recommendation depending on user goals",
   "qa_entities": [
-    {"question": "Natural language question", "answer": "Clear, objective answer"},
+    {"question": "Natural language question", "answer": "Clear, objective answer in plain text"},
     {"question": "...", "answer": "..."}
   ],
-  "suggested_slug": "url-friendly-slug"
+  "suggested_slug": "url-friendly-slug",
+  "image_prompt": "Professional real estate photography style image showing: [describe a visual that represents the comparison topic]. Modern, clean, Costa del Sol setting. No text overlays."
 }
+
+CRITICAL HTML FORMATTING RULES:
+- Return ONLY valid HTML for content fields (option_a_overview, option_b_overview, side_by_side_breakdown, use_case_scenarios, final_verdict)
+- DO NOT use markdown syntax like *, **, -, #
+- USE proper HTML tags: <p>, <ul>, <li>, <strong>, <em>, <h3>, <h4>
+- Every list must use <ul><li>...</li></ul> format
+- Wrap paragraphs in <p> tags
+- Use <strong> for emphasis, not **
 
 Tone: Authoritative, Neutral, Evidence-based, Human-readable, AI-friendly. Avoid hype, exaggeration, or sales language.
 
