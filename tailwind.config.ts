@@ -142,6 +142,42 @@ export default {
           "0%, 100%": { boxShadow: "0 0 20px rgba(197, 160, 89, 0.3)" },
           "50%": { boxShadow: "0 0 40px rgba(197, 160, 89, 0.5)" },
         },
+        "bounce-subtle": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
+        "gradient-shift": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
+        "border-glow": {
+          "0%, 100%": { borderColor: "hsl(var(--primary) / 0.3)" },
+          "50%": { borderColor: "hsl(var(--primary) / 0.8)" },
+        },
+        "particle-float": {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)", opacity: "0.3" },
+          "25%": { transform: "translateY(-20px) rotate(90deg)", opacity: "0.8" },
+          "50%": { transform: "translateY(-10px) rotate(180deg)", opacity: "0.3" },
+          "75%": { transform: "translateY(-30px) rotate(270deg)", opacity: "0.6" },
+        },
+        "scroll-indicator": {
+          "0%": { transform: "translateY(0)", opacity: "1" },
+          "50%": { transform: "translateY(8px)", opacity: "0.5" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "card-hover-glow": {
+          "0%": { boxShadow: "0 0 0 rgba(197, 160, 89, 0)" },
+          "100%": { boxShadow: "0 20px 60px rgba(197, 160, 89, 0.3)" },
+        },
+        "text-shimmer": {
+          "0%": { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
+        },
+        "reveal-up": {
+          "0%": { opacity: "0", transform: "translateY(60px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -157,6 +193,14 @@ export default {
         "slide-in-left": "slide-in-left 0.5s ease-out",
         "zoom-in": "zoom-in 0.4s ease-out",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
+        "gradient-shift": "gradient-shift 3s ease infinite",
+        "border-glow": "border-glow 2s ease-in-out infinite",
+        "particle-float": "particle-float 8s ease-in-out infinite",
+        "scroll-indicator": "scroll-indicator 2s ease-in-out infinite",
+        "card-hover-glow": "card-hover-glow 0.3s ease forwards",
+        "text-shimmer": "text-shimmer 3s linear infinite",
+        "reveal-up": "reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
     },
   },
