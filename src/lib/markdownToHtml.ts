@@ -14,17 +14,32 @@ marked.setOptions({
 export function markdownToHtml(content: string | null | undefined): string {
   if (!content) return '';
   
-  // If content already looks like proper HTML (starts with tags), return as-is but clean it
-  if (content.trim().startsWith('<') && !content.includes('* **')) {
+  // Check for any markdown artifacts using regex patterns (handles variable spacing)
+  const hasMarkdownPatterns = 
+    /^[\*\-]\s+/m.test(content) ||      // List items: * or - with any spacing
+    /\*\*[^*]+\*\*/.test(content) ||    // Bold: **text**
+    /^#{1,6}\s+/m.test(content);         // Headings: # ## ###
+  
+  // If content has markdown patterns, always parse with marked
+  if (hasMarkdownPatterns) {
+    try {
+      const html = marked.parse(content, { async: false }) as string;
+      return cleanHtml(html);
+    } catch {
+      return basicMarkdownCleanup(content);
+    }
+  }
+  
+  // If content looks like pure HTML (no markdown), return cleaned
+  if (content.trim().startsWith('<')) {
     return cleanHtml(content);
   }
   
-  // Convert markdown to HTML
+  // Default: try to parse as markdown
   try {
     const html = marked.parse(content, { async: false }) as string;
     return cleanHtml(html);
   } catch {
-    // Fallback: basic markdown cleanup
     return basicMarkdownCleanup(content);
   }
 }
