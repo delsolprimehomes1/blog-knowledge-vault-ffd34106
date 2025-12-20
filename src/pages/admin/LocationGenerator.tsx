@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Save, MapPin } from "lucide-react";
+import { Sparkles, Loader2, Save, MapPin, Image as ImageIcon, RefreshCw, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { OptimizedImage } from "@/components/OptimizedImage";
 
 type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu' | 'fi' | 'no';
 
@@ -55,6 +56,14 @@ const cityOptions = [
   'Ojén',
 ];
 
+interface GeneratedImage {
+  url: string;
+  alt: string;
+  caption: string;
+  width: number;
+  height: number;
+}
+
 const LocationGenerator = () => {
   const navigate = useNavigate();
   const [city, setCity] = useState("");
@@ -63,8 +72,10 @@ const LocationGenerator = () => {
   const [language, setLanguage] = useState<Language>("en");
   const [goal, setGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [generatedPage, setGeneratedPage] = useState<any>(null);
+  const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
 
   const selectedCity = city === 'custom' ? customCity : city;
 
@@ -80,6 +91,7 @@ const LocationGenerator = () => {
 
     setIsGenerating(true);
     setGeneratedPage(null);
+    setGeneratedImage(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-location-page', {
@@ -101,6 +113,46 @@ const LocationGenerator = () => {
       toast.error(error instanceof Error ? error.message : 'Failed to generate location page');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!generatedPage) return;
+
+    setIsGeneratingImage(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-location-image', {
+        body: {
+          city_name: generatedPage.city_name,
+          city_slug: generatedPage.city_slug,
+          topic_slug: generatedPage.topic_slug,
+          intent_type: generatedPage.intent_type,
+          image_prompt: generatedPage.image_prompt,
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Image generation failed');
+
+      setGeneratedImage(data.image);
+      
+      // Update the generated page with the new image data
+      setGeneratedPage((prev: any) => ({
+        ...prev,
+        featured_image_url: data.image.url,
+        featured_image_alt: data.image.alt,
+        featured_image_caption: data.image.caption,
+        featured_image_width: data.image.width,
+        featured_image_height: data.image.height,
+      }));
+      
+      toast.success('Location image generated successfully!');
+    } catch (error) {
+      console.error('Image generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -163,7 +215,7 @@ const LocationGenerator = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Location Intelligence Generator</h1>
           <p className="text-muted-foreground">
-            Generate AI-citation-ready location pages optimized for ChatGPT, Perplexity, and Google AI Overviews.
+            Generate AI-citation-ready location pages with GEO-optimized images for ChatGPT, Perplexity, and Google AI Overviews.
           </p>
         </div>
 
@@ -282,6 +334,86 @@ const LocationGenerator = () => {
             <CardContent>
               {generatedPage ? (
                 <div className="space-y-6">
+                  {/* Generated Image or Generate Button */}
+                  <div className="space-y-3">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      Featured Image (GEO-Optimized)
+                    </Label>
+                    
+                    {generatedImage ? (
+                      <div className="space-y-2">
+                        <div className="relative aspect-video rounded-lg overflow-hidden border">
+                          <OptimizedImage
+                            src={generatedImage.url}
+                            alt={generatedImage.alt}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2">
+                            <span className="bg-green-500/90 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Generated
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p><strong>Alt:</strong> {generatedImage.alt}</p>
+                          <p><strong>Caption:</strong> {generatedImage.caption}</p>
+                          <p><strong>Size:</strong> {generatedImage.width}×{generatedImage.height}</p>
+                        </div>
+                        <Button 
+                          onClick={handleGenerateImage}
+                          disabled={isGeneratingImage}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          {isGeneratingImage ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Regenerating...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              Regenerate Image
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                        <ImageIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground mb-3">
+                          No image generated yet. Generate a location-specific image with AI.
+                        </p>
+                        <Button 
+                          onClick={handleGenerateImage}
+                          disabled={isGeneratingImage}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {isGeneratingImage ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating Image...
+                            </>
+                          ) : (
+                            <>
+                              <ImageIcon className="w-4 h-4 mr-2" />
+                              Generate Location Image
+                            </>
+                          )}
+                        </Button>
+                        {generatedPage.image_prompt && (
+                          <p className="text-xs text-muted-foreground mt-3 italic">
+                            Prompt: {generatedPage.image_prompt}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Headline */}
                   <div>
                     <Label className="text-xs text-muted-foreground">Headline</Label>

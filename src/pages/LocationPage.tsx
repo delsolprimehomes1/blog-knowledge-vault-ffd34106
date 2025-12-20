@@ -163,6 +163,7 @@ const LocationPage = () => {
         <script type="application/ld+json">{JSON.stringify(schemas.webPage)}</script>
         <script type="application/ld+json">{JSON.stringify(schemas.speakable)}</script>
         {schemas.faq && <script type="application/ld+json">{JSON.stringify(schemas.faq)}</script>}
+        {schemas.imageObject && <script type="application/ld+json">{JSON.stringify(schemas.imageObject)}</script>}
       </Helmet>
 
       <Header variant="solid" />
@@ -175,6 +176,7 @@ const LocationPage = () => {
           topicSlug={page.topic_slug}
           featuredImageUrl={page.featured_image_url}
           featuredImageAlt={page.featured_image_alt}
+          featuredImageCaption={(page as any).featured_image_caption}
         />
 
         <div className="container mx-auto px-4 py-12 md:py-16 space-y-12 md:space-y-16">

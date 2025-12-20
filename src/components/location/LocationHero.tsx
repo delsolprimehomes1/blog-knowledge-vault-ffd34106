@@ -11,6 +11,7 @@ interface LocationHeroProps {
   topicSlug: string;
   featuredImageUrl?: string;
   featuredImageAlt?: string;
+  featuredImageCaption?: string;
 }
 
 // Floating particles for luxury effect
@@ -40,6 +41,7 @@ export function LocationHero({
   topicSlug,
   featuredImageUrl,
   featuredImageAlt,
+  featuredImageCaption,
 }: LocationHeroProps) {
   const [scrollY, setScrollY] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -59,23 +61,27 @@ export function LocationHero({
     <section className="relative min-h-[90vh] md:min-h-screen flex items-center overflow-hidden">
       {/* Full-screen Background Image with Parallax */}
       {featuredImageUrl && (
-        <div className="absolute inset-0">
+        <figure className="absolute inset-0" itemScope itemType="https://schema.org/ImageObject">
           <div 
             className="absolute inset-0 transition-transform duration-100"
             style={{ transform: `translateY(${scrollY * 0.3}px) scale(1.1)` }}
           >
             <OptimizedImage
               src={featuredImageUrl}
-              alt={featuredImageAlt || headline}
+              alt={featuredImageAlt || `Aerial view of ${cityName}, Costa del Sol showing Mediterranean coastline and luxury properties`}
               className="w-full h-full object-cover"
               loading="eager"
+              itemProp="contentUrl"
             />
+            <meta itemProp="name" content={`${cityName} - ${headline}`} />
+            <meta itemProp="description" content={featuredImageAlt || `View of ${cityName}, Costa del Sol`} />
+            {featuredImageCaption && <meta itemProp="caption" content={featuredImageCaption} />}
           </div>
           {/* Sophisticated overlay gradient */}
           <div className="absolute inset-0 hero-overlay" />
           {/* Additional gradient for text readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-        </div>
+        </figure>
       )}
 
       {/* Fallback gradient background if no image */}

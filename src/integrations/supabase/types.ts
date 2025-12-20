@@ -1882,7 +1882,10 @@ export type Database = {
           date_published: string | null
           external_citations: Json | null
           featured_image_alt: string | null
+          featured_image_caption: string | null
+          featured_image_height: number | null
           featured_image_url: string | null
+          featured_image_width: number | null
           final_summary: string | null
           headline: string
           id: string
@@ -1915,7 +1918,10 @@ export type Database = {
           date_published?: string | null
           external_citations?: Json | null
           featured_image_alt?: string | null
+          featured_image_caption?: string | null
+          featured_image_height?: number | null
           featured_image_url?: string | null
+          featured_image_width?: number | null
           final_summary?: string | null
           headline: string
           id?: string
@@ -1948,7 +1954,10 @@ export type Database = {
           date_published?: string | null
           external_citations?: Json | null
           featured_image_alt?: string | null
+          featured_image_caption?: string | null
+          featured_image_height?: number | null
           featured_image_url?: string | null
+          featured_image_width?: number | null
           final_summary?: string | null
           headline?: string
           id?: string

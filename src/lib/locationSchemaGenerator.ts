@@ -22,6 +22,9 @@ export interface LocationPage {
   qa_entities?: QAEntity[];
   featured_image_url?: string;
   featured_image_alt?: string;
+  featured_image_caption?: string;
+  featured_image_width?: number;
+  featured_image_height?: number;
   internal_links?: InternalLink[];
   external_citations?: ExternalCitation[];
   author_id?: string;
@@ -231,14 +234,62 @@ export function generateLocationWebPageSchema(
     schema.author = generatePersonSchema(author);
   }
   if (page.featured_image_url) {
-    schema.primaryImageOfPage = {
-      "@type": "ImageObject",
-      "url": page.featured_image_url,
-      "caption": page.featured_image_alt || page.headline
-    };
+    schema.primaryImageOfPage = generateLocationImageObjectSchema(page, baseUrl);
   }
 
   return schema;
+}
+
+/**
+ * Generate a rich GEO-optimized ImageObject schema for location pages
+ */
+export function generateLocationImageObjectSchema(
+  page: LocationPage,
+  baseUrl: string = "https://www.delsolprimehomes.com"
+): any {
+  const pageUrl = `${baseUrl}/locations/${page.city_slug}/${page.topic_slug}`;
+  
+  return {
+    "@type": "ImageObject",
+    "@id": `${pageUrl}#primaryImage`,
+    "url": page.featured_image_url,
+    "name": `${page.city_name} - ${page.headline}`,
+    "description": page.featured_image_alt || `Aerial view of ${page.city_name}, Costa del Sol showing Mediterranean coastline and property areas`,
+    "caption": page.featured_image_caption || `${page.city_name}, Costa del Sol - Premium real estate destination in Southern Spain`,
+    "contentLocation": {
+      "@type": "Place",
+      "name": page.city_name,
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": page.city_name,
+        "addressRegion": page.region,
+        "addressCountry": page.country === 'Spain' ? 'ES' : page.country
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "addressCountry": "ES"
+      }
+    },
+    "width": {
+      "@type": "QuantitativeValue",
+      "value": page.featured_image_width || 1920
+    },
+    "height": {
+      "@type": "QuantitativeValue",
+      "value": page.featured_image_height || 1080
+    },
+    "encodingFormat": page.featured_image_url?.includes('.webp') ? 'image/webp' : 
+                      page.featured_image_url?.includes('.png') ? 'image/png' : 'image/jpeg',
+    "representativeOfPage": true,
+    "license": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "acquireLicensePage": `${baseUrl}/contact`,
+    "creditText": "Del Sol Prime Homes",
+    "creator": {
+      "@type": "Organization",
+      "name": "Del Sol Prime Homes",
+      "url": baseUrl
+    }
+  };
 }
 
 export interface LocationSchemas {
@@ -248,6 +299,7 @@ export interface LocationSchemas {
   speakable: any;
   breadcrumb: any;
   webPage: any;
+  imageObject: any | null;
 }
 
 export function generateAllLocationSchemas(
@@ -261,6 +313,7 @@ export function generateAllLocationSchemas(
     faq: generateLocationFAQSchema(page, author),
     speakable: generateLocationSpeakableSchema(page),
     breadcrumb: generateLocationBreadcrumbSchema(page, baseUrl),
-    webPage: generateLocationWebPageSchema(page, author, baseUrl)
+    webPage: generateLocationWebPageSchema(page, author, baseUrl),
+    imageObject: page.featured_image_url ? generateLocationImageObjectSchema(page, baseUrl) : null
   };
 }

@@ -218,7 +218,7 @@ const LocationHub = () => {
                     {city.image ? (
                       <OptimizedImage
                         src={city.image}
-                        alt={city.city_name}
+                        alt={`Aerial view of ${city.city_name}, Costa del Sol showing Mediterranean coastline and property areas`}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                     ) : (
