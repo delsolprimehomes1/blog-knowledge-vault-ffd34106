@@ -1212,6 +1212,129 @@ export type Database = {
         }
         Relationships: []
       }
+      comparison_pages: {
+        Row: {
+          author_id: string | null
+          canonical_url: string | null
+          category: string | null
+          comparison_topic: string
+          created_at: string | null
+          date_modified: string | null
+          date_published: string | null
+          external_citations: Json | null
+          featured_image_alt: string | null
+          featured_image_caption: string | null
+          featured_image_url: string | null
+          final_verdict: string | null
+          headline: string
+          id: string
+          internal_links: Json | null
+          language: string | null
+          meta_description: string
+          meta_title: string
+          niche: string | null
+          option_a: string
+          option_a_overview: string | null
+          option_b: string
+          option_b_overview: string | null
+          qa_entities: Json | null
+          quick_comparison_table: Json | null
+          reviewer_id: string | null
+          side_by_side_breakdown: string | null
+          slug: string
+          speakable_answer: string
+          status: string | null
+          target_audience: string | null
+          updated_at: string | null
+          use_case_scenarios: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          canonical_url?: string | null
+          category?: string | null
+          comparison_topic: string
+          created_at?: string | null
+          date_modified?: string | null
+          date_published?: string | null
+          external_citations?: Json | null
+          featured_image_alt?: string | null
+          featured_image_caption?: string | null
+          featured_image_url?: string | null
+          final_verdict?: string | null
+          headline: string
+          id?: string
+          internal_links?: Json | null
+          language?: string | null
+          meta_description: string
+          meta_title: string
+          niche?: string | null
+          option_a: string
+          option_a_overview?: string | null
+          option_b: string
+          option_b_overview?: string | null
+          qa_entities?: Json | null
+          quick_comparison_table?: Json | null
+          reviewer_id?: string | null
+          side_by_side_breakdown?: string | null
+          slug: string
+          speakable_answer: string
+          status?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          use_case_scenarios?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          canonical_url?: string | null
+          category?: string | null
+          comparison_topic?: string
+          created_at?: string | null
+          date_modified?: string | null
+          date_published?: string | null
+          external_citations?: Json | null
+          featured_image_alt?: string | null
+          featured_image_caption?: string | null
+          featured_image_url?: string | null
+          final_verdict?: string | null
+          headline?: string
+          id?: string
+          internal_links?: Json | null
+          language?: string | null
+          meta_description?: string
+          meta_title?: string
+          niche?: string | null
+          option_a?: string
+          option_a_overview?: string | null
+          option_b?: string
+          option_b_overview?: string | null
+          qa_entities?: Json | null
+          quick_comparison_table?: Json | null
+          reviewer_id?: string | null
+          side_by_side_breakdown?: string | null
+          slug?: string
+          speakable_answer?: string
+          status?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          use_case_scenarios?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comparison_pages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "authors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comparison_pages_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "authors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_settings: {
         Row: {
           created_at: string | null
