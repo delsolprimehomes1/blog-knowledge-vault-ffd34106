@@ -25,6 +25,9 @@ const Sitemap = lazy(() => import("./pages/Sitemap"));
 const Glossary = lazy(() => import("./pages/Glossary"));
 const ComparisonPage = lazy(() => import("./pages/ComparisonPage"));
 const ComparisonIndex = lazy(() => import("./pages/ComparisonIndex"));
+const LocationHub = lazy(() => import("./pages/LocationHub"));
+const LocationIndex = lazy(() => import("./pages/LocationIndex"));
+const LocationPage = lazy(() => import("./pages/LocationPage"));
 
 // Lazy load ALL admin pages (rarely accessed, heavy components)
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -46,6 +49,7 @@ const BulkArticleLinker = lazy(() => import("./pages/admin/BulkArticleLinker"));
 const BrochureManager = lazy(() => import("./pages/admin/BrochureManager"));
 const QAGenerator = lazy(() => import("./pages/admin/QAGenerator"));
 const ComparisonGenerator = lazy(() => import("./pages/admin/ComparisonGenerator"));
+const LocationGenerator = lazy(() => import("./pages/admin/LocationGenerator"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -92,6 +96,9 @@ const App = () => (
               <Route path="/qa/:slug" element={<QAPage />} />
               <Route path="/compare" element={<ComparisonIndex />} />
               <Route path="/compare/:slug" element={<ComparisonPage />} />
+              <Route path="/locations" element={<LocationHub />} />
+              <Route path="/locations/:citySlug" element={<LocationIndex />} />
+              <Route path="/locations/:citySlug/:topicSlug" element={<LocationPage />} />
               
               {/* Protected Admin Routes - All lazy loaded */}
               <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -114,6 +121,7 @@ const App = () => (
               <Route path="/admin/brochures" element={<ProtectedRoute><BrochureManager /></ProtectedRoute>} />
               <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
               <Route path="/admin/comparison-generator" element={<ProtectedRoute><ComparisonGenerator /></ProtectedRoute>} />
+              <Route path="/admin/location-generator" element={<ProtectedRoute><LocationGenerator /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

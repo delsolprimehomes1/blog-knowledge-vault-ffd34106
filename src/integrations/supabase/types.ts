@@ -1869,6 +1869,120 @@ export type Database = {
           },
         ]
       }
+      location_pages: {
+        Row: {
+          author_id: string | null
+          best_areas: Json | null
+          city_name: string
+          city_slug: string
+          cost_breakdown: Json | null
+          country: string
+          created_at: string | null
+          date_modified: string | null
+          date_published: string | null
+          external_citations: Json | null
+          featured_image_alt: string | null
+          featured_image_url: string | null
+          final_summary: string | null
+          headline: string
+          id: string
+          intent_type: string
+          internal_links: Json | null
+          language: string
+          location_overview: string | null
+          market_breakdown: string | null
+          meta_description: string
+          meta_title: string
+          qa_entities: Json | null
+          region: string
+          reviewer_id: string | null
+          speakable_answer: string
+          status: string
+          topic_slug: string
+          updated_at: string | null
+          use_cases: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          best_areas?: Json | null
+          city_name: string
+          city_slug: string
+          cost_breakdown?: Json | null
+          country?: string
+          created_at?: string | null
+          date_modified?: string | null
+          date_published?: string | null
+          external_citations?: Json | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          final_summary?: string | null
+          headline: string
+          id?: string
+          intent_type: string
+          internal_links?: Json | null
+          language?: string
+          location_overview?: string | null
+          market_breakdown?: string | null
+          meta_description: string
+          meta_title: string
+          qa_entities?: Json | null
+          region?: string
+          reviewer_id?: string | null
+          speakable_answer: string
+          status?: string
+          topic_slug: string
+          updated_at?: string | null
+          use_cases?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          best_areas?: Json | null
+          city_name?: string
+          city_slug?: string
+          cost_breakdown?: Json | null
+          country?: string
+          created_at?: string | null
+          date_modified?: string | null
+          date_published?: string | null
+          external_citations?: Json | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          final_summary?: string | null
+          headline?: string
+          id?: string
+          intent_type?: string
+          internal_links?: Json | null
+          language?: string
+          location_overview?: string | null
+          market_breakdown?: string | null
+          meta_description?: string
+          meta_title?: string
+          qa_entities?: Json | null
+          region?: string
+          reviewer_id?: string | null
+          speakable_answer?: string
+          status?: string
+          topic_slug?: string
+          updated_at?: string | null
+          use_cases?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_pages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "authors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_pages_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "authors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       page_translations: {
         Row: {
           created_at: string | null
