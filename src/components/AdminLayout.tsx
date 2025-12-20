@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/logo.png";
@@ -17,6 +17,7 @@ const navigation = [
   { name: "Cluster Generator", href: "/admin/cluster-generator", icon: Sparkles },
   { name: "Q&A Generator", href: "/admin/qa-generator", icon: HelpCircle },
   { name: "Comparison Generator", href: "/admin/comparison-generator", icon: Scale },
+  { name: "Location Generator", href: "/admin/location-generator", icon: Map },
   { name: "Bulk Article Linker", href: "/admin/tools/bulk-article-linker", icon: Link2 },
   { name: "Batch Image Generation", href: "/admin/tools/batch-image-generation", icon: Image },
   { name: "Speakable Fixes", href: "/admin/tools/bulk-speakable-regeneration", icon: Languages },
