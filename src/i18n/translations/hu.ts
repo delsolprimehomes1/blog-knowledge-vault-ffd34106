@@ -154,7 +154,7 @@ export const hu = {
     legalHeading: "Jogi",
     copyright: "© {year} DelSolPrimeHomes. Minden jog fenntartva. API Regisztrált.",
     tagline: "A Kiválóságért Készült",
-    address: "Calle Example 123, Marbella",
+    address: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga",
     links: {
       propertyFinder: "Ingatlankereső",
       featuredAreas: "Kiemelt Területek",

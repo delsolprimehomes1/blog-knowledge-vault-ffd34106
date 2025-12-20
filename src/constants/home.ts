@@ -125,9 +125,10 @@ export const getStructuredData = () => ({
   "telephone": "+34123456789",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "Av. Ricardo Soriano",
-    "addressLocality": "Marbella",
-    "postalCode": "29601",
+    "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
+    "addressLocality": "Fuengirola",
+    "addressRegion": "Málaga",
+    "postalCode": "29640",
     "addressCountry": "ES"
   },
   "priceRange": "$$$",

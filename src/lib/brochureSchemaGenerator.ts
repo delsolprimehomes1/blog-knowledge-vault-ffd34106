@@ -53,14 +53,14 @@ const generateRealEstateAgentSchema = (city: CityBrochureData) => ({
   description: `API-accredited real estate agency specializing in luxury properties in ${city.name} and across the Costa del Sol.`,
   url: BASE_URL,
   logo: `${BASE_URL}/logo-new.png`,
-  telephone: '+34600000000',
+  telephone: '+34 613 578 416',
   email: 'info@delsolprimehomes.com',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: 'Calle Example 123',
-    addressLocality: 'Marbella',
+    streetAddress: 'ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA',
+    addressLocality: 'Fuengirola',
     addressRegion: 'Málaga',
-    postalCode: '29660',
+    postalCode: '29640',
     addressCountry: 'ES',
   },
   areaServed: [

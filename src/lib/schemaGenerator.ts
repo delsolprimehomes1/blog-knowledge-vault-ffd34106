@@ -24,9 +24,10 @@ const ORGANIZATION_SCHEMA = {
   "logo": "https://www.delsolprimehomes.com/logo.png",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "Calle Águila Real 8, Bajo C",
-    "addressLocality": "Mijas",
-    "postalCode": "29649",
+    "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
+    "addressLocality": "Fuengirola",
+    "addressRegion": "Málaga",
+    "postalCode": "29640",
     "addressCountry": "ES"
   },
   "areaServed": [

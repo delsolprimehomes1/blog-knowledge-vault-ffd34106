@@ -154,7 +154,7 @@ export const en = {
     legalHeading: "Legal",
     copyright: "© {year} DelSolPrimeHomes. All rights reserved. API Registered.",
     tagline: "Made for Excellence",
-    address: "Calle Example 123, Marbella",
+    address: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga",
     links: {
       propertyFinder: "Property Finder",
       featuredAreas: "Featured Areas",

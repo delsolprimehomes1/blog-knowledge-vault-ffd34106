@@ -8,9 +8,10 @@ const COMPANY_INFO = {
   email: "info@delsolprimehomes.com",
   website: "https://www.delsolprimehomes.com",
   address: {
-    street: "Calle Águila Real 8, Bajo C",
-    city: "Mijas",
-    postalCode: "29649",
+    street: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
+    city: "Fuengirola",
+    postalCode: "29640",
+    region: "Málaga",
     country: "Spain"
   },
   serviceAreas: ["Marbella", "Estepona", "Fuengirola", "Benalmádena", "Mijas", "Sotogrande", "Casares", "Torremolinos", "Manilva"],
