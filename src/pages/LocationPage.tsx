@@ -11,6 +11,10 @@ import { BestAreasSection } from "@/components/location/BestAreasSection";
 import { CostBreakdownSection } from "@/components/location/CostBreakdownSection";
 import { LocationFAQSection } from "@/components/location/LocationFAQSection";
 import { UseCaseSection } from "@/components/location/UseCaseSection";
+import { LocationCTASection } from "@/components/location/LocationCTASection";
+import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
+import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import { TrendingUp, Building, Info } from "lucide-react";
 import { 
   generateAllLocationSchemas, 
   type LocationPage as LocationPageType,
@@ -100,7 +104,7 @@ const LocationPage = () => {
 
       <Header />
       
-      <main>
+      <main className="min-h-screen">
         <LocationHero
           headline={page.headline}
           cityName={page.city_name}
@@ -110,21 +114,41 @@ const LocationPage = () => {
           featuredImageAlt={page.featured_image_alt}
         />
 
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-12 md:py-16 space-y-12 md:space-y-16">
           {/* Speakable Answer - AI Citation Ready */}
-          <SpeakableBox content={page.speakable_answer} className="mb-12" />
+          <SpeakableBox content={page.speakable_answer} />
 
           {/* Location Overview */}
           {page.location_overview && (
-            <section className="mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
-                About {page.city_name}
-              </h2>
+            <section className="relative animate-fade-in">
+              {/* Decorative background */}
+              <div className="absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-72 h-72 rounded-full bg-primary/5 blur-3xl" />
+              </div>
+              
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
+                  <Info className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                    About {page.city_name}
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Local insights and overview
+                  </p>
+                </div>
+              </div>
+              
               <div 
-                className="prose prose-lg max-w-none text-foreground
-                  prose-headings:text-foreground prose-p:text-muted-foreground
-                  prose-ul:text-muted-foreground prose-li:marker:text-primary
-                  prose-strong:text-foreground"
+                className="prose prose-lg max-w-none
+                  prose-headings:text-foreground prose-headings:font-bold
+                  prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
+                  prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:mb-4
+                  prose-ul:text-muted-foreground prose-ul:my-4
+                  prose-li:marker:text-primary prose-li:my-1
+                  prose-strong:text-foreground prose-strong:font-semibold
+                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
                 dangerouslySetInnerHTML={{ __html: page.location_overview }}
               />
             </section>
@@ -132,15 +156,35 @@ const LocationPage = () => {
 
           {/* Market Breakdown */}
           {page.market_breakdown && (
-            <section className="mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
-                Market Overview
-              </h2>
+            <section className="relative animate-fade-in">
+              {/* Decorative background */}
+              <div className="absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full bg-accent/5 blur-3xl" />
+              </div>
+              
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                    Market Overview
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Current trends and pricing data
+                  </p>
+                </div>
+              </div>
+              
               <div 
-                className="prose prose-lg max-w-none text-foreground
-                  prose-headings:text-foreground prose-p:text-muted-foreground
-                  prose-ul:text-muted-foreground prose-li:marker:text-primary
-                  prose-strong:text-foreground"
+                className="prose prose-lg max-w-none
+                  prose-headings:text-foreground prose-headings:font-bold
+                  prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
+                  prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:mb-4
+                  prose-ul:text-muted-foreground prose-ul:my-4
+                  prose-li:marker:text-primary prose-li:my-1
+                  prose-strong:text-foreground prose-strong:font-semibold
+                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
                 dangerouslySetInnerHTML={{ __html: page.market_breakdown }}
               />
             </section>
@@ -166,14 +210,35 @@ const LocationPage = () => {
 
           {/* Final Summary */}
           {page.final_summary && (
-            <section className="py-12 border-t">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
-                Summary
-              </h2>
+            <section className="relative py-12 md:py-16 animate-fade-in">
+              {/* Decorative background */}
+              <div className="absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute top-1/2 left-0 w-64 h-64 rounded-full bg-secondary/5 blur-3xl" />
+              </div>
+              
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
+                  <Building className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                    Summary & Recommendations
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Key takeaways for buyers
+                  </p>
+                </div>
+              </div>
+              
               <div 
-                className="prose prose-lg max-w-none text-foreground location-summary
-                  prose-headings:text-foreground prose-p:text-muted-foreground
-                  prose-strong:text-foreground"
+                className="prose prose-lg max-w-none
+                  prose-headings:text-foreground prose-headings:font-bold
+                  prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
+                  prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:mb-4
+                  prose-ul:text-muted-foreground prose-ul:my-4
+                  prose-li:marker:text-primary prose-li:my-1
+                  prose-strong:text-foreground prose-strong:font-semibold
+                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
                 dangerouslySetInnerHTML={{ __html: page.final_summary }}
               />
             </section>
@@ -185,9 +250,21 @@ const LocationPage = () => {
             cityName={page.city_name}
           />
         </div>
+        
+        {/* CTA Section */}
+        <LocationCTASection 
+          cityName={page.city_name}
+          topicName={page.headline}
+        />
       </main>
 
       <Footer />
+      
+      {/* Sticky Mobile CTA */}
+      <StickyMobileCTA />
+      
+      {/* EMMA Chatbot */}
+      <ChatbotWidget articleSlug={`location-${citySlug}-${topicSlug}`} language={page.language || 'en'} />
     </>
   );
 };
