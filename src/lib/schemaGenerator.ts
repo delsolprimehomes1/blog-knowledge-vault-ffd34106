@@ -12,6 +12,7 @@ export interface GeneratedSchemas {
   breadcrumb: any;
   faq?: any;
   organization: any;
+  webPageElement?: any;
   errors: SchemaValidationError[];
 }
 
@@ -268,6 +269,41 @@ export function validateSchemaRequirements(article: BlogArticle): SchemaValidati
   return errors;
 }
 
+// Generate WebPageElement schema for Quick Summary section (BOFU pages)
+export function generateWebPageElementSchema(
+  article: BlogArticle,
+  baseUrl: string = "https://www.delsolprimehomes.com"
+): any | null {
+  // Only generate for BOFU articles
+  if (article.funnel_stage !== 'BOFU') return null;
+  
+  return {
+    "@type": "WebPageElement",
+    "@id": `${baseUrl}/blog/${article.slug}#quick-summary`,
+    "name": "Quick Summary",
+    "cssSelector": ".quick-summary",
+    "description": article.speakable_answer,
+    "isAccessibleForFree": true
+  };
+}
+
+// Generate ItemList schema for pricing tables
+export function generatePricingTableSchema(
+  items: { item: string; amount: string; notes?: string }[],
+  title: string = "Property Purchase Costs"
+): any {
+  return {
+    "@type": "ItemList",
+    "name": title,
+    "itemListElement": items.map((item, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.item,
+      "description": `${item.amount}${item.notes ? ` - ${item.notes}` : ''}`
+    }))
+  };
+}
+
 export function generateAllSchemas(
   article: BlogArticle,
   author: Author | null,
@@ -279,6 +315,7 @@ export function generateAllSchemas(
   const breadcrumb = generateBreadcrumbSchema(article, baseUrl);
   const faq = generateFAQSchema(article, author);
   const organization = ORGANIZATION_SCHEMA;
+  const webPageElement = generateWebPageElementSchema(article, baseUrl);
   
   const validationErrors = validateSchemaRequirements(article);
   
@@ -288,6 +325,7 @@ export function generateAllSchemas(
     breadcrumb,
     faq,
     organization,
+    webPageElement,
     errors: [...articleResult.errors, ...validationErrors]
   };
 }
