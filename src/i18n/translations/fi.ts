@@ -154,7 +154,7 @@ export const fi = {
     legalHeading: "Oikeudelliset",
     copyright: "© {year} DelSolPrimeHomes. Kaikki oikeudet pidätetään. API Rekisteröity.",
     tagline: "Tehty Erinomaisuutta Varten",
-    address: "Calle Example 123, Marbella",
+    address: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga",
     links: {
       propertyFinder: "Kiinteistöhakija",
       featuredAreas: "Esitellyt Alueet",

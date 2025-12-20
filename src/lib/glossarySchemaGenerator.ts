@@ -55,8 +55,10 @@ const organizationSchema = {
   ],
   "address": {
     "@type": "PostalAddress",
-    "addressLocality": "Marbella",
+    "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
+    "addressLocality": "Fuengirola",
     "addressRegion": "Málaga",
+    "postalCode": "29640",
     "addressCountry": "ES"
   }
 };
