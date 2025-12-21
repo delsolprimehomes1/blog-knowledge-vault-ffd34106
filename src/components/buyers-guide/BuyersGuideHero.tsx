@@ -148,18 +148,6 @@ export const BuyersGuideHero: React.FC = () => {
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        {/* Eyebrow Badge */}
-        <div 
-          className={`inline-flex items-center gap-2 px-5 py-2.5 bg-prime-gold/20 border border-prime-gold/40 rounded-full mb-8 backdrop-blur-md
-            ${isVisible ? 'animate-hero-badge-enter' : 'opacity-0'}`}
-          style={{ animationDelay: '0ms' }}
-        >
-          <div className="w-2 h-2 rounded-full bg-prime-gold animate-pulse" />
-          <span className="text-prime-gold text-sm font-semibold tracking-widest uppercase">
-            Your Complete Resource
-          </span>
-        </div>
-
         {/* Main Headline */}
         <h1 
           className={`text-4xl md:text-5xl lg:text-7xl font-serif font-bold text-white mb-8 leading-tight tracking-tight
