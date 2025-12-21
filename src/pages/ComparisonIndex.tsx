@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Scale } from "lucide-react";
 
+const BASE_URL = "https://www.delsolprimehomes.com";
+
 export default function ComparisonIndex() {
   const { data: comparisons, isLoading } = useQuery({
     queryKey: ['comparisons-published'],
@@ -23,12 +25,87 @@ export default function ComparisonIndex() {
     },
   });
 
+  // Generate CollectionPage schema
+  const comparisonIndexSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${BASE_URL}/compare#collectionpage`,
+        "name": "Property Comparisons | Del Sol Prime Homes",
+        "description": "Compare property options in Costa del Sol. Expert comparisons to help you make informed real estate decisions.",
+        "url": `${BASE_URL}/compare`,
+        "isPartOf": {
+          "@id": `${BASE_URL}/#website`
+        },
+        "about": {
+          "@type": "Thing",
+          "name": "Costa del Sol Property Comparisons"
+        },
+        "inLanguage": "en-GB",
+        ...(comparisons && comparisons.length > 0 && {
+          "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": comparisons.length,
+            "itemListElement": comparisons.slice(0, 50).map((comp, idx) => ({
+              "@type": "ListItem",
+              "position": idx + 1,
+              "name": comp.headline,
+              "url": `${BASE_URL}/compare/${comp.slug}`
+            }))
+          }
+        })
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL },
+          { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": `${BASE_URL}/compare` }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${BASE_URL}/compare#webpage`,
+        "url": `${BASE_URL}/compare`,
+        "name": "Property Comparisons | Del Sol Prime Homes",
+        "description": "Expert property comparisons for Costa del Sol buyers.",
+        "isPartOf": {
+          "@id": `${BASE_URL}/#website`
+        },
+        "inLanguage": "en-GB",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["h1", ".comparison-intro"]
+        }
+      }
+    ]
+  };
+
   return (
     <>
       <Helmet>
         <title>Property Comparisons | Del Sol Prime Homes</title>
         <meta name="description" content="Compare property options in Costa del Sol. Expert comparisons to help you make informed real estate decisions." />
-        <link rel="canonical" href="https://www.delsolprimehomes.com/compare" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <link rel="canonical" href={`${BASE_URL}/compare`} />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Property Comparisons | Del Sol Prime Homes" />
+        <meta property="og:description" content="Expert property comparisons for Costa del Sol buyers." />
+        <meta property="og:url" content={`${BASE_URL}/compare`} />
+        <meta property="og:image" content={`${BASE_URL}/assets/logo-new.png`} />
+        <meta property="og:image:alt" content="Del Sol Prime Homes Property Comparisons" />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
+        
+        {/* Hreflang */}
+        <link rel="alternate" hrefLang="en-GB" href={`${BASE_URL}/compare`} />
+        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/compare`} />
+        
+        {/* JSON-LD Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify(comparisonIndexSchema)}
+        </script>
       </Helmet>
 
       <Header />

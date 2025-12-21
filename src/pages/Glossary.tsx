@@ -171,18 +171,9 @@ const Glossary: React.FC = () => {
         <meta property="article:tag" content="Real Estate Glossary" />
         <meta property="article:tag" content="Costa del Sol" />
         
-        {/* Hreflang for multilingual SEO */}
+        {/* Hreflang - only for existing translations (English only for now) */}
         <link rel="alternate" hrefLang="en" href={canonicalUrl} />
         <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
-        <link rel="alternate" hrefLang="de" href={`${BASE_URL}/de/glossary`} />
-        <link rel="alternate" hrefLang="nl" href={`${BASE_URL}/nl/glossary`} />
-        <link rel="alternate" hrefLang="fr" href={`${BASE_URL}/fr/glossary`} />
-        <link rel="alternate" hrefLang="sv" href={`${BASE_URL}/sv/glossary`} />
-        <link rel="alternate" hrefLang="no" href={`${BASE_URL}/no/glossary`} />
-        <link rel="alternate" hrefLang="da" href={`${BASE_URL}/da/glossary`} />
-        <link rel="alternate" hrefLang="fi" href={`${BASE_URL}/fi/glossary`} />
-        <link rel="alternate" hrefLang="pl" href={`${BASE_URL}/pl/glossary`} />
-        <link rel="alternate" hrefLang="hu" href={`${BASE_URL}/hu/glossary`} />
         
         {/* JSON-LD Schema */}
         <script type="application/ld+json">

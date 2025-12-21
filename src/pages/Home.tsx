@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/home/Header';
 import { Footer } from '../components/home/Footer';
@@ -12,23 +13,12 @@ import { Section } from '../components/home/ui/Section';
 import { Button } from '../components/home/ui/Button';
 import { getStructuredData } from '../constants/home';
 
+const BASE_URL = 'https://www.delsolprimehomes.com';
+
 function Home() {
   const { t } = useTranslation();
 
-  // Inject Structured Data (JSON-LD)
-  useEffect(() => {
-    try {
-      const script = document.createElement('script');
-      script.type = 'application/ld+json';
-      script.text = JSON.stringify(getStructuredData());
-      document.head.appendChild(script);
-      return () => {
-        document.head.removeChild(script);
-      };
-    } catch (e) {
-      console.error("Error injecting JSON-LD", e);
-    }
-  }, []);
+  // JSON-LD is now injected via Helmet above
 
   // Intersection Observer for Animations
   useEffect(() => {
@@ -60,6 +50,47 @@ function Home() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
+      <Helmet>
+        {/* Primary Meta Tags */}
+        <title>Del Sol Prime Homes | Luxury Costa del Sol Real Estate</title>
+        <meta name="title" content="Del Sol Prime Homes | Luxury Costa del Sol Real Estate" />
+        <meta name="description" content="Premium real estate agency specializing in Costa del Sol properties. Expert guidance for buying luxury villas, apartments, and investment properties in Marbella, Estepona, and more." />
+        <meta name="keywords" content="Costa del Sol real estate, Marbella properties, Estepona villas, Spanish property investment, luxury homes Spain" />
+        <meta name="author" content="Del Sol Prime Homes" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={BASE_URL} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={BASE_URL} />
+        <meta property="og:title" content="Del Sol Prime Homes | Luxury Costa del Sol Real Estate" />
+        <meta property="og:description" content="Premium real estate agency specializing in Costa del Sol properties. Expert guidance for buying luxury villas, apartments, and investment properties." />
+        <meta property="og:image" content={`${BASE_URL}/assets/logo-new.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Del Sol Prime Homes - Costa del Sol Real Estate" />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
+        <meta property="og:locale" content="en_GB" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={BASE_URL} />
+        <meta name="twitter:title" content="Del Sol Prime Homes | Luxury Costa del Sol Real Estate" />
+        <meta name="twitter:description" content="Premium real estate agency specializing in Costa del Sol properties." />
+        <meta name="twitter:image" content={`${BASE_URL}/assets/logo-new.png`} />
+        <meta name="twitter:image:alt" content="Del Sol Prime Homes - Costa del Sol Real Estate" />
+        
+        {/* Hreflang - x-default only since no translations */}
+        <link rel="alternate" hrefLang="en-GB" href={BASE_URL} />
+        <link rel="alternate" hrefLang="x-default" href={BASE_URL} />
+        
+        {/* JSON-LD Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify(getStructuredData())}
+        </script>
+      </Helmet>
       
       <Header />
 

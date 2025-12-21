@@ -119,10 +119,13 @@ export const NAV_LINKS = [
 export const getStructuredData = () => ({
   "@context": "https://schema.org",
   "@type": "RealEstateAgent",
-  "name": "DelSolPrimeHomes",
-  "image": "https://picsum.photos/id/1031/800/600",
+  "name": "Del Sol Prime Homes",
+  "description": "Premium real estate agency specializing in Costa del Sol properties",
+  "image": "https://www.delsolprimehomes.com/assets/logo-new.png",
+  "logo": "https://www.delsolprimehomes.com/assets/logo-new.png",
   "url": "https://www.delsolprimehomes.com",
-  "telephone": "+34123456789",
+  "telephone": "+34 613 578 416",
+  "email": "info@delsolprimehomes.com",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
@@ -137,5 +140,20 @@ export const getStructuredData = () => ({
     { "@type": "Person", "name": "Cédric Van Hecke" },
     { "@type": "Person", "name": "Steven Roberts" }
   ],
-  "areaServed": ["Málaga", "Marbella", "Estepona", "Sotogrande"]
+  "areaServed": [
+    { "@type": "City", "name": "Marbella" },
+    { "@type": "City", "name": "Estepona" },
+    { "@type": "City", "name": "Fuengirola" },
+    { "@type": "City", "name": "Benalmádena" },
+    { "@type": "City", "name": "Mijas" },
+    { "@type": "City", "name": "Sotogrande" },
+    { "@type": "City", "name": "Málaga" }
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "Customer Service",
+    "availableLanguage": ["en", "de", "nl", "fr", "pl", "fi", "sv", "da", "no", "hu"],
+    "telephone": "+34 613 578 416",
+    "email": "info@delsolprimehomes.com"
+  }
 });

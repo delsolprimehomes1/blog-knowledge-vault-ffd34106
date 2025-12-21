@@ -160,12 +160,66 @@ const BlogIndex = () => {
     );
   }
 
+  // Generate CollectionPage schema
+  const blogIndexSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${blogUrl}#collectionpage`,
+        "name": "Blog | Del Sol Prime Homes",
+        "description": "Explore our latest articles about Costa del Sol real estate, property guides, and market insights.",
+        "url": blogUrl,
+        "isPartOf": {
+          "@id": `${baseUrl}/#website`
+        },
+        "about": {
+          "@type": "Thing",
+          "name": "Costa del Sol Real Estate"
+        },
+        "inLanguage": "en-GB"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+          { "@type": "ListItem", "position": 2, "name": "Blog", "item": blogUrl }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${blogUrl}#webpage`,
+        "url": blogUrl,
+        "name": "Blog | Del Sol Prime Homes",
+        "description": "Expert articles about Costa del Sol real estate, property guides, and market insights.",
+        "isPartOf": {
+          "@id": `${baseUrl}/#website`
+        },
+        "inLanguage": "en-GB",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": [".blog-header h1", ".blog-header p"]
+        }
+      }
+    ]
+  };
+
   return (
     <>
       <Helmet>
         <title>Blog | Del Sol Prime Homes</title>
         <meta name="description" content="Explore our latest articles about Costa del Sol real estate, property guides, and market insights." />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <link rel="canonical" href={blogUrl} />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Blog | Del Sol Prime Homes" />
+        <meta property="og:description" content="Expert articles about Costa del Sol real estate, property guides, and market insights." />
+        <meta property="og:url" content={blogUrl} />
+        <meta property="og:image" content={`${baseUrl}/assets/logo-new.png`} />
+        <meta property="og:image:alt" content="Del Sol Prime Homes Blog" />
+        <meta property="og:site_name" content="Del Sol Prime Homes" />
         
         {/* Self-referencing hreflang */}
         <link rel="alternate" hrefLang="en-GB" href={blogUrl} />
@@ -178,6 +232,11 @@ const BlogIndex = () => {
         
         {/* x-default */}
         <link rel="alternate" hrefLang="x-default" href={blogUrl} />
+        
+        {/* JSON-LD Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify(blogIndexSchema)}
+        </script>
       </Helmet>
       
       <div className="container mx-auto px-4 py-12">

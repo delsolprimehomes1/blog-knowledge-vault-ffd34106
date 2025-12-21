@@ -74,7 +74,7 @@ const ORGANIZATION_SCHEMA = {
   "name": "Del Sol Prime Homes",
   "description": "Premium real estate agency specializing in Costa del Sol properties",
   "url": "https://www.delsolprimehomes.com",
-  "logo": "https://www.delsolprimehomes.com/logo.png",
+  "logo": "https://www.delsolprimehomes.com/assets/logo-new.png",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
