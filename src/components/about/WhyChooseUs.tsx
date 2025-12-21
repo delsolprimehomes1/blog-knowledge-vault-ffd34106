@@ -67,7 +67,7 @@ export const WhyChooseUs = ({ content }: WhyChooseUsProps) => {
             <h2 id="why-choose-heading" className="font-serif text-3xl md:text-4xl font-bold mb-4">
               Why Choose Us
             </h2>
-            <p className="text-slate-400 max-w-2xl mx-auto">
+            <p className="text-white/80 max-w-2xl mx-auto">
               We don't just help you find a property—we help you find a home
             </p>
           </div>
@@ -87,7 +87,7 @@ export const WhyChooseUs = ({ content }: WhyChooseUsProps) => {
                   <feature.icon className="w-6 h-6 text-prime-gold" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                <p className="text-slate-400 text-sm">{feature.description}</p>
+                <p className="text-white/70 text-sm">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -95,7 +95,7 @@ export const WhyChooseUs = ({ content }: WhyChooseUsProps) => {
           {/* Markdown content */}
           <div className="max-w-3xl mx-auto">
             <div 
-              className="prose prose-invert prose-lg prose-headings:font-serif prose-h2:text-2xl prose-h3:text-xl prose-a:text-prime-gold prose-strong:text-white max-w-none"
+              className="prose prose-invert prose-lg prose-headings:font-serif prose-headings:text-white prose-h2:text-2xl prose-h3:text-xl prose-p:text-white/90 prose-li:text-white/90 prose-a:text-prime-gold prose-strong:text-white max-w-none"
               dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
             />
           </div>
