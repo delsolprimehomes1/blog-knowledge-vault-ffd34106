@@ -1,4 +1,5 @@
 import { BlogArticle, Author } from "@/types/blog";
+import { extractEntitiesFromArticle, entitiesToJsonLd, EntityExtractionResult } from "./entityExtractor";
 
 export interface SchemaValidationError {
   field: string;
@@ -13,6 +14,7 @@ export interface GeneratedSchemas {
   faq?: any;
   organization: any;
   webPageElement?: any;
+  entities?: EntityExtractionResult;
   errors: SchemaValidationError[];
 }
 
@@ -86,7 +88,7 @@ export function generateArticleSchema(
   author: Author | null,
   reviewer: Author | null,
   baseUrl: string = "https://www.delsolprimehomes.com"
-): any {
+): { schema: any; errors: SchemaValidationError[]; entities: EntityExtractionResult } {
   const errors: SchemaValidationError[] = [];
   
   if (!article.headline) errors.push({ field: "headline", message: "Headline is required for schema", severity: "error" });
@@ -96,6 +98,13 @@ export function generateArticleSchema(
   
   const articleUrl = `${baseUrl}/${article.slug}`;
   const wordCount = countWordsInHtml(article.detailed_content);
+  
+  // Extract entities for about/mentions
+  const entities = extractEntitiesFromArticle(
+    article.headline || '',
+    article.detailed_content || '',
+    article.category || 'Uncategorized'
+  );
   
   const schema: any = {
     "@context": "https://schema.org",
@@ -121,6 +130,16 @@ export function generateArticleSchema(
     "articleBody": stripHtml(article.detailed_content).substring(0, 500) + "..."
   };
   
+  // Add about property (primary subjects)
+  if (entities.about.length > 0) {
+    schema.about = entitiesToJsonLd(entities.about);
+  }
+  
+  // Add mentions property (secondary references)
+  if (entities.mentions.length > 0) {
+    schema.mentions = entitiesToJsonLd(entities.mentions);
+  }
+  
   if (author) {
     schema.author = generatePersonSchema(author);
   }
@@ -140,7 +159,7 @@ export function generateArticleSchema(
     }));
   }
   
-  return { schema, errors };
+  return { schema, errors, entities };
 }
 
 export function generateSpeakableSchema(article: BlogArticle): any {
@@ -326,6 +345,7 @@ export function generateAllSchemas(
     faq,
     organization,
     webPageElement,
+    entities: articleResult.entities,
     errors: [...articleResult.errors, ...validationErrors]
   };
 }

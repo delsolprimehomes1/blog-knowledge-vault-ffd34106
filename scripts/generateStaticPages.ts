@@ -126,10 +126,95 @@ function generateAuthorSchema(author: any) {
   };
 }
 
+// Entity extraction for about/mentions (simplified for SSG - no external imports)
+function extractEntitiesForSSG(headline: string, content: string, category: string) {
+  const WIKIDATA_ENTITIES: Record<string, string> = {
+    "Marbella": "https://www.wikidata.org/wiki/Q8337",
+    "Estepona": "https://www.wikidata.org/wiki/Q477306",
+    "Fuengirola": "https://www.wikidata.org/wiki/Q618947",
+    "Benalmádena": "https://www.wikidata.org/wiki/Q571725",
+    "Mijas": "https://www.wikidata.org/wiki/Q571737",
+    "Sotogrande": "https://www.wikidata.org/wiki/Q3490614",
+    "Casares": "https://www.wikidata.org/wiki/Q1046949",
+    "Torremolinos": "https://www.wikidata.org/wiki/Q184217",
+    "Manilva": "https://www.wikidata.org/wiki/Q571730",
+    "Málaga": "https://www.wikidata.org/wiki/Q8851",
+    "Costa del Sol": "https://www.wikidata.org/wiki/Q751676",
+    "Golden Visa": "https://www.wikidata.org/wiki/Q5579119",
+    "NIE": "https://www.wikidata.org/wiki/Q6955279",
+  };
+
+  const GLOSSARY_TERMS: Record<string, string> = {
+    "NIE": "Tax identification number for foreigners in Spain",
+    "Golden Visa": "Spanish residence permit for property investors (€500,000+)",
+    "Escritura": "Public deed of sale signed before a notary",
+    "IBI": "Annual municipal property tax in Spain",
+    "Plusvalía": "Municipal capital gains tax on land value increase",
+    "Hipoteca": "Spanish mortgage loan secured against property",
+  };
+
+  const plainContent = content.replace(/<[^>]*>/g, ' ');
+  const combinedText = `${headline} ${plainContent}`;
+  
+  const about: any[] = [];
+  const mentions: any[] = [];
+  
+  // Add category as primary subject
+  about.push({
+    "@type": "Thing",
+    "name": category,
+    "sameAs": `https://www.delsolprimehomes.com/blog/category/${category.toLowerCase().replace(/\s+/g, '-')}`
+  });
+
+  // Detect cities in headline (primary) and content (secondary)
+  const cities = ["Marbella", "Estepona", "Fuengirola", "Benalmádena", "Mijas", "Sotogrande", "Casares", "Torremolinos", "Manilva", "Málaga", "Costa del Sol"];
+  const seenCities = new Set<string>();
+  
+  for (const city of cities) {
+    const regex = new RegExp(`\\b${city}\\b`, 'gi');
+    if (regex.test(combinedText) && !seenCities.has(city.toLowerCase())) {
+      seenCities.add(city.toLowerCase());
+      const entity: any = { "@type": "Place", "name": city };
+      if (WIKIDATA_ENTITIES[city]) entity.sameAs = WIKIDATA_ENTITIES[city];
+      
+      // If in headline, add to about; otherwise mentions
+      if (new RegExp(`\\b${city}\\b`, 'gi').test(headline)) {
+        about.push(entity);
+      } else {
+        mentions.push(entity);
+      }
+    }
+  }
+
+  // Detect glossary terms
+  for (const [term, definition] of Object.entries(GLOSSARY_TERMS)) {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    if (regex.test(combinedText)) {
+      const entity: any = {
+        "@type": "DefinedTerm",
+        "name": term,
+        "description": definition,
+        "inDefinedTermSet": "https://www.delsolprimehomes.com/glossary"
+      };
+      if (WIKIDATA_ENTITIES[term]) entity.sameAs = WIKIDATA_ENTITIES[term];
+      mentions.push(entity);
+    }
+  }
+
+  return { about, mentions: mentions.slice(0, 10) };
+}
+
 function generateArticleSchema(article: ArticleData) {
   const wordCount = article.detailed_content.replace(/<[^>]*>/g, '').split(/\s+/).length;
   
-  return {
+  // Extract entities for about/mentions
+  const entities = extractEntitiesForSSG(
+    article.headline,
+    article.detailed_content,
+    'Property Guides' // Default category for SSG
+  );
+  
+  const schema: any = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#article`,
@@ -155,6 +240,18 @@ function generateArticleSchema(article: ArticleData) {
     },
     "inLanguage": article.language
   };
+  
+  // Add about property (primary subjects)
+  if (entities.about.length > 0) {
+    schema.about = entities.about;
+  }
+  
+  // Add mentions property (secondary references)
+  if (entities.mentions.length > 0) {
+    schema.mentions = entities.mentions;
+  }
+  
+  return schema;
 }
 
 function generateSpeakableSchema(article: ArticleData) {

@@ -45,6 +45,7 @@ export const SchemaPreviewSection = ({
 
   const hasErrors = schemas.errors.length > 0;
   const schemaCount = 3 + (schemas.faq ? 1 : 0) + 1; // article + speakable + breadcrumb + faq? + organization
+  const entityCount = (schemas.entities?.about?.length || 0) + (schemas.entities?.mentions?.length || 0);
 
   return (
     <Card>
@@ -89,11 +90,49 @@ export const SchemaPreviewSection = ({
             <div>
               <p className="font-medium">Generated Schemas</p>
               <p className="text-sm text-muted-foreground">
-                {schemaCount} schema types ready for injection
+                {schemaCount} schema types ready • {entityCount} entities detected
               </p>
             </div>
           </div>
         </div>
+
+        {/* Entity Preview */}
+        {schemas.entities && (schemas.entities.about.length > 0 || schemas.entities.mentions.length > 0) && (
+          <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg space-y-3">
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              🔗 Entity Linking (AI Knowledge Graph)
+            </p>
+            {schemas.entities.about.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">About (Primary Subjects):</p>
+                <div className="flex flex-wrap gap-1">
+                  {schemas.entities.about.map((entity, idx) => (
+                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                      {entity.name}
+                      {entity.sameAs && <span className="ml-1 opacity-60">🔗</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {schemas.entities.mentions.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Mentions ({schemas.entities.mentions.length}):</p>
+                <div className="flex flex-wrap gap-1">
+                  {schemas.entities.mentions.slice(0, 10).map((entity, idx) => (
+                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100/50 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                      {entity.name}
+                      {entity.sameAs && <span className="ml-1 opacity-60">🔗</span>}
+                    </span>
+                  ))}
+                  {schemas.entities.mentions.length > 10 && (
+                    <span className="text-xs text-green-600 dark:text-green-400">+{schemas.entities.mentions.length - 10} more</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <Collapsible open={open} onOpenChange={setOpen}>
           <CollapsibleTrigger asChild>
