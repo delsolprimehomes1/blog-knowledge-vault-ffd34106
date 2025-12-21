@@ -3,6 +3,15 @@ import { OptimizedImage } from "@/components/OptimizedImage";
 import { MermaidPreview } from "@/components/MermaidPreview";
 import { ExternalCitation } from "@/types/blog";
 import { injectExternalLinks, addCitationMarkers, processInternalLinks } from "@/lib/linkInjection";
+import { PricingTable, PricingItem, PriceExample } from "@/components/blog-article/PricingTable";
+
+export interface PricingData {
+  title: string;
+  items: PricingItem[];
+  totalLabel?: string;
+  totalAmount?: string;
+  priceExamples?: PriceExample[];
+}
 
 interface ArticleContentProps {
   content: string;
@@ -13,6 +22,8 @@ interface ArticleContentProps {
   diagramDescription?: string;
   externalCitations?: ExternalCitation[];
   midArticleCTA?: React.ReactNode;
+  pricingData?: PricingData;
+  language?: string;
 }
 
 // Helper function to split content at midpoint for CTA insertion
@@ -63,6 +74,8 @@ export const ArticleContent = ({
   diagramDescription,
   externalCitations = [],
   midArticleCTA,
+  pricingData,
+  language = 'en',
 }: ArticleContentProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
   
@@ -168,6 +181,18 @@ export const ArticleContent = ({
             </div>
           )}
         </figure>
+      )}
+
+      {/* Pricing Table - rendered after featured image for cost-related articles */}
+      {pricingData && (
+        <PricingTable
+          title={pricingData.title}
+          items={pricingData.items}
+          totalLabel={pricingData.totalLabel}
+          totalAmount={pricingData.totalAmount}
+          priceExamples={pricingData.priceExamples}
+          language={language}
+        />
       )}
 
       {midArticleCTA ? (
