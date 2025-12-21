@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu as MenuIcon, X, ChevronDown, MapPin, BookOpen, Scale, Building2, FileText, HelpCircle, Users, Phone, Home, Map, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Language } from '../../types/home';
 import { LANGUAGE_NAMES } from '../../constants/home';
 import { Button } from './ui/Button';
 import { useTranslation } from '../../i18n';
-import { useActiveNavigation } from '../../hooks/useActiveNavigation';
+import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
 
 interface HeaderProps {
   variant?: 'transparent' | 'solid';
@@ -14,12 +15,11 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
   const { t, currentLanguage, setLanguage } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
-  const { isActive, isAnchorActive } = useActiveNavigation();
-  
-  // Use solid styling when variant is 'solid' OR when scrolled
+  const [active, setActive] = useState<string | null>(null);
   const isLightBackground = variant === 'solid' || isScrolled;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [mobileSubmenu, setMobileSubmenu] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,37 +29,49 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Helper to get nav link classes with active state
-  const getNavLinkClasses = (isItemActive: boolean) => {
-    const baseClasses = 'text-sm font-medium transition-colors duration-300 relative group font-nav';
-    const colorClasses = isLightBackground ? 'text-slate-700' : 'text-white/90';
-    const activeClasses = isItemActive ? 'text-prime-gold' : `hover:text-prime-gold ${colorClasses}`;
-    return `${baseClasses} ${activeClasses}`;
-  };
-
-  // Helper to get underline classes with active state
-  const getUnderlineClasses = (isItemActive: boolean) => {
-    const baseClasses = 'absolute -bottom-1 left-0 h-px bg-prime-gold transition-all duration-300';
-    return isItemActive 
-      ? `${baseClasses} w-full` 
-      : `${baseClasses} w-0 group-hover:w-full`;
-  };
+  // Featured cities for the Explore dropdown
+  const featuredCities = [
+    {
+      title: "Marbella",
+      description: "Luxury living on the Golden Mile",
+      href: "/brochure/marbella",
+      src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop"
+    },
+    {
+      title: "Estepona",
+      description: "Charming old town & beaches",
+      href: "/brochure/estepona",
+      src: "https://images.unsplash.com/photo-1504019347908-b45f9b0b8dd5?w=300&h=200&fit=crop"
+    },
+    {
+      title: "Málaga",
+      description: "Culture, cuisine & coastline",
+      href: "/brochure/malaga",
+      src: "https://images.unsplash.com/photo-1509840841025-9088ba78a826?w=300&h=200&fit=crop"
+    },
+    {
+      title: "Sotogrande",
+      description: "Exclusive marina lifestyle",
+      href: "/brochure/sotogrande",
+      src: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=300&h=200&fit=crop"
+    },
+  ];
 
   return (
     <header 
-      className={`fixed top-0 w-full z-50 transition-all duration-500 border-b ${
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         isLightBackground 
-          ? 'glass-nav py-3 border-slate-200/50 shadow-sm' 
-          : 'bg-transparent py-6 border-transparent'
+          ? 'glass-nav py-3 border-b border-border/50 shadow-sm' 
+          : 'bg-transparent py-4 border-transparent'
       }`}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        {/* Logo - Clickable Home Button */}
+        {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 z-50">
           <img 
             src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png" 
             alt="DelSolPrimeHomes" 
-            className={`h-14 md:h-20 w-auto object-contain transition-all duration-500 ${
+            className={`h-12 md:h-16 w-auto object-contain transition-all duration-500 ${
               isLightBackground 
                 ? 'brightness-0 sepia saturate-[10] hue-rotate-[15deg]' 
                 : ''
@@ -67,65 +79,119 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           />
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-10">
-          <Link 
-            to="/property-finder"
-            className={getNavLinkClasses(isActive('/property-finder'))}
-          >
-            {t.nav.properties}
-            <span className={getUnderlineClasses(isActive('/property-finder'))}></span>
-          </Link>
-          <a 
-            href="#areas"
-            className={getNavLinkClasses(isAnchorActive('#areas'))}
-          >
-            {t.nav.areas}
-            <span className={getUnderlineClasses(isAnchorActive('#areas'))}></span>
-          </a>
-          <Link 
-            to="/locations"
-            className={getNavLinkClasses(isActive('/locations'))}
-          >
-            {t.nav.locations}
-            <span className={getUnderlineClasses(isActive('/locations'))}></span>
-          </Link>
-          <a 
-            href="#about"
-            className={getNavLinkClasses(isAnchorActive('#about'))}
-          >
-            {t.nav.aboutUs}
-            <span className={getUnderlineClasses(isAnchorActive('#about'))}></span>
-          </a>
-          <a 
-            href="#guide"
-            className={getNavLinkClasses(isAnchorActive('#guide'))}
-          >
-            {t.nav.buyersGuide}
-            <span className={getUnderlineClasses(isAnchorActive('#guide'))}></span>
-          </a>
-          <Link 
-            to="/blog"
-            className={getNavLinkClasses(isActive('/blog'))}
-          >
-            {t.nav.blog}
-            <span className={getUnderlineClasses(isActive('/blog'))}></span>
-          </Link>
-          <Link 
-            to="/qa"
-            className={getNavLinkClasses(isActive('/qa'))}
-          >
-            {t.nav.qa}
-            <span className={getUnderlineClasses(isActive('/qa'))}></span>
-          </Link>
-          <Link 
-            to="/compare"
-            className={getNavLinkClasses(isActive('/compare'))}
-          >
-            {t.nav.compare}
-            <span className={getUnderlineClasses(isActive('/compare'))}></span>
-          </Link>
-        </nav>
+        {/* Desktop Mega Menu */}
+        <div className="hidden lg:flex items-center">
+          <Menu setActive={setActive}>
+            {/* Explore Menu */}
+            <MenuItem setActive={setActive} active={active} item="Explore">
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-border/50">
+                  {featuredCities.map((city) => (
+                    <ProductItem key={city.title} {...city} />
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-1 pt-2">
+                  <HoveredLink href="/property-finder">
+                    <span className="flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Property Finder
+                    </span>
+                  </HoveredLink>
+                  <HoveredLink href="/locations">
+                    <span className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      All Locations
+                    </span>
+                  </HoveredLink>
+                  <HoveredLink href="#areas">
+                    <span className="flex items-center gap-2">
+                      <Map className="w-4 h-4" />
+                      Featured Areas
+                    </span>
+                  </HoveredLink>
+                  <HoveredLink href="/brochure/marbella">
+                    <span className="flex items-center gap-2">
+                      <Landmark className="w-4 h-4" />
+                      City Brochures
+                    </span>
+                  </HoveredLink>
+                </div>
+              </div>
+            </MenuItem>
+
+            {/* Learn Menu */}
+            <MenuItem setActive={setActive} active={active} item="Learn">
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <HoveredLink href="/blog">
+                  <span className="flex items-center gap-2">
+                    <Newspaper className="w-4 h-4" />
+                    Blog & Insights
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="/qa">
+                  <span className="flex items-center gap-2">
+                    <MessageCircleQuestion className="w-4 h-4" />
+                    Q&A Center
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="/glossary">
+                  <span className="flex items-center gap-2">
+                    <BookMarked className="w-4 h-4" />
+                    Property Glossary
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="#guide">
+                  <span className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Buyer's Guide
+                  </span>
+                </HoveredLink>
+              </div>
+            </MenuItem>
+
+            {/* Compare Menu */}
+            <MenuItem setActive={setActive} active={active} item="Compare">
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <HoveredLink href="/compare">
+                  <span className="flex items-center gap-2">
+                    <GitCompare className="w-4 h-4" />
+                    Comparison Index
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="/compare">
+                  <span className="flex items-center gap-2">
+                    <Scale className="w-4 h-4" />
+                    City vs City
+                  </span>
+                </HoveredLink>
+              </div>
+            </MenuItem>
+
+            {/* About Menu */}
+            <MenuItem setActive={setActive} active={active} item="About">
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <HoveredLink href="#about">
+                  <span className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    About Us
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="#about">
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Our Team
+                  </span>
+                </HoveredLink>
+                <HoveredLink href="#contact">
+                  <span className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Contact
+                  </span>
+                </HoveredLink>
+              </div>
+            </MenuItem>
+          </Menu>
+        </div>
 
         {/* Actions */}
         <div className="hidden lg:flex items-center gap-6">
@@ -133,27 +199,34 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           <div className="relative">
             <button 
               onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors duration-300 ${isLightBackground ? 'text-slate-700 hover:text-prime-900' : 'text-white hover:text-prime-gold'}`}
+              className={`flex items-center gap-1.5 text-sm font-medium transition-colors duration-300 ${isLightBackground ? 'text-foreground hover:text-primary' : 'text-white hover:text-primary'}`}
             >
               {currentLanguage} <ChevronDown size={14} className={`transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             
-            {isLangMenuOpen && (
-              <div className="absolute top-full right-0 mt-4 w-48 bg-white rounded-xl shadow-2xl shadow-slate-900/10 py-2 border border-slate-100 grid grid-cols-1 overflow-hidden animate-fade-in-up origin-top-right">
-                {Object.values(Language).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => {
-                      setLanguage(lang);
-                      setIsLangMenuOpen(false);
-                    }}
-                    className={`px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors ${currentLanguage === lang ? 'text-prime-gold font-bold bg-slate-50/50' : 'text-slate-600'}`}
-                  >
-                    {LANGUAGE_NAMES[lang]}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AnimatePresence>
+              {isLangMenuOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full right-0 mt-4 w-48 bg-card rounded-xl shadow-2xl shadow-black/10 py-2 border border-border overflow-hidden"
+                >
+                  {Object.values(Language).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        setLanguage(lang);
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`px-4 py-2.5 w-full text-left text-sm hover:bg-muted transition-colors ${currentLanguage === lang ? 'text-primary font-bold bg-muted/50' : 'text-muted-foreground'}`}
+                    >
+                      {LANGUAGE_NAMES[lang]}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <Button variant={isLightBackground ? 'primary' : 'secondary'} size="sm" className={!isLightBackground ? 'shadow-lg shadow-black/10' : ''}>
@@ -164,93 +237,191 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
         {/* Mobile Toggle */}
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className={`lg:hidden z-50 transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-slate-900' : 'text-white'}`}
+          className={`lg:hidden z-50 transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-foreground' : 'text-white'}`}
         >
-          {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          {isMobileMenuOpen ? <X size={28} /> : <MenuIcon size={28} />}
         </button>
       </div>
 
       {/* Mobile Menu */}
-      <div className={`fixed inset-0 bg-white z-40 flex flex-col pt-32 px-8 gap-8 lg:hidden transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <Link 
-          to="/property-finder"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/property-finder') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.properties}
-        </Link>
-        <a 
-          href="#areas"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#areas') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.areas}
-        </a>
-        <Link 
-          to="/locations"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/locations') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.locations}
-        </Link>
-        <a 
-          href="#about"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#about') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.aboutUs}
-        </a>
-        <a 
-          href="#guide"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isAnchorActive('#guide') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.buyersGuide}
-        </a>
-        <Link 
-          to="/blog"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/blog') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.blog}
-        </Link>
-        <Link 
-          to="/qa"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/qa') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.qa}
-        </Link>
-        <Link 
-          to="/compare"
-          onClick={() => setIsMobileMenuOpen(false)}
-          className={`text-2xl font-serif font-medium border-b border-slate-100 pb-4 font-nav transition-colors ${isActive('/compare') ? 'text-prime-gold' : 'text-slate-800'}`}
-        >
-          {t.nav.compare}
-        </Link>
-        
-        <div className="flex flex-col gap-4 mt-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Language</span>
-          <div className="grid grid-cols-2 gap-3">
-            {Object.values(Language).map((lang) => (
-              <button
-                key={lang}
-                onClick={() => {
-                  setLanguage(lang);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`px-3 py-2 text-sm rounded-lg border transition-colors ${currentLanguage === lang ? 'border-prime-900 bg-prime-900 text-white' : 'border-slate-200 text-slate-600'}`}
-              >
-                {LANGUAGE_NAMES[lang]}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        <Button fullWidth onClick={() => setIsMobileMenuOpen(false)} className="mt-auto mb-8">
-          {t.common.bookCall}
-        </Button>
-      </div>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 bg-card z-40 flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto"
+          >
+            {/* Explore Section */}
+            <MobileMenuSection 
+              title="Explore" 
+              isOpen={mobileSubmenu === 'explore'}
+              onToggle={() => setMobileSubmenu(mobileSubmenu === 'explore' ? null : 'explore')}
+            >
+              <MobileLink to="/property-finder" onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
+                Property Finder
+              </MobileLink>
+              <MobileLink to="/locations" onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
+                All Locations
+              </MobileLink>
+              <MobileLink href="#areas" onClick={() => setIsMobileMenuOpen(false)} icon={<Map className="w-5 h-5" />}>
+                Featured Areas
+              </MobileLink>
+              <MobileLink to="/brochure/marbella" onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
+                City Brochures
+              </MobileLink>
+            </MobileMenuSection>
+
+            {/* Learn Section */}
+            <MobileMenuSection 
+              title="Learn" 
+              isOpen={mobileSubmenu === 'learn'}
+              onToggle={() => setMobileSubmenu(mobileSubmenu === 'learn' ? null : 'learn')}
+            >
+              <MobileLink to="/blog" onClick={() => setIsMobileMenuOpen(false)} icon={<Newspaper className="w-5 h-5" />}>
+                Blog & Insights
+              </MobileLink>
+              <MobileLink to="/qa" onClick={() => setIsMobileMenuOpen(false)} icon={<MessageCircleQuestion className="w-5 h-5" />}>
+                Q&A Center
+              </MobileLink>
+              <MobileLink to="/glossary" onClick={() => setIsMobileMenuOpen(false)} icon={<BookMarked className="w-5 h-5" />}>
+                Property Glossary
+              </MobileLink>
+              <MobileLink href="#guide" onClick={() => setIsMobileMenuOpen(false)} icon={<GraduationCap className="w-5 h-5" />}>
+                Buyer's Guide
+              </MobileLink>
+            </MobileMenuSection>
+
+            {/* Compare Section */}
+            <MobileMenuSection 
+              title="Compare" 
+              isOpen={mobileSubmenu === 'compare'}
+              onToggle={() => setMobileSubmenu(mobileSubmenu === 'compare' ? null : 'compare')}
+            >
+              <MobileLink to="/compare" onClick={() => setIsMobileMenuOpen(false)} icon={<GitCompare className="w-5 h-5" />}>
+                Comparison Index
+              </MobileLink>
+              <MobileLink to="/compare" onClick={() => setIsMobileMenuOpen(false)} icon={<Scale className="w-5 h-5" />}>
+                City vs City
+              </MobileLink>
+            </MobileMenuSection>
+
+            {/* About Section */}
+            <MobileMenuSection 
+              title="About" 
+              isOpen={mobileSubmenu === 'about'}
+              onToggle={() => setMobileSubmenu(mobileSubmenu === 'about' ? null : 'about')}
+            >
+              <MobileLink href="#about" onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
+                About Us
+              </MobileLink>
+              <MobileLink href="#about" onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
+                Our Team
+              </MobileLink>
+              <MobileLink href="#contact" onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
+                Contact
+              </MobileLink>
+            </MobileMenuSection>
+            
+            {/* Language Selector */}
+            <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Language</span>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.values(Language).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-3 py-2 text-sm rounded-lg border transition-colors ${currentLanguage === lang ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+                  >
+                    {LANGUAGE_NAMES[lang]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <Button fullWidth onClick={() => setIsMobileMenuOpen(false)} className="mt-auto mb-8">
+              {t.common.bookCall}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
+  );
+};
+
+// Mobile Menu Section Component
+const MobileMenuSection = ({ 
+  title, 
+  children, 
+  isOpen, 
+  onToggle 
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
+  return (
+    <div className="border-b border-border">
+      <button 
+        onClick={onToggle}
+        className="flex items-center justify-between w-full py-4 text-lg font-semibold text-foreground"
+      >
+        {title}
+        <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-1 pb-4 pl-2">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Mobile Link Component
+const MobileLink = ({ 
+  children, 
+  to, 
+  href, 
+  onClick, 
+  icon 
+}: { 
+  children: React.ReactNode; 
+  to?: string; 
+  href?: string;
+  onClick: () => void; 
+  icon: React.ReactNode;
+}) => {
+  const className = "flex items-center gap-3 py-3 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors";
+  
+  if (to) {
+    return (
+      <Link to={to} onClick={onClick} className={className}>
+        {icon}
+        {children}
+      </Link>
+    );
+  }
+  
+  return (
+    <a href={href} onClick={onClick} className={className}>
+      {icon}
+      {children}
+    </a>
   );
 };
