@@ -79,19 +79,32 @@ export const ProductItem = ({
   description,
   href,
   src,
+  fallback,
 }: {
   title: string;
   description: string;
   href: string;
   src: string;
+  fallback?: string;
 }) => {
+  const [imgSrc, setImgSrc] = React.useState(src);
+  const [hasError, setHasError] = React.useState(false);
+
+  const handleError = () => {
+    if (!hasError && fallback) {
+      setImgSrc(fallback);
+      setHasError(true);
+    }
+  };
+
   return (
     <Link to={href} className="flex space-x-3 group">
       <img
-        src={src}
+        src={imgSrc}
         width={140}
         height={80}
         alt={title}
+        onError={handleError}
         className="shrink-0 rounded-lg shadow-md object-cover w-[140px] h-[80px] group-hover:shadow-lg transition-shadow"
       />
       <div className="flex flex-col justify-center">
