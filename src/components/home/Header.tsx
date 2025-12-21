@@ -29,31 +29,34 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Featured cities for the Explore dropdown
+  // Supabase Storage base URL for navbar images
+  const storageBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/navbar-images`;
+
+  // Featured cities for the Explore dropdown - using Supabase Storage URLs
   const featuredCities = [
     {
       title: "Marbella",
       description: "Luxury living on the Golden Mile",
       href: "/brochure/marbella",
-      src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop"
+      src: `${storageBaseUrl}/marbella-navbar.jpg`
     },
     {
       title: "Estepona",
       description: "Charming old town & beaches",
       href: "/brochure/estepona",
-      src: "https://images.unsplash.com/photo-1504019347908-b45f9b0b8dd5?w=300&h=200&fit=crop"
+      src: `${storageBaseUrl}/estepona-navbar.jpg`
     },
     {
       title: "Málaga",
       description: "Culture, cuisine & coastline",
       href: "/brochure/malaga",
-      src: "https://images.unsplash.com/photo-1509840841025-9088ba78a826?w=300&h=200&fit=crop"
+      src: `${storageBaseUrl}/malaga-navbar.jpg`
     },
     {
       title: "Sotogrande",
       description: "Exclusive marina lifestyle",
       href: "/brochure/sotogrande",
-      src: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=300&h=200&fit=crop"
+      src: `${storageBaseUrl}/sotogrande-navbar.jpg`
     },
   ];
 

@@ -53,6 +53,7 @@ const LocationGenerator = lazy(() => import("./pages/admin/LocationGenerator"));
 const LocationPages = lazy(() => import("./pages/admin/LocationPages"));
 const Phase1LinkingTool = lazy(() => import("./pages/admin/Phase1LinkingTool"));
 const BOFUPageGenerator = lazy(() => import("./pages/admin/BOFUPageGenerator"));
+const NavbarImageGenerator = lazy(() => import("./pages/admin/NavbarImageGenerator"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -128,6 +129,7 @@ const App = () => (
               <Route path="/admin/location-pages" element={<ProtectedRoute><LocationPages /></ProtectedRoute>} />
               <Route path="/admin/phase1-linking" element={<ProtectedRoute><Phase1LinkingTool /></ProtectedRoute>} />
               <Route path="/admin/bofu-generator" element={<ProtectedRoute><BOFUPageGenerator /></ProtectedRoute>} />
+              <Route path="/admin/navbar-images" element={<ProtectedRoute><NavbarImageGenerator /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
