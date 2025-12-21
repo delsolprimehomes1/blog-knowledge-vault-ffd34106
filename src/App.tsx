@@ -29,6 +29,7 @@ const LocationHub = lazy(() => import("./pages/LocationHub"));
 const LocationIndex = lazy(() => import("./pages/LocationIndex"));
 const LocationPage = lazy(() => import("./pages/LocationPage"));
 const About = lazy(() => import("./pages/About"));
+const BuyersGuide = lazy(() => import("./pages/BuyersGuide"));
 
 // Lazy load ALL admin pages (rarely accessed, heavy components)
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -105,6 +106,7 @@ const App = () => (
               <Route path="/locations/:citySlug" element={<LocationIndex />} />
               <Route path="/locations/:citySlug/:topicSlug" element={<LocationPage />} />
               <Route path="/about" element={<About />} />
+              <Route path="/buyers-guide" element={<BuyersGuide />} />
               
               {/* Protected Admin Routes - All lazy loaded */}
               <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

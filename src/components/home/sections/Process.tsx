@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Section } from '../ui/Section';
 import { Button } from '../ui/Button';
 import { Phone, Search, FileText, Plane, Key } from 'lucide-react';
@@ -48,7 +49,9 @@ export const Process: React.FC = () => {
       </div>
 
       <div className="mt-20 text-center reveal-on-scroll">
-        <Button variant="primary">{t.process.cta}</Button>
+        <Link to="/buyers-guide">
+          <Button variant="primary">{t.process.cta}</Button>
+        </Link>
       </div>
     </Section>
   );
