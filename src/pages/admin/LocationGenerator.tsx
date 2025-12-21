@@ -76,7 +76,7 @@ const LocationGenerator = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [generatedPage, setGeneratedPage] = useState<any>(null);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
-
+  const [isPublished, setIsPublished] = useState(false);
   const selectedCity = city === 'custom' ? customCity : city;
 
   const handleGenerate = async () => {
@@ -187,20 +187,30 @@ const LocationGenerator = () => {
 
     setIsSaving(true);
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('location_pages')
-        .insert({
+        .upsert({
           ...generatedPage,
           status: 'published',
-          date_published: new Date().toISOString(),
+          date_published: generatedPage.date_published || now,
+          date_modified: now,
+        }, { 
+          onConflict: 'topic_slug',
+          ignoreDuplicates: false 
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      toast.success('Location page published!');
-      window.open(`/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank');
+      setIsPublished(true);
+      toast.success('Location page published successfully!', {
+        action: {
+          label: 'View Page',
+          onClick: () => window.open(`/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank'),
+        },
+      });
     } catch (error) {
       console.error('Publish error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to publish location page');
@@ -454,6 +464,21 @@ const LocationGenerator = () => {
                     </div>
                   </div>
 
+                  {/* Success Message */}
+                  {isPublished && (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                      <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                      <p className="font-semibold text-green-700 dark:text-green-400">Published Successfully!</p>
+                      <Button
+                        variant="link"
+                        className="text-green-600 dark:text-green-400"
+                        onClick={() => window.open(`/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank')}
+                      >
+                        View Published Page →
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex gap-3">
                     <Button 
@@ -470,8 +495,8 @@ const LocationGenerator = () => {
                       disabled={isSaving}
                       className="flex-1"
                     >
-                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      Publish
+                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                      {isPublished ? 'Update' : 'Publish'}
                     </Button>
                   </div>
                 </div>
