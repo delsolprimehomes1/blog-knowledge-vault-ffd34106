@@ -15,14 +15,13 @@ export const Hero: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Load video after initial paint for better LCP
+  // Load video after LCP for better performance - delay increased to prioritize image
   useEffect(() => {
     const timer = setTimeout(() => {
       if (videoRef.current) {
         videoRef.current.load();
-        setVideoLoaded(true);
       }
-    }, 100);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -33,11 +32,13 @@ export const Hero: React.FC = () => {
         {/* High-priority poster image for LCP */}
         <img
           src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop"
-          alt=""
-          fetchPriority="high"
+          alt="Costa del Sol luxury property"
+          width={2070}
+          height={1380}
           loading="eager"
-          decoding="async"
+          decoding="sync"
           className={`absolute inset-0 w-full h-full object-cover scale-110 transition-opacity duration-700 ${videoLoaded ? 'opacity-0' : 'opacity-100'}`}
+          style={{ contentVisibility: 'auto' }}
         />
         <video
           ref={videoRef}
@@ -45,7 +46,7 @@ export const Hero: React.FC = () => {
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           poster="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop"
           className={`absolute inset-0 w-full h-full object-cover scale-110 transition-opacity duration-700 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
           onCanPlay={() => setVideoLoaded(true)}

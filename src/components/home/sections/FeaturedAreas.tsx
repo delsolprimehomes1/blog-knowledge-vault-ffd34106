@@ -49,7 +49,11 @@ export const FeaturedAreas: React.FC = () => {
           >
             <img 
               src={area.image} 
-              alt={area.name} 
+              alt={`${area.name} - Costa del Sol property area`}
+              width={400}
+              height={533}
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
             />
             {/* Gradient Overlay */}
