@@ -181,13 +181,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
             {/* About Menu */}
             <MenuItem setActive={setActive} active={active} item="About">
               <div className="flex flex-col gap-1 min-w-[200px]">
-                <HoveredLink href="#about">
+                <HoveredLink href="/about">
                   <span className="flex items-center gap-2">
                     <Info className="w-4 h-4" />
                     About Us
                   </span>
                 </HoveredLink>
-                <HoveredLink href="#about">
+                <HoveredLink href="/about">
                   <span className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Our Team
@@ -324,10 +324,10 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
               isOpen={mobileSubmenu === 'about'}
               onToggle={() => setMobileSubmenu(mobileSubmenu === 'about' ? null : 'about')}
             >
-              <MobileLink href="#about" onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
+              <MobileLink to="/about" onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
                 About Us
               </MobileLink>
-              <MobileLink href="#about" onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
+              <MobileLink to="/about" onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
                 Our Team
               </MobileLink>
               <MobileLink href="#contact" onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
