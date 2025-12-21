@@ -80,10 +80,14 @@ function Home() {
         <USPSection />
 
         {/* 5. Featured Areas */}
-        <FeaturedAreas />
+        <div id="areas">
+          <FeaturedAreas />
+        </div>
 
-        {/* 6. Process */}
-        <Process />
+        {/* 6. Process (Buyer's Guide) */}
+        <div id="guide">
+          <Process />
+        </div>
 
         {/* 7. Reviews */}
         <Reviews />
@@ -94,7 +98,8 @@ function Home() {
         {/* 9. Glossary */}
         <GlossaryTeaser />
 
-        {/* 10. Final CTA */}
+        {/* 10. Final CTA (Contact) */}
+        <div id="contact">
         <Section background="dark" className="text-center relative overflow-hidden">
            {/* Abstract Background Element */}
            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-prime-800 via-prime-900 to-prime-950 -z-0"></div>
@@ -113,6 +118,7 @@ function Home() {
              </div>
            </div>
         </Section>
+        </div>
 
       </main>
 
