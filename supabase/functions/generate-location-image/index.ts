@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Sanitize folder name: remove accents and special characters
+function sanitizeFolderName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, ''); // Only allow alphanumeric and hyphens
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -120,9 +130,11 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Generate unique filename
+    // Generate unique filename with sanitized folder name
     const timestamp = Date.now();
-    const fileName = `${city_slug || city_name.toLowerCase().replace(/\s+/g, '-')}/${topic_slug}-${timestamp}.${extension}`;
+    const sanitizedCitySlug = sanitizeFolderName(city_slug || city_name);
+    const sanitizedTopicSlug = sanitizeFolderName(topic_slug);
+    const fileName = `${sanitizedCitySlug}/${sanitizedTopicSlug}-${timestamp}.${extension}`;
 
     console.log('Uploading image to storage:', fileName);
 
