@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      about_page_content: {
+        Row: {
+          canonical_url: string | null
+          citations: Json | null
+          client_satisfaction_percent: number | null
+          created_at: string | null
+          credentials: Json | null
+          faq_entities: Json | null
+          founders: Json | null
+          hero_headline: string
+          hero_subheadline: string
+          id: string
+          language: string | null
+          meta_description: string
+          meta_title: string
+          mission_statement: string
+          our_story_content: string
+          properties_sold: number | null
+          slug: string | null
+          speakable_summary: string
+          updated_at: string | null
+          why_choose_us_content: string
+          years_in_business: number | null
+        }
+        Insert: {
+          canonical_url?: string | null
+          citations?: Json | null
+          client_satisfaction_percent?: number | null
+          created_at?: string | null
+          credentials?: Json | null
+          faq_entities?: Json | null
+          founders?: Json | null
+          hero_headline: string
+          hero_subheadline: string
+          id?: string
+          language?: string | null
+          meta_description: string
+          meta_title: string
+          mission_statement: string
+          our_story_content: string
+          properties_sold?: number | null
+          slug?: string | null
+          speakable_summary: string
+          updated_at?: string | null
+          why_choose_us_content: string
+          years_in_business?: number | null
+        }
+        Update: {
+          canonical_url?: string | null
+          citations?: Json | null
+          client_satisfaction_percent?: number | null
+          created_at?: string | null
+          credentials?: Json | null
+          faq_entities?: Json | null
+          founders?: Json | null
+          hero_headline?: string
+          hero_subheadline?: string
+          id?: string
+          language?: string | null
+          meta_description?: string
+          meta_title?: string
+          mission_statement?: string
+          our_story_content?: string
+          properties_sold?: number | null
+          slug?: string | null
+          speakable_summary?: string
+          updated_at?: string | null
+          why_choose_us_content?: string
+          years_in_business?: number | null
+        }
+        Relationships: []
+      }
       approved_domains: {
         Row: {
           category: string

@@ -60,9 +60,9 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">{t.footer.navigateHeading}</h4>
             <ul className="space-y-3 text-slate-300 text-sm">
-              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.propertyFinder}</a></li>
+              <li><Link to="/property-finder" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.propertyFinder}</Link></li>
               <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.featuredAreas}</a></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.ourTeam}</a></li>
+              <li><Link to="/about" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.ourTeam}</Link></li>
               <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.buyersGuide}</a></li>
               <li><Link to="/blog" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.blogInsights}</Link></li>
               <li><Link to="/glossary" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.glossary || "Property Glossary"}</Link></li>
