@@ -136,7 +136,13 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Handle GET requests or empty bodies gracefully
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {}; // Empty body for GET requests
+    }
     
     // Check for debug mode (request body or header)
     const debugHeader = req.headers.get('x-debug');
@@ -145,6 +151,14 @@ serve(async (req) => {
     // Check for diagnostic mode (lightweight health check)
     if (body.mode === 'diagnostic') {
       return handleDiagnosticMode(isDebugMode);
+    }
+    
+    // ============================================
+    // SINGLE PROPERTY LOOKUP BY REFERENCE
+    // ============================================
+    if (body.reference) {
+      console.log(`🔍 Single property lookup: ${body.reference}`);
+      return await handleSinglePropertyLookup(body.reference, isDebugMode);
     }
     
     // ============================================
@@ -343,6 +357,176 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Handle single property lookup by reference
+ */
+async function handleSinglePropertyLookup(reference: string, isDebugMode: boolean): Promise<Response> {
+  const proxyUrl = `http://188.34.164.137:3000/property/${encodeURIComponent(reference)}`;
+  
+  if (isDebugMode) {
+    console.log('📡 Property detail URL:', proxyUrl);
+  }
+
+  try {
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Proxy property detail error:', response.status, errorText);
+      
+      // If property not found, return empty result
+      if (response.status === 404) {
+        return new Response(
+          JSON.stringify({ property: null, error: 'Property not found' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`Proxy server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // The proxy should return property data - normalize it
+    const prop = data.Property || data.property || data;
+    
+    if (!prop || (!prop.Reference && !prop.reference)) {
+      return new Response(
+        JSON.stringify({ property: null, error: 'Property not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Extract all images from the property
+    const allImages = extractAllImages(prop);
+    
+    const propertyTypeStr = extractPropertyType(prop);
+    const mainImage = extractMainImage(prop);
+    const salePrice = parseSalePrice(prop);
+    
+    const title = prop.Title || prop.Name || prop.PropertyName || 
+                 `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
+    
+    // Extract description - handle multi-language object
+    let description = '';
+    if (typeof prop.Description === 'object' && prop.Description !== null) {
+      description = prop.Description.en || prop.Description.es || Object.values(prop.Description)[0] || '';
+    } else {
+      description = prop.Description || prop.description || '';
+    }
+    
+    // Extract features from PropertyFeatures
+    const features: string[] = [];
+    if (prop.PropertyFeatures?.Category) {
+      const categories = Array.isArray(prop.PropertyFeatures.Category) 
+        ? prop.PropertyFeatures.Category 
+        : [prop.PropertyFeatures.Category];
+      
+      for (const cat of categories) {
+        if (cat.Value) {
+          const values = Array.isArray(cat.Value) ? cat.Value : [cat.Value];
+          features.push(...values);
+        }
+      }
+    }
+
+    const normalizedProperty = {
+      id: prop.Reference || prop.reference || prop.Ref || '',
+      reference: prop.Reference || prop.reference || prop.Ref || '',
+      title,
+      price: salePrice,
+      currency: prop.Currency || prop.currency || 'EUR',
+      location: prop.Location || prop.location || prop.Area || '',
+      province: prop.Province || prop.province || prop.Country || '',
+      bedrooms: parseInt(prop.Bedrooms || prop.bedrooms) || 0,
+      bathrooms: parseInt(prop.Bathrooms || prop.bathrooms) || 0,
+      builtArea: parseFloat(prop.BuiltArea || prop.builtArea || prop.Built) || 0,
+      plotArea: parseFloat(prop.PlotArea || prop.plotArea || prop.GardenPlot || prop.Plot) || undefined,
+      propertyType: propertyTypeStr,
+      mainImage,
+      images: allImages,
+      description,
+      features,
+      pool: prop.Pool === 1 || prop.Pool === '1' ? 'Yes' : (prop.Pool || undefined),
+      garden: prop.Garden === 1 || prop.Garden === '1' ? 'Yes' : (prop.Garden || undefined),
+      parking: prop.Parking === 1 || prop.Parking === '1' ? 'Yes' : (prop.Parking || undefined),
+      orientation: prop.Orientation || prop.orientation,
+      views: prop.Views || prop.views,
+    };
+
+    console.log(`✅ Returning property: ${reference} with ${allImages.length} images`);
+
+    return new Response(
+      JSON.stringify({ 
+        property: normalizedProperty,
+        debug: isDebugMode ? { proxyUrl, rawPropertyKeys: Object.keys(prop) } : undefined
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('❌ Error fetching single property:', error);
+    return new Response(
+      JSON.stringify({ 
+        property: null, 
+        error: error instanceof Error ? error.message : 'Failed to fetch property' 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+/**
+ * Extract all images from property data
+ */
+function extractAllImages(prop: any): string[] {
+  const images: string[] = [];
+  
+  // Try Pictures array (Resales Online format)
+  if (prop.Pictures?.Picture) {
+    const pictureArray = Array.isArray(prop.Pictures.Picture) 
+      ? prop.Pictures.Picture 
+      : [prop.Pictures.Picture];
+    
+    for (const pic of pictureArray) {
+      const url = pic.PictureURL || pic.URL || pic.url || pic;
+      if (typeof url === 'string' && url.trim()) {
+        images.push(url);
+      }
+    }
+  }
+  
+  // Try Images array
+  if (prop.Images) {
+    const imageArray = Array.isArray(prop.Images) ? prop.Images : [prop.Images];
+    for (const img of imageArray) {
+      const url = typeof img === 'string' ? img : (img.url || img.URL || img.PictureURL);
+      if (typeof url === 'string' && url.trim() && !images.includes(url)) {
+        images.push(url);
+      }
+    }
+  }
+  
+  // Try images (lowercase) array
+  if (prop.images) {
+    const imageArray = Array.isArray(prop.images) ? prop.images : [prop.images];
+    for (const img of imageArray) {
+      const url = typeof img === 'string' ? img : (img.url || img.URL || img.PictureURL);
+      if (typeof url === 'string' && url.trim() && !images.includes(url)) {
+        images.push(url);
+      }
+    }
+  }
+  
+  return images;
+}
 
 /**
  * Lightweight diagnostic mode for health checks

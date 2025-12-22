@@ -21,19 +21,16 @@ const PropertyDetail = () => {
 
       setIsLoading(true);
       try {
+        // Use POST with reference in body for single property lookup
         const { data, error } = await supabase.functions.invoke("search-properties", {
-          method: "GET",
+          body: { reference },
         });
 
         if (error) throw error;
 
-        // Find property by reference
-        const foundProperty = data.properties?.find(
-          (p: Property) => p.reference === reference
-        );
-
-        if (foundProperty) {
-          setProperty(foundProperty);
+        // Handle single property response
+        if (data.property) {
+          setProperty(data.property);
         } else {
           toast({
             title: "Property not found",
