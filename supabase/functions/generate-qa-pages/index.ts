@@ -21,11 +21,6 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 const ALL_SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 
-// Generate shared hreflang_group_id for Q&A pages from same source article and type
-function generateHreflangGroupId(): string {
-  return crypto.randomUUID();
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -42,7 +37,8 @@ serve(async (req) => {
 
     // Determine if generating all languages
     const isAllLanguages = languages.includes('all') || languages[0] === 'all';
-    const effectiveLanguageCount = isAllLanguages ? ALL_SUPPORTED_LANGUAGES.length : languages.length;
+    const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
+    const effectiveLanguageCount = targetLanguages.length;
 
     // Create or get job
     let job;
@@ -102,19 +98,84 @@ serve(async (req) => {
 
     for (const article of articles || []) {
       try {
-        // Determine languages to generate for
-        // When "all" is selected, generate for ALL 10 supported languages via translation
-        const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
         const sourceLanguageName = LANGUAGE_NAMES[article.language] || 'English';
 
-        for (const lang of targetLanguages) {
+        // =====================================================
+        // CRITICAL FIX: Generate hreflang group IDs ONCE per article
+        // These IDs are SHARED across all language versions
+        // =====================================================
+        
+        // Check if this article already has tracking (for adding languages)
+        const { data: existingTracking } = await supabase
+          .from('qa_article_tracking')
+          .select('*')
+          .eq('source_article_id', article.id)
+          .single();
+
+        let hreflangGroupCore: string;
+        let hreflangGroupDecision: string;
+        let existingLanguages: string[] = [];
+        let trackingId: string;
+
+        if (existingTracking) {
+          // Use existing hreflang groups for continuity
+          hreflangGroupCore = existingTracking.hreflang_group_core;
+          hreflangGroupDecision = existingTracking.hreflang_group_decision;
+          existingLanguages = existingTracking.languages_generated || [];
+          trackingId = existingTracking.id;
+          
+          console.log(`Using existing hreflang groups for article ${article.id}: core=${hreflangGroupCore}, decision=${hreflangGroupDecision}`);
+          
+          // Update status to in_progress
+          await supabase
+            .from('qa_article_tracking')
+            .update({ status: 'in_progress' })
+            .eq('id', trackingId);
+        } else {
+          // Create NEW hreflang groups for first-time generation
+          hreflangGroupCore = crypto.randomUUID();
+          hreflangGroupDecision = crypto.randomUUID();
+          
+          console.log(`Creating new hreflang groups for article ${article.id}: core=${hreflangGroupCore}, decision=${hreflangGroupDecision}`);
+          
+          // Create tracking record
+          const { data: newTracking, error: trackingError } = await supabase
+            .from('qa_article_tracking')
+            .insert({
+              source_article_id: article.id,
+              source_article_headline: article.headline,
+              source_article_slug: article.slug,
+              hreflang_group_core: hreflangGroupCore,
+              hreflang_group_decision: hreflangGroupDecision,
+              languages_generated: [],
+              total_qa_pages: 0,
+              status: 'in_progress',
+            })
+            .select()
+            .single();
+
+          if (trackingError) {
+            console.error('Failed to create tracking record:', trackingError);
+            throw trackingError;
+          }
+          
+          trackingId = newTracking.id;
+        }
+
+        // Filter out languages that are already generated
+        const languagesToGenerate = targetLanguages.filter((lang: string) => !existingLanguages.includes(lang));
+        
+        if (languagesToGenerate.length === 0) {
+          console.log(`All requested languages already generated for article ${article.id}`);
+          continue;
+        }
+
+        console.log(`Generating Q&As for languages: ${languagesToGenerate.join(', ')}`);
+
+        // Generate Q&As for each language using the SHARED hreflang group IDs
+        for (const lang of languagesToGenerate) {
           const targetLanguageName = LANGUAGE_NAMES[lang] || 'English';
           const isTranslation = lang !== article.language;
-          
-          // Generate hreflang_group_id for this article + qa_type combination
-          // This ID will be shared across all language versions of the same Q&A
-          const hreflangGroupIdCore = generateHreflangGroupId();
-          const hreflangGroupIdDecision = generateHreflangGroupId();
           
           // Build the translation instruction if needed
           const translationInstruction = isTranslation 
@@ -196,17 +257,15 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
               content = content
                 .replace(/```json\n?/g, '')
                 .replace(/```\n?/g, '')
-                .replace(/^\s+|\s+$/g, '')           // Aggressive whitespace trim
-                .replace(/,\s*]/g, ']')               // Remove trailing commas before ]
-                .replace(/,\s*}/g, '}')               // Remove trailing commas before }
-                .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove invisible unicode chars
-                .replace(/[\x00-\x1F\x7F]/g, '');     // Remove control characters
+                .replace(/^\s+|\s+$/g, '')
+                .replace(/,\s*]/g, ']')
+                .replace(/,\s*}/g, '}')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/[\x00-\x1F\x7F]/g, '');
 
-              // Try parsing with fallback to extract JSON array manually
               try {
                 qaPagesData = JSON.parse(content);
               } catch {
-                // Fallback: Find the array bounds and try again
                 const start = content.indexOf('[');
                 const end = content.lastIndexOf(']');
                 if (start !== -1 && end !== -1 && end > start) {
@@ -215,24 +274,21 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
                   console.log(`Fallback JSON extraction succeeded for article ${article.id}`);
                 } else {
                   console.error('JSON parse failed - Content length:', content.length);
-                  console.error('First 200 chars:', content.substring(0, 200));
-                  console.error('Last 200 chars:', content.substring(Math.max(0, content.length - 200)));
                   throw new Error('Failed to parse AI response as JSON');
                 }
               }
 
-              // Validate the parsed data is an array with items
               if (!Array.isArray(qaPagesData) || qaPagesData.length === 0) {
                 throw new Error('AI response is not a valid array of QA pages');
               }
 
-              break; // Success, exit retry loop
+              break;
 
             } catch (error) {
               lastError = error;
               if (attempt < MAX_RETRIES) {
                 console.log(`Retry attempt ${attempt + 1} for article ${article.id}, lang ${lang}`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
               }
             }
           }
@@ -241,7 +297,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
             throw lastError || new Error('Failed to generate QA pages after retries');
           }
 
-          // Save each Q&A page
+          // Save each Q&A page with the SHARED hreflang group ID
           for (const qaData of qaPagesData) {
             const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
             const slug = `${baseSlug}-${lang}`;
@@ -259,13 +315,17 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
               continue;
             }
 
+            // Use the SHARED hreflang_group_id based on Q&A type
+            const hreflangGroupId = qaData.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision;
+
             const { data: qaPage, error: insertError } = await supabase
               .from('qa_pages')
               .insert({
                 source_article_id: article.id,
                 language: lang,
-                source_language: 'en', // English-first strategy
-                hreflang_group_id: qaData.qa_type === 'core' ? hreflangGroupIdCore : hreflangGroupIdDecision,
+                source_language: 'en',
+                hreflang_group_id: hreflangGroupId,
+                tracking_id: trackingId,
                 qa_type: qaData.qa_type,
                 title: qaData.title,
                 slug,
@@ -299,9 +359,24 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
               qa_type: qaData.qa_type,
               title: qaData.title,
               slug,
+              hreflang_group_id: hreflangGroupId,
             });
           }
+
+          // Update tracking with this language
+          existingLanguages.push(lang);
         }
+
+        // Update tracking record with all generated languages
+        const totalQaPages = existingLanguages.length * 2;
+        await supabase
+          .from('qa_article_tracking')
+          .update({
+            languages_generated: existingLanguages,
+            total_qa_pages: totalQaPages,
+            status: 'completed',
+          })
+          .eq('id', trackingId);
 
         processedArticles++;
         
@@ -325,28 +400,49 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
       }
     }
 
-    // Link translations between Q&A pages from same source article and Q&A type
+    // Link translations between Q&A pages from same hreflang group
     const qaPagesByGroup: Record<string, any[]> = {};
     for (const result of results) {
-      if (result.qa_page_id) {
-        const key = `${result.source_article_id}-${result.qa_type}`;
+      if (result.qa_page_id && result.hreflang_group_id) {
+        const key = result.hreflang_group_id;
         if (!qaPagesByGroup[key]) qaPagesByGroup[key] = [];
         qaPagesByGroup[key].push(result);
       }
     }
 
-    for (const pages of Object.values(qaPagesByGroup)) {
+    for (const [groupId, pages] of Object.entries(qaPagesByGroup)) {
       if (pages.length > 1) {
         const translations: Record<string, string> = {};
         for (const page of pages) {
           translations[page.language] = page.slug;
         }
         
+        // Update all pages in this group with translations
         for (const page of pages) {
           await supabase
             .from('qa_pages')
             .update({ translations })
             .eq('id', page.qa_page_id);
+        }
+        
+        // Also update any existing pages in this hreflang group
+        const { data: existingPages } = await supabase
+          .from('qa_pages')
+          .select('id, language, slug')
+          .eq('hreflang_group_id', groupId);
+        
+        if (existingPages && existingPages.length > 0) {
+          const fullTranslations: Record<string, string> = {};
+          for (const p of existingPages) {
+            fullTranslations[p.language] = p.slug;
+          }
+          
+          for (const p of existingPages) {
+            await supabase
+              .from('qa_pages')
+              .update({ translations: fullTranslations })
+              .eq('id', p.id);
+          }
         }
       }
     }

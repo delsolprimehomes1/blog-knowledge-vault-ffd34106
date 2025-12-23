@@ -2127,6 +2127,48 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_article_tracking: {
+        Row: {
+          created_at: string | null
+          hreflang_group_core: string
+          hreflang_group_decision: string
+          id: string
+          languages_generated: string[]
+          source_article_headline: string
+          source_article_id: string
+          source_article_slug: string
+          status: string
+          total_qa_pages: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hreflang_group_core: string
+          hreflang_group_decision: string
+          id?: string
+          languages_generated?: string[]
+          source_article_headline: string
+          source_article_id: string
+          source_article_slug: string
+          status?: string
+          total_qa_pages?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hreflang_group_core?: string
+          hreflang_group_decision?: string
+          id?: string
+          languages_generated?: string[]
+          source_article_headline?: string
+          source_article_id?: string
+          source_article_slug?: string
+          status?: string
+          total_qa_pages?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       qa_generation_jobs: {
         Row: {
           article_ids: string[] | null
@@ -2214,6 +2256,7 @@ export type Database = {
           speakable_answer: string
           status: string
           title: string
+          tracking_id: string | null
           translations: Json | null
           updated_at: string | null
         }
@@ -2243,6 +2286,7 @@ export type Database = {
           speakable_answer: string
           status?: string
           title: string
+          tracking_id?: string | null
           translations?: Json | null
           updated_at?: string | null
         }
@@ -2272,6 +2316,7 @@ export type Database = {
           speakable_answer?: string
           status?: string
           title?: string
+          tracking_id?: string | null
           translations?: Json | null
           updated_at?: string | null
         }
@@ -2295,6 +2340,13 @@ export type Database = {
             columns: ["source_article_id"]
             isOneToOne: false
             referencedRelation: "content_freshness_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qa_pages_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "qa_article_tracking"
             referencedColumns: ["id"]
           },
         ]

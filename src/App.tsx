@@ -57,6 +57,7 @@ const BulkSpeakableRegeneration = lazy(() => import("./pages/admin/BulkSpeakable
 const BulkArticleLinker = lazy(() => import("./pages/admin/BulkArticleLinker"));
 const BrochureManager = lazy(() => import("./pages/admin/BrochureManager"));
 const QAGenerator = lazy(() => import("./pages/admin/QAGenerator"));
+const QADashboard = lazy(() => import("./pages/admin/QADashboard"));
 const ComparisonGenerator = lazy(() => import("./pages/admin/ComparisonGenerator"));
 const LocationGenerator = lazy(() => import("./pages/admin/LocationGenerator"));
 const LocationPages = lazy(() => import("./pages/admin/LocationPages"));
@@ -184,6 +185,7 @@ const App = () => (
               <Route path="/admin/bulk-internal-links" element={<ProtectedRoute><BulkInternalLinks /></ProtectedRoute>} />
               <Route path="/admin/brochures" element={<ProtectedRoute><BrochureManager /></ProtectedRoute>} />
               <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
+              <Route path="/admin/qa-dashboard" element={<ProtectedRoute><QADashboard /></ProtectedRoute>} />
               <Route path="/admin/comparison-generator" element={<ProtectedRoute><ComparisonGenerator /></ProtectedRoute>} />
               <Route path="/admin/location-generator" element={<ProtectedRoute><LocationGenerator /></ProtectedRoute>} />
               <Route path="/admin/location-pages" element={<ProtectedRoute><LocationPages /></ProtectedRoute>} />

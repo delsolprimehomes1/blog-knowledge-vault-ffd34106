@@ -14,9 +14,10 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building } from 'lucide-react';
+import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building, ExternalLink, Languages, Plus } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -30,6 +31,11 @@ const LANGUAGES = [
   { code: 'fi', name: 'Finnish' },
   { code: 'no', name: 'Norwegian' },
 ];
+
+const LANGUAGE_FLAGS: Record<string, string> = {
+  en: '🇬🇧', nl: '🇳🇱', hu: '🇭🇺', de: '🇩🇪', fr: '🇫🇷',
+  sv: '🇸🇪', pl: '🇵🇱', no: '🇳🇴', fi: '🇫🇮', da: '🇩🇰',
+};
 
 const CITY_OPTIONS = [
   { slug: 'marbella', name: 'Marbella' },
@@ -46,37 +52,70 @@ const CITY_OPTIONS = [
 
 const ITEMS_PER_PAGE = 50;
 
+interface TrackingRecord {
+  id: string;
+  source_article_id: string;
+  source_article_headline: string;
+  source_article_slug: string;
+  hreflang_group_core: string;
+  hreflang_group_decision: string;
+  languages_generated: string[];
+  total_qa_pages: number;
+  status: string;
+  created_at: string;
+}
+
 export default function FAQGenerator() {
   const queryClient = useQueryClient();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['all']);
-  const [activeTab, setActiveTab] = useState('select');
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['all']); // Default to all languages
+  const [activeTab, setActiveTab] = useState('available');
   const [jobId, setJobId] = useState<string | null>(null);
   const [editingFaq, setEditingFaq] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
   // City Q&A state
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  const [cityLanguages, setCityLanguages] = useState<string[]>(['en']);
+  const [cityLanguages, setCityLanguages] = useState<string[]>(['all']); // Default to all languages
   const [cityJobId, setCityJobId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch published articles
-  const { data: articles = [], isLoading: articlesLoading } = useQuery({
-    queryKey: ['published-articles-for-faq'],
+  // Fetch tracking data to know which articles are already used
+  const { data: trackingData = [], refetch: refetchTracking } = useQuery({
+    queryKey: ['qa-article-tracking'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('qa_article_tracking')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as TrackingRecord[];
+    },
+  });
+
+  // Get IDs of articles already used for Q&A
+  const usedArticleIds = new Set(trackingData.map(t => t.source_article_id));
+
+  // Fetch published English articles only (for Q&A generation)
+  const { data: allArticles = [], isLoading: articlesLoading } = useQuery({
+    queryKey: ['published-english-articles-for-faq'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
         .select('id, headline, language, category, funnel_stage, date_published, slug')
         .eq('status', 'published')
+        .eq('language', 'en') // Only English articles
         .order('date_published', { ascending: false });
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Split articles into available (no Q&As) and used (has Q&As)
+  const availableArticles = allArticles.filter(a => !usedArticleIds.has(a.id));
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -116,6 +155,7 @@ export default function FAQGenerator() {
         setJobId(null);
         setActiveTab('results');
         refetchQaPages();
+        refetchTracking();
       } else if (response.data?.status === 'failed') {
         clearInterval(interval);
         toast.error(response.data.error || 'Generation failed');
@@ -124,7 +164,7 @@ export default function FAQGenerator() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [jobId, refetchQaPages]);
+  }, [jobId, refetchQaPages, refetchTracking]);
 
   // Poll city job status
   useEffect(() => {
@@ -193,6 +233,29 @@ export default function FAQGenerator() {
     },
     onError: (error) => {
       toast.error(`Failed to start city Q&A generation: ${error.message}`);
+    },
+  });
+
+  // Add missing languages mutation
+  const addLanguagesMutation = useMutation({
+    mutationFn: async ({ articleId, languages }: { articleId: string; languages: string[] }) => {
+      const response = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds: [articleId],
+          mode: 'single',
+          languages,
+        },
+      });
+      if (response.error) throw response.error;
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setJobId(data.jobId);
+      setActiveTab('progress');
+      toast.info('Adding missing languages...');
+    },
+    onError: (error) => {
+      toast.error(`Failed to add languages: ${error.message}`);
     },
   });
 
@@ -284,12 +347,11 @@ export default function FAQGenerator() {
     },
   });
 
-  // Filter articles
-  const filteredArticles = articles.filter((article) => {
+  // Filter available articles
+  const filteredArticles = availableArticles.filter((article) => {
     const matchesSearch = article.headline.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLanguage = languageFilter === 'all' || article.language === languageFilter;
     const matchesCategory = categoryFilter === 'all' || article.category === categoryFilter;
-    return matchesSearch && matchesLanguage && matchesCategory;
+    return matchesSearch && matchesCategory;
   });
 
   // Pagination calculations
@@ -366,6 +428,21 @@ export default function FAQGenerator() {
     }
   };
 
+  // Add missing languages to an existing Q&A set
+  const handleAddMissingLanguages = (tracking: TrackingRecord) => {
+    const missingLangs = LANGUAGES.map(l => l.code).filter(
+      l => !tracking.languages_generated.includes(l)
+    );
+    if (missingLangs.length === 0) {
+      toast.info('All languages already generated');
+      return;
+    }
+    addLanguagesMutation.mutate({
+      articleId: tracking.source_article_id,
+      languages: missingLangs,
+    });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -376,11 +453,22 @@ export default function FAQGenerator() {
               Generate standalone QA pages from published blog articles
             </p>
           </div>
+          <Button asChild variant="outline">
+            <Link to="/admin/qa-dashboard">
+              <Languages className="mr-2 h-4 w-4" />
+              View Dashboard
+            </Link>
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="select">Select Articles</TabsTrigger>
+            <TabsTrigger value="available">
+              Available Articles ({availableArticles.length})
+            </TabsTrigger>
+            <TabsTrigger value="generated">
+              Already Generated ({trackingData.length})
+            </TabsTrigger>
             <TabsTrigger value="city-qa">
               <MapPin className="mr-1 h-4 w-4" />
               City Q&A
@@ -391,12 +479,13 @@ export default function FAQGenerator() {
             <TabsTrigger value="results">Generated QAs ({qaPages.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="select" className="space-y-4">
+          {/* Available Articles Tab */}
+          <TabsContent value="available" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Filter & Select Articles</CardTitle>
+                <CardTitle>Select Articles for Q&A Generation</CardTitle>
                 <CardDescription>
-                  Choose published articles to generate FAQ pages from
+                  These English articles don't have Q&A pages yet. Select and generate.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -411,19 +500,6 @@ export default function FAQGenerator() {
                       className="pl-9"
                     />
                   </div>
-                  <Select value={languageFilter} onValueChange={setLanguageFilter}>
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Languages</SelectItem>
-                      {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code}>
-                          {lang.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Category" />
@@ -439,16 +515,16 @@ export default function FAQGenerator() {
                   </Select>
                 </div>
 
-                {/* Language Selection for Generation */}
+                {/* Language Selection for Generation - Default to All */}
                 <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Generate FAQ pages for languages:</p>
+                  <p className="text-sm font-medium mb-2">Generate Q&A pages for languages:</p>
                   <div className="flex flex-wrap gap-2">
                     <Badge
                       variant={selectedLanguages.includes('all') ? 'default' : 'outline'}
                       className="cursor-pointer"
                       onClick={() => toggleLanguage('all')}
                     >
-                      All Languages
+                      All 10 Languages ✓
                     </Badge>
                     {LANGUAGES.map((lang) => (
                       <Badge
@@ -457,7 +533,7 @@ export default function FAQGenerator() {
                         className="cursor-pointer"
                         onClick={() => toggleLanguage(lang.code)}
                       >
-                        {lang.name}
+                        {LANGUAGE_FLAGS[lang.code]} {lang.name}
                       </Badge>
                     ))}
                   </div>
@@ -493,7 +569,6 @@ export default function FAQGenerator() {
                           />
                         </TableHead>
                         <TableHead>Title</TableHead>
-                        <TableHead>Language</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Funnel</TableHead>
                         <TableHead>Published</TableHead>
@@ -502,14 +577,16 @@ export default function FAQGenerator() {
                     <TableBody>
                       {articlesLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={5} className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                           </TableCell>
                         </TableRow>
                       ) : filteredArticles.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            No published articles found
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            {availableArticles.length === 0 
+                              ? 'All English articles already have Q&A pages generated!'
+                              : 'No articles found matching your filters'}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -523,9 +600,6 @@ export default function FAQGenerator() {
                             </TableCell>
                             <TableCell className="font-medium max-w-[300px] truncate">
                               {article.headline}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{article.language.toUpperCase()}</Badge>
                             </TableCell>
                             <TableCell>{article.category}</TableCell>
                             <TableCell>
@@ -557,44 +631,9 @@ export default function FAQGenerator() {
                       <ChevronLeft className="h-4 w-4" />
                       Previous
                     </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum: number;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? 'default' : 'outline'}
-                            size="sm"
-                            className="w-9"
-                            onClick={() => setCurrentPage(pageNum)}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                      {totalPages > 5 && currentPage < totalPages - 2 && (
-                        <>
-                          <span className="px-2">...</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-9"
-                            onClick={() => setCurrentPage(totalPages)}
-                          >
-                            {totalPages}
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Page {currentPage} of {totalPages}
+                    </span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -612,7 +651,7 @@ export default function FAQGenerator() {
                   <p className="text-sm text-muted-foreground">
                     {selectedArticles.length} article(s) selected
                     {selectedArticles.length > 0 && (
-                      <> • Will generate {selectedArticles.length * 2} FAQ pages per language</>
+                      <> • Will generate {selectedArticles.length * 2 * (selectedLanguages.includes('all') ? 10 : selectedLanguages.length)} Q&A pages</>
                     )}
                   </p>
                   <div className="flex gap-2">
@@ -633,9 +672,114 @@ export default function FAQGenerator() {
                       ) : (
                         <FileQuestion className="mr-2 h-4 w-4" />
                       )}
-                      Generate 2 FAQ Pages
+                      Generate Q&A Pages
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Already Generated Tab */}
+          <TabsContent value="generated" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Articles with Existing Q&As</CardTitle>
+                <CardDescription>
+                  These articles already have Q&A pages. You can add missing languages.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Article</TableHead>
+                        <TableHead>Languages Generated</TableHead>
+                        <TableHead>Missing Languages</TableHead>
+                        <TableHead>Q&A Pages</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {trackingData.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No Q&A pages generated yet. Go to "Available Articles" to start.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        trackingData.map((item) => {
+                          const missingLangs = LANGUAGES.map(l => l.code).filter(
+                            l => !item.languages_generated.includes(l)
+                          );
+                          
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <p className="font-medium line-clamp-1">{item.source_article_headline}</p>
+                                  <a 
+                                    href={`/en/blog/${item.source_article_slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                                  >
+                                    View article <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {item.languages_generated.map((lang: string) => (
+                                    <Badge key={lang} variant="secondary" className="text-xs">
+                                      {LANGUAGE_FLAGS[lang]} {lang.toUpperCase()}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {missingLangs.length === 0 ? (
+                                    <span className="text-green-600 text-sm flex items-center gap-1">
+                                      <CheckCircle className="h-3 w-3" />
+                                      All complete
+                                    </span>
+                                  ) : (
+                                    missingLangs.map((lang) => (
+                                      <Badge key={lang} variant="outline" className="text-xs text-amber-600">
+                                        {LANGUAGE_FLAGS[lang]} {lang.toUpperCase()}
+                                      </Badge>
+                                    ))
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {item.total_qa_pages} pages
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  {missingLangs.length > 0 && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleAddMissingLanguages(item)}
+                                      disabled={addLanguagesMutation.isPending}
+                                    >
+                                      <Plus className="mr-1 h-3 w-3" />
+                                      Add {missingLangs.length} Languages
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
@@ -650,8 +794,7 @@ export default function FAQGenerator() {
                   Generate Hyper-Specific City Q&A Pages
                 </CardTitle>
                 <CardDescription>
-                  Create AI-ready Q&A pages for each Costa del Sol city. Each city generates 8-10 questions
-                  covering walkability, remote work suitability, family/retiree living, safety, cost of living, and more.
+                  Create AI-ready Q&A pages for each Costa del Sol city.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -695,7 +838,7 @@ export default function FAQGenerator() {
                       className="cursor-pointer"
                       onClick={() => toggleCityLanguage('all')}
                     >
-                      All 10 Languages
+                      All 10 Languages ✓
                     </Badge>
                     {LANGUAGES.map((lang) => (
                       <Badge
@@ -704,7 +847,7 @@ export default function FAQGenerator() {
                         className="cursor-pointer"
                         onClick={() => toggleCityLanguage(lang.code)}
                       >
-                        {lang.name}
+                        {LANGUAGE_FLAGS[lang.code]} {lang.name}
                       </Badge>
                     ))}
                   </div>
@@ -720,9 +863,6 @@ export default function FAQGenerator() {
                       } language(s) = ~{
                         selectedCities.length * 10 * (cityLanguages.includes('all') ? 10 : cityLanguages.length)
                       } Q&A pages
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Questions include: walkability, remote work, families, retirees, safety, cost of living, healthcare, transport, and city-specific topics
                     </p>
                   </div>
                 )}
@@ -741,7 +881,6 @@ export default function FAQGenerator() {
                     <Button
                       onClick={() => generateCityQaMutation.mutate()}
                       disabled={selectedCities.length === 0 || generateCityQaMutation.isPending}
-                      className="bg-prime-gold hover:bg-prime-gold/90 text-prime-950"
                     >
                       {generateCityQaMutation.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -766,7 +905,7 @@ export default function FAQGenerator() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <div className="flex-1">
                     <p className="font-medium">
-                      {cityJobId ? 'Generating City Q&A pages...' : 'Generating FAQ pages...'}
+                      {cityJobId ? 'Generating City Q&A pages...' : 'Generating Q&A pages...'}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       This may take a few minutes depending on the number of {cityJobId ? 'cities and languages' : 'articles'}
@@ -782,9 +921,9 @@ export default function FAQGenerator() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <div>
-                  <CardTitle>Generated FAQ Pages</CardTitle>
+                  <CardTitle>Generated Q&A Pages</CardTitle>
                   <CardDescription>
-                    Review, edit, and publish generated FAQ pages
+                    Review, edit, and publish generated Q&A pages
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
@@ -796,7 +935,7 @@ export default function FAQGenerator() {
                       setIsRefreshing(true);
                       await refetchQaPages();
                       setIsRefreshing(false);
-                      toast.success('QA list refreshed');
+                      toast.success('Q&A list refreshed');
                     }}
                   >
                     <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -814,7 +953,6 @@ export default function FAQGenerator() {
                     <AlertDialogTrigger asChild>
                       <Button
                         disabled={draftCount === 0 || bulkPublishMutation.isPending}
-                        className="bg-prime-gold hover:bg-prime-gold/90 text-prime-950"
                       >
                         {bulkPublishMutation.isPending ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -826,9 +964,9 @@ export default function FAQGenerator() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Publish All Draft FAQ Pages?</AlertDialogTitle>
+                        <AlertDialogTitle>Publish All Draft Q&A Pages?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will publish {draftCount} draft FAQ page{draftCount !== 1 ? 's' : ''}. 
+                          This will publish {draftCount} draft Q&A page{draftCount !== 1 ? 's' : ''}. 
                           They will become publicly accessible on your website.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -836,7 +974,6 @@ export default function FAQGenerator() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => bulkPublishMutation.mutate()}
-                          className="bg-prime-gold hover:bg-prime-gold/90 text-prime-950"
                         >
                           Publish All
                         </AlertDialogAction>
@@ -855,68 +992,78 @@ export default function FAQGenerator() {
                         <TableHead>Language</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {qaPages.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            No QA pages generated yet
+                            No Q&A pages generated yet
                           </TableCell>
                         </TableRow>
                       ) : (
-                        qaPages.map((faq: any) => (
-                          <TableRow key={faq.id}>
+                        qaPages.slice(0, 50).map((qa: any) => (
+                          <TableRow key={qa.id}>
                             <TableCell className="font-medium max-w-[250px] truncate">
-                              {faq.title}
+                              {qa.title || qa.question_main}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={faq.faq_type === 'core' ? 'default' : 'secondary'}>
-                                {faq.faq_type}
+                              <Badge variant="outline">{qa.qa_type || 'N/A'}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {LANGUAGE_FLAGS[qa.language]} {qa.language?.toUpperCase()}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{faq.language.toUpperCase()}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={faq.status === 'published' ? 'default' : 'outline'}>
-                                {faq.status === 'published' ? (
-                                  <CheckCircle className="mr-1 h-3 w-3" />
-                                ) : null}
-                                {faq.status}
+                              <Badge variant={qa.status === 'published' ? 'default' : 'secondary'}>
+                                {qa.status}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              {format(new Date(faq.created_at), 'MMM d, yyyy')}
+                            <TableCell className="text-sm text-muted-foreground">
+                              {qa.created_at ? format(new Date(qa.created_at), 'MMM d, yyyy') : '-'}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
+                            <TableCell>
+                              <div className="flex gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => window.open(`/faq/${faq.slug}`, '_blank')}
+                                  onClick={() => window.open(`/${qa.language}/qa/${qa.slug}`, '_blank')}
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => setEditingFaq(faq)}
+                                  onClick={() => setEditingFaq(qa)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    if (confirm('Delete this QA page?')) {
-                                      deleteQaMutation.mutate(faq.id);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Q&A Page?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the Q&A page.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteQaMutation.mutate(qa.id)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -925,6 +1072,11 @@ export default function FAQGenerator() {
                     </TableBody>
                   </Table>
                 </div>
+                {qaPages.length > 50 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Showing first 50 of {qaPages.length} Q&A pages. View all in the Dashboard.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -934,39 +1086,39 @@ export default function FAQGenerator() {
         <Dialog open={!!editingFaq} onOpenChange={() => setEditingFaq(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit FAQ Page</DialogTitle>
+              <DialogTitle>Edit Q&A Page</DialogTitle>
             </DialogHeader>
             {editingFaq && (
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium">Title</label>
                   <Input
-                    value={editingFaq.title}
+                    value={editingFaq.title || ''}
                     onChange={(e) => setEditingFaq({ ...editingFaq, title: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Main Question</label>
                   <Input
-                    value={editingFaq.question_main}
+                    value={editingFaq.question_main || ''}
                     onChange={(e) => setEditingFaq({ ...editingFaq, question_main: e.target.value })}
                   />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium">Answer</label>
+                    <label className="text-sm font-medium">Main Answer</label>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'answer' })}
+                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'answer_main' })}
                       disabled={regenerateSectionMutation.isPending}
                     >
-                      <RefreshCw className="mr-1 h-3 w-3" />
+                      <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
                       Regenerate
                     </Button>
                   </div>
                   <Textarea
-                    value={editingFaq.answer_main}
+                    value={editingFaq.answer_main || ''}
                     onChange={(e) => setEditingFaq({ ...editingFaq, answer_main: e.target.value })}
                     rows={6}
                   />
@@ -977,26 +1129,25 @@ export default function FAQGenerator() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'speakable' })}
+                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'speakable_answer' })}
                       disabled={regenerateSectionMutation.isPending}
                     >
-                      <RefreshCw className="mr-1 h-3 w-3" />
+                      <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
                       Regenerate
                     </Button>
                   </div>
                   <Textarea
-                    value={editingFaq.speakable_answer}
+                    value={editingFaq.speakable_answer || ''}
                     onChange={(e) => setEditingFaq({ ...editingFaq, speakable_answer: e.target.value })}
                     rows={3}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Meta Title ({editingFaq.meta_title?.length || 0}/60)</label>
+                    <label className="text-sm font-medium">Meta Title</label>
                     <Input
-                      value={editingFaq.meta_title}
+                      value={editingFaq.meta_title || ''}
                       onChange={(e) => setEditingFaq({ ...editingFaq, meta_title: e.target.value })}
-                      maxLength={60}
                     />
                   </div>
                   <div>
@@ -1011,17 +1162,15 @@ export default function FAQGenerator() {
                       <SelectContent>
                         <SelectItem value="draft">Draft</SelectItem>
                         <SelectItem value="published">Published</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Meta Description ({editingFaq.meta_description?.length || 0}/160)</label>
+                  <label className="text-sm font-medium">Meta Description</label>
                   <Textarea
-                    value={editingFaq.meta_description}
+                    value={editingFaq.meta_description || ''}
                     onChange={(e) => setEditingFaq({ ...editingFaq, meta_description: e.target.value })}
-                    maxLength={160}
                     rows={2}
                   />
                 </div>
@@ -1035,7 +1184,9 @@ export default function FAQGenerator() {
                 onClick={() => updateQaMutation.mutate(editingFaq)}
                 disabled={updateQaMutation.isPending}
               >
-                {updateQaMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {updateQaMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Save Changes
               </Button>
             </DialogFooter>
