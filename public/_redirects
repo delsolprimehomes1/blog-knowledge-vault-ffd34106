@@ -21,6 +21,23 @@ http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
 /blog/navigating-capital-gains-wealth-tax-in-costa-del-sol-for-foreign-property-owners  /blog/calculating-your-investment-a-detailed-guide-to-capital-gains-tax-in-costa-del-sol-for-uk-irish-sellers  301
 /blog/the-complete-tax-compliance-checklist-buying-owning-property-in-costa-del-sol  /blog/a-deep-dive-into-spanish-property-taxes-in-costa-del-sol-what-buyers-must-know  301
 
+# Legacy Q&A slug cleanup - Dec 2024 (remove redundant -nl/-sv suffixes)
+# Dutch Q&A pages
+/nl/qa/beste-manier-gezinshuis-costa-del-sol-kiezen-nl  /nl/qa/beste-manier-gezinshuis-costa-del-sol-kiezen  301
+/nl/qa/beste-plek-gezinnen-costa-del-sol-nl  /nl/qa/beste-plek-gezinnen-costa-del-sol  301
+/nl/qa/costa-del-sol-gezinsbestemming-info-nl  /nl/qa/costa-del-sol-gezinsbestemming-info  301
+/nl/qa/gezin-verhuizen-costa-del-sol-overwegen-nl  /nl/qa/gezin-verhuizen-costa-del-sol-overwegen  301
+/nl/qa/luxe-vastgoed-kopen-costa-del-sol-essentiele-stappen-nl  /nl/qa/luxe-vastgoed-kopen-costa-del-sol-essentiele-stappen  301
+/nl/qa/overstap-directe-verzekeringscontracten-nl  /nl/qa/overstap-directe-verzekeringscontracten  301
+/nl/qa/vastgoed-kopen-wellness-costa-del-sol-besluit-nl  /nl/qa/vastgoed-kopen-wellness-costa-del-sol-besluit  301
+/nl/qa/wat-maakt-costa-del-sol-vakanties-onvergetelijk-nl  /nl/qa/wat-maakt-costa-del-sol-vakanties-onvergetelijk  301
+
+# Swedish Q&A pages
+/sv/qa/vad-erbjuder-semester-costa-del-sol-sv  /sv/qa/vad-erbjuder-semester-costa-del-sol  301
+/sv/qa/vad-gor-costa-del-sol-till-en-familjevänlig-destination-sv  /sv/qa/vad-gor-costa-del-sol-till-en-familjevänlig-destination  301
+/sv/qa/valja-basta-lyxfastigheten-costa-del-sol-tips-sv  /sv/qa/valja-basta-lyxfastigheten-costa-del-sol-tips  301
+/sv/qa/valja-familjehem-costa-del-sol-tips-misstag-sv  /sv/qa/valja-familjehem-costa-del-sol-tips-misstag  301
+
 # SPA routing for blog articles
 /blog/:slug  /blog/:slug/index.html  200
 
