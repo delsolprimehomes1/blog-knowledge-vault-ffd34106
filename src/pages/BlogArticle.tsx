@@ -18,6 +18,7 @@ import { AuthorBio } from "@/components/blog-article/AuthorBio";
 import { FunnelCTA } from "@/components/blog-article/FunnelCTA";
 import { ArticleFooter } from "@/components/blog-article/ArticleFooter";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
+import { BlogHreflangTags } from "@/components/BlogHreflangTags";
 import { generateAllSchemas } from "@/lib/schemaGenerator";
 import { isFeatureEnabled } from "@/lib/featureFlags";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, FunnelStage, InternalLink } from "@/types/blog";
@@ -266,6 +267,18 @@ const BlogArticle = () => {
 
   return (
     <>
+      {/* New hreflang tags component using hreflang_group_id */}
+      {article && (
+        <BlogHreflangTags
+          id={article.id}
+          hreflang_group_id={article.hreflang_group_id || null}
+          language={article.language}
+          slug={article.slug}
+          canonical_url={article.canonical_url || null}
+          content_type={article.content_type || null}
+        />
+      )}
+      
       <Helmet>
         {/* Basic Meta Tags */}
         <title>{article.meta_title} | Del Sol Prime Homes</title>

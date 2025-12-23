@@ -58,6 +58,11 @@ export interface BlogArticle {
   cluster_id?: string;
   is_primary: boolean;
   
+  // Hreflang Fields
+  hreflang_group_id?: string;
+  source_language?: string;
+  content_type?: string;
+  
   // SEO Fields
   headline: string;
   meta_title: string;
