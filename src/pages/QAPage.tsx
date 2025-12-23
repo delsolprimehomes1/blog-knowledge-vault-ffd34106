@@ -11,6 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { ChevronRight, Calendar, ExternalLink, Sparkles, Linkedin, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
+import { QAHreflangTags } from '@/components/QAHreflangTags';
 import { Author, QAEntity } from '@/types/blog';
 
 const LANGUAGE_CODE_MAP: Record<string, string> = {
@@ -139,6 +140,15 @@ export default function QAPage() {
 
   return (
     <>
+      {/* New hreflang tags component using hreflang_group_id */}
+      <QAHreflangTags
+        id={qaPage.id}
+        hreflang_group_id={(qaPage as any).hreflang_group_id || null}
+        language={qaPage.language}
+        slug={qaPage.slug}
+        canonical_url={qaPage.canonical_url || null}
+      />
+      
       <Helmet>
         <html lang={langCode} />
         <title>{qaPage.meta_title}</title>

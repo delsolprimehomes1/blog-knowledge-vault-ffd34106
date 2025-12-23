@@ -14,6 +14,7 @@ import { UseCaseSection } from "@/components/location/UseCaseSection";
 import { LocationCTASection } from "@/components/location/LocationCTASection";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import { LocationHreflangTags } from "@/components/LocationHreflangTags";
 import { TrendingUp, Building, Info } from "lucide-react";
 import { 
   generateAllLocationSchemas, 
@@ -122,6 +123,17 @@ const LocationPage = () => {
 
   return (
     <>
+      {/* New hreflang tags component using hreflang_group_id */}
+      <LocationHreflangTags
+        id={page.id}
+        hreflang_group_id={(page as any).hreflang_group_id || null}
+        language={page.language}
+        slug={`${page.city_slug}/${page.topic_slug}`}
+        canonical_url={(page as any).canonical_url || null}
+        city_slug={page.city_slug}
+        topic_slug={page.topic_slug}
+      />
+      
       <Helmet>
         <title>{page.meta_title}</title>
         <meta name="description" content={page.meta_description} />

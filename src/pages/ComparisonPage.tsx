@@ -14,6 +14,7 @@ import { ComparisonFAQ } from "@/components/comparison/ComparisonFAQ";
 import { CTASection } from "@/components/comparison/CTASection";
 import { TLDRSummary } from "@/components/comparison/TLDRSummary";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import { ComparisonHreflangTags } from "@/components/ComparisonHreflangTags";
 import { generateAllComparisonSchemas, ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
@@ -156,6 +157,15 @@ export default function ComparisonPage() {
 
   return (
     <>
+      {/* New hreflang tags component using hreflang_group_id */}
+      <ComparisonHreflangTags
+        id={comparison.id}
+        hreflang_group_id={(comparison as any).hreflang_group_id || null}
+        language={comparison.language || 'en'}
+        slug={comparison.slug}
+        canonical_url={(comparison as any).canonical_url || null}
+      />
+      
       <Helmet>
         <title>{comparison.meta_title}</title>
         <meta name="description" content={comparison.meta_description} />
