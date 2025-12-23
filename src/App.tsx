@@ -7,6 +7,13 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LanguageProvider } from "@/i18n";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import {
+  BlogRedirect,
+  QARedirect,
+  ComparisonRedirect,
+  LocationIndexRedirect,
+  LocationPageRedirect,
+} from "@/components/LegacyRouteRedirects";
 
 // Eager load critical pages (landing pages)
 import Home from "./pages/Home";
@@ -95,31 +102,69 @@ const App = () => (
               {/* Eager-loaded critical pages */}
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/blog" element={<BlogIndex />} />
-              <Route path="/qa" element={<QAIndex />} />
               
-              {/* Lazy-loaded public pages */}
-              <Route path="/blog/:slug" element={<BlogArticle />} />
-              <Route path="/sitemap" element={<Sitemap />} />
-              <Route path="/glossary" element={<Glossary />} />
-              {/* Language-prefixed property routes */}
+              {/* ========================================== */}
+              {/* LANGUAGE-PREFIXED ROUTES (Phase 2)        */}
+              {/* ========================================== */}
+              
+              {/* Blog routes with language prefix */}
+              <Route path="/:lang/blog" element={<BlogIndex />} />
+              <Route path="/:lang/blog/:slug" element={<BlogArticle />} />
+              
+              {/* Q&A routes with language prefix */}
+              <Route path="/:lang/qa" element={<QAIndex />} />
+              <Route path="/:lang/qa/:slug" element={<QAPage />} />
+              
+              {/* Comparison routes with language prefix */}
+              <Route path="/:lang/compare" element={<ComparisonIndex />} />
+              <Route path="/:lang/compare/:slug" element={<ComparisonPage />} />
+              
+              {/* Location routes with language prefix */}
+              <Route path="/:lang/locations" element={<LocationHub />} />
+              <Route path="/:lang/locations/:citySlug" element={<LocationIndex />} />
+              <Route path="/:lang/locations/:citySlug/:topicSlug" element={<LocationPage />} />
+              
+              {/* Property routes with language prefix */}
               <Route path="/:lang/properties" element={<PropertyFinder />} />
               <Route path="/:lang/property/:reference" element={<PropertyDetail />} />
               
-              {/* Legacy routes - redirect to English versions */}
+              {/* ========================================== */}
+              {/* LEGACY ROUTES -> REDIRECT TO /en/...      */}
+              {/* ========================================== */}
+              
+              {/* Blog legacy redirects */}
+              <Route path="/blog" element={<Navigate to="/en/blog" replace />} />
+              <Route path="/blog/:slug" element={<BlogRedirect />} />
+              
+              {/* Q&A legacy redirects */}
+              <Route path="/qa" element={<Navigate to="/en/qa" replace />} />
+              <Route path="/qa/:slug" element={<QARedirect />} />
+              
+              {/* Comparison legacy redirects */}
+              <Route path="/compare" element={<Navigate to="/en/compare" replace />} />
+              <Route path="/compare/:slug" element={<ComparisonRedirect />} />
+              
+              {/* Location legacy redirects */}
+              <Route path="/locations" element={<Navigate to="/en/locations" replace />} />
+              <Route path="/locations/:citySlug" element={<LocationIndexRedirect />} />
+              <Route path="/locations/:citySlug/:topicSlug" element={<LocationPageRedirect />} />
+              
+              {/* Property legacy redirects */}
               <Route path="/property-finder" element={<Navigate to="/en/properties" replace />} />
               <Route path="/property/:reference" element={<PropertyRedirect />} />
+              
+              {/* ========================================== */}
+              {/* OTHER PUBLIC ROUTES (no language prefix)  */}
+              {/* ========================================== */}
+              <Route path="/sitemap" element={<Sitemap />} />
+              <Route path="/glossary" element={<Glossary />} />
               <Route path="/brochure/:citySlug" element={<CityBrochure />} />
-              <Route path="/qa/:slug" element={<QAPage />} />
-              <Route path="/compare" element={<ComparisonIndex />} />
-              <Route path="/compare/:slug" element={<ComparisonPage />} />
-              <Route path="/locations" element={<LocationHub />} />
-              <Route path="/locations/:citySlug" element={<LocationIndex />} />
-              <Route path="/locations/:citySlug/:topicSlug" element={<LocationPage />} />
               <Route path="/about" element={<About />} />
               <Route path="/buyers-guide" element={<BuyersGuide />} />
               
-              {/* Protected Admin Routes - All lazy loaded */}
+              {/* ========================================== */}
+              {/* PROTECTED ADMIN ROUTES                    */}
+              {/* ========================================== */}
               <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/admin/articles" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
               <Route path="/admin/articles/new" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />

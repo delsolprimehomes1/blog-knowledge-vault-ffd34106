@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Header } from '@/components/home/Header';
 import { Footer } from '@/components/home/Footer';
@@ -36,6 +36,7 @@ const CATEGORY_CONFIG: Record<string, { icon: React.ComponentType<any>; color: s
 };
 
 export default function QAIndex() {
+  const { lang = 'en' } = useParams<{ lang: string }>();
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -112,7 +113,7 @@ export default function QAIndex() {
           "@id": "https://www.delsolprimehomes.com/qa#collectionpage",
           "name": "Questions & Answers",
           "description": "Expert answers to common questions about buying property in Costa del Sol, Spain",
-          "url": "https://www.delsolprimehomes.com/qa",
+          "url": `https://www.delsolprimehomes.com/${lang}/qa`,
           "isPartOf": {
             "@id": "https://www.delsolprimehomes.com/#website"
           },
@@ -122,7 +123,7 @@ export default function QAIndex() {
           },
           "mainEntity": {
             "@type": "ItemList",
-            "@id": "https://www.delsolprimehomes.com/qa#itemlist",
+            "@id": `https://www.delsolprimehomes.com/${lang}/qa#itemlist`,
             "name": "Costa del Sol Property Q&A",
             "description": "Expert answers to common questions about buying property in Costa del Sol, Spain",
             "numberOfItems": qaPages.length,
@@ -130,13 +131,13 @@ export default function QAIndex() {
               "@type": "ListItem",
               "position": index + 1,
               "name": qa.question_main,
-              "url": `https://www.delsolprimehomes.com/qa/${qa.slug}`
+              "url": `https://www.delsolprimehomes.com/${lang}/qa/${qa.slug}`
             }))
           }
         },
         {
           "@type": "BreadcrumbList",
-          "@id": "https://www.delsolprimehomes.com/qa#breadcrumb",
+          "@id": `https://www.delsolprimehomes.com/${lang}/qa#breadcrumb`,
           "itemListElement": [
             {
               "@type": "ListItem",
@@ -148,14 +149,14 @@ export default function QAIndex() {
               "@type": "ListItem",
               "position": 2,
               "name": "Q&A",
-              "item": "https://www.delsolprimehomes.com/qa"
+              "item": `https://www.delsolprimehomes.com/${lang}/qa`
             }
           ]
         },
         {
           "@type": "WebPage",
-          "@id": "https://www.delsolprimehomes.com/qa#webpage",
-          "url": "https://www.delsolprimehomes.com/qa",
+          "@id": `https://www.delsolprimehomes.com/${lang}/qa#webpage`,
+          "url": `https://www.delsolprimehomes.com/${lang}/qa`,
           "name": "Questions & Answers | Del Sol Prime Homes",
           "description": "Find answers to common questions about buying property in Costa del Sol, Spain. Expert advice on real estate, legal processes, and lifestyle.",
           "isPartOf": {
@@ -178,7 +179,7 @@ export default function QAIndex() {
           name="description"
           content="Find answers to common questions about buying property in Costa del Sol, Spain. Expert advice on real estate, legal processes, and lifestyle."
         />
-        <link rel="canonical" href="https://www.delsolprimehomes.com/qa" />
+        <link rel="canonical" href={`https://www.delsolprimehomes.com/${lang}/qa`} />
         
         {/* SEO Meta Tags */}
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -188,7 +189,7 @@ export default function QAIndex() {
         {/* Open Graph */}
         <meta property="og:title" content="Questions & Answers | Del Sol Prime Homes" />
         <meta property="og:description" content="Expert answers to common questions about buying property in Costa del Sol, Spain." />
-        <meta property="og:url" content="https://www.delsolprimehomes.com/qa" />
+        <meta property="og:url" content={`https://www.delsolprimehomes.com/${lang}/qa`} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
         <meta property="og:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
@@ -201,8 +202,8 @@ export default function QAIndex() {
         <meta name="twitter:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
         
         {/* Hreflang for languages */}
-        <link rel="alternate" hrefLang="en-GB" href="https://www.delsolprimehomes.com/qa" />
-        <link rel="alternate" hrefLang="x-default" href="https://www.delsolprimehomes.com/qa" />
+        <link rel="alternate" hrefLang="en-GB" href={`https://www.delsolprimehomes.com/${lang}/qa`} />
+        <link rel="alternate" hrefLang="x-default" href="https://www.delsolprimehomes.com/en/qa" />
         
         {qaIndexSchema && (
           <script type="application/ld+json">

@@ -42,7 +42,7 @@ const langToHreflang: Record<string, string> = {
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
 const LocationPage = () => {
-  const { citySlug, topicSlug } = useParams<{ citySlug: string; topicSlug: string }>();
+  const { citySlug, topicSlug, lang = 'en' } = useParams<{ citySlug: string; topicSlug: string; lang: string }>();
 
   const { data: page, isLoading, error } = useQuery({
     queryKey: ['location-page', citySlug, topicSlug],
@@ -100,7 +100,7 @@ const LocationPage = () => {
   const qaEntities = (page.qa_entities as unknown as QAEntity[]) || [];
 
   const author = page.author as Author | null;
-  const currentUrl = `${BASE_URL}/locations/${citySlug}/${topicSlug}`;
+  const currentUrl = `${BASE_URL}/${lang}/locations/${citySlug}/${topicSlug}`;
   
   // Build location page object for schema generation
   const locationPageData: LocationPageType = {
@@ -118,7 +118,7 @@ const LocationPage = () => {
   const currentLangCode = langToHreflang[page.language] || page.language;
   const englishSibling = siblingPages?.find(s => s.language === 'en');
   const xDefaultUrl = englishSibling 
-    ? `${BASE_URL}/locations/${englishSibling.city_slug}/${englishSibling.topic_slug}` 
+    ? `${BASE_URL}/en/locations/${englishSibling.city_slug}/${englishSibling.topic_slug}` 
     : currentUrl;
 
   return (
@@ -146,7 +146,7 @@ const LocationPage = () => {
             key={sibling.language}
             rel="alternate" 
             hrefLang={langToHreflang[sibling.language] || sibling.language} 
-            href={`${BASE_URL}/locations/${sibling.city_slug}/${sibling.topic_slug}`} 
+            href={`${BASE_URL}/${sibling.language}/locations/${sibling.city_slug}/${sibling.topic_slug}`} 
           />
         ))}
         <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />

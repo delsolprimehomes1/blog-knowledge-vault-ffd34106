@@ -35,7 +35,7 @@ const intentLabels: Record<string, string> = {
 };
 
 const LocationIndex = () => {
-  const { citySlug } = useParams<{ citySlug: string }>();
+  const { citySlug, lang = 'en' } = useParams<{ citySlug: string; lang: string }>();
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -273,7 +273,7 @@ const LocationIndex = () => {
               return (
                 <Link 
                   key={page.id} 
-                  to={`/locations/${citySlug}/${page.topic_slug}`}
+                  to={`/${lang}/locations/${citySlug}/${page.topic_slug}`}
                   className={`group relative bg-card rounded-2xl overflow-hidden card-immersive border border-border/50 transition-all duration-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                   style={{ animationDelay: `${index * 100}ms`, transitionDelay: `${index * 50}ms` }}
                 >

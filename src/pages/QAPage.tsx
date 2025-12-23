@@ -30,7 +30,7 @@ const LANGUAGE_CODE_MAP: Record<string, string> = {
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
 export default function QAPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
 
   const { data: qaPage, isLoading, error } = useQuery({
     queryKey: ['qa-page', slug],
@@ -129,14 +129,14 @@ export default function QAPage() {
   const langCode = LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language;
   
   // Use canonical_url from database if set, otherwise fallback to generated URL
-  const canonicalUrl = qaPage.canonical_url || `${BASE_URL}/qa/${qaPage.slug}`;
+  const canonicalUrl = qaPage.canonical_url || `${BASE_URL}/${lang}/qa/${qaPage.slug}`;
   
   // Calculate x-default URL - should point to English version
   const translations = (qaPage.translations as Record<string, string>) || {};
   const englishSlug = qaPage.language === 'en' 
     ? qaPage.slug 
     : (translations.en || qaPage.slug);
-  const xDefaultUrl = `${BASE_URL}/qa/${englishSlug}`;
+  const xDefaultUrl = `${BASE_URL}/en/qa/${englishSlug}`;
 
   return (
     <>
@@ -161,13 +161,13 @@ export default function QAPage() {
         <meta name="keywords" content={`${qaPage.category || 'Costa del Sol'}, Spain property, real estate Q&A, ${qaPage.question_main.split(' ').slice(0, 5).join(' ')}`} />
         
         {/* Hreflang for translations */}
-        <link rel="alternate" hrefLang={langCode} href={`${BASE_URL}/qa/${qaPage.slug}`} />
+        <link rel="alternate" hrefLang={langCode} href={`${BASE_URL}/${lang}/qa/${qaPage.slug}`} />
         {siblings.map((sibling: any) => (
           <link
             key={sibling.language}
             rel="alternate"
             hrefLang={LANGUAGE_CODE_MAP[sibling.language] || sibling.language}
-            href={`${BASE_URL}/qa/${sibling.slug}`}
+            href={`${BASE_URL}/${sibling.language}/qa/${sibling.slug}`}
           />
         ))}
         <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />
