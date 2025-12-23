@@ -14,18 +14,21 @@ import { it } from './it';
 import { ru } from './ru';
 import { tr } from './tr';
 
-export const translations: Record<Language, typeof en> = {
+// Use a flexible type that allows for brochure structure variations across languages
+type TranslationBase = Omit<typeof en, 'brochures'> & { brochures: Record<string, unknown> };
+
+export const translations: Record<Language, TranslationBase> = {
   [Language.EN]: en,
   [Language.ES]: es,
-  [Language.NL]: nl,
-  [Language.FR]: fr,
-  [Language.DE]: de,
-  [Language.FI]: fi,
-  [Language.PL]: pl,
-  [Language.DA]: da,
-  [Language.HU]: hu,
-  [Language.SV]: sv,
-  [Language.NO]: no,
+  [Language.NL]: nl as TranslationBase,
+  [Language.FR]: fr as TranslationBase,
+  [Language.DE]: de as TranslationBase,
+  [Language.FI]: fi as TranslationBase,
+  [Language.PL]: pl as TranslationBase,
+  [Language.DA]: da as TranslationBase,
+  [Language.HU]: hu as TranslationBase,
+  [Language.SV]: sv as TranslationBase,
+  [Language.NO]: no as TranslationBase,
   [Language.IT]: it,
   [Language.RU]: ru,
   [Language.TR]: tr,

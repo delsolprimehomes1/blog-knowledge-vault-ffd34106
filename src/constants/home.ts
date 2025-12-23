@@ -9,6 +9,7 @@ import malagaHero from '@/assets/brochures/malaga-hero.jpg';
 // Map of full language names
 export const LANGUAGE_NAMES: Record<Language, string> = {
   [Language.EN]: 'English',
+  [Language.ES]: 'Español',
   [Language.NL]: 'Nederlands',
   [Language.FR]: 'Français',
   [Language.DE]: 'Deutsch',
@@ -18,6 +19,9 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   [Language.HU]: 'Magyar',
   [Language.SV]: 'Svenska',
   [Language.NO]: 'Norsk',
+  [Language.IT]: 'Italiano',
+  [Language.RU]: 'Русский',
+  [Language.TR]: 'Türkçe',
 };
 
 // Locations for dropdown - Expanded list based on requirements
