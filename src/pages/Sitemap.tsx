@@ -39,18 +39,18 @@ const Sitemap = () => {
     return map;
   }, [articles]);
 
+  // Language code mapping
+  const langToHreflang: Record<string, string> = {
+    en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
+    fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', 
+    da: 'da-DK', hu: 'hu-HU', fi: 'fi-FI', no: 'nb-NO',
+  };
+
   useEffect(() => {
     if (articles) {
       const baseUrl = "https://www.delsolprimehomes.com";
       
-      // All 10 supported languages (no Spanish)
-      const langToHreflang: Record<string, string> = {
-        en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
-        fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', 
-        da: 'da-DK', hu: 'hu-HU', fi: 'fi-FI', no: 'nb-NO',
-      };
-      
-      // Build sitemap with conditional hreflang based on feature flag
+      // Build sitemap with language-prefixed URLs and conditional hreflang
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${hreflangEnabled ? '\n        xmlns:xhtml="http://www.w3.org/1999/xhtml"' : ''}>
   
@@ -58,48 +58,45 @@ const Sitemap = () => {
   <url>
     <loc>${baseUrl}/</loc>
     <changefreq>daily</changefreq>
-    <priority>1.0</priority>${hreflangEnabled ? `
-    <xhtml:link rel="alternate" hreflang="en-GB" href="${baseUrl}/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}/" />` : ''}
+    <priority>1.0</priority>
   </url>
   
-  <!-- Blog Index -->
+  <!-- Blog Index (English) -->
   <url>
-    <loc>${baseUrl}/blog</loc>
+    <loc>${baseUrl}/en/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>${hreflangEnabled ? `
-    <xhtml:link rel="alternate" hreflang="en-GB" href="${baseUrl}/blog" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}/blog" />` : ''}
+    <xhtml:link rel="alternate" hreflang="en-GB" href="${baseUrl}/en/blog" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}/en/blog" />` : ''}
   </url>
   
-  <!-- Blog Articles -->
+  <!-- Blog Articles (language-prefixed URLs) -->
 ${articles.map(article => {
   const lastmod = article.date_modified || article.date_published || new Date().toISOString();
-  const currentUrl = `${baseUrl}/blog/${article.slug}`;
+  const currentUrl = `${baseUrl}/${article.language}/blog/${article.slug}`;
   
-  // Phase 4: Build hreflang links using cluster siblings (not translations JSONB)
   let hreflangLinks = '';
   
   if (hreflangEnabled) {
-    // 1. Self-referencing hreflang
+    // Self-referencing hreflang
     const currentLangCode = langToHreflang[article.language] || article.language;
     hreflangLinks = `\n    <xhtml:link rel="alternate" hreflang="${currentLangCode}" href="${currentUrl}" />`;
     
-    // 2. Add cluster siblings as alternate language versions
+    // Add cluster siblings as alternate language versions
     const siblings = article.cluster_id ? clusterMap.get(article.cluster_id) : null;
     if (siblings && siblings.length > 1) {
       siblings.forEach((sibling) => {
         if (sibling.slug && sibling.language !== article.language) {
           const langCode = langToHreflang[sibling.language] || sibling.language;
-          hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${baseUrl}/blog/${sibling.slug}" />`;
+          hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="${langCode}" href="${baseUrl}/${sibling.language}/blog/${sibling.slug}" />`;
         }
       });
     }
     
-    // 3. x-default points to cluster primary (or self if standalone)
-    const primaryArticle = siblings?.find(s => s.is_primary);
+    // x-default points to cluster primary or English version
+    const primaryArticle = siblings?.find(s => s.is_primary) || siblings?.find(s => s.language === 'en');
     const xDefaultUrl = primaryArticle 
-      ? `${baseUrl}/blog/${primaryArticle.slug}`
+      ? `${baseUrl}/${primaryArticle.language}/blog/${primaryArticle.slug}`
       : currentUrl;
     hreflangLinks += `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultUrl}" />`;
   }
@@ -128,7 +125,7 @@ ${articles.map(article => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-  }, [articles, hreflangEnabled]);
+  }, [articles, hreflangEnabled, clusterMap, langToHreflang]);
 
   return (
     <div className="container mx-auto p-6">
@@ -138,6 +135,9 @@ ${articles.map(article => {
       </p>
       <div className="mb-4 p-3 bg-muted/50 rounded-lg">
         <p className="text-sm">
+          <strong>URL Format:</strong> /{'{lang}'}/blog/{'{slug}'} (language-prefixed)
+        </p>
+        <p className="text-sm">
           <strong>Hreflang tags:</strong> {hreflangEnabled ? '✅ Enabled' : '❌ Disabled (feature flag off)'}
         </p>
       </div>
@@ -146,6 +146,7 @@ ${articles.map(article => {
           {articles && `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   ${articles.length} published articles included
+  URL format: /{lang}/blog/{slug}
   Hreflang: ${hreflangEnabled ? 'ENABLED' : 'DISABLED'}
 </urlset>`}
         </pre>
