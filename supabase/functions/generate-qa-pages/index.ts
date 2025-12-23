@@ -300,7 +300,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
           // Save each Q&A page with the SHARED hreflang group ID
           for (const qaData of qaPagesData) {
             const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
-            const slug = `${baseSlug}-${lang}`;
+            const slug = baseSlug;  // NO language suffix - folder handles language
             
             // Check for existing slug
             const { data: existing } = await supabase
@@ -329,6 +329,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
                 qa_type: qaData.qa_type,
                 title: qaData.title,
                 slug,
+                canonical_url: `https://www.delsolprimehomes.com/${lang}/qa/${slug}`,
                 question_main: qaData.question_main,
                 answer_main: qaData.answer_main,
                 related_qas: qaData.related_qas || [],
