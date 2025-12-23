@@ -126,6 +126,16 @@ export default function QAPage() {
   const relatedQas: QAEntity[] = (qaPage.related_qas as unknown as QAEntity[]) || [];
   const schemas = generateAllQASchemas(qaPage as any, author);
   const langCode = LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language;
+  
+  // Use canonical_url from database if set, otherwise fallback to generated URL
+  const canonicalUrl = qaPage.canonical_url || `${BASE_URL}/qa/${qaPage.slug}`;
+  
+  // Calculate x-default URL - should point to English version
+  const translations = (qaPage.translations as Record<string, string>) || {};
+  const englishSlug = qaPage.language === 'en' 
+    ? qaPage.slug 
+    : (translations.en || qaPage.slug);
+  const xDefaultUrl = `${BASE_URL}/qa/${englishSlug}`;
 
   return (
     <>
@@ -133,7 +143,7 @@ export default function QAPage() {
         <html lang={langCode} />
         <title>{qaPage.meta_title}</title>
         <meta name="description" content={qaPage.meta_description} />
-        <link rel="canonical" href={`${BASE_URL}/qa/${qaPage.slug}`} />
+        <link rel="canonical" href={canonicalUrl} />
         
         {/* SEO Meta Tags */}
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -150,12 +160,12 @@ export default function QAPage() {
             href={`${BASE_URL}/qa/${sibling.slug}`}
           />
         ))}
-        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/qa/${qaPage.slug}`} />
+        <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />
 
         {/* Open Graph */}
         <meta property="og:title" content={qaPage.meta_title} />
         <meta property="og:description" content={qaPage.meta_description} />
-        <meta property="og:url" content={`${BASE_URL}/qa/${qaPage.slug}`} />
+        <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
         <meta property="og:locale" content={langCode.replace('-', '_')} />

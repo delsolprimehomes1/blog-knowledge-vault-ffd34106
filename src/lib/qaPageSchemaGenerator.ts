@@ -90,11 +90,12 @@ export function generateQAIndexSpeakableSchema() {
 }
 
 export function generateWebPageSchema(qaPage: QAPage, author: Author | null) {
+  const pageUrl = qaPage.canonical_url || `${BASE_URL}/qa/${qaPage.slug}`;
   return {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    '@id': `${BASE_URL}/qa/${qaPage.slug}#webpage`,
-    url: `${BASE_URL}/qa/${qaPage.slug}`,
+    '@id': `${pageUrl}#webpage`,
+    url: pageUrl,
     name: qaPage.meta_title,
     description: qaPage.meta_description,
     inLanguage: LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language,
@@ -129,6 +130,7 @@ export function generateWebPageSchema(qaPage: QAPage, author: Author | null) {
 }
 
 export function generateQABreadcrumbSchema(qaPage: QAPage) {
+  const pageUrl = qaPage.canonical_url || `${BASE_URL}/qa/${qaPage.slug}`;
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -149,7 +151,7 @@ export function generateQABreadcrumbSchema(qaPage: QAPage) {
         '@type': 'ListItem',
         position: 3,
         name: qaPage.title,
-        item: `${BASE_URL}/qa/${qaPage.slug}`,
+        item: pageUrl,
       },
     ],
   };
