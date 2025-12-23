@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ const getCardDelay = (index: number) => {
 };
 
 const BlogIndex = () => {
+  const { lang = 'en' } = useParams<{ lang: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,7 +133,7 @@ const BlogIndex = () => {
 
   // Hreflang configuration
   const baseUrl = "https://www.delsolprimehomes.com";
-  const blogUrl = `${baseUrl}/blog`;
+  const blogUrl = `${baseUrl}/${lang}/blog`;
   
   const langToHreflang: Record<string, string> = {
     en: 'en-GB', de: 'de-DE', nl: 'nl-NL',

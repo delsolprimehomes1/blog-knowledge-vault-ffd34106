@@ -50,7 +50,7 @@ const langToOgLocale: Record<string, string> = {
   no: 'nb_NO'
 };
 export default function ComparisonPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
   const [showUseCases, setShowUseCases] = useState(false);
 
@@ -169,12 +169,12 @@ export default function ComparisonPage() {
       <Helmet>
         <title>{comparison.meta_title}</title>
         <meta name="description" content={comparison.meta_description} />
-        <link rel="canonical" href={`${BASE_URL}/compare/${comparison.slug}`} />
+        <link rel="canonical" href={`${BASE_URL}/${lang}/compare/${comparison.slug}`} />
         
         {/* Open Graph - Enhanced */}
         <meta property="og:title" content={comparison.meta_title} />
         <meta property="og:description" content={comparison.meta_description} />
-        <meta property="og:url" content={`${BASE_URL}/compare/${comparison.slug}`} />
+        <meta property="og:url" content={`${BASE_URL}/${lang}/compare/${comparison.slug}`} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content={ogLocale} />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
@@ -200,13 +200,13 @@ export default function ComparisonPage() {
             key={sibling.slug}
             rel="alternate" 
             hrefLang={langToHreflang[sibling.language] || sibling.language} 
-            href={`${BASE_URL}/compare/${sibling.slug}`} 
+            href={`${BASE_URL}/${sibling.language}/compare/${sibling.slug}`} 
           />
         ))}
         <link 
           rel="alternate" 
           hrefLang="x-default" 
-          href={`${BASE_URL}/compare/${siblingPages?.find(s => s.language === 'en')?.slug || comparison.slug}`} 
+          href={`${BASE_URL}/en/compare/${siblingPages?.find(s => s.language === 'en')?.slug || comparison.slug}`} 
         />
         
         {/* JSON-LD Schemas */}

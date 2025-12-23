@@ -25,7 +25,7 @@ import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, Fun
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 
 const BlogArticle = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
   const [hreflangEnabled, setHreflangEnabled] = useState(false);
 
   // Check feature flag on mount
@@ -202,7 +202,7 @@ const BlogArticle = () => {
   };
 
   const baseUrl = 'https://www.delsolprimehomes.com';
-  const currentUrl = `${baseUrl}/blog/${article.slug}`;
+  const currentUrl = `${baseUrl}/${lang}/blog/${article.slug}`;
   
   // Phase 2: Determine canonical URL based on cluster primary
   // Find the primary article in the cluster (or fallback to self)

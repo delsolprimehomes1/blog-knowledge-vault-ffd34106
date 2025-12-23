@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
@@ -11,6 +11,7 @@ import { ArrowRight, Scale } from "lucide-react";
 const BASE_URL = "https://www.delsolprimehomes.com";
 
 export default function ComparisonIndex() {
+  const { lang = 'en' } = useParams<{ lang: string }>();
   const { data: comparisons, isLoading } = useQuery({
     queryKey: ['comparisons-published'],
     queryFn: async () => {
@@ -135,7 +136,7 @@ export default function ComparisonIndex() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {comparisons?.map((comparison) => (
-                <Link key={comparison.id} to={`/compare/${comparison.slug}`}>
+                <Link key={comparison.id} to={`/${lang}/compare/${comparison.slug}`}>
                   <Card className="h-full hover:shadow-lg transition-shadow group">
                     <CardHeader>
                       <div className="flex items-center gap-2 mb-2">

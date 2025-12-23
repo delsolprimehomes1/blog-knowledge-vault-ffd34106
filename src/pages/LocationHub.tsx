@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ interface CityData {
 }
 
 const LocationHub = () => {
+  const { lang = 'en' } = useParams<{ lang: string }>();
   const [isLoaded, setIsLoaded] = useState(false);
   const [generatingCity, setGeneratingCity] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -249,7 +250,7 @@ const LocationHub = () => {
               {cities.map((city, index) => (
                 <Link 
                   key={city.city_slug} 
-                  to={`/locations/${city.city_slug}`}
+                  to={`/${lang}/locations/${city.city_slug}`}
                   className="group relative aspect-[4/3] rounded-2xl overflow-hidden card-immersive"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
