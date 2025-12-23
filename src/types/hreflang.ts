@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * Array of exactly 10 supported language codes for hreflang tags.
  * These match the languages available in the CMS content.
  */
-export const SUPPORTED_LANGUAGES = ['en', 'nl', 'es', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'] as const;
 
 /**
  * Base URL for generating canonical URLs and hreflang hrefs.
@@ -87,7 +87,7 @@ export const LANGUAGE_METADATA: Record<SupportedLanguage, {
 }> = {
   en: { name: 'English', nativeName: 'English', flag: '🇬🇧' },
   nl: { name: 'Dutch', nativeName: 'Nederlands', flag: '🇳🇱' },
-  es: { name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
+  hu: { name: 'Hungarian', nativeName: 'Magyar', flag: '🇭🇺' },
   de: { name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
   fr: { name: 'French', nativeName: 'Français', flag: '🇫🇷' },
   sv: { name: 'Swedish', nativeName: 'Svenska', flag: '🇸🇪' },

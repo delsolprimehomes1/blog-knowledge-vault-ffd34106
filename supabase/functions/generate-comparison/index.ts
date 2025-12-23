@@ -99,6 +99,18 @@ serve(async (req) => {
       suggested_headline = '',
     } = await req.json();
 
+    // Validate language is supported (folder-language mismatch prevention)
+    const requestedLanguage = language || 'en';
+    if (!ALL_SUPPORTED_LANGUAGES.includes(requestedLanguage)) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Unsupported language: ${requestedLanguage}. Supported languages: ${ALL_SUPPORTED_LANGUAGES.join(', ')}`,
+          validLanguages: ALL_SUPPORTED_LANGUAGES,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!option_a || !option_b) {
       return new Response(
         JSON.stringify({ error: 'option_a and option_b are required' }),

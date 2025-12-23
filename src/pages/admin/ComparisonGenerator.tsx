@@ -16,11 +16,11 @@ import { Loader2, Scale, Trash2, Eye, CheckCircle, Zap, Link as LinkIcon, Quote,
 import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES
+// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES (uses hu not es)
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
-  { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'hu', name: 'Hungarian', flag: '🇭🇺' },
   { code: 'de', name: 'German', flag: '🇩🇪' },
   { code: 'fr', name: 'French', flag: '🇫🇷' },
   { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
@@ -30,7 +30,7 @@ const LANGUAGES = [
   { code: 'da', name: 'Danish', flag: '🇩🇰' },
 ];
 
-type LanguageCode = 'en' | 'nl' | 'es' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
+type LanguageCode = 'en' | 'nl' | 'hu' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
 
 const SUGGESTED_COMPARISONS = [
   { a: 'Off-Plan Property', b: 'Resale Property', context: 'Which Should You Buy in Spain?' },

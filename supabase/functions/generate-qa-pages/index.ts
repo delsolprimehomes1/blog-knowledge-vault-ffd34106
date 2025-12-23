@@ -78,6 +78,24 @@ serve(async (req) => {
 
     if (articlesError) throw articlesError;
 
+    // English-first validation: Only accept English source articles
+    const nonEnglishArticles = (articles || []).filter(a => a.language !== 'en');
+    if (nonEnglishArticles.length > 0) {
+      const nonEnglishIds = nonEnglishArticles.map(a => a.id);
+      const nonEnglishHeadlines = nonEnglishArticles.map(a => `${a.headline} (${a.language})`);
+      console.error('English-first validation failed. Non-English articles:', nonEnglishHeadlines);
+      
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Q&A generation requires English source articles only. Non-English articles detected.',
+        nonEnglishArticles: nonEnglishHeadlines,
+        articleIds: nonEnglishIds,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const results: any[] = [];
     let processedArticles = 0;
     let generatedQaPages = 0;

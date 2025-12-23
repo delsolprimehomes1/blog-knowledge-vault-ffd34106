@@ -13,11 +13,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
-// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES
+// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES (uses hu not es)
 const SUPPORTED_LANGUAGES = [
   { code: 'en', label: '🇬🇧 English', name: 'English' },
   { code: 'nl', label: '🇳🇱 Dutch', name: 'Dutch' },
-  { code: 'es', label: '🇪🇸 Spanish', name: 'Spanish' },
+  { code: 'hu', label: '🇭🇺 Hungarian', name: 'Hungarian' },
   { code: 'de', label: '🇩🇪 German', name: 'German' },
   { code: 'fr', label: '🇫🇷 French', name: 'French' },
   { code: 'sv', label: '🇸🇪 Swedish', name: 'Swedish' },
@@ -27,7 +27,7 @@ const SUPPORTED_LANGUAGES = [
   { code: 'da', label: '🇩🇰 Danish', name: 'Danish' },
 ];
 
-type LanguageCode = 'en' | 'nl' | 'es' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
+type LanguageCode = 'en' | 'nl' | 'hu' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
 
 const intentOptions = [
   { value: 'buying-property', label: 'Buying Property' },

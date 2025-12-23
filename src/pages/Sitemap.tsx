@@ -39,11 +39,11 @@ const Sitemap = () => {
     return map;
   }, [articles]);
 
-  // Language code mapping
+  // Language code mapping (aligned with src/types/hreflang.ts - uses hu not es)
   const langToHreflang: Record<string, string> = {
-    en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
+    en: 'en-GB', de: 'de-DE', nl: 'nl-NL', hu: 'hu-HU',
     fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', 
-    da: 'da-DK', hu: 'hu-HU', fi: 'fi-FI', no: 'nb-NO',
+    da: 'da-DK', fi: 'fi-FI', no: 'nb-NO',
   };
 
   useEffect(() => {

@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Canonical 10 languages (aligned with src/types/hreflang.ts)
-const SUPPORTED_LANGUAGES = ['en', 'nl', 'es', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
+const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
 
 const MASTER_PROMPT = `You are generating an AI-citation-ready Location Intelligence page.
 
@@ -111,6 +111,18 @@ serve(async (req) => {
       languages = [], // Array of languages for batch generation
       batch_mode = false, // Enable batch multilingual generation
     } = await req.json();
+
+    // Validate language is supported (folder-language mismatch prevention)
+    const requestedLanguage = language || 'en';
+    if (!SUPPORTED_LANGUAGES.includes(requestedLanguage)) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Unsupported language: ${requestedLanguage}. Supported languages: ${SUPPORTED_LANGUAGES.join(', ')}`,
+          validLanguages: SUPPORTED_LANGUAGES,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!city || !intent_type) {
       return new Response(
