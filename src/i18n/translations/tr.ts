@@ -1,0 +1,213 @@
+export const tr = {
+  common: {
+    readMore: "Devamını Oku",
+    learnMore: "Daha Fazla Bilgi",
+    bookCall: "Görüşme Ayarla",
+    getStarted: "Başla",
+    exploreAll: "Tümünü Keşfet",
+  },
+  nav: {
+    properties: "Mülkler",
+    areas: "Bölgeler",
+    locations: "Konumlar",
+    aboutUs: "Hakkımızda",
+    buyersGuide: "Alıcı Rehberi",
+    blog: "Blog",
+    qa: "Sorular",
+    compare: "Karşılaştır",
+  },
+  hero: {
+    trustBadges: {
+      api: "API akrediteli ekip",
+      experience: "35+ yıl birleşik deneyim",
+      buyers: "Yüzlerce yönlendirilmiş alıcı",
+    },
+    headline: "Yeni Yuvanızı Bulun",
+    headlineHighlight: "Costa del Sol",
+    tagline: "Güvenle. Şeffaflıkla. Sizin Dilinizde.",
+    description: "DelSolPrimeHomes, uluslararası alıcıları Malaga'dan Sotogrande'ye kadar yüksek kaliteli yeni inşaat ve proje gayrimenkulleri konusunda yönlendirir — API akrediteli danışmanlar, 35+ yıl birleşik deneyim ve gelişmiş AI araçlarıyla.",
+    ctaPrimary: "Mülk Aramanızı Başlatın",
+    ctaSecondary: "Danışmanla Görüşme Ayarlayın",
+  },
+  quickSearch: {
+    headline: "Doğru Mülklerle Başlayın — Sonsuz Kaydırma Değil",
+    description: "Sadece özenle seçilmiş yeni inşaat ve proje geliştirmelerine odaklanıyoruz, yaşam tarzınıza, zamanlamanıza ve uzun vadeli hedeflerinize uygun.",
+    labels: {
+      location: "Konum",
+      purpose: "Amaç",
+      budget: "Maks. Bütçe",
+    },
+    placeholders: {
+      location: "Herhangi bir Konum",
+      budget: "Aralık Seçin",
+    },
+    purposes: {
+      investmentPersonal: "Yatırım ve Kişisel",
+      holidayHome: "Tatil Evi",
+      winterStay: "Kış Konaklaması",
+      combination: "Kombinasyon",
+    },
+    budgetRanges: {
+      range1: "€300k - €500k",
+      range2: "€500k - €800k",
+      range3: "€800k - €1.5M",
+      range4: "€1.5M+",
+    },
+    submit: "Tam Mülk Bulucu'yu Aç",
+  },
+  miniAbout: {
+    headline: "Güvenebileceğiniz",
+    headlineHighlight: "Uzmanlık",
+    paragraph1: "DelSolPrimeHomes, Hans Beeckman, Cédric Van Hecke ve Steven Roberts tarafından kuruldu — onlarca yıllık deneyime sahip, Costa del Sol'da güvenli satın alma konusunda uluslararası alıcılara yardım eden üç API akrediteli gayrimenkul profesyoneli.",
+    paragraph2: "Bölgedeki saygın ajanslarda itibarlarını kazanan çok dilli bir ekiple birlikte, İngilizce, Hollandaca, Fransızca, Almanca, Fince, Lehçe, Danca, Macarca, İsveççe ve Norveççe dillerinde tam rehberlik sunuyoruz.",
+    cta: "Ekibi Tanıyın",
+  },
+  usps: {
+    eyebrow: "Neden Bizi Seçmelisiniz",
+    headline: "Alıcılar Neden DelSolPrimeHomes'a Güveniyor",
+    items: [
+      {
+        title: "API Akrediteli Danışmanlar",
+        description: "İspanya'nın profesyonellik, etik ve yasal uyumluluk konusundaki katı standartları altında çalışıyoruz.",
+      },
+      {
+        title: "35+ Yıl Deneyim",
+        description: "Ekip üyelerimiz, İspanya'da yüzlerce aileye ve bireye güvenli satın alma konusunda yardım etti.",
+      },
+      {
+        title: "AI Destekli Mülk Seçimi",
+        description: "Malaga ile Sotogrande arasındaki yeni inşaat projelerini gelişmiş AI araçları kullanarak analiz edip karşılaştırıyoruz.",
+      },
+      {
+        title: "Tam Hukuki ve Belge Desteği",
+        description: "Lisanslar, sözleşmeler, ödeme planları ve banka garantileri konusunda size rehberlik ediyoruz.",
+      },
+    ],
+  },
+  featuredAreas: {
+    eyebrow: "Konumlar",
+    headline: "Malaga'dan Sotogrande'ye — Özenle Seçilmiş Bölgeler",
+    description: "Costa del Sol'daki her bölgenin kendine özgü karakteri, yaşam tarzı ve yatırım potansiyeli var. Vizyonunuza uygun konuma sizi yönlendiriyoruz.",
+    cta: "Tüm Bölgeleri Keşfedin",
+    areas: {
+      marbella: "Costa del Sol'un mücevheri, Altın Mil, Puerto Banús ve yıl boyu uluslararası topluluğuyla ünlü.",
+      estepona: "Costa del Sol'un Bahçesi — büyüyen modern altyapı ve mükemmel değerle büyüleyici Endülüs atmosferi.",
+      sotogrande: "Gizlilik ve prestij. Avrupa'nın en özel konut bölgelerinden birinde dünya standartlarında golf, polo ve marina yaşamının evi.",
+      malaga: "Müzeler, üniversiteler ve güçlü sermaye büyümesiyle canlı bir kültür merkezi — ayrıca kıyıdaki en iyi uçuş bağlantıları.",
+    },
+  },
+  process: {
+    eyebrow: "Nasıl Çalışıyoruz",
+    headline: "İlk Görüşmeden Anahtar Teslimine",
+    steps: [
+      {
+        title: "Sizin Dilinizde Keşif Görüşmesi",
+        description: "Hedeflerinizi, zamanlamanızı, bütçenizi ve tercihlerinizi anlamak için dostça bir video görüşmesiyle başlıyoruz — tamamen ücretsiz ve baskısız.",
+      },
+      {
+        title: "Özelleştirilmiş Geliştirme Listesi",
+        description: "AI destekli seçim sistemimizi ve pazar bilgimizi kullanarak, kriterlerinize tam uyan yeni inşaat projelerinin kısa listesini oluşturuyoruz.",
+      },
+      {
+        title: "Hukuki ve Finansal Netlik",
+        description: "Her şeyi açıklıyoruz: ödeme planları, banka garantileri, tapu sigortası, site aidatları ve rezervasyondan tamamlanmaya kadar tam zaman çizelgesi.",
+      },
+      {
+        title: "Görüntüleme Turu ve Lojistik",
+        description: "Mülk görüntüleme turunuzu koordine ediyor, geliştiricilerle toplantılar düzenliyor ve her saha ziyaretinde size rehberlik ediyoruz.",
+      },
+      {
+        title: "İmza, İzleme ve Anahtar Teslimi",
+        description: "Rezervasyon sözleşmesinin imzalanmasından nihai tamamlanmaya kadar dahil kalıyoruz — her kilometre taşına ulaşıldığından emin oluyoruz.",
+      },
+    ],
+    cta: "Alıcı Rehberini Görüntüle",
+  },
+  reviews: {
+    headline: "Müşterilerimiz Ne Diyor",
+    description: "Costa del Sol'daki mülk yolculuklarını yönlendirmemize güvenen gerçek alıcılardan gerçek sözler.",
+    cta: "Tüm Yorumları Oku",
+  },
+  blogTeaser: {
+    eyebrow: "Bilgi Bankası",
+    headline: "Yabancı Alıcılar İçin İçgörüler ve Rehberler",
+    description: "Vergiler, hukuki süreçler, finansman ve Costa del Sol'da yaşam hakkında daha fazla bilgi edinin — ekibimiz ve güvenilir sektör ortaklarımız tarafından yazıldı.",
+    cta: "Blogu Ziyaret Et",
+    readArticle: "Makaleyi Oku",
+  },
+  glossaryTeaser: {
+    eyebrow: "Temel Terimler",
+    headline: "İspanyol Mülk Terminolojisini Anlayın",
+    description: "Satın alma sürecini güvenle yönlendirin. Sözlüğümüz NIE numaralarını, vergileri, hukuki terimleri ve bilmeniz gereken her şeyi açıklar.",
+    cta: "Tam Sözlüğü Keşfedin",
+    featuredTerms: "Popüler Terimler",
+  },
+  finalCta: {
+    headline: "Hayalinizdeki Evi Bulmaya",
+    headlineHighlight: "Hazır mısınız?",
+    description: "İster aramanıza yeni başlıyor olun ister ilerlemeye hazır olun, API akrediteli danışmanlarımız size rehberlik etmek için burada — açıkça, şeffaf bir şekilde ve sizin dilinizde.",
+    ctaPrimary: "1:1 Görüşme Ayarla",
+    ctaSecondary: "Ne Aradığınızı Söyleyin",
+  },
+  footer: {
+    brandDescription: "DelSolPrimeHomes — Costa del Sol'da yeni inşaat ve proje uzmanları. API Kayıtlı. Çok dilli rehberlik. Uluslararası uzmanlık.",
+    contactHeading: "Bize Ulaşın",
+    navigateHeading: "Gezin",
+    legalHeading: "Yasal",
+    copyright: "© {year} DelSolPrimeHomes. Tüm hakları saklıdır. API Kayıtlı.",
+    tagline: "Mükemmellik İçin Yapıldı",
+    address: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga",
+    links: {
+      propertyFinder: "Mülk Bulucu",
+      featuredAreas: "Öne Çıkan Bölgeler",
+      ourTeam: "Ekibimiz",
+      buyersGuide: "Alıcı Rehberi",
+      blogInsights: "Blog ve İçgörüler",
+      glossary: "Mülk Sözlüğü",
+      comparisons: "Karşılaştırmalar",
+    },
+    legal: {
+      privacy: "Gizlilik Politikası",
+      cookies: "Çerez Politikası",
+      legalNotice: "Yasal Uyarı",
+      lpo: "LPO Bilgisi",
+      gdpr: "KVKK Uyumu",
+    },
+  },
+  brochures: {
+    marbella: {
+      hero: {
+        eyebrow: 'Costa del Sol',
+        tagline: 'Lüksün Akdeniz ile Buluştuğu Yer',
+        description: 'Marbella\'da olağanüstü yatırım fırsatları ve yaşam tarzı mülkleri keşfedin.',
+      },
+      lifestyle: {
+        eyebrow: 'Yaşam Tarzı',
+        headline: 'Marbella\'da Yaşamı Deneyimleyin',
+        paragraph1: 'Marbella, Akdeniz cazibesi ile uluslararası sofistikeliğin benzersiz bir karışımını sunar.',
+        paragraph2: 'Gün doğumunda sahil yürüyüşlerinden deniz manzaralı gün batımı yemeklerine.',
+        paragraph3: 'Yıl boyu güneş, olağanüstü mutfak veya dünya standartlarında golf arıyorsanız — Marbella hepsini sunar.',
+      },
+      investment: {
+        eyebrow: 'Yatırım Fırsatı',
+        headline: 'Yatırımcılar Neden Marbella\'yı Seçiyor',
+        description: 'Marbella, yaşam tarzı çekiciliğini sağlam yatırım temelleriyle birleştirir.',
+      },
+      propertyTypes: {
+        eyebrow: 'Mülk Türleri',
+        headline: 'Marbella\'da Ne Bulacaksınız',
+        description: 'Çağdaş dairelerden geniş villalara.',
+      },
+      gallery: {
+        eyebrow: 'Görsel Yolculuk',
+        headline: 'Marbella\'yı Keşfedin',
+        description: 'Marbella\'da sizi bekleyen güzelliği ve yaşam tarzını deneyimleyin.',
+      },
+      leadForm: {
+        eyebrow: 'Yolculuğunuza Başlayın',
+        headline: 'Marbella\'da Özenle Seçilmiş Mülkler Alın',
+        description: 'Bize vizyonunuzu anlatın.',
+      },
+    },
+  },
+};

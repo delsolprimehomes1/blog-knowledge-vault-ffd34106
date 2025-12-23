@@ -1,0 +1,213 @@
+export const es = {
+  common: {
+    readMore: "Leer más",
+    learnMore: "Más información",
+    bookCall: "Reservar llamada",
+    getStarted: "Comenzar",
+    exploreAll: "Explorar todo",
+  },
+  nav: {
+    properties: "Propiedades",
+    areas: "Zonas",
+    locations: "Ubicaciones",
+    aboutUs: "Nosotros",
+    buyersGuide: "Guía del comprador",
+    blog: "Blog",
+    qa: "Preguntas",
+    compare: "Comparar",
+  },
+  hero: {
+    trustBadges: {
+      api: "Equipo acreditado API",
+      experience: "35+ años de experiencia combinada",
+      buyers: "Cientos de compradores guiados",
+    },
+    headline: "Encuentra tu hogar de obra nueva en la",
+    headlineHighlight: "Costa del Sol",
+    tagline: "De forma segura. Transparente. En tu idioma.",
+    description: "DelSolPrimeHomes guía a compradores internacionales a través de inmuebles de obra nueva y sobre plano de alta calidad desde Málaga hasta Sotogrande — con asesores acreditados API, más de 35 años de experiencia combinada y herramientas avanzadas de IA para ayudarte a tomar la decisión correcta.",
+    ctaPrimary: "Iniciar búsqueda de propiedades",
+    ctaSecondary: "Reservar llamada con un asesor",
+  },
+  quickSearch: {
+    headline: "Empieza con las propiedades adecuadas — No con desplazamiento infinito",
+    description: "Nos enfocamos exclusivamente en desarrollos de obra nueva y sobre plano cuidadosamente seleccionados, adaptándonos a tu estilo de vida, tiempo y objetivos a largo plazo.",
+    labels: {
+      location: "Ubicación",
+      purpose: "Propósito",
+      budget: "Presupuesto máximo",
+    },
+    placeholders: {
+      location: "Cualquier ubicación",
+      budget: "Seleccionar rango",
+    },
+    purposes: {
+      investmentPersonal: "Inversión y Personal",
+      holidayHome: "Casa de vacaciones",
+      winterStay: "Estancia de invierno",
+      combination: "Combinación",
+    },
+    budgetRanges: {
+      range1: "€300k - €500k",
+      range2: "€500k - €800k",
+      range3: "€800k - €1.5M",
+      range4: "€1.5M+",
+    },
+    submit: "Abrir el buscador completo",
+  },
+  miniAbout: {
+    headline: "Experiencia en la que puedes",
+    headlineHighlight: "Confiar",
+    paragraph1: "DelSolPrimeHomes fue fundada por Hans Beeckman, Cédric Van Hecke y Steven Roberts — tres profesionales inmobiliarios acreditados API con décadas de experiencia ayudando a compradores internacionales a comprar de forma segura en la Costa del Sol.",
+    paragraph2: "Junto con un equipo multilingüe que ganó su reputación en agencias respetadas de toda la región, ofrecemos orientación completa en inglés, holandés, francés, alemán, finlandés, polaco, danés, húngaro, sueco y noruego.",
+    cta: "Conocer al equipo",
+  },
+  usps: {
+    eyebrow: "Por qué elegirnos",
+    headline: "Por qué los compradores confían en DelSolPrimeHomes",
+    items: [
+      {
+        title: "Asesores acreditados API",
+        description: "Operamos bajo estrictos estándares españoles de profesionalismo, ética y cumplimiento legal.",
+      },
+      {
+        title: "35+ años de experiencia",
+        description: "Los miembros de nuestro equipo han ayudado a cientos de familias e individuos a comprar de forma segura en España.",
+      },
+      {
+        title: "Selección mejorada con IA",
+        description: "Analizamos y comparamos proyectos de obra nueva entre Málaga y Sotogrande usando herramientas avanzadas de IA.",
+      },
+      {
+        title: "Soporte legal y documental completo",
+        description: "Te guiamos a través de licencias, contratos, planes de pago y garantías bancarias.",
+      },
+    ],
+  },
+  featuredAreas: {
+    eyebrow: "Ubicaciones",
+    headline: "De Málaga a Sotogrande — Zonas cuidadosamente seleccionadas",
+    description: "Cada zona de la Costa del Sol tiene su propio carácter, estilo de vida y potencial de inversión. Te guiamos a la ubicación que se ajusta a tu visión.",
+    cta: "Explorar todas las zonas",
+    areas: {
+      marbella: "La joya de la Costa del Sol, famosa por su Milla de Oro, Puerto Banús y comunidad internacional durante todo el año.",
+      estepona: "El Jardín de la Costa del Sol — encanto andaluz con infraestructura moderna en crecimiento y excelente valor.",
+      sotogrande: "Privacidad y prestigio. Hogar de golf de clase mundial, polo y vida de puerto deportivo en una de las zonas residenciales más exclusivas de Europa.",
+      malaga: "Un vibrante centro cultural con museos, universidades y fuerte crecimiento de capital — además de las mejores conexiones de vuelo de la costa.",
+    },
+  },
+  process: {
+    eyebrow: "Cómo trabajamos",
+    headline: "Desde la primera llamada hasta la entrega de llaves",
+    steps: [
+      {
+        title: "Llamada de descubrimiento en tu idioma",
+        description: "Comenzamos con una videollamada amigable para entender tus objetivos, tiempos, presupuesto y preferencias — completamente gratis y sin presión.",
+      },
+      {
+        title: "Lista personalizada de desarrollos",
+        description: "Usando nuestro sistema de selección con IA y conocimiento del mercado, creamos una lista de proyectos de obra nueva que coinciden con tus criterios exactos.",
+      },
+      {
+        title: "Claridad legal y financiera",
+        description: "Te explicamos todo: planes de pago, garantías bancarias, seguro de título, cuotas de comunidad y el cronograma completo.",
+      },
+      {
+        title: "Viaje de visitas y logística",
+        description: "Coordinamos tu viaje de visitas a propiedades, organizamos reuniones con desarrolladores y te guiamos en cada visita.",
+      },
+      {
+        title: "Firma, seguimiento y entrega de llaves",
+        description: "Desde la firma del contrato de reserva hasta la finalización, nos mantenemos involucrados — asegurando que cada hito se cumpla.",
+      },
+    ],
+    cta: "Ver la Guía del Comprador",
+  },
+  reviews: {
+    headline: "Lo que dicen nuestros clientes",
+    description: "Palabras reales de compradores reales que confiaron en nosotros para guiar su viaje inmobiliario en la Costa del Sol.",
+    cta: "Leer todas las reseñas",
+  },
+  blogTeaser: {
+    eyebrow: "Base de conocimientos",
+    headline: "Información y guías para compradores extranjeros",
+    description: "Aprende más sobre impuestos, procesos legales, financiación y vida en la Costa del Sol — escrito por nuestro equipo y socios de confianza.",
+    cta: "Visitar el Blog",
+    readArticle: "Leer artículo",
+  },
+  glossaryTeaser: {
+    eyebrow: "Términos esenciales",
+    headline: "Entiende la terminología inmobiliaria española",
+    description: "Navega el proceso de compra con confianza. Nuestro glosario explica números NIE, impuestos, términos legales y todo lo que necesitas saber.",
+    cta: "Explorar glosario completo",
+    featuredTerms: "Términos populares",
+  },
+  finalCta: {
+    headline: "¿Listo para encontrar tu",
+    headlineHighlight: "Casa Soñada?",
+    description: "Ya sea que estés comenzando tu búsqueda o listo para avanzar, nuestros asesores acreditados API están aquí para guiarte — de manera clara, transparente y en tu idioma.",
+    ctaPrimary: "Reservar llamada 1:1",
+    ctaSecondary: "Cuéntanos qué buscas",
+  },
+  footer: {
+    brandDescription: "DelSolPrimeHomes — Especialistas en obra nueva y sobre plano en la Costa del Sol. Registrado API. Orientación multilingüe. Experiencia internacional.",
+    contactHeading: "Contáctanos",
+    navigateHeading: "Navegar",
+    legalHeading: "Legal",
+    copyright: "© {year} DelSolPrimeHomes. Todos los derechos reservados. Registrado API.",
+    tagline: "Hecho para la Excelencia",
+    address: "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga",
+    links: {
+      propertyFinder: "Buscador de propiedades",
+      featuredAreas: "Zonas destacadas",
+      ourTeam: "Nuestro equipo",
+      buyersGuide: "Guía del comprador",
+      blogInsights: "Blog e información",
+      glossary: "Glosario inmobiliario",
+      comparisons: "Comparaciones",
+    },
+    legal: {
+      privacy: "Política de privacidad",
+      cookies: "Política de cookies",
+      legalNotice: "Aviso legal",
+      lpo: "Información LPO",
+      gdpr: "Cumplimiento RGPD",
+    },
+  },
+  brochures: {
+    marbella: {
+      hero: {
+        eyebrow: 'Costa del Sol',
+        tagline: 'Donde el lujo se encuentra con el Mediterráneo',
+        description: 'Descubre oportunidades de inversión excepcionales y propiedades de estilo de vida en Marbella. Inmuebles premium con orientación experta de asesores acreditados API.',
+      },
+      lifestyle: {
+        eyebrow: 'El estilo de vida',
+        headline: 'Experimenta la vida en Marbella',
+        paragraph1: 'Marbella ofrece una mezcla única de encanto mediterráneo y sofisticación internacional.',
+        paragraph2: 'Desde paseos por la playa al amanecer hasta cenas al atardecer con vistas al mar, cada día trae nuevas experiencias.',
+        paragraph3: 'Ya sea que busques sol todo el año, gastronomía excepcional, golf de clase mundial o simplemente un ritmo de vida más relajado — Marbella cumple en todos los frentes.',
+      },
+      investment: {
+        eyebrow: 'Oportunidad de inversión',
+        headline: 'Por qué los inversores eligen Marbella',
+        description: 'Marbella combina atractivo de estilo de vida con fundamentos sólidos de inversión.',
+      },
+      propertyTypes: {
+        eyebrow: 'Tipos de propiedad',
+        headline: 'Lo que encontrarás en Marbella',
+        description: 'Desde apartamentos contemporáneos hasta amplias villas, Marbella ofrece propiedades excepcionales para cada estilo de vida y objetivo de inversión.',
+      },
+      gallery: {
+        eyebrow: 'Viaje visual',
+        headline: 'Descubre Marbella',
+        description: 'Experimenta la belleza y el estilo de vida que te espera en Marbella a través de nuestra galería visual cuidadosamente curada.',
+      },
+      leadForm: {
+        eyebrow: 'Comienza tu viaje',
+        headline: 'Recibe propiedades seleccionadas en Marbella',
+        description: 'Cuéntanos tu visión. Nuestros especialistas en Marbella prepararán una selección personalizada de propiedades.',
+      },
+    },
+  },
+};
