@@ -157,8 +157,9 @@ serve(async (req) => {
     // SINGLE PROPERTY LOOKUP BY REFERENCE
     // ============================================
     if (body.reference) {
-      console.log(`🔍 Single property lookup: ${body.reference}`);
-      return await handleSinglePropertyLookup(body.reference, isDebugMode);
+      const lang = body.lang || 'en';
+      console.log(`🔍 Single property lookup: ${body.reference} (lang: ${lang})`);
+      return await handleSinglePropertyLookup(body.reference, lang, isDebugMode);
     }
     
     // ============================================
@@ -363,8 +364,8 @@ serve(async (req) => {
 /**
  * Handle single property lookup by reference
  */
-async function handleSinglePropertyLookup(reference: string, isDebugMode: boolean): Promise<Response> {
-  const proxyUrl = `http://188.34.164.137:3000/property/${encodeURIComponent(reference)}`;
+async function handleSinglePropertyLookup(reference: string, lang: string, isDebugMode: boolean): Promise<Response> {
+  const proxyUrl = `http://188.34.164.137:3000/property/${encodeURIComponent(reference)}?lang=${lang}`;
   
   if (isDebugMode) {
     console.log('📡 Property detail URL:', proxyUrl);
@@ -413,10 +414,10 @@ async function handleSinglePropertyLookup(reference: string, isDebugMode: boolea
     const title = prop.Title || prop.Name || prop.PropertyName || 
                  `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
     
-    // Extract description - handle multi-language object
+    // Extract description - handle multi-language object using requested language
     let description = '';
     if (typeof prop.Description === 'object' && prop.Description !== null) {
-      description = prop.Description.en || prop.Description.es || Object.values(prop.Description)[0] || '';
+      description = prop.Description[lang] || prop.Description.en || prop.Description.es || Object.values(prop.Description)[0] || '';
     } else {
       description = prop.Description || prop.description || '';
     }
