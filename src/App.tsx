@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LanguageProvider } from "@/i18n";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -67,6 +67,12 @@ const PageLoader = () => (
   </div>
 );
 
+// Redirect component for legacy property routes
+const PropertyRedirect = () => {
+  const { reference } = useParams<{ reference: string }>();
+  return <Navigate to={`/en/property/${reference}`} replace />;
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -102,7 +108,7 @@ const App = () => (
               
               {/* Legacy routes - redirect to English versions */}
               <Route path="/property-finder" element={<Navigate to="/en/properties" replace />} />
-              <Route path="/property/:reference" element={<PropertyDetail />} />
+              <Route path="/property/:reference" element={<PropertyRedirect />} />
               <Route path="/brochure/:citySlug" element={<CityBrochure />} />
               <Route path="/qa/:slug" element={<QAPage />} />
               <Route path="/compare" element={<ComparisonIndex />} />
