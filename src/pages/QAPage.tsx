@@ -7,6 +7,7 @@ import { Footer } from '@/components/home/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ContentLanguageSwitcher } from '@/components/ContentLanguageSwitcher';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronRight, Calendar, ExternalLink, Sparkles, Linkedin, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -238,11 +239,14 @@ export default function QAPage() {
                 >
                   {qaPage.qa_type === 'core' ? 'Essential Guide' : 'Expert Tips'}
                 </Badge>
-                <Badge className="bg-white/10 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 text-sm font-nav">
-                  {qaPage.language.toUpperCase()}
-                </Badge>
+                <ContentLanguageSwitcher
+                  currentLanguage={qaPage.language}
+                  hreflangGroupId={(qaPage as any).hreflang_group_id}
+                  contentType="qa"
+                  currentSlug={slug}
+                  variant="hero"
+                />
               </div>
-
               {/* Main Question (H1) - qa-question-main class for speakable schema */}
               <h1 className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 {qaPage.question_main}
