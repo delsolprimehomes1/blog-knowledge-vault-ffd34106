@@ -39,6 +39,8 @@ import {
   testPhase19,
   testPhase20,
   testPhase21,
+  testPhase22,
+  testPhase23,
 } from "@/lib/testUtils";
 
 interface ValidationResult {
@@ -100,6 +102,8 @@ export default function SystemCheck() {
     { phase: 19, name: 'AI Visibility & Optimization', testFn: testPhase19 },
     { phase: 20, name: 'Citation Enforcement Rules', testFn: testPhase20 },
     { phase: 21, name: 'BOFU Schema & IndexNow', testFn: testPhase21 },
+    { phase: 22, name: 'Hreflang Validation', testFn: testPhase22 },
+    { phase: 23, name: 'Sitemap Validation', testFn: testPhase23 },
   ];
 
   // Query for published articles
