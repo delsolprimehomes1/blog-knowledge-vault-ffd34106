@@ -6,25 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Save, MapPin, Image as ImageIcon, RefreshCw, CheckCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Loader2, Save, MapPin, Image as ImageIcon, RefreshCw, CheckCircle, Globe, Languages } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { OptimizedImage } from "@/components/OptimizedImage";
 
-type Language = 'en' | 'de' | 'nl' | 'fr' | 'pl' | 'sv' | 'da' | 'hu' | 'fi' | 'no';
-
-const languageOptions = [
-  { value: 'en', label: '🇬🇧 English' },
-  { value: 'de', label: '🇩🇪 German' },
-  { value: 'nl', label: '🇳🇱 Dutch' },
-  { value: 'fr', label: '🇫🇷 French' },
-  { value: 'pl', label: '🇵🇱 Polish' },
-  { value: 'sv', label: '🇸🇪 Swedish' },
-  { value: 'da', label: '🇩🇰 Danish' },
-  { value: 'hu', label: '🇭🇺 Hungarian' },
-  { value: 'fi', label: '🇫🇮 Finnish' },
-  { value: 'no', label: '🇳🇴 Norwegian' },
+// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', label: '🇬🇧 English', name: 'English' },
+  { code: 'nl', label: '🇳🇱 Dutch', name: 'Dutch' },
+  { code: 'es', label: '🇪🇸 Spanish', name: 'Spanish' },
+  { code: 'de', label: '🇩🇪 German', name: 'German' },
+  { code: 'fr', label: '🇫🇷 French', name: 'French' },
+  { code: 'sv', label: '🇸🇪 Swedish', name: 'Swedish' },
+  { code: 'pl', label: '🇵🇱 Polish', name: 'Polish' },
+  { code: 'no', label: '🇳🇴 Norwegian', name: 'Norwegian' },
+  { code: 'fi', label: '🇫🇮 Finnish', name: 'Finnish' },
+  { code: 'da', label: '🇩🇰 Danish', name: 'Danish' },
 ];
+
+type LanguageCode = 'en' | 'nl' | 'es' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
 
 const intentOptions = [
   { value: 'buying-property', label: 'Buying Property' },
@@ -69,15 +72,43 @@ const LocationGenerator = () => {
   const [city, setCity] = useState("");
   const [customCity, setCustomCity] = useState("");
   const [intentType, setIntentType] = useState("");
-  const [language, setLanguage] = useState<Language>("en");
   const [goal, setGoal] = useState("");
+  
+  // Single language mode
+  const [language, setLanguage] = useState<LanguageCode>("en");
+  
+  // Batch multilingual mode
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedLanguages, setSelectedLanguages] = useState<LanguageCode[]>(['en']);
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [generatedPage, setGeneratedPage] = useState<any>(null);
+  const [generatedPages, setGeneratedPages] = useState<any[]>([]);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, status: '' });
+  
   const selectedCity = city === 'custom' ? customCity : city;
+
+  const handleLanguageToggle = (langCode: LanguageCode) => {
+    if (langCode === 'en') return; // English is always required
+    
+    setSelectedLanguages(prev => 
+      prev.includes(langCode)
+        ? prev.filter(l => l !== langCode)
+        : [...prev, langCode]
+    );
+  };
+
+  const selectAllLanguages = () => {
+    setSelectedLanguages(SUPPORTED_LANGUAGES.map(l => l.code as LanguageCode));
+  };
+
+  const deselectAllLanguages = () => {
+    setSelectedLanguages(['en']); // Keep English
+  };
 
   const handleGenerate = async () => {
     if (!selectedCity.trim()) {
@@ -91,28 +122,56 @@ const LocationGenerator = () => {
 
     setIsGenerating(true);
     setGeneratedPage(null);
+    setGeneratedPages([]);
     setGeneratedImage(null);
+    setIsPublished(false);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-location-page', {
-        body: {
-          city: selectedCity,
-          intent_type: intentType,
-          goal: goal || undefined,
-          language,
-        }
-      });
+      if (batchMode) {
+        setGenerationProgress({ 
+          current: 0, 
+          total: selectedLanguages.length, 
+          status: 'Generating multilingual pages...' 
+        });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Generation failed');
+        const { data, error } = await supabase.functions.invoke('generate-location-page', {
+          body: {
+            city: selectedCity,
+            intent_type: intentType,
+            goal: goal || undefined,
+            batch_mode: true,
+            languages: selectedLanguages,
+          }
+        });
 
-      setGeneratedPage(data.locationPage);
-      toast.success('Location page generated successfully!');
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Generation failed');
+
+        setGeneratedPages(data.locationPages);
+        setGeneratedPage(data.locationPages[0]); // Show English version in preview
+        toast.success(`Generated ${data.locationPages.length} language versions!`);
+      } else {
+        const { data, error } = await supabase.functions.invoke('generate-location-page', {
+          body: {
+            city: selectedCity,
+            intent_type: intentType,
+            goal: goal || undefined,
+            language,
+          }
+        });
+
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Generation failed');
+
+        setGeneratedPage(data.locationPage);
+        toast.success('Location page generated successfully!');
+      }
     } catch (error) {
       console.error('Generation error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to generate location page');
     } finally {
       setIsGenerating(false);
+      setGenerationProgress({ current: 0, total: 0, status: '' });
     }
   };
 
@@ -137,15 +196,17 @@ const LocationGenerator = () => {
 
       setGeneratedImage(data.image);
       
-      // Update the generated page with the new image data
-      setGeneratedPage((prev: any) => ({
-        ...prev,
+      // Update all generated pages with the new image data
+      const imageData = {
         featured_image_url: data.image.url,
         featured_image_alt: data.image.alt,
         featured_image_caption: data.image.caption,
         featured_image_width: data.image.width,
         featured_image_height: data.image.height,
-      }));
+      };
+      
+      setGeneratedPage((prev: any) => ({ ...prev, ...imageData }));
+      setGeneratedPages((prev) => prev.map(p => ({ ...p, ...imageData })));
       
       toast.success('Location image generated successfully!');
     } catch (error) {
@@ -157,23 +218,20 @@ const LocationGenerator = () => {
   };
 
   const handleSave = async () => {
-    if (!generatedPage) return;
+    const pagesToSave = batchMode && generatedPages.length > 0 ? generatedPages : (generatedPage ? [generatedPage] : []);
+    if (pagesToSave.length === 0) return;
 
     setIsSaving(true);
     try {
       const { data, error } = await supabase
         .from('location_pages')
-        .insert({
-          ...generatedPage,
-          status: 'draft',
-        })
-        .select()
-        .single();
+        .insert(pagesToSave.map(p => ({ ...p, status: 'draft' })))
+        .select();
 
       if (error) throw error;
 
-      toast.success('Location page saved as draft!');
-      navigate(`/admin/articles`); // TODO: Create location page editor
+      toast.success(`Saved ${pagesToSave.length} location page(s) as draft!`);
+      navigate(`/admin/articles`);
     } catch (error) {
       console.error('Save error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save location page');
@@ -183,32 +241,34 @@ const LocationGenerator = () => {
   };
 
   const handlePublish = async () => {
-    if (!generatedPage) return;
+    const pagesToPublish = batchMode && generatedPages.length > 0 ? generatedPages : (generatedPage ? [generatedPage] : []);
+    if (pagesToPublish.length === 0) return;
 
     setIsSaving(true);
     try {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('location_pages')
-        .upsert({
-          ...generatedPage,
-          status: 'published',
-          date_published: generatedPage.date_published || now,
-          date_modified: now,
-        }, { 
-          onConflict: 'topic_slug',
-          ignoreDuplicates: false 
-        })
-        .select()
-        .single();
+      
+      for (const page of pagesToPublish) {
+        const { error } = await supabase
+          .from('location_pages')
+          .upsert({
+            ...page,
+            status: 'published',
+            date_published: page.date_published || now,
+            date_modified: now,
+          }, { 
+            onConflict: 'topic_slug',
+            ignoreDuplicates: false 
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       setIsPublished(true);
-      toast.success('Location page published successfully!', {
+      toast.success(`Published ${pagesToPublish.length} location page(s) successfully!`, {
         action: {
           label: 'View Page',
-          onClick: () => window.open(`/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank'),
+          onClick: () => window.open(`/${generatedPage.language}/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank'),
         },
       });
     } catch (error) {
@@ -294,22 +354,90 @@ const LocationGenerator = () => {
                 />
               </div>
 
-              {/* Language */}
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Batch Mode Toggle */}
+              <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+                <Checkbox
+                  id="batch-mode"
+                  checked={batchMode}
+                  onCheckedChange={(checked) => setBatchMode(checked === true)}
+                />
+                <Label htmlFor="batch-mode" className="flex items-center gap-2 cursor-pointer">
+                  <Languages className="w-4 h-4 text-primary" />
+                  <span>Generate in multiple languages (batch mode)</span>
+                </Label>
               </div>
+
+              {/* Language Selection */}
+              {batchMode ? (
+                <div className="space-y-3 p-4 border rounded-lg bg-primary/5">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      Select Languages ({selectedLanguages.length}/10)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={selectAllLanguages}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={deselectAllLanguages}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <div
+                        key={lang.code}
+                        className={`flex items-center space-x-2 p-2 rounded border cursor-pointer transition-colors ${
+                          selectedLanguages.includes(lang.code as LanguageCode)
+                            ? 'bg-primary/10 border-primary'
+                            : 'hover:bg-muted/50'
+                        } ${lang.code === 'en' ? 'opacity-75' : ''}`}
+                        onClick={() => handleLanguageToggle(lang.code as LanguageCode)}
+                      >
+                        <Checkbox
+                          checked={selectedLanguages.includes(lang.code as LanguageCode)}
+                          disabled={lang.code === 'en'}
+                          className="pointer-events-none"
+                        />
+                        <span className="text-sm">{lang.label}</span>
+                        {lang.code === 'en' && (
+                          <Badge variant="secondary" className="text-xs">Required</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    English is always generated first as the source language. Other languages are translated from English.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="language">Language</Label>
+                  <Select value={language} onValueChange={(v) => setLanguage(v as LanguageCode)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Generate Button */}
               <Button 
@@ -321,12 +449,16 @@ const LocationGenerator = () => {
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
+                    {batchMode 
+                      ? `Generating ${selectedLanguages.length} languages...`
+                      : 'Generating...'}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Location Page
+                    {batchMode 
+                      ? `Generate in ${selectedLanguages.length} Languages`
+                      : 'Generate Location Page'}
                   </>
                 )}
               </Button>
@@ -336,7 +468,14 @@ const LocationGenerator = () => {
           {/* Preview */}
           <Card>
             <CardHeader>
-              <CardTitle>Generated Preview</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Generated Preview</span>
+                {batchMode && generatedPages.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {generatedPages.length} languages
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>
                 Review the generated content before saving.
               </CardDescription>
@@ -344,6 +483,25 @@ const LocationGenerator = () => {
             <CardContent>
               {generatedPage ? (
                 <div className="space-y-6">
+                  {/* Language badges for batch mode */}
+                  {batchMode && generatedPages.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {generatedPages.map((page) => {
+                        const langInfo = SUPPORTED_LANGUAGES.find(l => l.code === page.language);
+                        return (
+                          <Badge
+                            key={page.language}
+                            variant={page.language === generatedPage.language ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() => setGeneratedPage(page)}
+                          >
+                            {langInfo?.label || page.language}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Generated Image or Generate Button */}
                   <div className="space-y-3">
                     <Label className="text-xs text-muted-foreground flex items-center gap-2">
@@ -464,46 +622,56 @@ const LocationGenerator = () => {
                     </div>
                   </div>
 
-                  {/* Success Message */}
-                  {isPublished && (
-                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
-                      <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                      <p className="font-semibold text-green-700 dark:text-green-400">Published Successfully!</p>
-                      <Button
-                        variant="link"
-                        className="text-green-600 dark:text-green-400"
-                        onClick={() => window.open(`/locations/${generatedPage.city_slug}/${generatedPage.topic_slug}`, '_blank')}
-                      >
-                        View Published Page →
-                      </Button>
+                  {/* hreflang info for batch mode */}
+                  {batchMode && generatedPages.length > 0 && generatedPages[0]?.hreflang_group_id && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-xs text-green-700 flex items-center gap-2">
+                        <CheckCircle className="w-3 h-3" />
+                        All {generatedPages.length} language versions share hreflang_group_id for SEO linking
+                      </p>
                     </div>
                   )}
 
                   {/* Actions */}
-                  <div className="flex gap-3">
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={isSaving}
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving || isPublished}
                       variant="outline"
                       className="flex-1"
                     >
-                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save as Draft
+                      {isSaving ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                      )}
+                      Save as Draft{batchMode && generatedPages.length > 1 ? ` (${generatedPages.length})` : ''}
                     </Button>
-                    <Button 
-                      onClick={handlePublish} 
-                      disabled={isSaving}
+                    <Button
+                      onClick={handlePublish}
+                      disabled={isSaving || isPublished}
                       className="flex-1"
                     >
-                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                      {isPublished ? 'Update' : 'Publish'}
+                      {isPublished ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Published
+                        </>
+                      ) : isSaving ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Publish{batchMode && generatedPages.length > 1 ? ` All (${generatedPages.length})` : ''}
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Generate a location page to see the preview</p>
+                  <p>Generated content will appear here</p>
                 </div>
               )}
             </CardContent>

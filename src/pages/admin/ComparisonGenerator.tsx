@@ -12,21 +12,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Scale, Trash2, Eye, CheckCircle, Zap, Link as LinkIcon, Quote } from "lucide-react";
+import { Loader2, Scale, Trash2, Eye, CheckCircle, Zap, Link as LinkIcon, Quote, Globe, Languages } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 
+// Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES
 const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'de', name: 'German' },
-  { code: 'nl', name: 'Dutch' },
-  { code: 'fr', name: 'French' },
-  { code: 'sv', name: 'Swedish' },
-  { code: 'da', name: 'Danish' },
-  { code: 'no', name: 'Norwegian' },
-  { code: 'fi', name: 'Finnish' },
-  { code: 'hu', name: 'Hungarian' },
-  { code: 'pl', name: 'Polish' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
+  { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'de', name: 'German', flag: '🇩🇪' },
+  { code: 'fr', name: 'French', flag: '🇫🇷' },
+  { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
+  { code: 'pl', name: 'Polish', flag: '🇵🇱' },
+  { code: 'no', name: 'Norwegian', flag: '🇳🇴' },
+  { code: 'fi', name: 'Finnish', flag: '🇫🇮' },
+  { code: 'da', name: 'Danish', flag: '🇩🇰' },
 ];
+
+type LanguageCode = 'en' | 'nl' | 'es' | 'de' | 'fr' | 'sv' | 'pl' | 'no' | 'fi' | 'da';
 
 const SUGGESTED_COMPARISONS = [
   { a: 'Off-Plan Property', b: 'Resale Property', context: 'Which Should You Buy in Spain?' },
@@ -79,9 +83,21 @@ export default function ComparisonGenerator() {
   const [niche, setNiche] = useState('real-estate');
   const [targetAudience, setTargetAudience] = useState('property buyers and investors');
   const [language, setLanguage] = useState('en');
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedLanguages, setSelectedLanguages] = useState<LanguageCode[]>(['en']);
   const [generatedComparison, setGeneratedComparison] = useState<any>(null);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: '' });
+
+  const handleLanguageToggle = (langCode: LanguageCode) => {
+    if (langCode === 'en') return;
+    setSelectedLanguages(prev => 
+      prev.includes(langCode) ? prev.filter(l => l !== langCode) : [...prev, langCode]
+    );
+  };
+
+  const selectAllLanguages = () => setSelectedLanguages(LANGUAGES.map(l => l.code as LanguageCode));
+  const deselectAllLanguages = () => setSelectedLanguages(['en']);
 
   // Fetch existing comparisons
   const { data: comparisons, isLoading: loadingComparisons } = useQuery({

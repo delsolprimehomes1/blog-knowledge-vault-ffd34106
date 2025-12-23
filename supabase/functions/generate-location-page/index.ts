@@ -1,9 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Canonical 10 languages (aligned with src/types/hreflang.ts)
+const SUPPORTED_LANGUAGES = ['en', 'nl', 'es', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
 
 const MASTER_PROMPT = `You are generating an AI-citation-ready Location Intelligence page.
 
@@ -86,6 +90,11 @@ Tone: Authoritative, Neutral, Evidence-based, Human-readable, AI-friendly. Avoid
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.`;
 
+// Generate unique hreflang group ID
+function generateHreflangGroupId(): string {
+  return `loc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -98,7 +107,9 @@ serve(async (req) => {
       country = 'Spain', 
       intent_type,
       goal,
-      language = 'en' 
+      language = 'en',
+      languages = [], // Array of languages for batch generation
+      batch_mode = false, // Enable batch multilingual generation
     } = await req.json();
 
     if (!city || !intent_type) {
@@ -112,6 +123,29 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
+
+    // Determine which languages to generate
+    let targetLanguages: string[] = [];
+    if (batch_mode && languages.length > 0) {
+      // Use provided languages array
+      targetLanguages = languages.filter((l: string) => SUPPORTED_LANGUAGES.includes(l));
+    } else if (batch_mode) {
+      // Default to all 10 languages
+      targetLanguages = [...SUPPORTED_LANGUAGES];
+    } else {
+      // Single language mode
+      targetLanguages = [language];
+    }
+
+    // Ensure English is first (source language)
+    if (batch_mode && !targetLanguages.includes('en')) {
+      targetLanguages.unshift('en');
+    } else if (batch_mode && targetLanguages[0] !== 'en') {
+      targetLanguages = ['en', ...targetLanguages.filter(l => l !== 'en')];
+    }
+
+    console.log('Location generation mode:', batch_mode ? 'batch' : 'single');
+    console.log('Target languages:', targetLanguages);
 
     // Build intent description
     const intentDescriptions: Record<string, string> = {
@@ -136,100 +170,152 @@ serve(async (req) => {
       .replace('[INTENT_TYPE]', intentDescription)
       .replace('[GOAL]', goal || 'property buyers');
 
-    const systemPrompt = language !== 'en' 
-      ? `Generate all content in ${language} language. The structure and field names must remain in English, but all values/content must be in ${language}. STRICTLY follow all word limits specified in the prompt.`
-      : 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
+    // Generate shared hreflang_group_id for batch mode
+    const hreflangGroupId = batch_mode ? generateHreflangGroupId() : null;
 
-    console.log('Generating location page:', { city, intent_type, language });
+    const generatedPages: any[] = [];
+    let englishVersion: any = null;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 8000,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
+    for (let i = 0; i < targetLanguages.length; i++) {
+      const targetLang = targetLanguages[i];
       
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      let systemPrompt: string;
+      let currentPrompt: string;
       
-      throw new Error(`AI API error: ${response.status}`);
-    }
-
-    const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content received from AI');
-    }
-
-    // Parse JSON from response (handle potential markdown wrapping)
-    let parsed;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
+      if (targetLang === 'en') {
+        // Generate English version first
+        systemPrompt = 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
+        currentPrompt = prompt;
       } else {
-        throw new Error('No JSON found in response');
+        // For translations, use the English content as reference
+        systemPrompt = `Translate and adapt the following content to ${targetLang} language. 
+The structure and field names must remain in English, but all values/content must be translated to ${targetLang}.
+STRICTLY follow all word limits specified in the prompt.
+Adapt cultural references and examples to be relevant for ${targetLang}-speaking audiences while maintaining factual accuracy.`;
+        
+        // Include English version for reference in translation
+        currentPrompt = englishVersion 
+          ? `Original English content for reference:\n${JSON.stringify(englishVersion, null, 2)}\n\nTranslate and adapt this content to ${targetLang}, following the same structure.`
+          : prompt;
       }
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError, 'Content:', content);
-      throw new Error('Failed to parse AI response as JSON');
+
+      console.log(`Generating ${targetLang} version (${i + 1}/${targetLanguages.length})...`);
+
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: currentPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 8000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('AI API error:', response.status, errorText);
+        
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: 'Payment required. Please add credits to continue.' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const aiData = await response.json();
+      const content = aiData.choices?.[0]?.message?.content;
+
+      if (!content) {
+        throw new Error(`No content received from AI for ${targetLang}`);
+      }
+
+      // Parse JSON from response
+      let parsed;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
+        }
+      } catch (parseError) {
+        console.error(`JSON parse error for ${targetLang}:`, parseError);
+        throw new Error(`Failed to parse AI response as JSON for ${targetLang}`);
+      }
+
+      // Save English version for translation reference
+      if (targetLang === 'en') {
+        englishVersion = parsed;
+      }
+
+      // Generate language-specific slug
+      const baseSlug = parsed.suggested_slug || `${intent_type}-${city}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const langSlug = targetLang === 'en' ? baseSlug : `${baseSlug}-${targetLang}`;
+
+      // Build the location page object
+      const locationPage = {
+        city_slug: city.toLowerCase().replace(/\s+/g, '-'),
+        city_name: city,
+        region,
+        country,
+        intent_type,
+        topic_slug: langSlug,
+        headline: parsed.headline,
+        meta_title: parsed.meta_title,
+        meta_description: parsed.meta_description,
+        speakable_answer: parsed.speakable_answer,
+        location_overview: parsed.location_overview,
+        market_breakdown: parsed.market_breakdown,
+        best_areas: parsed.best_areas || [],
+        cost_breakdown: parsed.cost_breakdown || [],
+        use_cases: parsed.use_cases,
+        final_summary: parsed.final_summary,
+        qa_entities: parsed.qa_entities || [],
+        language: targetLang,
+        source_language: 'en', // Always English-first strategy
+        status: 'draft',
+        image_prompt: parsed.image_prompt,
+        hreflang_group_id: hreflangGroupId,
+        content_type: 'location',
+      };
+
+      generatedPages.push(locationPage);
+      console.log(`Generated ${targetLang} location page successfully:`, locationPage.topic_slug);
     }
 
-    // Build the location page object
-    const locationPage = {
-      city_slug: city.toLowerCase().replace(/\s+/g, '-'),
-      city_name: city,
-      region,
-      country,
-      intent_type,
-      topic_slug: parsed.suggested_slug || `${intent_type}-${city}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-      headline: parsed.headline,
-      meta_title: parsed.meta_title,
-      meta_description: parsed.meta_description,
-      speakable_answer: parsed.speakable_answer,
-      location_overview: parsed.location_overview,
-      market_breakdown: parsed.market_breakdown,
-      best_areas: parsed.best_areas || [],
-      cost_breakdown: parsed.cost_breakdown || [],
-      use_cases: parsed.use_cases,
-      final_summary: parsed.final_summary,
-      qa_entities: parsed.qa_entities || [],
-      language,
-      status: 'draft',
-      image_prompt: parsed.image_prompt,
-    };
-
-    console.log('Generated location page successfully:', locationPage.topic_slug);
-
-    return new Response(
-      JSON.stringify({ success: true, locationPage }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Return based on mode
+    if (batch_mode) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          locationPages: generatedPages,
+          hreflang_group_id: hreflangGroupId,
+          languages_generated: targetLanguages,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      return new Response(
+        JSON.stringify({ success: true, locationPage: generatedPages[0] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('Error in generate-location-page:', error);
