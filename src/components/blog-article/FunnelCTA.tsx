@@ -10,6 +10,7 @@ interface CTAArticle {
   slug: string;
   headline: string;
   category: string;
+  language: string;
   featured_image_url: string;
 }
 
@@ -73,7 +74,7 @@ export const FunnelCTA = ({ funnelStage, ctaArticles }: FunnelCTAProps) => {
                 <Badge variant="secondary">{article.category}</Badge>
                 <h3 className="text-xl font-semibold">{article.headline}</h3>
                 <Button asChild className="w-full gap-2">
-                  <Link to={`/blog/${article.slug}`}>
+                  <Link to={`/${article.language}/blog/${article.slug}`}>
                     {funnelStage === "TOFU" ? "Learn More" : "Take Action"}
                     <ArrowRight className="h-4 w-4" />
                   </Link>

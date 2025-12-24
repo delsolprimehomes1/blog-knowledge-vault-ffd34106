@@ -9,6 +9,7 @@ interface Article {
   slug: string;
   headline: string;
   category: string;
+  language: string;
   featured_image_url: string;
 }
 
@@ -31,7 +32,7 @@ export const RelatedArticles = ({ articles }: RelatedArticlesProps) => {
         {articles.map((article) => (
           <Link
             key={article.id}
-            to={`/blog/${article.slug}`}
+            to={`/${article.language}/blog/${article.slug}`}
             className="flex-shrink-0 w-80 snap-start"
             onMouseEnter={() => handleArticleHover(article)}
           >

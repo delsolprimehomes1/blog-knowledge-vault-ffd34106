@@ -386,7 +386,7 @@ export default function QAPage() {
                   <div className="flex-1 p-6 flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground mb-2">This Q&A is based on our comprehensive guide:</p>
                     <Link
-                      to={`/blog/${qaPage.source_article_slug}`}
+                      to={`/${qaPage.language}/blog/${qaPage.source_article_slug}`}
                       className="inline-flex items-center text-lg font-display font-semibold text-foreground group-hover:text-prime-gold transition-colors"
                     >
                       Read the full article
