@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.ping-indexnow]
 verify_jwt = false
+
+[functions.serve-seo-page]
+verify_jwt = false
