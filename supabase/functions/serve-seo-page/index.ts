@@ -445,9 +445,24 @@ Deno.serve(async (req) => {
     const returnHtml = url.searchParams.get('html') === 'true'
     
     if (returnHtml) {
-      // Fetch base HTML template
-      const baseHtmlResponse = await fetch(`${BASE_URL}/index.html`)
-      const baseHtml = await baseHtmlResponse.text()
+      // Use inline HTML template instead of fetching external HTML (avoids fetch errors)
+      const baseHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <script>
+    // Client-side hydration will take over
+    window.__SSR_METADATA__ = ${JSON.stringify({
+      language: metadata.language,
+      title: metadata.meta_title,
+      canonical: metadata.canonical_url
+    })};
+  </script>
+</body>
+</html>`
       
       // Generate full HTML with injected metadata
       const fullHtml = generateFullHtml(metadata, hreflangTags, baseHtml)
@@ -457,6 +472,8 @@ Deno.serve(async (req) => {
           ...corsHeaders,
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'public, max-age=3600',
+          'X-SEO-Source': 'edge-function',
+          'X-Content-Language': metadata.language,
         }
       })
     }
