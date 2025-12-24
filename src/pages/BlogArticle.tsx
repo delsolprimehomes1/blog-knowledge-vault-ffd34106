@@ -24,6 +24,24 @@ import { isFeatureEnabled } from "@/lib/featureFlags";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, FunnelStage, InternalLink } from "@/types/blog";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 
+// Language to og:locale mapping
+const LOCALE_MAP: Record<string, string> = {
+  en: 'en_GB',
+  nl: 'nl_NL',
+  de: 'de_DE',
+  fr: 'fr_FR',
+  es: 'es_ES',
+  sv: 'sv_SE',
+  no: 'nb_NO',
+  da: 'da_DK',
+  fi: 'fi_FI',
+  pl: 'pl_PL',
+  ru: 'ru_RU',
+  it: 'it_IT',
+  tr: 'tr_TR',
+  hu: 'hu_HU'
+};
+
 const BlogArticle = () => {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
   const [hreflangEnabled, setHreflangEnabled] = useState(false);
@@ -285,6 +303,9 @@ const BlogArticle = () => {
       )}
       
       <Helmet>
+        {/* HTML Language Attribute */}
+        <html lang={article.language} />
+        
         {/* Basic Meta Tags */}
         <title>{article.meta_title} | Del Sol Prime Homes</title>
         <meta name="description" content={article.meta_description} />
@@ -301,6 +322,7 @@ const BlogArticle = () => {
         <meta property="og:url" content={currentUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
+        <meta property="og:locale" content={LOCALE_MAP[article.language] || 'en_GB'} />
         {article.date_published && (
           <meta property="article:published_time" content={article.date_published} />
         )}
