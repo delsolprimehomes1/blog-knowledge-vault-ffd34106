@@ -63,11 +63,11 @@ async function fetchQAMetadata(supabase: any, slug: string, lang: string): Promi
 
   return {
     language: data.language || lang,
-    meta_title: data.meta_title,
-    meta_description: data.meta_description,
+    meta_title: data.meta_title || data.title || '',
+    meta_description: data.meta_description || '',
     canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/qa/${slug}`,
-    headline: data.main_question || data.headline,
-    speakable_answer: data.main_answer || data.speakable_answer,
+    headline: data.question_main || data.title || '',
+    speakable_answer: data.answer_main || data.speakable_answer || '',
     featured_image_url: data.featured_image_url,
     featured_image_alt: data.featured_image_alt,
     date_published: data.date_published,
@@ -302,7 +302,8 @@ function generateSpeakableSchema(metadata: PageMetadata): string {
   return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
 }
 
-function escapeHtml(text: string): string {
+function escapeHtml(text: string | null | undefined): string {
+  if (!text) return ''
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -313,9 +314,9 @@ function escapeHtml(text: string): string {
 
 function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml: string): string {
   const locale = LOCALE_MAP[metadata.language] || 'en_GB'
-  const escapedTitle = escapeHtml(metadata.meta_title)
-  const escapedDescription = escapeHtml(metadata.meta_description)
-  const escapedHeadline = escapeHtml(metadata.headline)
+  const escapedTitle = escapeHtml(metadata.meta_title || metadata.headline || 'Del Sol Prime Homes')
+  const escapedDescription = escapeHtml(metadata.meta_description || '')
+  const escapedHeadline = escapeHtml(metadata.headline || metadata.meta_title || '')
   
   // Generate all schemas
   const faqSchema = generateFAQSchema(metadata)
