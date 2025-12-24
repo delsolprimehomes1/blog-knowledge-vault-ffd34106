@@ -274,10 +274,15 @@ export async function fetchHreflangSiblings(
 ): Promise<HreflangContent[]> {
   const tableName = getTableForContentType(contentType);
   
+  // Only include city_slug and topic_slug for location pages (other tables don't have these columns)
+  const selectColumns = contentType === 'location'
+    ? 'id, hreflang_group_id, language, slug, canonical_url, source_language, content_type, status, city_slug, topic_slug'
+    : 'id, hreflang_group_id, language, slug, canonical_url, source_language, content_type, status';
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from(tableName)
-    .select('id, hreflang_group_id, language, slug, canonical_url, source_language, content_type, status, city_slug, topic_slug')
+    .select(selectColumns)
     .eq('hreflang_group_id', hreflangGroupId)
     .eq('status', 'published') as { data: any[] | null; error: any };
   
