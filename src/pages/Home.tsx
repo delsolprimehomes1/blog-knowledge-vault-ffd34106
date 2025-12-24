@@ -4,6 +4,7 @@ import { HomeHreflangTags } from '../components/HomeHreflangTags';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/home/Header';
 import { Footer } from '../components/home/Footer';
+import { LanguageSuggestionBanner } from '../components/LanguageSuggestionBanner';
 import { Hero } from '../components/home/sections/Hero';
 import { QuickSearch } from '../components/home/sections/QuickSearch';
 import { MiniAbout, USPSection } from '../components/home/sections/ContentBlocks';
@@ -154,7 +155,7 @@ function Home() {
       </main>
 
       <Footer />
-
+      <LanguageSuggestionBanner />
     </div>
     </>
   );
