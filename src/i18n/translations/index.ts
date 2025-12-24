@@ -1,6 +1,5 @@
 import { Language } from '../../types/home';
 import { en } from './en';
-import { es } from './es';
 import { nl } from './nl';
 import { fr } from './fr';
 import { de } from './de';
@@ -19,7 +18,6 @@ type TranslationBase = Omit<typeof en, 'brochures'> & { brochures: Record<string
 
 export const translations: Record<Language, TranslationBase> = {
   [Language.EN]: en,
-  [Language.ES]: es,
   [Language.NL]: nl as TranslationBase,
   [Language.FR]: fr as TranslationBase,
   [Language.DE]: de as TranslationBase,

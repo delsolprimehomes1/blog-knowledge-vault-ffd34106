@@ -1,6 +1,5 @@
 export enum Language {
   EN = 'en',
-  ES = 'es',
   NL = 'nl',
   FR = 'fr',
   DE = 'de',
@@ -24,7 +23,6 @@ export interface LanguageInfo {
 
 export const AVAILABLE_LANGUAGES: LanguageInfo[] = [
   { code: Language.EN, name: 'English', flag: '🇬🇧', nativeName: 'English' },
-  { code: Language.ES, name: 'Spanish', flag: '🇪🇸', nativeName: 'Español' },
   { code: Language.NL, name: 'Dutch', flag: '🇳🇱', nativeName: 'Nederlands' },
   { code: Language.FR, name: 'French', flag: '🇫🇷', nativeName: 'Français' },
   { code: Language.DE, name: 'German', flag: '🇩🇪', nativeName: 'Deutsch' },
