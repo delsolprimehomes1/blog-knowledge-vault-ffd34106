@@ -45,7 +45,7 @@ function matchSEOPath(path) {
  * Main middleware handler
  */
 export async function onRequest(context) {
-  const { request, next, env } = context;
+  const { request, next } = context;
   const url = new URL(request.url);
   const path = url.pathname;
   
@@ -53,8 +53,12 @@ export async function onRequest(context) {
   const seoMatch = matchSEOPath(path);
   
   if (!seoMatch) {
-    // Not an SEO path, continue to default handling
-    return next();
+    // Not an SEO path - still add middleware header to prove it's running
+    const response = await next();
+    const newResponse = new Response(response.body, response);
+    newResponse.headers.set('X-Middleware-Active', 'true');
+    newResponse.headers.set('X-Middleware-Version', '2025-12-24');
+    return newResponse;
   }
   
   const { lang, type, slug } = seoMatch;
@@ -77,7 +81,13 @@ export async function onRequest(context) {
     
     if (!seoResponse.ok) {
       console.error(`[SEO Middleware] Edge function returned ${seoResponse.status}`);
-      return next();
+      const response = await next();
+      const newResponse = new Response(response.body, response);
+      newResponse.headers.set('X-Middleware-Active', 'true');
+      newResponse.headers.set('X-Middleware-Version', '2025-12-24');
+      newResponse.headers.set('X-SEO-Matched-Path', path);
+      newResponse.headers.set('X-SEO-Error', `edge-function-${seoResponse.status}`);
+      return newResponse;
     }
     
     const contentType = seoResponse.headers.get('content-type') || '';
@@ -91,7 +101,10 @@ export async function onRequest(context) {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`,
+          'X-Middleware-Active': 'true',
+          'X-Middleware-Version': '2025-12-24',
           'X-SEO-Source': 'edge-function',
+          'X-SEO-Matched-Path': path,
           'X-Content-Language': lang
         }
       });
@@ -161,7 +174,10 @@ export async function onRequest(context) {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`,
+          'X-Middleware-Active': 'true',
+          'X-Middleware-Version': '2025-12-24',
           'X-SEO-Source': 'injected',
+          'X-SEO-Matched-Path': path,
           'X-Content-Language': lang
         }
       });
@@ -171,8 +187,14 @@ export async function onRequest(context) {
     console.error(`[SEO Middleware] Error processing ${path}:`, error);
   }
   
-  // Fallback to default React app handling
-  return next();
+  // Fallback to default React app handling with middleware headers
+  const response = await next();
+  const newResponse = new Response(response.body, response);
+  newResponse.headers.set('X-Middleware-Active', 'true');
+  newResponse.headers.set('X-Middleware-Version', '2025-12-24');
+  newResponse.headers.set('X-SEO-Matched-Path', path);
+  newResponse.headers.set('X-SEO-Fallback', 'true');
+  return newResponse;
 }
 
 /**
