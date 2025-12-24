@@ -109,28 +109,37 @@ function xmlHeader(includeHreflang: boolean): string {
 <urlset ${ns}>`;
 }
 
-// Generate master sitemap index pointing to per-language indexes
-function generateMasterSitemapIndex(languages: string[], lastmod: string): string {
-  const languageIndexes = languages.map(lang => `  <sitemap>
-    <loc>${BASE_URL}/sitemaps/${lang}/index.xml</loc>
-    <lastmod>${lastmod}</lastmod>
-  </sitemap>`).join('\n');
-
-  // Include static sitemaps (glossary, brochures) that aren't language-prefixed
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Language-specific sitemap indexes -->
-${languageIndexes}
+// Generate master sitemap index pointing DIRECTLY to URL-containing sitemaps (flat structure)
+// Google does not allow nested sitemap indexes (index pointing to another index)
+function generateMasterSitemapIndex(
+  languageContentTypes: Map<string, { type: string; lastmod: string }[]>,
+  lastmod: string
+): string {
+  const entries: string[] = [];
   
-  <!-- Static sitemaps (non-language-prefixed content) -->
-  <sitemap>
+  // List all individual content sitemaps directly (no intermediate indexes)
+  languageContentTypes.forEach((contentTypes, lang) => {
+    contentTypes.forEach(ct => {
+      entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/${lang}/${ct.type}.xml</loc>
+    <lastmod>${ct.lastmod}</lastmod>
+  </sitemap>`);
+    });
+  });
+  
+  // Add static sitemaps (glossary, brochures) that aren't language-prefixed
+  entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/glossary.xml</loc>
     <lastmod>${lastmod}</lastmod>
-  </sitemap>
-  <sitemap>
+  </sitemap>`);
+  entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/brochures.xml</loc>
     <lastmod>${lastmod}</lastmod>
-  </sitemap>
+  </sitemap>`);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries.join('\n')}
 </sitemapindex>`;
 }
 
@@ -647,6 +656,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   ensureDir(sitemapsPath);
   
   const languagesWithContent: string[] = [];
+  const languageContentTypes = new Map<string, { type: string; lastmod: string }[]>();
   let totalUrls = 0;
   
   // Generate per-language sitemaps
@@ -717,8 +727,11 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
       totalUrls += langComparisons.length + 1;
     }
     
-    // Generate language index
+    // Store content types for master index (flat structure)
     if (contentTypes.length > 0) {
+      languageContentTypes.set(lang, contentTypes.map(ct => ({ type: ct.type, lastmod: ct.lastmod })));
+      
+      // Also generate language index for internal reference (not linked from master)
       const langIndex = generateLanguageSitemapIndex(lang, contentTypes);
       writeFileSync(join(langPath, 'index.xml'), langIndex, 'utf-8');
     }
@@ -737,10 +750,14 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log(`   🏠 brochures.xml (${LOCATION_CITIES.length + 3} URLs)`);
   totalUrls += LOCATION_CITIES.length + 3;
   
-  // Generate master sitemap index
-  console.log('\n🔨 Generating master sitemap index...');
-  const masterIndex = generateMasterSitemapIndex(languagesWithContent, getToday());
+  // Generate master sitemap index (FLAT structure - directly lists all URL sitemaps)
+  console.log('\n🔨 Generating master sitemap index (flat structure)...');
+  const masterIndex = generateMasterSitemapIndex(languageContentTypes, getToday());
   writeFileSync(join(outputPath, 'sitemap-index.xml'), masterIndex, 'utf-8');
+  
+  // Count total sitemaps in master index
+  const totalSitemapsInIndex = Array.from(languageContentTypes.values()).reduce((sum, ct) => sum + ct.length, 0) + 2;
+  console.log(`   📄 Master index references ${totalSitemapsInIndex} sitemaps directly (no nested indexes)`);
   
   // Legacy sitemap.xml alias
   writeFileSync(join(outputPath, 'sitemap.xml'), masterIndex, 'utf-8');
