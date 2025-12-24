@@ -80,7 +80,7 @@ const PropertyDetail = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 container mx-auto px-4 pt-24 pb-8">
           <div className="text-center py-20">
             <h1 className="text-2xl font-display font-bold mb-4">Property Not Found</h1>
             <Link to={propertiesLink}>
@@ -109,7 +109,7 @@ const PropertyDetail = () => {
       <PropertyHreflangTags reference={reference!} currentLanguage={currentLanguage} />
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 pt-24 pb-8">
         <Link to={propertiesLink} className="inline-flex items-center text-primary hover:underline mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Search
