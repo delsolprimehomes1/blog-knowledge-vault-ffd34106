@@ -41,11 +41,12 @@ export const QuickSearch: React.FC = () => {
       try {
         const params: Record<string, string | number> = {
           transactionType: 'sale', // HARD-LOCKED: Sales only
+          priceMin: 400000, // ALWAYS enforce €400k minimum for luxury positioning
         };
         if (location) params.location = location;
         if (budget) {
           const [min, max] = budget.split('-');
-          if (min) params.priceMin = parseInt(min);
+          if (min) params.priceMin = parseInt(min); // Override with user selection if higher
           if (max && max !== '+') params.priceMax = parseInt(max);
         }
 
@@ -72,10 +73,11 @@ export const QuickSearch: React.FC = () => {
   const handleSearch = () => {
     const params = new URLSearchParams();
     params.append("transactionType", "sale"); // HARD-LOCKED: Sales only
+    params.append("priceMin", "400000"); // ALWAYS enforce €400k minimum
     if (location) params.append("location", location);
     if (budget) {
       const [min, max] = budget.split("-");
-      if (min) params.append("priceMin", min);
+      if (min) params.set("priceMin", min); // Override with user selection
       if (max && max !== "+") params.append("priceMax", max);
     }
     navigate(`/property-finder?${params.toString()}`);
