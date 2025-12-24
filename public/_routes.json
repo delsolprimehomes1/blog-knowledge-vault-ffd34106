@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Cloudflare Pages routing configuration - ensures middleware runs for content pages",
+  "include": ["/*"],
+  "exclude": [
+    "/assets/*",
+    "/sitemaps/*",
+    "/*.xml",
+    "/*.txt",
+    "/*.json",
+    "/*.png",
+    "/*.ico",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.webp",
+    "/*.svg",
+    "/*.css",
+    "/*.js",
+    "/*.map"
+  ]
+}

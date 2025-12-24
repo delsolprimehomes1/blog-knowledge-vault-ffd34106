@@ -29,4 +29,14 @@ npx tsx scripts/generateStaticAboutPage.ts
 echo "🗺️ Generating sitemap..."
 npx tsx scripts/generateSitemap.ts
 
+# Copy Cloudflare Pages Functions to dist directory
+# This ensures Cloudflare Pages detects and deploys the middleware
+echo "🔧 Setting up Cloudflare Pages Functions..."
+if [ -d "functions" ]; then
+  cp -r functions dist/functions
+  echo "   ✅ Copied functions/ to dist/functions/"
+else
+  echo "   ⚠️ No functions/ directory found"
+fi
+
 echo "✅ Build complete!"

@@ -21,7 +21,7 @@ const CONFIG = {
   SUPPORTED_LANGUAGES: ['en', 'es', 'de', 'fr', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'ru', 'it', 'tr', 'hu'],
   CONTENT_TYPES: ['qa', 'blog', 'compare', 'locations'],
   CACHE_TTL: 3600, // 1 hour
-  DEBUG: false
+  DEBUG: true  // Enabled for testing - set to false in production
 };
 
 /**
