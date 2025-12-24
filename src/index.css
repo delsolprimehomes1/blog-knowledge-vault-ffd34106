@@ -503,4 +503,141 @@ All colors MUST be HSL.
     border: 1px solid rgba(197, 160, 89, 0.3);
     color: hsl(var(--primary));
   }
+
+  /* Ken Burns Animation */
+  @keyframes ken-burns {
+    0% {
+      transform: scale(1) translate(0, 0);
+    }
+    50% {
+      transform: scale(1.1) translate(-1%, -1%);
+    }
+    100% {
+      transform: scale(1) translate(0, 0);
+    }
+  }
+
+  .animate-ken-burns {
+    animation: ken-burns 20s ease-in-out infinite;
+  }
+
+  /* Glow Pulse Animation */
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(197, 160, 89, 0.4), 0 0 40px rgba(197, 160, 89, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(197, 160, 89, 0.6), 0 0 60px rgba(197, 160, 89, 0.3);
+    }
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Float Animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  /* Shimmer Effect */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(197, 160, 89, 0) 0%,
+      rgba(197, 160, 89, 0.3) 50%,
+      rgba(197, 160, 89, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  /* 3D Card Transform */
+  .card-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-3d:hover {
+    transform: translateY(-8px) rotateX(2deg) rotateY(-2deg);
+  }
+
+  /* Premium Stat Card */
+  .stat-card-premium {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  }
+
+  /* Luxury Divider */
+  .divider-luxury {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+  }
+
+  /* Drop Cap for Luxury Typography */
+  .drop-cap::first-letter {
+    float: left;
+    font-size: 4rem;
+    line-height: 0.8;
+    padding-right: 0.5rem;
+    color: hsl(var(--primary));
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+  }
+
+  /* Premium Image Overlay */
+  .image-overlay-luxury {
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 30%,
+      rgba(0, 0, 0, 0.1) 60%,
+      transparent 100%
+    );
+  }
+
+  /* Golden Accent Line */
+  .accent-line-gold {
+    position: relative;
+  }
+
+  .accent-line-gold::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.3));
+    border-radius: 2px;
+  }
 }

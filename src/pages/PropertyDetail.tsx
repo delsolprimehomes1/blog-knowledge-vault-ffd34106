@@ -2,14 +2,19 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
-import { PropertyGallery } from "@/components/property/PropertyGallery";
+import { PropertyHero } from "@/components/property/PropertyHero";
+import { PropertyStats } from "@/components/property/PropertyStats";
+import { PropertyFeatures } from "@/components/property/PropertyFeatures";
+import { PropertyContact } from "@/components/property/PropertyContact";
+import { PropertyDescription } from "@/components/property/PropertyDescription";
 import { PropertyHreflangTags } from "@/components/PropertyHreflangTags";
 import { Button } from "@/components/ui/button";
-import { Loader2, Bed, Bath, Maximize2, MapPin, ArrowLeft, Mail, Phone } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Property } from "@/types/property";
 import { Language, AVAILABLE_LANGUAGES } from "@/types/home";
+import { motion } from "framer-motion";
 
 const PropertyDetail = () => {
   const { reference, lang } = useParams<{ reference: string; lang?: string }>();
@@ -64,12 +69,23 @@ const PropertyDetail = () => {
     fetchProperty();
   }, [reference, currentLanguage, toast]);
 
+  const formatPrice = (price: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading property details...</p>
+          </div>
         </main>
         <Footer />
       </div>
@@ -82,9 +98,10 @@ const PropertyDetail = () => {
         <Header />
         <main className="flex-1 container mx-auto px-4 pt-24 pb-8">
           <div className="text-center py-20">
-            <h1 className="text-2xl font-display font-bold mb-4">Property Not Found</h1>
+            <h1 className="text-3xl font-display font-bold mb-4">Property Not Found</h1>
+            <p className="text-muted-foreground mb-8">This property may no longer be available or the reference number is incorrect.</p>
             <Link to={propertiesLink}>
-              <Button>
+              <Button size="lg" className="rounded-xl">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Property Search
               </Button>
@@ -96,157 +113,88 @@ const PropertyDetail = () => {
     );
   }
 
-  const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
+  const formattedPrice = formatPrice(property.price, property.currency);
+  const allImages = [property.mainImage, ...property.images];
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <PropertyHreflangTags reference={reference!} currentLanguage={currentLanguage} />
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 pt-24 pb-8">
-        <Link to={propertiesLink} className="inline-flex items-center text-primary hover:underline mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Search
+      {/* Back Button - Floating */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, delay: 0.5 }}
+        className="fixed top-24 left-6 z-30"
+      >
+        <Link to={propertiesLink}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="glass-luxury rounded-full px-4 h-10 shadow-lg hover:scale-105 transition-transform"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
         </Link>
+      </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Gallery */}
-            <PropertyGallery
-              images={[property.mainImage, ...property.images]}
-              title={`${property.propertyType} in ${property.location}`}
+      {/* Hero Section */}
+      <PropertyHero
+        images={allImages}
+        title={`${property.propertyType} in ${property.location}`}
+        location={`${property.location}, ${property.province}`}
+        price={formattedPrice}
+        reference={property.reference}
+      />
+
+      {/* Floating Stats Bar */}
+      <PropertyStats
+        bedrooms={property.bedrooms}
+        bathrooms={property.bathrooms}
+        builtArea={property.builtArea}
+        plotArea={property.plotArea}
+        orientation={property.orientation}
+        views={property.views}
+      />
+
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto px-4 md:px-8 py-12">
+        <div className="grid lg:grid-cols-3 gap-12">
+          {/* Left Column - Content */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Description Section */}
+            <PropertyDescription
+              description={property.description}
+              propertyType={property.propertyType}
+              location={property.location}
             />
 
-            {/* Property Info */}
-            <div>
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <MapPin className="w-5 h-5" />
-                <span className="text-lg">{property.location}, {property.province}</span>
-              </div>
-              <h1 className="text-3xl font-display font-bold mb-4">
-                {property.propertyType} in {property.location}
-              </h1>
-              <div className="text-4xl font-display font-bold text-primary mb-6">
-                {formatPrice(property.price, property.currency)}
-              </div>
-
-              {/* Key Features */}
-              <div className="flex flex-wrap gap-6 mb-8">
-                <div className="flex items-center gap-2">
-                  <Bed className="w-6 h-6 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bedrooms</p>
-                    <p className="text-lg font-semibold">{property.bedrooms}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Bath className="w-6 h-6 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bathrooms</p>
-                    <p className="text-lg font-semibold">{property.bathrooms}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Maximize2 className="w-6 h-6 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Built Area</p>
-                    <p className="text-lg font-semibold">{property.builtArea}m²</p>
-                  </div>
-                </div>
-                {property.plotArea && (
-                  <div className="flex items-center gap-2">
-                    <Maximize2 className="w-6 h-6 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Plot Area</p>
-                      <p className="text-lg font-semibold">{property.plotArea}m²</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="prose max-w-none">
-                <h2 className="text-2xl font-display font-bold mb-4">Description</h2>
-                <p className="text-muted-foreground leading-relaxed">{property.description}</p>
-              </div>
-
-              {/* Features */}
-              {property.features.length > 0 && (
-                <div className="mt-8">
-                  <h2 className="text-2xl font-display font-bold mb-4">Features</h2>
-                  <ul className="grid grid-cols-2 gap-3">
-                    {property.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-primary rounded-full" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Additional Info */}
-              <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {property.pool && (
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Pool</p>
-                    <p className="font-semibold">{property.pool}</p>
-                  </div>
-                )}
-                {property.garden && (
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Garden</p>
-                    <p className="font-semibold">{property.garden}</p>
-                  </div>
-                )}
-                {property.parking && (
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Parking</p>
-                    <p className="font-semibold">{property.parking}</p>
-                  </div>
-                )}
-                {property.orientation && (
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Orientation</p>
-                    <p className="font-semibold">{property.orientation}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Features Section */}
+            <PropertyFeatures
+              features={property.features}
+              pool={property.pool}
+              garden={property.garden}
+              parking={property.parking}
+              orientation={property.orientation}
+              views={property.views}
+            />
           </div>
 
-          {/* Sidebar - Contact */}
+          {/* Right Column - Contact */}
           <div className="lg:col-span-1">
-            <div className="bg-card border border-border rounded-lg p-6 sticky top-24">
-              <h3 className="text-xl font-display font-bold mb-4">Interested in this property?</h3>
-              <p className="text-muted-foreground mb-6">
-                Contact us for more information or to schedule a viewing.
-              </p>
-              <div className="space-y-3">
-                <Button className="w-full" size="lg">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email Inquiry
-                </Button>
-                <Button variant="outline" className="w-full" size="lg">
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call Us
-                </Button>
-              </div>
-              <div className="mt-6 pt-6 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-2">Reference</p>
-                <p className="font-mono text-sm">{property.reference}</p>
-              </div>
-            </div>
+            <PropertyContact
+              reference={property.reference}
+              price={formattedPrice}
+              propertyType={property.propertyType}
+            />
           </div>
         </div>
       </main>
+
+      {/* Spacer for mobile fixed CTA */}
+      <div className="h-24 lg:hidden" />
 
       <Footer />
     </div>

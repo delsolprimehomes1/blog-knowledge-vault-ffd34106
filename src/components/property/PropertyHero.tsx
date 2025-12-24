@@ -1,0 +1,266 @@
+import { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, Expand, X, Star } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface PropertyHeroProps {
+  images: string[];
+  title: string;
+  location: string;
+  price: string;
+  reference: string;
+}
+
+export const PropertyHero = ({ images, title, location, price, reference }: PropertyHeroProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  // Parallax effect on mouse move
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 20;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 20;
+    setMousePosition({ x, y });
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") goToPrevious();
+      if (e.key === "ArrowRight") goToNext();
+      if (e.key === "Escape") setIsLightboxOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  if (images.length === 0) {
+    return (
+      <div className="relative h-[70vh] bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground">No images available</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Hero Section */}
+      <div 
+        ref={containerRef}
+        className="relative h-[75vh] min-h-[600px] overflow-hidden"
+        onMouseMove={handleMouseMove}
+      >
+        {/* Background Image with Ken Burns */}
+        <motion.div 
+          className="absolute inset-0"
+          animate={{
+            x: mousePosition.x * -0.5,
+            y: mousePosition.y * -0.5,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+        >
+          <img
+            src={images[currentIndex]}
+            alt={`${title} - Image ${currentIndex + 1}`}
+            className="w-full h-full object-cover animate-ken-burns scale-110"
+          />
+        </motion.div>
+
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 image-overlay-luxury" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+
+        {/* Premium Badge */}
+        <div className="absolute top-6 right-6 z-20">
+          <div className="badge-luxury px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md">
+            <Star className="w-4 h-4 fill-primary text-primary" />
+            <span className="text-sm font-medium">Premium Listing</span>
+          </div>
+        </div>
+
+        {/* Navigation Arrows */}
+        <button
+          onClick={goToPrevious}
+          className="absolute left-6 top-1/2 -translate-y-1/2 z-20 w-14 h-14 rounded-full glass-luxury flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300 group"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="w-6 h-6 text-foreground group-hover:scale-110 transition-transform" />
+        </button>
+        <button
+          onClick={goToNext}
+          className="absolute right-6 top-1/2 -translate-y-1/2 z-20 w-14 h-14 rounded-full glass-luxury flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300 group"
+          aria-label="Next image"
+        >
+          <ChevronRight className="w-6 h-6 text-foreground group-hover:scale-110 transition-transform" />
+        </button>
+
+        {/* Expand Button */}
+        <button
+          onClick={() => setIsLightboxOpen(true)}
+          className="absolute top-6 left-6 z-20 w-12 h-12 rounded-full glass-luxury flex items-center justify-center hover:scale-110 transition-transform"
+          aria-label="View fullscreen"
+        >
+          <Expand className="w-5 h-5 text-foreground" />
+        </button>
+
+        {/* Bottom Content Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="max-w-4xl"
+          >
+            {/* Location Tag */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-luxury mb-4">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <span className="text-white/90 text-sm font-medium">{location}</span>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-4 leading-tight">
+              {title}
+            </h1>
+
+            {/* Price */}
+            <div className="flex items-end gap-4 mb-6">
+              <span className="text-3xl md:text-4xl font-display font-bold text-primary">
+                {price}
+              </span>
+              <span className="text-white/60 text-sm mb-1">Ref: {reference}</span>
+            </div>
+          </motion.div>
+
+          {/* Thumbnail Navigation */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+          >
+            {images.slice(0, 6).map((image, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`relative flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden transition-all duration-300 ${
+                  currentIndex === index 
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-black/50 scale-105" 
+                    : "opacity-60 hover:opacity-100"
+                }`}
+              >
+                <img
+                  src={image}
+                  alt={`Thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+            {images.length > 6 && (
+              <button
+                onClick={() => setIsLightboxOpen(true)}
+                className="flex-shrink-0 w-20 h-14 rounded-lg glass-luxury flex items-center justify-center text-white text-sm font-medium"
+              >
+                +{images.length - 6}
+              </button>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Image Counter */}
+        <div className="absolute bottom-8 right-8 z-20">
+          <div className="glass-luxury px-4 py-2 rounded-full">
+            <span className="text-foreground text-sm font-medium">
+              {currentIndex + 1} / {images.length}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {isLightboxOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+            onClick={() => setIsLightboxOpen(false)}
+          >
+            <button
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute top-6 right-6 z-50 w-12 h-12 rounded-full glass-luxury flex items-center justify-center hover:scale-110 transition-transform"
+              aria-label="Close lightbox"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+              className="absolute left-6 top-1/2 -translate-y-1/2 z-50 w-14 h-14 rounded-full glass-luxury flex items-center justify-center hover:scale-110 transition-transform"
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+
+            <motion.img
+              key={currentIndex}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              src={images[currentIndex]}
+              alt={`${title} - Image ${currentIndex + 1}`}
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNext(); }}
+              className="absolute right-6 top-1/2 -translate-y-1/2 z-50 w-14 h-14 rounded-full glass-luxury flex items-center justify-center hover:scale-110 transition-transform"
+              aria-label="Next image"
+            >
+              <ChevronRight className="w-6 h-6 text-white" />
+            </button>
+
+            {/* Lightbox Thumbnails */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-[90vw] pb-2">
+              {images.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => { e.stopPropagation(); setCurrentIndex(index); }}
+                  className={`flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden transition-all duration-300 ${
+                    currentIndex === index 
+                      ? "ring-2 ring-primary scale-110" 
+                      : "opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`Thumbnail ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Counter */}
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 glass-luxury px-4 py-2 rounded-full">
+              <span className="text-white text-sm font-medium">
+                {currentIndex + 1} / {images.length}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
