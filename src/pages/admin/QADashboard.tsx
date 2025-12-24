@@ -272,7 +272,7 @@ export default function QADashboard() {
                             <div className="space-y-1">
                               <p className="font-medium line-clamp-1">{item.source_article_headline}</p>
                               <a 
-                                href={`/en/blog/${item.source_article_slug}`}
+                                href={`/blog/${item.source_article_slug}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"

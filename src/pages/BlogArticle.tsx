@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Helmet } from "react-helmet";
@@ -34,7 +34,7 @@ const BlogArticle = () => {
   }, []);
 
   const { data: article, isLoading, error } = useQuery({
-    queryKey: ["article", slug],
+    queryKey: ["article", lang, slug],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("blog_articles")
@@ -50,6 +50,11 @@ const BlogArticle = () => {
     },
     enabled: !!slug,
   });
+
+  // Redirect if URL language doesn't match article's actual language
+  if (article && article.language !== lang) {
+    return <Navigate to={`/${article.language}/blog/${article.slug}`} replace />;
+  }
 
   const { data: author } = useQuery({
     queryKey: ["author", article?.author_id],
