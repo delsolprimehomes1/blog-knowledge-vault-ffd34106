@@ -42,18 +42,25 @@ export const LOCATIONS = [
 ];
 
 export const PROPERTY_TYPES = [
-  { label: 'Apartment', value: 'Apartment' },
+  { label: 'All Residential', value: '' },
   { label: 'Villa', value: 'Villa' },
+  { label: 'Detached Villa', value: 'Detached Villa' },
+  { label: 'Apartment', value: 'Apartment' },
   { label: 'Penthouse', value: 'Penthouse' },
   { label: 'Townhouse', value: 'Townhouse' },
+  { label: 'Semi-Detached', value: 'Semi-Detached' },
   { label: 'Duplex', value: 'Duplex' },
+  { label: 'Ground Floor', value: 'Ground Floor Apartment' },
+  { label: 'Middle Floor', value: 'Middle Floor Apartment' },
+  { label: 'Top Floor', value: 'Top Floor Apartment' },
 ];
 
 export const BUDGET_RANGES = [
-  { label: '€300k - €500k', value: '300000-500000' },
-  { label: '€500k - €800k', value: '500000-800000' },
-  { label: '€800k - €1.5M', value: '800000-1500000' },
-  { label: '€1.5M+', value: '1500000+' },
+  { label: '€400k - €600k', value: '400000-600000' },
+  { label: '€600k - €900k', value: '600000-900000' },
+  { label: '€900k - €1.5M', value: '900000-1500000' },
+  { label: '€1.5M - €3M', value: '1500000-3000000' },
+  { label: '€3M+', value: '3000000+' },
 ];
 
 // Featured Areas Data (Keeping main highlights)

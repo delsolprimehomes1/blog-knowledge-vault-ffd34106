@@ -22,7 +22,8 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
   const [location, setLocation] = useState(initialParams?.location || "");
   // SALES-ONLY: Transaction type is hard-locked to 'sale'
   const [propertyType, setPropertyType] = useState(initialParams?.propertyType || "");
-  const [priceMin, setPriceMin] = useState(initialParams?.priceMin?.toString() || "");
+  // Default minimum price €400k for luxury positioning
+  const [priceMin, setPriceMin] = useState(initialParams?.priceMin?.toString() || "400000");
   const [priceMax, setPriceMax] = useState(initialParams?.priceMax?.toString() || "");
   const [bedrooms, setBedrooms] = useState(initialParams?.bedrooms?.toString() || "");
   const [bathrooms, setBathrooms] = useState(initialParams?.bathrooms?.toString() || "");
@@ -43,11 +44,11 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
   const handleReset = () => {
     setLocation("");
     setPropertyType("");
-    setPriceMin("");
+    setPriceMin("400000"); // Reset to luxury default
     setPriceMax("");
     setBedrooms("");
     setBathrooms("");
-    onSearch({ transactionType: 'sale' }); // HARD-LOCKED: Sales only
+    onSearch({ transactionType: 'sale', priceMin: 400000 }); // HARD-LOCKED: Sales only + luxury min
   };
 
   return (

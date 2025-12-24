@@ -115,6 +115,43 @@ function extractPropertyType(prop: any): string {
   return prop.PropertyType || prop.propertyType || '';
 }
 
+// ============================================
+// LUXURY RESIDENTIAL FILTERING
+// ============================================
+
+/**
+ * Property types to EXCLUDE (non-residential / non-luxury)
+ */
+const EXCLUDED_PROPERTY_TYPES = [
+  'storage room', 'storage', 'trastero',
+  'commercial premises', 'commercial', 'local comercial', 'local',
+  'commercial plot', 'plot comercial',
+  'parking space', 'parking', 'aparcamiento',
+  'garage', 'garaje',
+  'land', 'plot', 'terreno', 'parcela',
+  'shop', 'tienda',
+  'office', 'oficina',
+  'warehouse', 'almacén', 'nave industrial', 'nave',
+  'industrial', 'hotel', 'hostel', 'motel',
+  'building', 'edificio'
+];
+
+/**
+ * Checks if property type should be excluded (non-residential)
+ */
+function isExcludedPropertyType(propertyType: string): boolean {
+  if (!propertyType) return false;
+  const normalizedType = propertyType.toLowerCase().trim();
+  return EXCLUDED_PROPERTY_TYPES.some(excluded => 
+    normalizedType.includes(excluded) || normalizedType === excluded
+  );
+}
+
+/**
+ * Default minimum price for luxury positioning (€400,000)
+ */
+const DEFAULT_MIN_PRICE = 400000;
+
 /**
  * Extracts main image URL from various response structures
  */
@@ -176,7 +213,7 @@ serve(async (req) => {
 
     const {
       location = '',
-      priceMin,
+      priceMin: requestedPriceMin,
       priceMax,
       propertyType = '',
       bedrooms,
@@ -185,6 +222,9 @@ serve(async (req) => {
       limit = 20,
       lang = 'en'
     } = body;
+    
+    // Apply default minimum price for luxury positioning if not specified
+    const priceMin = requestedPriceMin ?? DEFAULT_MIN_PRICE;
 
     // Call the proxy server
     const proxyUrl = 'http://188.34.164.137:3000/search';
@@ -268,7 +308,17 @@ serve(async (req) => {
         continue;
       }
       
-      // Passed all checks - this is a valid sale property
+      // Step 3: Filter out non-residential property types (luxury residential only)
+      const propertyTypeStr = extractPropertyType(prop);
+      if (isExcludedPropertyType(propertyTypeStr)) {
+        filteredOutItems.push({ reference, reason: `Non-residential type: "${propertyTypeStr}"` });
+        if (isDebugMode) {
+          console.log(`🚫 FILTERED OUT ${reference}: Non-residential type "${propertyTypeStr}"`);
+        }
+        continue;
+      }
+      
+      // Passed all checks - this is a valid luxury residential sale property
       saleProperties.push(prop);
     }
 

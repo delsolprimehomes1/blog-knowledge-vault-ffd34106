@@ -25,7 +25,7 @@ export const QuickSearch: React.FC = () => {
   const navigate = useNavigate();
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState('');
-  const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
+  // SALES-ONLY: No more rent option - hardcoded for luxury residential
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -40,13 +40,13 @@ export const QuickSearch: React.FC = () => {
       
       try {
         const params: Record<string, string | number> = {
-          transactionType, // Always send - defaults to 'sale'
+          transactionType: 'sale', // HARD-LOCKED: Sales only
         };
         if (location) params.location = location;
         if (budget) {
           const [min, max] = budget.split('-');
-          if (min) params.priceMin = parseInt(min) * 1000;
-          if (max && max !== '+') params.priceMax = parseInt(max) * 1000;
+          if (min) params.priceMin = parseInt(min);
+          if (max && max !== '+') params.priceMax = parseInt(max);
         }
 
         const { data, error } = await supabase.functions.invoke('search-properties', {
@@ -67,11 +67,11 @@ export const QuickSearch: React.FC = () => {
 
     const debounce = setTimeout(fetchProperties, 500);
     return () => clearTimeout(debounce);
-  }, [location, budget, transactionType]);
+  }, [location, budget]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    params.append("transactionType", transactionType); // Always include
+    params.append("transactionType", "sale"); // HARD-LOCKED: Sales only
     if (location) params.append("location", location);
     if (budget) {
       const [min, max] = budget.split("-");
@@ -120,24 +120,6 @@ export const QuickSearch: React.FC = () => {
             </div>
           </div>
 
-          {/* Transaction Type (Buy/Rent) */}
-          <div className="space-y-2 group">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-prime-gold transition-colors flex items-center gap-1">
-              <Home size={12} /> {t.quickSearch.labels.purpose}
-            </label>
-            <div className="relative">
-              <select 
-                className="w-full appearance-none bg-slate-50 hover:bg-white border border-slate-200 hover:border-prime-gold/50 rounded-xl px-5 py-4 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-prime-gold/20 focus:border-prime-gold transition-all duration-300 cursor-pointer shadow-sm"
-                value={transactionType}
-                onChange={(e) => setTransactionType(e.target.value as 'sale' | 'rent')}
-              >
-                <option value="sale">Buy / Investment</option>
-                <option value="rent">Rent</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
-            </div>
-          </div>
-
           {/* Budget */}
           <div className="space-y-2 group">
             <label className="text-xs font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-prime-gold transition-colors flex items-center gap-1">
@@ -150,10 +132,11 @@ export const QuickSearch: React.FC = () => {
                 onChange={(e) => setBudget(e.target.value)}
               >
                 <option value="">{t.quickSearch.placeholders.budget}</option>
-                <option value="300-500">{t.quickSearch.budgetRanges.range1}</option>
-                <option value="500-800">{t.quickSearch.budgetRanges.range2}</option>
-                <option value="800-1500">{t.quickSearch.budgetRanges.range3}</option>
-                <option value="1500+">{t.quickSearch.budgetRanges.range4}</option>
+                <option value="400000-600000">€400k - €600k</option>
+                <option value="600000-900000">€600k - €900k</option>
+                <option value="900000-1500000">€900k - €1.5M</option>
+                <option value="1500000-3000000">€1.5M - €3M</option>
+                <option value="3000000+">€3M+</option>
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
             </div>
