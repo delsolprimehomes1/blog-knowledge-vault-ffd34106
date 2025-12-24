@@ -91,10 +91,12 @@ export async function onRequest(context) {
     }
     
     const contentType = seoResponse.headers.get('content-type') || '';
+    console.log(`[SEO Middleware] Edge function returned content-type: ${contentType}`);
     
     // If edge function returned full HTML, serve it directly
     if (contentType.includes('text/html')) {
       const html = await seoResponse.text();
+      console.log(`[SEO Middleware] Serving edge function HTML (${html.length} bytes)`);
       
       return new Response(html, {
         status: 200,
@@ -105,7 +107,8 @@ export async function onRequest(context) {
           'X-Middleware-Version': '2025-12-24',
           'X-SEO-Source': 'edge-function',
           'X-SEO-Matched-Path': path,
-          'X-Content-Language': lang
+          'X-Content-Language': lang,
+          'X-Edge-Content-Type': contentType
         }
       });
     }
