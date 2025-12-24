@@ -133,7 +133,11 @@ const EXCLUDED_PROPERTY_TYPES = [
   'office', 'oficina',
   'warehouse', 'almacén', 'nave industrial', 'nave',
   'industrial', 'hotel', 'hostel', 'motel',
-  'building', 'edificio'
+  'building', 'edificio',
+  // Hospitality & Food Service exclusions
+  'restaurant', 'restaurante',
+  'bar', 'cafe', 'cafetería', 'cafeteria',
+  'pub', 'nightclub', 'discoteca'
 ];
 
 /**
