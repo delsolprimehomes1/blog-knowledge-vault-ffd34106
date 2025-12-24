@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { HomeHreflangTags } from '../components/HomeHreflangTags';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/home/Header';
 import { Footer } from '../components/home/Footer';
@@ -49,6 +50,8 @@ function Home() {
   }, []);
 
   return (
+    <>
+      <HomeHreflangTags />
     <div className="min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
       <Helmet>
         {/* Primary Meta Tags */}
@@ -82,9 +85,6 @@ function Home() {
         <meta name="twitter:image" content={`${BASE_URL}/assets/logo-new.png`} />
         <meta name="twitter:image:alt" content="Del Sol Prime Homes - Costa del Sol Real Estate" />
         
-        {/* Hreflang - x-default only since no translations */}
-        <link rel="alternate" hrefLang="en-GB" href={BASE_URL} />
-        <link rel="alternate" hrefLang="x-default" href={BASE_URL} />
         
         {/* JSON-LD Structured Data */}
         <script type="application/ld+json">
@@ -156,6 +156,7 @@ function Home() {
       <Footer />
 
     </div>
+    </>
   );
 }
 
