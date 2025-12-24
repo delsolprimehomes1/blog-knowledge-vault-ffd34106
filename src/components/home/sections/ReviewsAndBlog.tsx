@@ -118,7 +118,7 @@ export const BlogTeaser: React.FC = () => {
               <div className="p-8 flex-1 flex flex-col">
                 <h3 className="text-xl font-bold text-prime-900 mb-4 group-hover:text-prime-gold transition-colors cursor-pointer leading-tight">{article.headline}</h3>
                 <p className="text-slate-600 text-sm mb-6 flex-1 font-light leading-relaxed line-clamp-3" style={{ lineHeight: '1.75' }}>{article.meta_description}</p>
-                <Link to={`/blog/${article.slug}`} className="text-prime-900 font-bold text-sm hover:text-prime-gold transition-colors mt-auto flex items-center gap-2 group/link">
+                <Link to={`/en/blog/${article.slug}`} className="text-prime-900 font-bold text-sm hover:text-prime-gold transition-colors mt-auto flex items-center gap-2 group/link">
                   {t.blogTeaser.readArticle} <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
                 </Link>
               </div>

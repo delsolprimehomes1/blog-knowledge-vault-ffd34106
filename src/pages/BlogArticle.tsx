@@ -87,7 +87,7 @@ const BlogArticle = () => {
       if (!article?.related_article_ids || article.related_article_ids.length === 0) return [];
       const { data, error } = await supabase
         .from("blog_articles")
-        .select("id, slug, headline, category, featured_image_url")
+        .select("id, slug, headline, category, language, featured_image_url")
         .in("id", article.related_article_ids)
         .eq("status", "published");
       if (error) throw error;
@@ -102,7 +102,7 @@ const BlogArticle = () => {
       if (!article?.cta_article_ids || article.cta_article_ids.length === 0) return [];
       const { data, error } = await supabase
         .from("blog_articles")
-        .select("id, slug, headline, category, featured_image_url")
+        .select("id, slug, headline, category, language, featured_image_url")
         .in("id", article.cta_article_ids)
         .eq("status", "published");
       if (error) throw error;

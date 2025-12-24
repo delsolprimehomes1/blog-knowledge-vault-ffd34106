@@ -57,7 +57,7 @@ export const ArticleCard = ({ article, author }: ArticleCardProps) => {
       onMouseEnter={handleMouseEnter}
     >
       <CardContent className="p-0">
-        <Link to={`/blog/${article.slug}`} className="block">
+        <Link to={`/${article.language}/blog/${article.slug}`} className="block">
           <div className="relative overflow-hidden aspect-[16/10]">
             <OptimizedImage
               src={imageUrl}
