@@ -9,7 +9,6 @@ import malagaHero from '@/assets/brochures/malaga-hero.jpg';
 // Map of full language names
 export const LANGUAGE_NAMES: Record<Language, string> = {
   [Language.EN]: 'English',
-  [Language.ES]: 'Español',
   [Language.NL]: 'Nederlands',
   [Language.FR]: 'Français',
   [Language.DE]: 'Deutsch',
