@@ -197,8 +197,8 @@ export default function SystemCheck() {
       const hasHreflang = (translations && Object.keys(translations).length > 0) || !!article.cluster_id;
       if (!hasHreflang) issues.push('No hreflang/translation links');
 
-      // Check hasCanonical - must have correct www format
-      const correctCanonicalFormat = `https://www.delsolprimehomes.com/blog/${article.slug}`;
+      // Check hasCanonical - must have correct www format with language folder
+      const correctCanonicalFormat = `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}`;
       const hasCanonical = article.canonical_url === correctCanonicalFormat;
       if (!hasCanonical) {
         if (!article.canonical_url) {
@@ -318,7 +318,7 @@ export default function SystemCheck() {
     try {
       const updates = articlesNeedingFix.map(article => ({
         id: article.id,
-        canonical_url: `https://www.delsolprimehomes.com/blog/${article.slug}`
+        canonical_url: `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}`
       }));
 
       for (const update of updates) {

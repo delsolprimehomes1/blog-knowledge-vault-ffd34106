@@ -17,8 +17,8 @@ export const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'n
 export const BASE_URL = typeof window !== 'undefined'
   ? (window.location.hostname === 'localhost'
     ? window.location.origin
-    : 'https://delsolprimehomes.com')
-  : 'https://delsolprimehomes.com';
+    : 'https://www.delsolprimehomes.com')
+  : 'https://www.delsolprimehomes.com';
 
 // =============================================================================
 // TYPES

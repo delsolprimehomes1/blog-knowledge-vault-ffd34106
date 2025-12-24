@@ -208,7 +208,7 @@ const BlogArticle = () => {
   // Find the primary article in the cluster (or fallback to self)
   const primaryArticle = clusterSiblings?.find(a => a.is_primary);
   const canonicalUrl = primaryArticle 
-    ? `${baseUrl}/blog/${primaryArticle.slug}`
+    ? `${baseUrl}/${primaryArticle.language || 'en'}/blog/${primaryArticle.slug}`
     : currentUrl;
 
   // Language to hreflang mapping (all 10 supported languages)
@@ -248,7 +248,7 @@ const BlogArticle = () => {
           hreflangTags.push({
             lang: sibling.language,
             hrefLang: langCode,
-            href: `${baseUrl}/blog/${sibling.slug}`
+            href: `${baseUrl}/${sibling.language}/blog/${sibling.slug}`
           });
         }
       });
@@ -256,7 +256,7 @@ const BlogArticle = () => {
     
     // 3. x-default points to cluster primary (or self if standalone)
     const xDefaultUrl = primaryArticle 
-      ? `${baseUrl}/blog/${primaryArticle.slug}`
+      ? `${baseUrl}/${primaryArticle.language || 'en'}/blog/${primaryArticle.slug}`
       : currentUrl;
     hreflangTags.push({
       lang: 'x-default',

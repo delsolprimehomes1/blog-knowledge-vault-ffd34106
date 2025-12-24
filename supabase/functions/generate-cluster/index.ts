@@ -997,7 +997,7 @@ Return ONLY valid JSON with text in ${seoLanguageName}:
       
       article.meta_title = seoMeta.title;
       article.meta_description = seoMeta.description;
-      article.canonical_url = null;
+      article.canonical_url = `https://www.delsolprimehomes.com/${currentLanguage}/blog/${article.slug}`;
 
       // 5. SPEAKABLE ANSWER (40-60 words) - LANGUAGE-AWARE
       const speakableLanguageNames: Record<string, string> = {
