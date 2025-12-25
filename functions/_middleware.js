@@ -49,6 +49,16 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
   
+  // Skip middleware processing for XML files (sitemaps) - serve them raw
+  if (path.endsWith('.xml')) {
+    return next();
+  }
+  
+  // Skip middleware processing for static assets
+  if (path.match(/\.(txt|json|ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2)$/)) {
+    return next();
+  }
+  
   // Check if this is an SEO-relevant path
   const seoMatch = matchSEOPath(path);
   
