@@ -184,18 +184,6 @@ export default function QAPage() {
         <meta name="author" content={author?.name || "Del Sol Prime Homes"} />
         <meta name="keywords" content={`${qaPage.category || 'Costa del Sol'}, Spain property, real estate Q&A, ${qaPage.question_main.split(' ').slice(0, 5).join(' ')}`} />
         
-        {/* Hreflang for translations */}
-        <link rel="alternate" hrefLang={langCode} href={`${BASE_URL}/${lang}/qa/${qaPage.slug}`} />
-        {siblings.map((sibling: any) => (
-          <link
-            key={sibling.language}
-            rel="alternate"
-            hrefLang={LANGUAGE_CODE_MAP[sibling.language] || sibling.language}
-            href={`${BASE_URL}/${sibling.language}/qa/${sibling.slug}`}
-          />
-        ))}
-        <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />
-
         {/* Open Graph */}
         <meta property="og:title" content={qaPage.meta_title} />
         <meta property="og:description" content={qaPage.meta_description} />
