@@ -211,7 +211,7 @@ function generateLanguageBlogSitemap(
     <loc>${currentUrl}</loc>
     <lastmod>${lastmodFormatted}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>${hreflangLinks}
+    <priority>1.0</priority>${hreflangLinks}
   </url>`;
   }).join('\n');
 
@@ -289,7 +289,7 @@ function generateLanguageQASitemap(
     <loc>${currentUrl}</loc>
     <lastmod>${lastmodFormatted}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.75</priority>${hreflangLinks}
+    <priority>0.7</priority>${hreflangLinks}
   </url>`;
   }).join('\n');
 
@@ -368,7 +368,7 @@ function generateLanguageLocationsSitemap(
     <loc>${currentUrl}</loc>
     <lastmod>${lastmodFormatted}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>${hreflangLinks}
+    <priority>0.9</priority>${hreflangLinks}
   </url>`;
   }).join('\n');
 
@@ -447,7 +447,7 @@ function generateLanguageComparisonSitemap(
     <loc>${currentUrl}</loc>
     <lastmod>${lastmodFormatted}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>${hreflangLinks}
+    <priority>0.9</priority>${hreflangLinks}
   </url>`;
   }).join('\n');
 

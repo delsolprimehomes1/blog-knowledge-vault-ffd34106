@@ -116,3 +116,9 @@ verify_jwt = false
 
 [functions.serve-seo-page]
 verify_jwt = false
+
+[functions.validate-cluster-health]
+verify_jwt = false
+
+[functions.regenerate-sitemap]
+verify_jwt = false
