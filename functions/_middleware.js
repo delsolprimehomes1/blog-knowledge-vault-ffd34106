@@ -62,10 +62,39 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
   
-  // PRIORITY 0: Skip middleware entirely for admin and auth routes
-  // These are SPA routes that should never be modified by SEO middleware
-  if (path === '/admin' || path.startsWith('/admin/') || 
-      path === '/auth' || path.startsWith('/auth/')) {
+  // PRIORITY 0: Serve SPA shell directly for admin, auth, and login routes
+  // These are SPA routes that should always return index.html, never redirect or modify
+  const isSPAOnlyRoute = 
+    path === '/admin' || path.startsWith('/admin/') || 
+    path === '/auth' || path.startsWith('/auth/') ||
+    path === '/login' || path.startsWith('/login/');
+  
+  if (isSPAOnlyRoute) {
+    try {
+      // Explicitly fetch and serve index.html from Cloudflare Pages assets
+      const indexRequest = new Request(new URL('/index.html', request.url).toString(), {
+        method: 'GET',
+        headers: request.headers
+      });
+      const assetResponse = await env.ASSETS.fetch(indexRequest);
+      
+      if (assetResponse.ok) {
+        const html = await assetResponse.text();
+        return new Response(html, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'X-Middleware-SPA-Route': path,
+            'X-Middleware-Active': 'true',
+            'X-Middleware-Version': '2025-12-25'
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`[Middleware] Error serving SPA shell for ${path}:`, error);
+    }
+    // Fallback to next() if asset fetch fails
     return next();
   }
   

@@ -1,12 +1,8 @@
 {
   "version": 1,
-  "description": "Cloudflare Pages routing - serve static files directly, exclude admin/auth from middleware",
+  "description": "Cloudflare Pages routing - serve static files directly, run middleware for all dynamic routes",
   "include": ["/*"],
   "exclude": [
-    "/admin",
-    "/admin/*",
-    "/auth",
-    "/auth/*",
     "/assets/*",
     "/sitemaps/*",
     "/sitemap.xml",

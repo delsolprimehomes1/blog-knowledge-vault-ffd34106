@@ -125,6 +125,7 @@ const App = () => (
               {/* Eager-loaded critical pages */}
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/login" element={<Navigate to="/auth" replace />} />
               
               {/* ========================================== */}
               {/* PROTECTED ADMIN ROUTES (MUST BE BEFORE /:lang) */}
