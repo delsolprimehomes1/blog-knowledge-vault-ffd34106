@@ -183,22 +183,25 @@ export function buildContentUrl(content: HreflangContent, lang: SupportedLanguag
 // =============================================================================
 
 /**
- * Generates exactly 11 hreflang tags for a content page.
- * Creates tags for all 10 supported languages plus x-default.
- * For missing language versions, falls back to the English version.
- * x-default always points to the English version.
+ * Generates hreflang tags ONLY for existing language versions plus x-default.
+ * Does NOT output tags for languages that don't have actual content.
+ * x-default points to English if available, otherwise to source_language.
+ * 
+ * This approach prevents invalid hreflang signals where tags point to 
+ * non-existent URLs, which can cause indexing issues.
  * 
  * @param currentContent - The content item being displayed
  * @param siblings - Array of all language versions of this content
- * @returns Array of exactly 11 HreflangTag objects
+ * @returns Array of HreflangTag objects (only for existing languages + x-default)
  * 
  * @example
+ * // If content exists in en, de, fr only:
  * const tags = generateHreflangTags(article, siblings);
  * // Returns:
  * // [
  * //   { hreflang: 'en', href: 'https://delsolprimehomes.com/en/blog/...' },
- * //   { hreflang: 'es', href: 'https://delsolprimehomes.com/es/blog/...' },
- * //   ... (8 more languages)
+ * //   { hreflang: 'de', href: 'https://delsolprimehomes.com/de/blog/...' },
+ * //   { hreflang: 'fr', href: 'https://delsolprimehomes.com/fr/blog/...' },
  * //   { hreflang: 'x-default', href: 'https://delsolprimehomes.com/en/blog/...' }
  * // ]
  */
@@ -209,7 +212,7 @@ export function generateHreflangTags(
   // Combine current content with siblings for complete set
   const allVersions = [currentContent, ...siblings.filter(s => s.id !== currentContent.id)];
   
-  // Create a map of language -> content for quick lookup
+  // Create a map of language -> content for quick lookup (only published content)
   const languageMap = new Map<SupportedLanguage, HreflangContent>();
   for (const content of allVersions) {
     if (content.status === 'published' && isSupportedLanguage(content.language)) {
@@ -217,33 +220,29 @@ export function generateHreflangTags(
     }
   }
   
-  // Find English version for fallback (or use current if English doesn't exist)
-  const englishVersion = languageMap.get('en') || currentContent;
-  const englishUrl = buildContentUrl(englishVersion, 'en');
+  // Determine x-default version using fallback hierarchy:
+  // 1. English version (preferred)
+  // 2. Source language version (original content language)
+  // 3. Current content (last resort)
+  const englishVersion = languageMap.get('en');
+  const sourceLanguageVersion = languageMap.get(currentContent.source_language);
+  const defaultVersion = englishVersion || sourceLanguageVersion || currentContent;
+  const defaultLang = englishVersion ? 'en' : (sourceLanguageVersion ? currentContent.source_language : currentContent.language);
   
-  // Generate tags for all 10 supported languages
-  const tags: HreflangTag[] = SUPPORTED_LANGUAGES.map((lang) => {
-    const version = languageMap.get(lang);
-    
-    if (version) {
-      // Use actual URL for existing language version
-      return {
-        hreflang: lang,
-        href: buildContentUrl(version, lang),
-      };
-    } else {
-      // Fallback to English version for missing languages
-      return {
-        hreflang: lang,
-        href: englishUrl,
-      };
-    }
-  });
+  // Generate tags ONLY for languages that have actual content
+  const tags: HreflangTag[] = [];
   
-  // Add x-default pointing to English version
+  for (const [lang, version] of languageMap.entries()) {
+    tags.push({
+      hreflang: lang,
+      href: buildContentUrl(version, lang),
+    });
+  }
+  
+  // Add x-default pointing to English or source language
   tags.push({
     hreflang: 'x-default',
-    href: englishUrl,
+    href: buildContentUrl(defaultVersion, defaultLang),
   });
   
   return tags;
