@@ -200,19 +200,19 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
                 {bedrooms && (
                   <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
                     <Bed className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
-                    <span className="text-white text-xs md:text-sm font-medium">{bedrooms} Beds</span>
+                    <span className="text-primary text-xs md:text-sm font-medium">{bedrooms} Beds</span>
                   </div>
                 )}
                 {bathrooms && (
                   <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
                     <Bath className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
-                    <span className="text-white text-xs md:text-sm font-medium">{bathrooms} Baths</span>
+                    <span className="text-primary text-xs md:text-sm font-medium">{bathrooms} Baths</span>
                   </div>
                 )}
                 {builtArea && (
                   <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
                     <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
-                    <span className="text-white text-xs md:text-sm font-medium">{builtArea}m²</span>
+                    <span className="text-primary text-xs md:text-sm font-medium">{builtArea}m²</span>
                   </div>
                 )}
               </motion.div>
