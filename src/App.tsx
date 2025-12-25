@@ -85,6 +85,7 @@ const Phase1LinkingTool = lazy(() => import("./pages/admin/Phase1LinkingTool"));
 const BOFUPageGenerator = lazy(() => import("./pages/admin/BOFUPageGenerator"));
 const NavbarImageGenerator = lazy(() => import("./pages/admin/NavbarImageGenerator"));
 const SEOMonitor = lazy(() => import("./pages/admin/SEOMonitor"));
+const SystemHealth = lazy(() => import("./pages/admin/SystemHealth"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -217,6 +218,7 @@ const App = () => (
               <Route path="/admin/bofu-generator" element={<ProtectedRoute><BOFUPageGenerator /></ProtectedRoute>} />
               <Route path="/admin/navbar-images" element={<ProtectedRoute><NavbarImageGenerator /></ProtectedRoute>} />
               <Route path="/admin/seo-monitor" element={<ProtectedRoute><SEOMonitor /></ProtectedRoute>} />
+              <Route path="/admin/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
