@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale, Map, Globe2 } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale, Map, Globe2, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/logo.png";
@@ -26,6 +26,7 @@ const navigation = [
   { name: "SEO Monitor", href: "/admin/seo-monitor", icon: Globe2 },
   { name: "Brochures", href: "/admin/brochures", icon: Map },
   { name: "System Check", href: "/admin/system-check", icon: CheckCircle },
+  { name: "System Health", href: "/admin/system-health", icon: HeartPulse },
   { name: "Export", href: "/admin/export", icon: Download },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
