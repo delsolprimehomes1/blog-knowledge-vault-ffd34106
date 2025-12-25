@@ -208,6 +208,7 @@ const BlogIndex = () => {
   return (
     <>
       <Helmet>
+        <html lang={lang} />
         <title>Blog | Del Sol Prime Homes</title>
         <meta name="description" content="Explore our latest articles about Costa del Sol real estate, property guides, and market insights." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />

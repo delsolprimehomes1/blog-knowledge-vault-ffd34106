@@ -85,6 +85,7 @@ export default function ComparisonIndex() {
   return (
     <>
       <Helmet>
+        <html lang={lang} />
         <title>Property Comparisons | Del Sol Prime Homes</title>
         <meta name="description" content="Compare property options in Costa del Sol. Expert comparisons to help you make informed real estate decisions." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />

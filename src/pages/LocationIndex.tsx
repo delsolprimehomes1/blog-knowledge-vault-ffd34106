@@ -147,6 +147,7 @@ const LocationIndex = () => {
   return (
     <>
       <Helmet>
+        <html lang={lang} />
         <title>{cityName} Property & Lifestyle Guide | Del Sol Prime Homes</title>
         <meta name="description" content={`Comprehensive guides about ${cityName}, Costa del Sol. Property buying, best areas, cost of living, and more.`} />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />

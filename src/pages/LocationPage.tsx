@@ -135,6 +135,7 @@ const LocationPage = () => {
       />
       
       <Helmet>
+        <html lang={page.language} />
         <title>{page.meta_title}</title>
         <meta name="description" content={page.meta_description} />
         <link rel="canonical" href={currentUrl} />
