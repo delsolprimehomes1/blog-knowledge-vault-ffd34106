@@ -171,6 +171,7 @@ export default function QAPage() {
         language={qaPage.language}
         slug={qaPage.slug}
         canonical_url={qaPage.canonical_url || null}
+        source_language={(qaPage as any).source_language || 'en'}
       />
       
       <Helmet>

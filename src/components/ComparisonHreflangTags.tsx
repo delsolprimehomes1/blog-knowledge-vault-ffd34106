@@ -23,6 +23,8 @@ interface ComparisonHreflangTagsProps {
   slug: string;
   /** Full canonical URL for this comparison page */
   canonical_url: string | null;
+  /** Source language of the original content (defaults to 'en') */
+  source_language?: string;
 }
 
 /**
@@ -36,6 +38,7 @@ export const ComparisonHreflangTags = ({
   language,
   slug,
   canonical_url,
+  source_language,
 }: ComparisonHreflangTagsProps) => {
   const [siblings, setSiblings] = useState<HreflangContent[]>([]);
 
@@ -64,16 +67,17 @@ export const ComparisonHreflangTags = ({
   }, [hreflang_group_id]);
 
   // Create current comparison page as HreflangContent
+  const validSourceLang = (isSupportedLanguage(source_language || 'en') ? (source_language || 'en') : 'en') as SupportedLanguage;
   const currentPage: HreflangContent = useMemo(() => ({
     id,
     hreflang_group_id: hreflang_group_id || id,
     language: (isSupportedLanguage(language) ? language : 'en') as SupportedLanguage,
     slug,
     canonical_url: canonical_url || '',
-    source_language: 'en' as SupportedLanguage,
+    source_language: validSourceLang,
     content_type: 'comparison',
     status: 'published' as const,
-  }), [id, hreflang_group_id, language, slug, canonical_url]);
+  }), [id, hreflang_group_id, language, slug, canonical_url, validSourceLang]);
 
   // Generate hreflang tags
   const hreflangTags = useMemo(

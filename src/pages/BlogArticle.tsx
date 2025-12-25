@@ -295,6 +295,7 @@ const BlogArticle = () => {
           slug={article.slug}
           canonical_url={article.canonical_url || null}
           content_type={article.content_type || null}
+          source_language={article.source_language || 'en'}
         />
       )}
       

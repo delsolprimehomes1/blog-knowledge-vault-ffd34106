@@ -164,6 +164,7 @@ export default function ComparisonPage() {
         language={comparison.language || 'en'}
         slug={comparison.slug}
         canonical_url={(comparison as any).canonical_url || null}
+        source_language={(comparison as any).source_language || 'en'}
       />
       
       <Helmet>

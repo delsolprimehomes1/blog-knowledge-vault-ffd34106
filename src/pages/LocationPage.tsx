@@ -132,6 +132,7 @@ const LocationPage = () => {
         canonical_url={(page as any).canonical_url || null}
         city_slug={page.city_slug}
         topic_slug={page.topic_slug}
+        source_language={(page as any).source_language || 'en'}
       />
       
       <Helmet>

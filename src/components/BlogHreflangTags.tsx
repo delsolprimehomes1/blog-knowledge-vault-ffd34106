@@ -26,6 +26,8 @@ interface BlogHreflangTagsProps {
   canonical_url: string | null;
   /** Type of content (blog_tofu, blog_mofu, blog_bofu, etc.) */
   content_type: string | null;
+  /** Source language of the original content (defaults to 'en') */
+  source_language?: string;
 }
 
 /**
@@ -50,6 +52,7 @@ export const BlogHreflangTags = ({
   slug,
   canonical_url,
   content_type,
+  source_language,
 }: BlogHreflangTagsProps) => {
   const [siblings, setSiblings] = useState<HreflangContent[]>([]);
 
@@ -83,16 +86,17 @@ export const BlogHreflangTags = ({
   }, [hreflang_group_id, content_type]);
 
   // Create current article as HreflangContent
+  const validSourceLang = (isSupportedLanguage(source_language || 'en') ? (source_language || 'en') : 'en') as SupportedLanguage;
   const currentArticle: HreflangContent = useMemo(() => ({
     id,
     hreflang_group_id: hreflang_group_id || id, // Use id as fallback group
     language: (isSupportedLanguage(language) ? language : 'en') as SupportedLanguage,
     slug,
     canonical_url: canonical_url || '',
-    source_language: 'en' as SupportedLanguage,
+    source_language: validSourceLang,
     content_type: (content_type || 'blog_tofu') as ContentType,
     status: 'published' as const,
-  }), [id, hreflang_group_id, language, slug, canonical_url, content_type]);
+  }), [id, hreflang_group_id, language, slug, canonical_url, content_type, validSourceLang]);
 
   // Generate hreflang tags
   const hreflangTags = useMemo(

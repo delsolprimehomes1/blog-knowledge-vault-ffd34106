@@ -27,6 +27,8 @@ interface LocationHreflangTagsProps {
   city_slug?: string;
   /** Topic slug for URL building */
   topic_slug?: string;
+  /** Source language of the original content (defaults to 'en') */
+  source_language?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export const LocationHreflangTags = ({
   canonical_url,
   city_slug,
   topic_slug,
+  source_language,
 }: LocationHreflangTagsProps) => {
   const [siblings, setSiblings] = useState<HreflangContent[]>([]);
 
@@ -70,18 +73,19 @@ export const LocationHreflangTags = ({
   }, [hreflang_group_id]);
 
   // Create current location page as HreflangContent
+  const validSourceLang = (isSupportedLanguage(source_language || 'en') ? (source_language || 'en') : 'en') as SupportedLanguage;
   const currentPage: HreflangContent = useMemo(() => ({
     id,
     hreflang_group_id: hreflang_group_id || id,
     language: (isSupportedLanguage(language) ? language : 'en') as SupportedLanguage,
     slug,
     canonical_url: canonical_url || '',
-    source_language: 'en' as SupportedLanguage,
+    source_language: validSourceLang,
     content_type: 'location',
     status: 'published' as const,
     city_slug,
     topic_slug,
-  }), [id, hreflang_group_id, language, slug, canonical_url, city_slug, topic_slug]);
+  }), [id, hreflang_group_id, language, slug, canonical_url, city_slug, topic_slug, validSourceLang]);
 
   // Generate hreflang tags
   const hreflangTags = useMemo(
