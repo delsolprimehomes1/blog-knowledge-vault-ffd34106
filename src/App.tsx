@@ -127,6 +127,48 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               
               {/* ========================================== */}
+              {/* PROTECTED ADMIN ROUTES (MUST BE BEFORE /:lang) */}
+              {/* ========================================== */}
+              <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/admin/articles" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
+              <Route path="/admin/articles/new" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />
+              <Route path="/admin/articles/:id/edit" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />
+              <Route path="/admin/authors" element={<ProtectedRoute><Authors /></ProtectedRoute>} />
+              <Route path="/admin/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/admin/export" element={<ProtectedRoute><Export /></ProtectedRoute>} />
+              <Route path="/admin/ai-tools" element={<ProtectedRoute><AITools /></ProtectedRoute>} />
+              <Route path="/admin/cluster-generator" element={<ProtectedRoute><ClusterGenerator /></ProtectedRoute>} />
+              <Route path="/admin/system-check" element={<ProtectedRoute><SystemCheck /></ProtectedRoute>} />
+              <Route path="/admin/tools/batch-image-generation" element={<ProtectedRoute><BatchImageGeneration /></ProtectedRoute>} />
+              <Route path="/admin/tools/bulk-speakable-regeneration" element={<ProtectedRoute><BulkSpeakableRegeneration /></ProtectedRoute>} />
+              <Route path="/admin/tools/bulk-article-linker" element={<ProtectedRoute><BulkArticleLinker /></ProtectedRoute>} />
+              <Route path="/admin/citation-health" element={<ProtectedRoute><CitationHealth /></ProtectedRoute>} />
+              <Route path="/admin/docs/aeo-sge-guide" element={<ProtectedRoute><AEOGuide /></ProtectedRoute>} />
+              <Route path="/admin/approved-domains" element={<ProtectedRoute><ApprovedDomains /></ProtectedRoute>} />
+              <Route path="/admin/bulk-internal-links" element={<ProtectedRoute><BulkInternalLinks /></ProtectedRoute>} />
+              <Route path="/admin/brochures" element={<ProtectedRoute><BrochureManager /></ProtectedRoute>} />
+              <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
+              <Route path="/admin/qa-dashboard" element={<ProtectedRoute><QADashboard /></ProtectedRoute>} />
+              <Route path="/admin/comparison-generator" element={<ProtectedRoute><ComparisonGenerator /></ProtectedRoute>} />
+              <Route path="/admin/location-generator" element={<ProtectedRoute><LocationGenerator /></ProtectedRoute>} />
+              <Route path="/admin/location-pages" element={<ProtectedRoute><LocationPages /></ProtectedRoute>} />
+              <Route path="/admin/phase1-linking" element={<ProtectedRoute><Phase1LinkingTool /></ProtectedRoute>} />
+              <Route path="/admin/bofu-generator" element={<ProtectedRoute><BOFUPageGenerator /></ProtectedRoute>} />
+              <Route path="/admin/navbar-images" element={<ProtectedRoute><NavbarImageGenerator /></ProtectedRoute>} />
+              <Route path="/admin/seo-monitor" element={<ProtectedRoute><SEOMonitor /></ProtectedRoute>} />
+              <Route path="/admin/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
+              
+              {/* ========================================== */}
+              {/* OTHER PUBLIC ROUTES (no language prefix)  */}
+              {/* MUST BE BEFORE /:lang dynamic route       */}
+              {/* ========================================== */}
+              <Route path="/sitemap" element={<Sitemap />} />
+              <Route path="/glossary" element={<Glossary />} />
+              <Route path="/brochure/:citySlug" element={<CityBrochure />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/buyers-guide" element={<BuyersGuide />} />
+              
+              {/* ========================================== */}
               {/* LANGUAGE-PREFIXED ROUTES (Phase 2)        */}
               {/* ========================================== */}
               
@@ -178,47 +220,6 @@ const App = () => (
               {/* Property legacy redirects */}
               <Route path="/property-finder" element={<Navigate to="/en/properties" replace />} />
               <Route path="/property/:reference" element={<PropertyRedirect />} />
-              
-              {/* ========================================== */}
-              {/* OTHER PUBLIC ROUTES (no language prefix)  */}
-              {/* ========================================== */}
-              <Route path="/sitemap" element={<Sitemap />} />
-              <Route path="/glossary" element={<Glossary />} />
-              <Route path="/brochure/:citySlug" element={<CityBrochure />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/buyers-guide" element={<BuyersGuide />} />
-              
-              {/* ========================================== */}
-              {/* PROTECTED ADMIN ROUTES                    */}
-              {/* ========================================== */}
-              <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/admin/articles" element={<ProtectedRoute><Articles /></ProtectedRoute>} />
-              <Route path="/admin/articles/new" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />
-              <Route path="/admin/articles/:id/edit" element={<ProtectedRoute><ArticleEditor /></ProtectedRoute>} />
-              <Route path="/admin/authors" element={<ProtectedRoute><Authors /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/admin/export" element={<ProtectedRoute><Export /></ProtectedRoute>} />
-              <Route path="/admin/ai-tools" element={<ProtectedRoute><AITools /></ProtectedRoute>} />
-              <Route path="/admin/cluster-generator" element={<ProtectedRoute><ClusterGenerator /></ProtectedRoute>} />
-              <Route path="/admin/system-check" element={<ProtectedRoute><SystemCheck /></ProtectedRoute>} />
-              <Route path="/admin/tools/batch-image-generation" element={<ProtectedRoute><BatchImageGeneration /></ProtectedRoute>} />
-              <Route path="/admin/tools/bulk-speakable-regeneration" element={<ProtectedRoute><BulkSpeakableRegeneration /></ProtectedRoute>} />
-              <Route path="/admin/tools/bulk-article-linker" element={<ProtectedRoute><BulkArticleLinker /></ProtectedRoute>} />
-              <Route path="/admin/citation-health" element={<ProtectedRoute><CitationHealth /></ProtectedRoute>} />
-              <Route path="/admin/docs/aeo-sge-guide" element={<ProtectedRoute><AEOGuide /></ProtectedRoute>} />
-              <Route path="/admin/approved-domains" element={<ProtectedRoute><ApprovedDomains /></ProtectedRoute>} />
-              <Route path="/admin/bulk-internal-links" element={<ProtectedRoute><BulkInternalLinks /></ProtectedRoute>} />
-              <Route path="/admin/brochures" element={<ProtectedRoute><BrochureManager /></ProtectedRoute>} />
-              <Route path="/admin/qa-generator" element={<ProtectedRoute><QAGenerator /></ProtectedRoute>} />
-              <Route path="/admin/qa-dashboard" element={<ProtectedRoute><QADashboard /></ProtectedRoute>} />
-              <Route path="/admin/comparison-generator" element={<ProtectedRoute><ComparisonGenerator /></ProtectedRoute>} />
-              <Route path="/admin/location-generator" element={<ProtectedRoute><LocationGenerator /></ProtectedRoute>} />
-              <Route path="/admin/location-pages" element={<ProtectedRoute><LocationPages /></ProtectedRoute>} />
-              <Route path="/admin/phase1-linking" element={<ProtectedRoute><Phase1LinkingTool /></ProtectedRoute>} />
-              <Route path="/admin/bofu-generator" element={<ProtectedRoute><BOFUPageGenerator /></ProtectedRoute>} />
-              <Route path="/admin/navbar-images" element={<ProtectedRoute><NavbarImageGenerator /></ProtectedRoute>} />
-              <Route path="/admin/seo-monitor" element={<ProtectedRoute><SEOMonitor /></ProtectedRoute>} />
-              <Route path="/admin/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
