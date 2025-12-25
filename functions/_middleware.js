@@ -24,6 +24,19 @@ const CONFIG = {
   DEBUG: true  // Enabled for testing - set to false in production
 };
 
+// Static files that should be served directly with correct content types
+const STATIC_FILES = {
+  '/sitemap.xml': 'application/xml; charset=utf-8',
+  '/sitemap-index.xml': 'application/xml; charset=utf-8',
+  '/ai-sitemap.xml': 'application/xml; charset=utf-8',
+  '/robots.txt': 'text/plain; charset=utf-8',
+  '/llm.txt': 'text/plain; charset=utf-8',
+  '/ai.txt': 'text/plain; charset=utf-8',
+  '/facts.json': 'application/json; charset=utf-8',
+  '/glossary.json': 'application/json; charset=utf-8',
+  '/pages.json': 'application/json; charset=utf-8'
+};
+
 /**
  * Check if the path matches an SEO-relevant content page
  */
@@ -45,17 +58,56 @@ function matchSEOPath(path) {
  * Main middleware handler
  */
 export async function onRequest(context) {
-  const { request, next } = context;
+  const { request, next, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
   
-  // Skip middleware processing for XML files (sitemaps) - serve them raw
-  if (path.endsWith('.xml')) {
-    return next();
+  // PRIORITY 1: Serve known static files directly with correct content types
+  const staticContentType = STATIC_FILES[path];
+  if (staticContentType) {
+    try {
+      // Use env.ASSETS.fetch to get the static file from Cloudflare Pages assets
+      const assetResponse = await env.ASSETS.fetch(request);
+      
+      if (assetResponse.ok) {
+        const body = await assetResponse.text();
+        return new Response(body, {
+          status: 200,
+          headers: {
+            'Content-Type': staticContentType,
+            'Cache-Control': 'public, max-age=3600',
+            'X-Served-By': 'middleware-static',
+            'X-Content-Type-Override': staticContentType
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`[Middleware] Error serving static file ${path}:`, error);
+    }
   }
   
-  // Skip middleware processing for static assets
-  if (path.match(/\.(txt|json|ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2)$/)) {
+  // PRIORITY 2: Serve XML files in /sitemaps/ directory
+  if (path.startsWith('/sitemaps/') && path.endsWith('.xml')) {
+    try {
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.ok) {
+        const body = await assetResponse.text();
+        return new Response(body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600',
+            'X-Served-By': 'middleware-sitemap'
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`[Middleware] Error serving sitemap ${path}:`, error);
+    }
+  }
+  
+  // Skip middleware processing for other static assets
+  if (path.match(/\.(xml|txt|json|ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|map)$/)) {
     return next();
   }
   

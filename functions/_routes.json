@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "Cloudflare Pages Functions routing - exclude static files from middleware",
+  "include": ["/*"],
+  "exclude": [
+    "/sitemap.xml",
+    "/sitemap-index.xml",
+    "/ai-sitemap.xml",
+    "/robots.txt",
+    "/llm.txt",
+    "/ai.txt",
+    "/facts.json",
+    "/glossary.json",
+    "/pages.json",
+    "/sitemaps/*",
+    "/assets/*",
+    "/*.png",
+    "/*.ico",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.webp",
+    "/*.svg",
+    "/*.css",
+    "/*.js",
+    "/*.map",
+    "/*.woff",
+    "/*.woff2",
+    "/.well-known/*"
+  ]
+}
