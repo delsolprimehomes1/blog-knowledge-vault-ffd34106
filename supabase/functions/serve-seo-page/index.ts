@@ -5,10 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Language to locale mapping
+// Language to locale mapping - Only 10 supported languages
 const LOCALE_MAP: Record<string, string> = {
   en: 'en_GB',
-  es: 'es_ES',
   de: 'de_DE',
   fr: 'fr_FR',
   nl: 'nl_NL',
@@ -17,13 +16,11 @@ const LOCALE_MAP: Record<string, string> = {
   da: 'da_DK',
   fi: 'fi_FI',
   pl: 'pl_PL',
-  ru: 'ru_RU',
-  it: 'it_IT',
-  tr: 'tr_TR',
   hu: 'hu_HU',
 }
 
-const SUPPORTED_LANGUAGES = ['en', 'es', 'de', 'fr', 'nl', 'sv', 'no', 'da', 'fi', 'pl', 'ru', 'it', 'tr', 'hu']
+// Only the 10 languages we actually support (no es, ru, it, tr)
+const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da']
 const BASE_URL = 'https://www.delsolprimehomes.com'
 
 interface PageMetadata {
