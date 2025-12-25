@@ -1,10 +1,13 @@
 {
   "version": 1,
-  "description": "Cloudflare Pages routing configuration - ensures middleware runs for content pages",
+  "description": "Cloudflare Pages routing - serve static files directly, run middleware for content pages",
   "include": ["/*"],
   "exclude": [
     "/assets/*",
     "/sitemaps/*",
+    "/sitemap.xml",
+    "/sitemap-index.xml",
+    "/ai-sitemap.xml",
     "/*.xml",
     "/*.txt",
     "/*.json",
@@ -16,6 +19,7 @@
     "/*.svg",
     "/*.css",
     "/*.js",
-    "/*.map"
+    "/*.map",
+    "/.well-known/*"
   ]
 }

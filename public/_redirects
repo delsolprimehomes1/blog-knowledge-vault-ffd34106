@@ -1,3 +1,15 @@
+# Static files - serve directly (MUST come before SPA routes)
+/sitemap.xml  /sitemap.xml  200
+/sitemap-index.xml  /sitemap-index.xml  200
+/ai-sitemap.xml  /ai-sitemap.xml  200
+/sitemaps/*  /sitemaps/:splat  200
+/robots.txt  /robots.txt  200
+/llm.txt  /llm.txt  200
+/ai.txt  /ai.txt  200
+/facts.json  /facts.json  200
+/glossary.json  /glossary.json  200
+/pages.json  /pages.json  200
+
 # Force all traffic to www version
 https://delsolprimehomes.com/*  https://www.delsolprimehomes.com/:splat  301!
 http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
@@ -45,3 +57,6 @@ http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
 /:lang  /index.html  200
 /:lang/properties  /index.html  200
 /:lang/property/:reference  /index.html  200
+
+# SPA fallback - MUST come LAST
+/*  /index.html  200
