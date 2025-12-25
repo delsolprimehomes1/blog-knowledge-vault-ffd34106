@@ -1,8 +1,12 @@
 {
   "version": 1,
-  "description": "Cloudflare Pages Functions routing - exclude static files from middleware",
+  "description": "Cloudflare Pages Functions routing - exclude static files and admin/auth from middleware",
   "include": ["/*"],
   "exclude": [
+    "/admin",
+    "/admin/*",
+    "/auth",
+    "/auth/*",
     "/sitemap.xml",
     "/sitemap-index.xml",
     "/ai-sitemap.xml",

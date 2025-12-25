@@ -1,3 +1,9 @@
+# Admin and Auth routes - serve SPA (MUST come first)
+/admin        /index.html  200
+/admin/*      /index.html  200
+/auth         /index.html  200
+/auth/*       /index.html  200
+
 # Static files - serve directly (MUST come before SPA routes)
 /sitemap.xml  /sitemap.xml  200
 /sitemap-index.xml  /sitemap-index.xml  200

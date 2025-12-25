@@ -62,6 +62,13 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
   
+  // PRIORITY 0: Skip middleware entirely for admin and auth routes
+  // These are SPA routes that should never be modified by SEO middleware
+  if (path === '/admin' || path.startsWith('/admin/') || 
+      path === '/auth' || path.startsWith('/auth/')) {
+    return next();
+  }
+  
   // PRIORITY 1: Serve known static files directly with correct content types
   const staticContentType = STATIC_FILES[path];
   if (staticContentType) {
