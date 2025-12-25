@@ -55,6 +55,7 @@ function Home() {
       <HomeHreflangTags />
     <div className="min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
       <Helmet>
+        <html lang="en" />
         {/* Primary Meta Tags */}
         <title>Del Sol Prime Homes | Luxury Costa del Sol Real Estate</title>
         <meta name="title" content="Del Sol Prime Homes | Luxury Costa del Sol Real Estate" />

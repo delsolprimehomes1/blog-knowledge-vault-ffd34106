@@ -167,6 +167,7 @@ export default function ComparisonPage() {
       />
       
       <Helmet>
+        <html lang={comparison.language || lang || 'en'} />
         <title>{comparison.meta_title}</title>
         <meta name="description" content={comparison.meta_description} />
         <link rel="canonical" href={`${BASE_URL}/${lang}/compare/${comparison.slug}`} />

@@ -117,6 +117,7 @@ const LocationHub = () => {
   return (
     <>
       <Helmet>
+        <html lang={lang} />
         <title>Costa del Sol Location Guides | Del Sol Prime Homes</title>
         <meta name="description" content="Explore comprehensive guides for all Costa del Sol locations. Property buying guides, best areas, cost of living, and investment opportunities in Marbella, Estepona, Fuengirola, and more." />
         <link rel="canonical" href="https://www.delsolprimehomes.com/locations" />

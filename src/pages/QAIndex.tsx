@@ -174,6 +174,7 @@ export default function QAIndex() {
   return (
     <>
       <Helmet>
+        <html lang={lang} />
         <title>Questions & Answers | Del Sol Prime Homes</title>
         <meta
           name="description"
