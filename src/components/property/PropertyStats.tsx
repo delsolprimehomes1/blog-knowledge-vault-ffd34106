@@ -109,7 +109,7 @@ export const PropertyStats = ({
   views,
 }: PropertyStatsProps) => {
   return (
-    <div className="relative -mt-12 md:-mt-16 lg:-mt-20 z-20 px-3 sm:px-4 md:px-8">
+    <div className="relative mt-6 md:mt-8 z-20 px-3 sm:px-4 md:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Floating Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">

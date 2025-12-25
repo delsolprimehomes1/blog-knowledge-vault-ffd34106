@@ -8,9 +8,14 @@ interface PropertyHeroProps {
   location: string;
   price: string;
   reference: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  builtArea?: number;
 }
 
-export const PropertyHero = ({ images, title, location, price, reference }: PropertyHeroProps) => {
+import { Bed, Bath, Maximize2 } from "lucide-react";
+
+export const PropertyHero = ({ images, title, location, price, reference, bedrooms, bathrooms, builtArea }: PropertyHeroProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -177,12 +182,41 @@ export const PropertyHero = ({ images, title, location, price, reference }: Prop
             </h1>
 
             {/* Price */}
-            <div className="flex flex-wrap items-end gap-2 md:gap-4 mb-4 md:mb-6">
+            <div className="flex flex-wrap items-end gap-2 md:gap-4 mb-3 md:mb-4">
               <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-primary">
                 {price}
               </span>
               <span className="text-white/60 text-xs md:text-sm mb-0.5 md:mb-1">Ref: {reference}</span>
             </div>
+
+            {/* Inline Stats Pills */}
+            {(bedrooms || bathrooms || builtArea) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6"
+              >
+                {bedrooms && (
+                  <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
+                    <Bed className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                    <span className="text-white text-xs md:text-sm font-medium">{bedrooms} Beds</span>
+                  </div>
+                )}
+                {bathrooms && (
+                  <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
+                    <Bath className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                    <span className="text-white text-xs md:text-sm font-medium">{bathrooms} Baths</span>
+                  </div>
+                )}
+                {builtArea && (
+                  <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full glass-luxury border border-white/10 hover:border-primary/30 transition-colors">
+                    <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                    <span className="text-white text-xs md:text-sm font-medium">{builtArea}m²</span>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Thumbnail Navigation */}

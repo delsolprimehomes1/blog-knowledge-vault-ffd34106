@@ -147,6 +147,9 @@ const PropertyDetail = () => {
         location={`${property.location}, ${property.province}`}
         price={formattedPrice}
         reference={property.reference}
+        bedrooms={property.bedrooms}
+        bathrooms={property.bathrooms}
+        builtArea={property.builtArea}
       />
 
       {/* Floating Stats Bar */}
