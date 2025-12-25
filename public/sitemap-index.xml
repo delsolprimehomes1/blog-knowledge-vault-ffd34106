@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- 
-    Del Sol Prime Homes Comprehensive Sitemap Index
-    Total: 985+ published pages across 10 languages
-    Generated: 2025-12-25
-  -->
-  
-  <!-- Language-specific blog sitemaps (948 articles total) -->
+  <!-- Language-specific blog sitemaps -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/blog.xml</loc>
     <lastmod>2025-12-25</lastmod>
@@ -48,7 +42,7 @@
     <lastmod>2025-12-25</lastmod>
   </sitemap>
   
-  <!-- Q&A sitemaps (20 pages total) -->
+  <!-- Q&A sitemaps -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/qa.xml</loc>
     <lastmod>2025-12-25</lastmod>
@@ -90,7 +84,7 @@
     <lastmod>2025-12-25</lastmod>
   </sitemap>
   
-  <!-- Comparison sitemaps (16 pages total) -->
+  <!-- Comparison sitemaps -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/comparisons.xml</loc>
     <lastmod>2025-12-25</lastmod>
