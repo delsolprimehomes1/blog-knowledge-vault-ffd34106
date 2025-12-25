@@ -24,21 +24,17 @@ import { isFeatureEnabled } from "@/lib/featureFlags";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, FunnelStage, InternalLink } from "@/types/blog";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 
-// Language to og:locale mapping
+// Language to og:locale mapping - Only 10 supported languages
 const LOCALE_MAP: Record<string, string> = {
   en: 'en_GB',
   nl: 'nl_NL',
   de: 'de_DE',
   fr: 'fr_FR',
-  es: 'es_ES',
   sv: 'sv_SE',
   no: 'nb_NO',
   da: 'da_DK',
   fi: 'fi_FI',
   pl: 'pl_PL',
-  ru: 'ru_RU',
-  it: 'it_IT',
-  tr: 'tr_TR',
   hu: 'hu_HU'
 };
 
