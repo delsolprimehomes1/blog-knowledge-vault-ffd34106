@@ -1,218 +1,249 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, MapPin, Wallet, Loader2 } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { useTranslation } from '../../../i18n';
-import { supabase } from '../../../integrations/supabase/client';
-import { useLocations } from '../../../hooks/useLocations';
+import { Search, RotateCcw, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useLocations } from '@/hooks/useLocations';
+import { usePropertyTypes } from '@/hooks/usePropertyTypes';
 
-interface Property {
-  id: string;
-  reference: string;
-  title: string;
-  location: string;
-  price: number;
-  currency: string;
-  bedrooms: number;
-  bathrooms: number;
-  builtArea: number;
-  mainImage: string;
-  propertyType: string;
-}
+const PRICE_OPTIONS = [
+  { label: "Any", value: "" },
+  { label: "€50,000", value: "50000" },
+  { label: "€100,000", value: "100000" },
+  { label: "€150,000", value: "150000" },
+  { label: "€200,000", value: "200000" },
+  { label: "€250,000", value: "250000" },
+  { label: "€300,000", value: "300000" },
+  { label: "€400,000", value: "400000" },
+  { label: "€500,000", value: "500000" },
+  { label: "€750,000", value: "750000" },
+  { label: "€1,000,000", value: "1000000" },
+  { label: "€2,000,000", value: "2000000" },
+  { label: "€5,000,000", value: "5000000" },
+];
+
+const BEDROOM_OPTIONS = [
+  { label: "Any", value: "" },
+  { label: "1+", value: "1" },
+  { label: "2+", value: "2" },
+  { label: "3+", value: "3" },
+  { label: "4+", value: "4" },
+  { label: "5+", value: "5" },
+  { label: "6+", value: "6" },
+];
+
+const STATUS_OPTIONS = [
+  { label: "Sales", value: "sales" },
+  { label: "New Developments", value: "new-developments" },
+];
 
 export const QuickSearch: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const [budget, setBudget] = useState('');
-  const [location, setLocation] = useState('');
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-
-  // Fetch dynamic locations from API
   const { locations, loading: locationsLoading } = useLocations();
+  const { flattenedTypes, loading: typesLoading } = usePropertyTypes();
 
-  // Fetch properties when filters change
-  useEffect(() => {
-    const fetchProperties = async () => {
-      if (!location && !budget) return;
-      
-      setIsLoading(true);
-      setHasSearched(true);
-      
-      try {
-        const params: Record<string, string | number> = {
-          transactionType: 'sale',
-        };
-        if (location) params.location = location;
-        if (budget) {
-          const [min, max] = budget.split('-');
-          if (min) params.priceMin = parseInt(min);
-          if (max && max !== '+') params.priceMax = parseInt(max);
-        }
-
-        const { data, error } = await supabase.functions.invoke('search-properties', {
-          body: params
-        });
-
-        if (error) throw error;
-        
-        setProperties((data?.properties || []).slice(0, 3));
-      } catch (err) {
-        console.error('Error fetching properties:', err);
-        setProperties([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const debounce = setTimeout(fetchProperties, 500);
-    return () => clearTimeout(debounce);
-  }, [location, budget]);
+  const [reference, setReference] = useState("");
+  const [location, setLocation] = useState("");
+  const [propertyType, setPropertyType] = useState("");
+  const [bedrooms, setBedrooms] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [status, setStatus] = useState("sales");
 
   const handleSearch = () => {
     const params = new URLSearchParams();
     params.append("transactionType", "sale");
-    if (location) params.append("location", location);
-    if (budget) {
-      const [min, max] = budget.split("-");
-      if (min) params.set("priceMin", min);
-      if (max && max !== "+") params.append("priceMax", max);
-    }
-    navigate(`/property-finder?${params.toString()}`);
+
+    if (reference.trim()) params.append("reference", reference.trim());
+    if (location && location !== "any") params.append("location", location);
+    if (propertyType && propertyType !== "any") params.append("propertyType", propertyType);
+    if (bedrooms && bedrooms !== "any") params.append("bedrooms", bedrooms);
+    if (priceMin && priceMin !== "any") params.append("priceMin", priceMin);
+    if (priceMax && priceMax !== "any") params.append("priceMax", priceMax);
+    if (status === "new-developments") params.append("newDevs", "only");
+
+    navigate(`/properties?${params.toString()}`);
   };
 
-  const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat('en-EU', {
-      style: 'currency',
-      currency: currency || 'EUR',
-      maximumFractionDigits: 0
-    }).format(price);
+  const handleReset = () => {
+    setReference("");
+    setLocation("");
+    setPropertyType("");
+    setBedrooms("");
+    setPriceMin("");
+    setPriceMax("");
+    setStatus("sales");
   };
+
+  const isLoading = locationsLoading || typesLoading;
 
   return (
-    <div className="relative z-50 -mt-32 md:-mt-24 container mx-auto px-4 reveal-on-scroll stagger-2">
-      <div className="rounded-2xl p-6 md:p-10 max-w-6xl mx-auto bg-white border border-slate-100 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_25px_50px_-12px_rgba(0,0,0,0.25),0_50px_100px_-20px_rgba(0,0,0,0.15)] transform -translate-y-2">
-        
-        <div className="mb-8 text-center md:text-left border-b border-slate-100/80 pb-6 flex flex-col md:flex-row justify-between items-end gap-4">
-          <div>
-            <h3 className="text-2xl font-serif font-bold text-prime-900">{t.quickSearch.headline}</h3>
-            <p className="text-slate-500 mt-2 font-light">{t.quickSearch.description}</p>
+    <section className="py-8 md:py-12">
+      <div className="container mx-auto px-4">
+        <div className="bg-gray-200 rounded-xl p-4 md:p-6 space-y-4 shadow-lg">
+          {/* Row 1: Reference, Location, Property Type, Search */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Reference */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Reference</label>
+              <Input
+                placeholder="e.g. R5014453"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                className="h-11 bg-white border-gray-300 focus:border-primary"
+              />
+            </div>
+
+            {/* Location */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Location</label>
+              <Select value={location} onValueChange={setLocation}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  {locationsLoading ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Any Location" />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  <SelectItem value="any">Any Location</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.value} value={loc.value}>
+                      {loc.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Property Type */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Property Type</label>
+              <Select value={propertyType} onValueChange={setPropertyType}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  {typesLoading ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Any Type" />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50 max-h-80">
+                  <SelectItem value="any">Any Type</SelectItem>
+                  {flattenedTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search Button */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide invisible">Search</label>
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-semibold"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
+            </div>
+          </div>
+
+          {/* Row 2: Bedrooms, Min Price, Max Price, Status, Reset */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Bedrooms */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Bedrooms</label>
+              <Select value={bedrooms} onValueChange={setBedrooms}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {BEDROOM_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Min Price */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Min. Price</label>
+              <Select value={priceMin} onValueChange={setPriceMin}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {PRICE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || "any-min"} value={opt.value || "any"}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Max Price */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Max. Price</label>
+              <Select value={priceMax} onValueChange={setPriceMax}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {PRICE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || "any-max"} value={opt.value || "any"}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Status</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Sales" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Reset Button */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide invisible">Reset</label>
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="w-full h-11 border-gray-400 hover:bg-gray-100"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Reset
+              </Button>
+            </div>
           </div>
         </div>
-
-        <form className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end" onSubmit={(e) => e.preventDefault()}>
-          
-          {/* Location */}
-          <div className="space-y-2 group">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-prime-gold transition-colors flex items-center gap-1">
-              <MapPin size={12} /> {t.quickSearch.labels.location}
-            </label>
-            <div className="relative">
-              <select 
-                className="w-full appearance-none bg-slate-50 hover:bg-white border border-slate-200 hover:border-prime-gold/50 rounded-xl px-5 py-4 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-prime-gold/20 focus:border-prime-gold transition-all duration-300 cursor-pointer shadow-sm"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={locationsLoading}
-              >
-                <option value="">
-                  {locationsLoading ? 'Loading locations...' : t.quickSearch.placeholders.location}
-                </option>
-                {locations.map(loc => (
-                  <option key={loc.value} value={loc.value}>{loc.label}</option>
-                ))}
-              </select>
-              {locationsLoading ? (
-                <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none animate-spin" size={18} />
-              ) : (
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
-              )}
-            </div>
-          </div>
-
-          {/* Budget */}
-          <div className="space-y-2 group">
-            <label className="text-xs font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-prime-gold transition-colors flex items-center gap-1">
-              <Wallet size={12} /> {t.quickSearch.labels.budget}
-            </label>
-            <div className="relative">
-              <select 
-                className="w-full appearance-none bg-slate-50 hover:bg-white border border-slate-200 hover:border-prime-gold/50 rounded-xl px-5 py-4 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-prime-gold/20 focus:border-prime-gold transition-all duration-300 cursor-pointer shadow-sm"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-              >
-                <option value="">{t.quickSearch.placeholders.budget}</option>
-                <option value="0-300000">Under €300k</option>
-                <option value="300000-500000">€300k - €500k</option>
-                <option value="500000-750000">€500k - €750k</option>
-                <option value="750000-1000000">€750k - €1M</option>
-                <option value="1000000-2000000">€1M - €2M</option>
-                <option value="2000000-5000000">€2M - €5M</option>
-                <option value="5000000+">€5M+</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
-            </div>
-          </div>
-
-          {/* Submit */}
-          <Button onClick={handleSearch} fullWidth className="h-[58px] shadow-xl shadow-prime-900/10 text-lg" variant="primary">
-            {t.quickSearch.submit}
-          </Button>
-
-        </form>
-
-        {/* Live Property Preview */}
-        {hasSearched && (
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-prime-gold" />
-                <span className="ml-2 text-slate-500">Finding properties...</span>
-              </div>
-            ) : properties.length > 0 ? (
-              <>
-                <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
-                  Preview Results
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {properties.map((property) => (
-                    <div 
-                      key={property.id}
-                      onClick={() => navigate(`/property/${property.reference}`)}
-                      className="group cursor-pointer bg-slate-50 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="aspect-[4/3] overflow-hidden">
-                        <img 
-                          src={property.mainImage || '/placeholder.svg'} 
-                          alt={property.title || `${property.propertyType} in ${property.location}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
-                        />
-                      </div>
-                      <div className="p-4">
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">{property.location}</p>
-                        <h5 className="font-serif font-semibold text-prime-900 mt-1 line-clamp-1">{property.title}</h5>
-                        <p className="text-prime-gold font-bold mt-2">{formatPrice(property.price, property.currency)}</p>
-                        <div className="flex gap-3 mt-2 text-xs text-slate-500">
-                          <span>{property.bedrooms} beds</span>
-                          <span>{property.bathrooms} baths</span>
-                          <span>{property.builtArea}m²</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-center text-slate-500 py-4">
-                No properties found. Try adjusting your filters.
-              </p>
-            )}
-          </div>
-        )}
       </div>
-    </div>
+    </section>
   );
 };

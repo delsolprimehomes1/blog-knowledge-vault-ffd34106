@@ -218,6 +218,7 @@ serve(async (req) => {
     }
 
     const {
+      reference = '',
       location = '',
       sublocation = '',
       priceMin,
@@ -225,11 +226,18 @@ serve(async (req) => {
       propertyType = '',
       bedrooms,
       bathrooms,
+      newDevs = '',
       page = 1,
       limit = 20,
       lang = 'en',
       queryId = ''
     } = body;
+
+    // If searching by reference in list mode, redirect to single property lookup
+    if (reference && reference.trim()) {
+      console.log(`🔍 Reference search in list mode: ${reference}`);
+      return await handleSinglePropertyLookup(reference.trim(), lang, isDebugMode);
+    }
 
     // Build GET URL with query parameters (no minimum price restriction)
     const params = new URLSearchParams();
@@ -241,6 +249,7 @@ serve(async (req) => {
     if (bathrooms) params.append('bathrooms', String(bathrooms));
     if (priceMin) params.append('minPrice', String(priceMin));
     if (priceMax) params.append('maxPrice', String(priceMax));
+    if (newDevs === 'only') params.append('newDevs', 'only');
     params.append('pageSize', String(limit));
     params.append('pageNo', String(page));
     if (queryId) params.append('queryId', queryId);

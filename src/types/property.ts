@@ -21,13 +21,16 @@ export interface Property {
 }
 
 export interface PropertySearchParams {
+  reference?: string;
   location?: string;
+  sublocation?: string;
   priceMin?: number;
   priceMax?: number;
   propertyType?: string;
   transactionType?: 'sale' | 'rent';
   bedrooms?: number;
   bathrooms?: number;
+  newDevs?: 'only' | '';
   page?: number;
   limit?: number;
 }
