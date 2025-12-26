@@ -12,6 +12,16 @@ export interface PropertyType {
   subtypes: PropertySubType[];
 }
 
+// Only allow residential property types (Apartments: 1-x, Houses: 2-x)
+const RESIDENTIAL_TYPE_PREFIXES = ['1-', '2-'];
+
+// Filter function to ensure only residential types
+function filterResidentialTypes(types: PropertyType[]): PropertyType[] {
+  return types.filter(type => 
+    RESIDENTIAL_TYPE_PREFIXES.some(prefix => type.value.startsWith(prefix))
+  );
+}
+
 // Module-level cache to persist across component remounts
 let cachedPropertyTypes: PropertyType[] | null = null;
 let isFetching = false;
@@ -67,8 +77,10 @@ export function usePropertyTypes() {
     
     fetchPromise
       .then(data => {
-        cachedPropertyTypes = data;
-        setPropertyTypes(data);
+        // Apply client-side filter as backup in case edge function cache has old data
+        const residentialOnly = filterResidentialTypes(data);
+        cachedPropertyTypes = residentialOnly;
+        setPropertyTypes(residentialOnly);
         setLoading(false);
       })
       .catch(err => {

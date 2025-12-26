@@ -18,6 +18,9 @@ interface PropertyType {
   subtypes: PropertySubType[];
 }
 
+// Only allow residential property types (Apartment: 1-1, House: 2-1)
+const ALLOWED_MAIN_TYPE_VALUES = ['1-1', '2-1'];
+
 // Module-level cache
 let cachedPropertyTypes: PropertyType[] | null = null;
 let cacheTimestamp: number | null = null;
@@ -67,6 +70,12 @@ serve(async (req) => {
 
       for (const type of types) {
         if (!type?.Type || !type?.OptionValue) continue;
+
+        // Only include residential property types (Apartments and Houses)
+        if (!ALLOWED_MAIN_TYPE_VALUES.includes(type.OptionValue)) {
+          console.log(`Skipping non-residential type: ${type.Type} (${type.OptionValue})`);
+          continue;
+        }
 
         const mainType: PropertyType = {
           label: type.Type,

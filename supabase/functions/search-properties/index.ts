@@ -123,6 +123,54 @@ function extractAllImages(prop: any): string[] {
   return images;
 }
 
+/**
+ * Extracts the property type ID from various response structures
+ */
+function extractPropertyTypeId(prop: any): string {
+  // Try various paths to get the type ID
+  if (prop.PropertyType?.OptionValue) return String(prop.PropertyType.OptionValue);
+  if (prop.PropertyType?.TypeId) return String(prop.PropertyType.TypeId);
+  if (prop.PropertyType?.SubtypeId1) return String(prop.PropertyType.SubtypeId1);
+  if (prop.TypeId) return String(prop.TypeId);
+  if (prop.OptionValue) return String(prop.OptionValue);
+  return '';
+}
+
+/**
+ * Filters properties to only include residential types
+ * Allowed: 1-x (Apartments), 2-x (Houses)
+ * Excluded: 3-x (Plots), 4-x (Commercial)
+ */
+function filterResidentialProperties(properties: any[]): any[] {
+  const ALLOWED_TYPE_PREFIXES = ['1-', '2-'];
+  const COMMERCIAL_KEYWORDS = ['commercial', 'office', 'shop', 'warehouse', 'garage', 
+                               'parking', 'storage', 'plot', 'land', 'bar', 'restaurant',
+                               'hotel', 'hostel', 'mooring', 'stables', 'kiosk', 'nightclub'];
+  
+  return properties.filter(prop => {
+    const typeId = extractPropertyTypeId(prop);
+    
+    // If we have a type ID, check if it starts with allowed prefix
+    if (typeId) {
+      const isResidential = ALLOWED_TYPE_PREFIXES.some(prefix => typeId.startsWith(prefix));
+      if (!isResidential) {
+        console.log(`🚫 Filtering out property ${prop.Reference} with type ID: ${typeId}`);
+      }
+      return isResidential;
+    }
+    
+    // Fallback: check type name for commercial keywords
+    const typeName = (prop.PropertyType?.Type || prop.PropertyType?.NameType || '').toLowerCase();
+    if (typeName && COMMERCIAL_KEYWORDS.some(kw => typeName.includes(kw))) {
+      console.log(`🚫 Filtering out property ${prop.Reference} by name: ${typeName}`);
+      return false;
+    }
+    
+    // If we can't determine type, include it (safer default)
+    return true;
+  });
+}
+
 serve(async (req) => {
   console.log('🚀 Search-properties function called');
   
@@ -232,8 +280,12 @@ serve(async (req) => {
       console.log('📦 First property reference:', rawProperties[0].Reference);
     }
 
-    // Normalize properties (NO FILTERING for now)
-    const properties: NormalizedProperty[] = rawProperties.map((prop: any) => {
+    // Filter to only residential properties (Apartments: 1-x, Houses: 2-x)
+    const filteredProperties = filterResidentialProperties(rawProperties);
+    console.log(`📦 After residential filter: ${filteredProperties.length} of ${totalReceived}`);
+
+    // Normalize filtered properties
+    const properties: NormalizedProperty[] = filteredProperties.map((prop: any) => {
       const propertyTypeStr = extractPropertyType(prop);
       const mainImage = extractMainImage(prop);
       const price = parsePrice(prop);
