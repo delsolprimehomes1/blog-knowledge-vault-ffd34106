@@ -10,21 +10,7 @@ export function getHighResImageUrl(
 ): string {
   if (!url) return '/placeholder.svg';
   
-  const sizeMap = {
-    thumbnail: 'w400',   // 400px - thumbnails, fast loading
-    card: 'w800',        // 800px - property cards
-    hero: 'w1200',       // 1200px - hero images
-    lightbox: 'w1920',   // 1920px - full screen lightbox
-  };
-  
-  const targetSize = sizeMap[size];
-  
-  // Replace /wXXX/ pattern with target size
-  // Matches patterns like /w400/, /w800/, etc.
-  if (url.includes('/w')) {
-    return url.replace(/\/w\d+\//, `/${targetSize}/`);
-  }
-  
-  // If no size pattern found, return original URL
+  // CDN only supports w400 - return original URL
+  // Browser handles scaling via CSS object-cover
   return url;
 }
