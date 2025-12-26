@@ -63,7 +63,7 @@ export const QuickSearch: React.FC = () => {
     if (priceMax && priceMax !== "any") params.append("priceMax", priceMax);
     if (status === "new-developments") params.append("newDevs", "only");
 
-    navigate(`/properties?${params.toString()}`);
+    navigate(`/en/properties?${params.toString()}`);
   };
 
   const handleReset = () => {

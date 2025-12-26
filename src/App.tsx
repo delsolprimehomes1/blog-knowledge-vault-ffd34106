@@ -219,6 +219,7 @@ const App = () => (
               <Route path="/locations/:citySlug/:topicSlug" element={<LocationPageRedirect />} />
               
               {/* Property legacy redirects */}
+              <Route path="/properties" element={<Navigate to="/en/properties" replace />} />
               <Route path="/property-finder" element={<Navigate to="/en/properties" replace />} />
               <Route path="/property/:reference" element={<PropertyRedirect />} />
               
