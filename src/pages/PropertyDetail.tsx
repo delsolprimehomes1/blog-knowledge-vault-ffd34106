@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
-import { PropertyHero } from "@/components/property/PropertyHero";
+import { PropertyHeader } from "@/components/property/PropertyHeader";
+import { PropertyGalleryGrid } from "@/components/property/PropertyGalleryGrid";
 import { PropertyStats } from "@/components/property/PropertyStats";
 import { PropertyFeatures } from "@/components/property/PropertyFeatures";
 import { PropertyContact, PropertyContactMobile } from "@/components/property/PropertyContact";
@@ -37,14 +38,12 @@ const PropertyDetail = () => {
 
       setIsLoading(true);
       try {
-        // Use POST with reference in body for single property lookup
         const { data, error } = await supabase.functions.invoke("search-properties", {
           body: { reference, lang: currentLanguage },
         });
 
         if (error) throw error;
 
-        // Handle single property response
         if (data.property) {
           setProperty(data.property);
         } else {
@@ -121,77 +120,94 @@ const PropertyDetail = () => {
       <PropertyHreflangTags reference={reference!} currentLanguage={currentLanguage} />
       <Header />
 
-      {/* Back Button - Floating */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-        className="fixed top-20 left-3 md:top-24 md:left-6 z-30"
-      >
-        <Link to={propertiesLink}>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="glass-luxury rounded-full px-3 md:px-4 h-9 md:h-10 shadow-lg hover:scale-105 active:scale-95 transition-transform touch-manipulation text-xs md:text-sm"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-            Back
-          </Button>
-        </Link>
-      </motion.div>
-
-      {/* Hero Section */}
-      <PropertyHero
-        images={allImages}
-        title={`${property.propertyType} in ${property.location}`}
-        location={`${property.location}, ${property.province}`}
-        price={formattedPrice}
-        reference={property.reference}
-        bedrooms={property.bedrooms}
-        bathrooms={property.bathrooms}
-        builtArea={property.builtArea}
-      />
-
-      {/* Floating Stats Bar */}
-      <PropertyStats
-        bedrooms={property.bedrooms}
-        bathrooms={property.bathrooms}
-        builtArea={property.builtArea}
-        plotArea={property.plotArea}
-        orientation={property.orientation}
-        views={property.views}
-      />
-
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-3 sm:px-4 md:px-8 py-6 md:py-12">
-        <div className="grid lg:grid-cols-3 gap-6 md:gap-8 lg:gap-12">
-          {/* Left Column - Content */}
-          <div className="lg:col-span-2 space-y-2 md:space-y-4">
-            {/* Description Section */}
-            <PropertyDescription
-              description={property.description}
-              propertyType={property.propertyType}
-              location={property.location}
-            />
+      <main className="flex-1 pt-20 md:pt-24">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
+          {/* Back Button */}
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
+          >
+            <Link to={propertiesLink}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2 text-muted-foreground hover:text-foreground -ml-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Properties
+              </Button>
+            </Link>
+          </motion.div>
 
-            {/* Features Section */}
-            <PropertyFeatures
-              features={property.features}
-              pool={property.pool}
-              garden={property.garden}
-              parking={property.parking}
+          {/* Property Header */}
+          <div className="mb-6 md:mb-8">
+            <PropertyHeader
+              title={`${property.propertyType} in ${property.location}`}
+              location={property.location}
+              province={property.province}
+              price={formattedPrice}
+              reference={property.reference}
+              bedrooms={property.bedrooms}
+              bathrooms={property.bathrooms}
+              builtArea={property.builtArea}
+            />
+          </div>
+
+          {/* Gallery Grid */}
+          <div className="mb-8 md:mb-12">
+            <PropertyGalleryGrid
+              images={allImages}
+              title={`${property.propertyType} in ${property.location}`}
+            />
+          </div>
+
+          {/* Stats Bar */}
+          <div className="mb-8 md:mb-12">
+            <PropertyStats
+              bedrooms={property.bedrooms}
+              bathrooms={property.bathrooms}
+              builtArea={property.builtArea}
+              plotArea={property.plotArea}
               orientation={property.orientation}
               views={property.views}
             />
           </div>
 
-          {/* Right Column - Contact (Desktop only) */}
-          <div className="lg:col-span-1">
-            <PropertyContact
-              reference={property.reference}
-              price={formattedPrice}
-              propertyType={property.propertyType}
-            />
+          {/* Two Column Layout */}
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8 lg:gap-12 pb-8">
+            {/* Left Column - Content */}
+            <div className="lg:col-span-2 space-y-6 md:space-y-8">
+              {/* Description Section */}
+              <PropertyDescription
+                description={property.description}
+                propertyType={property.propertyType}
+                location={property.location}
+              />
+
+              {/* Features Section */}
+              <PropertyFeatures
+                features={property.features}
+                pool={property.pool}
+                garden={property.garden}
+                parking={property.parking}
+                orientation={property.orientation}
+                views={property.views}
+              />
+            </div>
+
+            {/* Right Column - Contact (Desktop only) */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-28">
+                <PropertyContact
+                  reference={property.reference}
+                  price={formattedPrice}
+                  propertyType={property.propertyType}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </main>
