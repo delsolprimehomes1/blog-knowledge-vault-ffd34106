@@ -87,7 +87,7 @@ export const PropertyContact = ({ reference, price, propertyType }: PropertyCont
             Featured
           </div>
         </div>
-        <div className="absolute top-0 left-0 right-0 h-1 animate-shimmer" />
+        <div className="absolute top-0 left-0 right-0 h-1 shimmer-overlay rounded-t-xl" />
 
         <div className="mb-5 md:mb-6">
           <h3 className="text-xl md:text-2xl font-display font-bold text-foreground mb-2">

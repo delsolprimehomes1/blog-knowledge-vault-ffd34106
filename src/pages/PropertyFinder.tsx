@@ -168,14 +168,14 @@ const PropertyFinder = () => {
               {locationName ? (
                 <>
                   <span className="text-foreground">Properties in </span>
-                  <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer">
+                  <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer">
                     {locationName}
                   </span>
                 </>
               ) : (
                 <>
                   <span className="text-foreground">Find Your </span>
-                  <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-shimmer">
+                  <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer">
                     Dream Property
                   </span>
                 </>
@@ -320,8 +320,8 @@ const PropertyFinder = () => {
                 transition={{ delay: i * 0.1 }}
                 className="bg-white rounded-2xl overflow-hidden border border-border/50 shadow-lg"
               >
-                <div className="aspect-[4/3] bg-gradient-to-br from-muted via-muted/80 to-muted/50 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                <div className="aspect-[4/3] bg-gradient-to-br from-muted via-muted/80 to-muted/50 relative overflow-hidden rounded-t-2xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent shimmer-overlay" />
                 </div>
                 <div className="p-5 space-y-4">
                   <div className="flex items-center gap-2">
