@@ -147,7 +147,104 @@ export async function onRequest(context) {
     return next();
   }
   
-  // Check if this is an SEO-relevant path
+  // PRIORITY 3: Handle index pages (/{lang}/{type}) with proper SEO meta injection
+  const indexPageMatch = path.match(/^\/([a-z]{2})\/(blog|qa|compare|locations)\/?$/);
+  if (indexPageMatch) {
+    const [, lang, pageType] = indexPageMatch;
+    
+    if (CONFIG.SUPPORTED_LANGUAGES.includes(lang)) {
+      try {
+        // Fetch the SPA shell
+        const indexRequest = new Request(new URL('/index.html', request.url).toString());
+        const assetResponse = await env.ASSETS.fetch(indexRequest);
+        
+        if (assetResponse.ok) {
+          let html = await assetResponse.text();
+          
+          // Generate SEO tags for index pages
+          const baseUrl = 'https://www.delsolprimehomes.com';
+          const canonicalUrl = `${baseUrl}/${lang}/${pageType}`;
+          
+          // Page-specific metadata
+          const INDEX_PAGE_META = {
+            blog: {
+              title: 'Real Estate Blog | Del Sol Prime Homes',
+              description: 'Expert articles about Costa del Sol real estate, property guides, market insights, and investment advice for buyers.'
+            },
+            qa: {
+              title: 'Questions & Answers | Del Sol Prime Homes',
+              description: 'Find answers to common questions about buying property in Costa del Sol, from mortgages to legal requirements.'
+            },
+            compare: {
+              title: 'Property Comparisons | Del Sol Prime Homes',
+              description: 'Compare locations, property types, and investment options in Costa del Sol to make informed decisions.'
+            },
+            locations: {
+              title: 'Locations Guide | Del Sol Prime Homes',
+              description: 'Explore prime locations across Costa del Sol - Marbella, Estepona, Fuengirola, and more for your perfect property.'
+            }
+          };
+          
+          const meta = INDEX_PAGE_META[pageType];
+          
+          // Build hreflang tags (hardcoded to ensure they always render)
+          const hreflangTags = `
+    <link rel="alternate" hreflang="en" href="${baseUrl}/en/${pageType}" />
+    <link rel="alternate" hreflang="de" href="${baseUrl}/de/${pageType}" />
+    <link rel="alternate" hreflang="nl" href="${baseUrl}/nl/${pageType}" />
+    <link rel="alternate" hreflang="fr" href="${baseUrl}/fr/${pageType}" />
+    <link rel="alternate" hreflang="pl" href="${baseUrl}/pl/${pageType}" />
+    <link rel="alternate" hreflang="sv" href="${baseUrl}/sv/${pageType}" />
+    <link rel="alternate" hreflang="da" href="${baseUrl}/da/${pageType}" />
+    <link rel="alternate" hreflang="hu" href="${baseUrl}/hu/${pageType}" />
+    <link rel="alternate" hreflang="fi" href="${baseUrl}/fi/${pageType}" />
+    <link rel="alternate" hreflang="no" href="${baseUrl}/no/${pageType}" />
+    <link rel="alternate" hreflang="x-default" href="${baseUrl}/en/${pageType}" />`;
+          
+          // Build the complete SEO block to inject
+          const seoBlock = `
+    <title>${meta.title}</title>
+    <meta name="description" content="${meta.description}" />
+    <link rel="canonical" href="${canonicalUrl}" />
+    ${hreflangTags}
+    <meta property="og:title" content="${meta.title}" />
+    <meta property="og:description" content="${meta.description}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Del Sol Prime Homes" />
+`;
+          
+          // Remove the default title and inject SEO block before </head>
+          html = html.replace(/<title>.*?<\/title>/, '');
+          html = html.replace('</head>', `${seoBlock}</head>`);
+          
+          // Update <html lang="...">
+          html = html.replace(/<html[^>]*>/, `<html lang="${lang}">`);
+          
+          if (CONFIG.DEBUG) {
+            console.log(`[Middleware] Index page SEO injection for: ${path}`);
+          }
+          
+          return new Response(html, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600',
+              'X-Middleware-Active': 'true',
+              'X-Middleware-Version': '2025-12-26',
+              'X-SEO-Source': 'index-page-injection',
+              'X-Content-Language': lang,
+              'X-Page-Type': pageType
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[Middleware] Error processing index page ${path}:`, error);
+      }
+    }
+  }
+  
+  // Check if this is an SEO-relevant path with slug
   const seoMatch = matchSEOPath(path);
   
   if (!seoMatch) {
@@ -155,7 +252,7 @@ export async function onRequest(context) {
     const response = await next();
     const newResponse = new Response(response.body, response);
     newResponse.headers.set('X-Middleware-Active', 'true');
-    newResponse.headers.set('X-Middleware-Version', '2025-12-24');
+    newResponse.headers.set('X-Middleware-Version', '2025-12-26');
     return newResponse;
   }
   
