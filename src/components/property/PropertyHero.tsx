@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Expand, X, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getHighResImageUrl } from "@/lib/imageUrlTransformer";
 
 interface PropertyHeroProps {
   images: string[];
@@ -108,7 +109,7 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
           transition={{ type: "spring", stiffness: 50, damping: 30 }}
         >
           <img
-            src={images[currentIndex]}
+            src={getHighResImageUrl(images[currentIndex], 'hero')}
             alt={`${title} - Image ${currentIndex + 1}`}
             className="w-full h-full object-cover animate-ken-burns scale-110"
           />
@@ -298,7 +299,7 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              src={images[currentIndex]}
+              src={getHighResImageUrl(images[currentIndex], 'lightbox')}
               alt={`${title} - Image ${currentIndex + 1}`}
               className="max-w-[95vw] max-h-[75vh] md:max-w-[90vw] md:max-h-[80vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}

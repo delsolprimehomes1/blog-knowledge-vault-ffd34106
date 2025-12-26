@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Bed, Bath, Maximize2, MapPin, ArrowRight } from "lucide-react";
 import type { Property } from "@/types/property";
 import { Language } from "@/types/home";
+import { getHighResImageUrl } from "@/lib/imageUrlTransformer";
 
 interface PropertyCardProps {
   property: Property;
@@ -36,7 +37,7 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10 opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
         
         <img
-          src={property.mainImage || '/placeholder.svg'}
+          src={getHighResImageUrl(property.mainImage, 'card')}
           alt={`${property.propertyType} in ${property.location}`}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           onError={(e) => {

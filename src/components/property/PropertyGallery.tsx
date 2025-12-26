@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getHighResImageUrl } from "@/lib/imageUrlTransformer";
 
 interface PropertyGalleryProps {
   images: string[];
@@ -34,7 +35,7 @@ export const PropertyGallery = ({ images, title }: PropertyGalleryProps) => {
         {/* Main Image */}
         <div className="relative w-full h-96 lg:h-[500px] rounded-lg overflow-hidden group">
           <img
-            src={images[currentIndex]}
+            src={getHighResImageUrl(images[currentIndex], 'hero')}
             alt={`${title} - Image ${currentIndex + 1}`}
             className="w-full h-full object-cover cursor-pointer"
             onClick={() => setIsLightboxOpen(true)}
@@ -114,7 +115,7 @@ export const PropertyGallery = ({ images, title }: PropertyGalleryProps) => {
           </Button>
 
           <img
-            src={images[currentIndex]}
+            src={getHighResImageUrl(images[currentIndex], 'lightbox')}
             alt={`${title} - Image ${currentIndex + 1}`}
             className="max-w-[90vw] max-h-[90vh] object-contain"
           />
