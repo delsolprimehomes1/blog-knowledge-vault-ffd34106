@@ -214,11 +214,16 @@ serve(async (req) => {
     if (location) params.append('location', location);
     if (sublocation) params.append('sublocation', sublocation);
     
-    // Default to residential property types (Apartments: 1-1, Houses: 2-1) if none specified
-    // This ensures the API returns residential properties, not commercial
-    const effectivePropertyType = propertyType || '1-1,2-1';
-    params.append('propertyType', effectivePropertyType);
-    console.log(`🏠 Using property type filter: ${effectivePropertyType}`);
+    // For single property lookups by reference, don't force residential filter
+    // For search results, default to residential types (Apartments: 1-1, Houses: 2-1)
+    const isSinglePropertyLookup = !!reference;
+    if (!isSinglePropertyLookup) {
+      const effectivePropertyType = propertyType || '1-1,2-1';
+      params.append('propertyType', effectivePropertyType);
+      console.log(`🏠 Using property type filter: ${effectivePropertyType}`);
+    } else if (propertyType) {
+      params.append('propertyType', propertyType);
+    }
     
     if (bedrooms) params.append('bedrooms', String(bedrooms));
     if (bathrooms) params.append('bathrooms', String(bathrooms));
@@ -286,8 +291,11 @@ serve(async (req) => {
       console.log('📦 First property reference:', rawProperties[0].Reference);
     }
 
-    // Filter to only residential properties (Apartments: 1-x, Houses: 2-x)
-    const filteredProperties = filterResidentialProperties(rawProperties);
+    // For single property lookups, skip residential filter to allow viewing any property type
+    // For search results, filter to only residential properties (Apartments: 1-x, Houses: 2-x)
+    const filteredProperties = isSinglePropertyLookup 
+      ? rawProperties 
+      : filterResidentialProperties(rawProperties);
     console.log(`📦 After residential filter: ${filteredProperties.length} of ${totalReceived}`);
 
     // Normalize filtered properties
@@ -334,6 +342,24 @@ serve(async (req) => {
                   totalReceived;
 
     console.log(`✅ Returning ${properties.length} properties, total from API: ${total}`);
+
+    // For single property lookups, return { property: ... } format
+    // For search results, return { properties: [...] } format
+    if (isSinglePropertyLookup) {
+      if (properties.length > 0) {
+        console.log(`🏠 Returning single property: ${properties[0].reference}`);
+        return new Response(
+          JSON.stringify({ property: properties[0] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.log(`⚠️ Property not found for reference: ${reference}`);
+        return new Response(
+          JSON.stringify({ property: null, error: 'Property not found' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Use filtered count for total to avoid showing "8000 results" with 0 properties displayed
     // This gives users accurate expectations about available results
