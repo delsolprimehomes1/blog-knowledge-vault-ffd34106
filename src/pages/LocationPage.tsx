@@ -141,17 +141,7 @@ const LocationPage = () => {
         <meta name="description" content={page.meta_description} />
         <link rel="canonical" href={currentUrl} />
         
-        {/* Hreflang Tags */}
-        <link rel="alternate" hrefLang={currentLangCode} href={currentUrl} />
-        {siblingPages?.filter(s => s.language !== page.language).map(sibling => (
-          <link 
-            key={sibling.language}
-            rel="alternate" 
-            hrefLang={langToHreflang[sibling.language] || sibling.language} 
-            href={`${BASE_URL}/${sibling.language}/locations/${sibling.city_slug}/${sibling.topic_slug}`} 
-          />
-        ))}
-        <link rel="alternate" hrefLang="x-default" href={xDefaultUrl} />
+        {/* Hreflang Tags are handled by LocationHreflangTags component above */}
         
         {/* Open Graph */}
         <meta property="og:title" content={page.meta_title} />

@@ -223,17 +223,18 @@ const BlogIndex = () => {
         <meta property="og:image:alt" content="Del Sol Prime Homes Blog" />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
         
-        {/* Self-referencing hreflang */}
-        <link rel="alternate" hrefLang="en-GB" href={blogUrl} />
+        {/* Hreflang tags - each language points to its own blog index URL */}
+        {activeLanguages.map(langCode => (
+          <link 
+            key={langCode} 
+            rel="alternate" 
+            hrefLang={langToHreflang[langCode] || langCode} 
+            href={`${baseUrl}/${langCode}/blog`} 
+          />
+        ))}
         
-        {/* All active language variants (all point to same URL since no translations yet) */}
-        {activeLanguages.map(lang => {
-          const hreflang = langToHreflang[lang] || lang;
-          return <link key={lang} rel="alternate" hrefLang={hreflang} href={blogUrl} />;
-        })}
-        
-        {/* x-default */}
-        <link rel="alternate" hrefLang="x-default" href={blogUrl} />
+        {/* x-default points to English */}
+        <link rel="alternate" hrefLang="x-default" href={`${baseUrl}/en/blog`} />
         
         {/* JSON-LD Schema */}
         <script type="application/ld+json">

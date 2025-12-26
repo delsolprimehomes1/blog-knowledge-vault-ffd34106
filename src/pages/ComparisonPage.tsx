@@ -196,20 +196,7 @@ export default function ComparisonPage() {
           <meta name="twitter:image" content={comparison.featured_image_url} />
         )}
         
-        {/* Hreflang Tags */}
-        {siblingPages && siblingPages.map((sibling) => (
-          <link 
-            key={sibling.slug}
-            rel="alternate" 
-            hrefLang={langToHreflang[sibling.language] || sibling.language} 
-            href={`${BASE_URL}/${sibling.language}/compare/${sibling.slug}`} 
-          />
-        ))}
-        <link 
-          rel="alternate" 
-          hrefLang="x-default" 
-          href={`${BASE_URL}/en/compare/${siblingPages?.find(s => s.language === 'en')?.slug || comparison.slug}`} 
-        />
+        {/* Hreflang Tags are handled by ComparisonHreflangTags component above */}
         
         {/* JSON-LD Schemas */}
         <script type="application/ld+json">
