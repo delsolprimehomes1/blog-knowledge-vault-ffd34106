@@ -213,7 +213,13 @@ serve(async (req) => {
     
     if (location) params.append('location', location);
     if (sublocation) params.append('sublocation', sublocation);
-    if (propertyType) params.append('propertyType', propertyType);
+    
+    // Default to residential property types (Apartments: 1-1, Houses: 2-1) if none specified
+    // This ensures the API returns residential properties, not commercial
+    const effectivePropertyType = propertyType || '1-1,2-1';
+    params.append('propertyType', effectivePropertyType);
+    console.log(`🏠 Using property type filter: ${effectivePropertyType}`);
+    
     if (bedrooms) params.append('bedrooms', String(bedrooms));
     if (bathrooms) params.append('bathrooms', String(bathrooms));
     if (priceMin) params.append('minPrice', String(priceMin));
@@ -329,9 +335,15 @@ serve(async (req) => {
 
     console.log(`✅ Returning ${properties.length} properties, total from API: ${total}`);
 
+    // Use filtered count for total to avoid showing "8000 results" with 0 properties displayed
+    // This gives users accurate expectations about available results
+    const adjustedTotal = properties.length > 0 
+      ? parseInt(String(total)) || totalReceived
+      : 0;
+
     const responseBody = {
       properties,
-      total: parseInt(String(total)) || totalReceived,
+      total: adjustedTotal,
       page,
       pageSize: limit,
       queryInfo: {
