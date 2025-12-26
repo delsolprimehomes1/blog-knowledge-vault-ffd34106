@@ -21,50 +21,21 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 const ALL_SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+// Background processing function
+async function processQAGeneration(
+  supabase: any,
+  jobId: string,
+  articleIds: string[],
+  targetLanguages: string[],
+  lovableApiKey: string
+) {
+  console.log(`[Background] Starting Q&A generation for job ${jobId}`);
+  
+  const results: any[] = [];
+  let processedArticles = 0;
+  let generatedQaPages = 0;
 
   try {
-    const { articleIds, mode = 'single', languages = ['en'], jobId } = await req.json();
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Determine if generating all languages
-    const isAllLanguages = languages.includes('all') || languages[0] === 'all';
-    const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
-    const effectiveLanguageCount = targetLanguages.length;
-
-    // Create or get job
-    let job;
-    if (jobId) {
-      const { data } = await supabase.from('qa_generation_jobs').select('*').eq('id', jobId).single();
-      job = data;
-    } else {
-      const { data, error } = await supabase
-        .from('qa_generation_jobs')
-        .insert({
-          user_id: null,
-          status: 'running',
-          mode,
-          languages,
-          article_ids: articleIds,
-          total_articles: articleIds.length,
-          total_faq_pages: articleIds.length * 2 * effectiveLanguageCount,
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      job = data;
-    }
-
     // Fetch articles with category
     const { data: articles, error: articlesError } = await supabase
       .from('blog_articles')
@@ -74,38 +45,29 @@ serve(async (req) => {
 
     if (articlesError) throw articlesError;
 
-    // English-first validation: Only accept English source articles
-    const nonEnglishArticles = (articles || []).filter(a => a.language !== 'en');
+    // English-first validation
+    const nonEnglishArticles = (articles || []).filter((a: any) => a.language !== 'en');
     if (nonEnglishArticles.length > 0) {
-      const nonEnglishIds = nonEnglishArticles.map(a => a.id);
-      const nonEnglishHeadlines = nonEnglishArticles.map(a => `${a.headline} (${a.language})`);
-      console.error('English-first validation failed. Non-English articles:', nonEnglishHeadlines);
+      const nonEnglishHeadlines = nonEnglishArticles.map((a: any) => `${a.headline} (${a.language})`);
+      console.error('[Background] English-first validation failed:', nonEnglishHeadlines);
       
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Q&A generation requires English source articles only. Non-English articles detected.',
-        nonEnglishArticles: nonEnglishHeadlines,
-        articleIds: nonEnglishIds,
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      await supabase
+        .from('qa_generation_jobs')
+        .update({
+          status: 'failed',
+          error: `Q&A generation requires English source articles only. Non-English: ${nonEnglishHeadlines.join(', ')}`,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+      return;
     }
-
-    const results: any[] = [];
-    let processedArticles = 0;
-    let generatedQaPages = 0;
 
     for (const article of articles || []) {
       try {
+        console.log(`[Background] Processing article: ${article.headline}`);
         const sourceLanguageName = LANGUAGE_NAMES[article.language] || 'English';
 
-        // =====================================================
-        // CRITICAL FIX: Generate hreflang group IDs ONCE per article
-        // These IDs are SHARED across all language versions
-        // =====================================================
-        
-        // Check if this article already has tracking (for adding languages)
+        // Check if this article already has tracking
         const { data: existingTracking } = await supabase
           .from('qa_article_tracking')
           .select('*')
@@ -118,27 +80,23 @@ serve(async (req) => {
         let trackingId: string;
 
         if (existingTracking) {
-          // Use existing hreflang groups for continuity
           hreflangGroupCore = existingTracking.hreflang_group_core;
           hreflangGroupDecision = existingTracking.hreflang_group_decision;
           existingLanguages = existingTracking.languages_generated || [];
           trackingId = existingTracking.id;
           
-          console.log(`Using existing hreflang groups for article ${article.id}: core=${hreflangGroupCore}, decision=${hreflangGroupDecision}`);
+          console.log(`[Background] Using existing hreflang groups for article ${article.id}`);
           
-          // Update status to in_progress
           await supabase
             .from('qa_article_tracking')
             .update({ status: 'in_progress' })
             .eq('id', trackingId);
         } else {
-          // Create NEW hreflang groups for first-time generation
           hreflangGroupCore = crypto.randomUUID();
           hreflangGroupDecision = crypto.randomUUID();
           
-          console.log(`Creating new hreflang groups for article ${article.id}: core=${hreflangGroupCore}, decision=${hreflangGroupDecision}`);
+          console.log(`[Background] Creating new hreflang groups for article ${article.id}`);
           
-          // Create tracking record
           const { data: newTracking, error: trackingError } = await supabase
             .from('qa_article_tracking')
             .insert({
@@ -155,29 +113,29 @@ serve(async (req) => {
             .single();
 
           if (trackingError) {
-            console.error('Failed to create tracking record:', trackingError);
+            console.error('[Background] Failed to create tracking record:', trackingError);
             throw trackingError;
           }
           
           trackingId = newTracking.id;
         }
 
-        // Filter out languages that are already generated
+        // Filter out already generated languages
         const languagesToGenerate = targetLanguages.filter((lang: string) => !existingLanguages.includes(lang));
         
         if (languagesToGenerate.length === 0) {
-          console.log(`All requested languages already generated for article ${article.id}`);
+          console.log(`[Background] All languages already generated for article ${article.id}`);
+          processedArticles++;
           continue;
         }
 
-        console.log(`Generating Q&As for languages: ${languagesToGenerate.join(', ')}`);
+        console.log(`[Background] Generating Q&As for languages: ${languagesToGenerate.join(', ')}`);
 
-        // Generate Q&As for each language using the SHARED hreflang group IDs
+        // Generate Q&As for each language
         for (const lang of languagesToGenerate) {
           const targetLanguageName = LANGUAGE_NAMES[lang] || 'English';
           const isTranslation = lang !== article.language;
           
-          // Build the translation instruction if needed
           const translationInstruction = isTranslation 
             ? `\n\nIMPORTANT: The source article is in ${sourceLanguageName}. You MUST translate all content to ${targetLanguageName}. Do not leave any text in ${sourceLanguageName}.`
             : '';
@@ -246,7 +204,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
 
               if (!aiResponse.ok) {
                 const errorText = await aiResponse.text();
-                console.error('AI API error:', errorText);
+                console.error('[Background] AI API error:', errorText);
                 throw new Error(`AI API error: ${aiResponse.status}`);
               }
 
@@ -271,9 +229,8 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
                 if (start !== -1 && end !== -1 && end > start) {
                   const extracted = content.slice(start, end + 1);
                   qaPagesData = JSON.parse(extracted);
-                  console.log(`Fallback JSON extraction succeeded for article ${article.id}`);
+                  console.log(`[Background] Fallback JSON extraction succeeded`);
                 } else {
-                  console.error('JSON parse failed - Content length:', content.length);
                   throw new Error('Failed to parse AI response as JSON');
                 }
               }
@@ -287,20 +244,26 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
             } catch (error) {
               lastError = error;
               if (attempt < MAX_RETRIES) {
-                console.log(`Retry attempt ${attempt + 1} for article ${article.id}, lang ${lang}`);
+                console.log(`[Background] Retry attempt ${attempt + 1} for lang ${lang}`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
               }
             }
           }
 
           if (!qaPagesData) {
-            throw lastError || new Error('Failed to generate QA pages after retries');
+            console.error(`[Background] Failed to generate Q&A for ${lang}:`, lastError);
+            results.push({
+              source_article_id: article.id,
+              language: lang,
+              error: lastError instanceof Error ? lastError.message : 'Unknown error',
+            });
+            continue;
           }
 
-          // Save each Q&A page with the SHARED hreflang group ID
+          // Save each Q&A page
           for (const qaData of qaPagesData) {
             const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
-            const slug = baseSlug;  // NO language suffix - folder handles language
+            const slug = baseSlug;
             
             // Check for existing slug
             const { data: existing } = await supabase
@@ -311,11 +274,10 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
               .single();
 
             if (existing) {
-              console.log(`Q&A page already exists: ${slug}`);
+              console.log(`[Background] Q&A page already exists: ${slug}`);
               continue;
             }
 
-            // Use the SHARED hreflang_group_id based on Q&A type
             const hreflangGroupId = qaData.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision;
 
             const { data: qaPage, error: insertError } = await supabase
@@ -348,8 +310,8 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
               .single();
 
             if (insertError) {
-              console.error('Insert error:', insertError);
-              throw insertError;
+              console.error('[Background] Insert error:', insertError);
+              continue;
             }
 
             generatedQaPages++;
@@ -364,11 +326,20 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
             });
           }
 
-          // Update tracking with this language
           existingLanguages.push(lang);
+          
+          // Update job progress after each language
+          await supabase
+            .from('qa_generation_jobs')
+            .update({
+              generated_faq_pages: generatedQaPages,
+              results,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', jobId);
         }
 
-        // Update tracking record with all generated languages
+        // Update tracking record
         const totalQaPages = existingLanguages.length * 2;
         await supabase
           .from('qa_article_tracking')
@@ -381,7 +352,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
 
         processedArticles++;
         
-        // Update job progress
+        // Update job progress after each article
         await supabase
           .from('qa_generation_jobs')
           .update({
@@ -390,10 +361,12 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
             results,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', job.id);
+          .eq('id', jobId);
+
+        console.log(`[Background] Completed article ${processedArticles}/${articleIds.length}`);
 
       } catch (articleError) {
-        console.error(`Error processing article ${article.id}:`, articleError);
+        console.error(`[Background] Error processing article ${article.id}:`, articleError);
         results.push({
           source_article_id: article.id,
           error: articleError instanceof Error ? articleError.message : 'Unknown error',
@@ -402,6 +375,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
     }
 
     // Link translations between Q&A pages from same hreflang group
+    console.log('[Background] Linking translations...');
     const qaPagesByGroup: Record<string, any[]> = {};
     for (const result of results) {
       if (result.qa_page_id && result.hreflang_group_id) {
@@ -412,38 +386,23 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
     }
 
     for (const [groupId, pages] of Object.entries(qaPagesByGroup)) {
-      if (pages.length > 1) {
-        const translations: Record<string, string> = {};
-        for (const page of pages) {
-          translations[page.language] = page.slug;
+      // Get all pages in this hreflang group (including existing ones)
+      const { data: existingPages } = await supabase
+        .from('qa_pages')
+        .select('id, language, slug')
+        .eq('hreflang_group_id', groupId);
+      
+      if (existingPages && existingPages.length > 0) {
+        const fullTranslations: Record<string, string> = {};
+        for (const p of existingPages) {
+          fullTranslations[p.language] = p.slug;
         }
         
-        // Update all pages in this group with translations
-        for (const page of pages) {
+        for (const p of existingPages) {
           await supabase
             .from('qa_pages')
-            .update({ translations })
-            .eq('id', page.qa_page_id);
-        }
-        
-        // Also update any existing pages in this hreflang group
-        const { data: existingPages } = await supabase
-          .from('qa_pages')
-          .select('id, language, slug')
-          .eq('hreflang_group_id', groupId);
-        
-        if (existingPages && existingPages.length > 0) {
-          const fullTranslations: Record<string, string> = {};
-          for (const p of existingPages) {
-            fullTranslations[p.language] = p.slug;
-          }
-          
-          for (const p of existingPages) {
-            await supabase
-              .from('qa_pages')
-              .update({ translations: fullTranslations })
-              .eq('id', p.id);
-          }
+            .update({ translations: fullTranslations })
+            .eq('id', p.id);
         }
       }
     }
@@ -458,20 +417,123 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
         results,
         completed_at: new Date().toISOString(),
       })
-      .eq('id', job.id);
+      .eq('id', jobId);
 
+    console.log(`[Background] Job ${jobId} completed: ${generatedQaPages} Q&A pages generated`);
+
+  } catch (error) {
+    console.error('[Background] Fatal error:', error);
+    
+    await supabase
+      .from('qa_generation_jobs')
+      .update({
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        results,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+  }
+}
+
+// Handle shutdown gracefully
+addEventListener('beforeunload', (ev: any) => {
+  console.log('[Background] Function shutting down:', ev.detail?.reason);
+});
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { articleIds, mode = 'single', languages = ['en'] } = await req.json();
+
+    if (!articleIds || !Array.isArray(articleIds) || articleIds.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'articleIds is required and must be a non-empty array' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Determine target languages
+    const isAllLanguages = languages.includes('all') || languages[0] === 'all';
+    const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
+    const effectiveLanguageCount = targetLanguages.length;
+
+    // Quick validation: Check for non-English articles BEFORE creating job
+    const { data: articlesToCheck, error: checkError } = await supabase
+      .from('blog_articles')
+      .select('id, headline, language')
+      .in('id', articleIds);
+
+    if (checkError) throw checkError;
+
+    const nonEnglishArticles = (articlesToCheck || []).filter((a: any) => a.language !== 'en');
+    if (nonEnglishArticles.length > 0) {
+      const nonEnglishHeadlines = nonEnglishArticles.map((a: any) => `${a.headline} (${a.language})`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Q&A generation requires English source articles only. Non-English articles detected.',
+        nonEnglishArticles: nonEnglishHeadlines,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create job record
+    const { data: job, error: jobError } = await supabase
+      .from('qa_generation_jobs')
+      .insert({
+        user_id: null,
+        status: 'running',
+        mode,
+        languages,
+        article_ids: articleIds,
+        total_articles: articleIds.length,
+        total_faq_pages: articleIds.length * 2 * effectiveLanguageCount,
+        processed_articles: 0,
+        generated_faq_pages: 0,
+        results: [],
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    
+    if (jobError) throw jobError;
+
+    console.log(`[Main] Created job ${job.id}, starting background processing...`);
+
+    // Start background processing using EdgeRuntime.waitUntil
+    // This allows the HTTP response to return immediately while processing continues
+    (globalThis as any).EdgeRuntime?.waitUntil?.(
+      processQAGeneration(supabase, job.id, articleIds, targetLanguages, lovableApiKey)
+    );
+
+    // Return immediately with job ID
     return new Response(JSON.stringify({
       success: true,
       jobId: job.id,
-      processedArticles,
-      generatedQaPages,
-      results,
+      message: 'Q&A generation started in background',
+      totalArticles: articleIds.length,
+      totalQaPages: articleIds.length * 2 * effectiveLanguageCount,
+      languages: targetLanguages,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in generate-qa-pages:', error);
+    console.error('Error starting Q&A generation:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
