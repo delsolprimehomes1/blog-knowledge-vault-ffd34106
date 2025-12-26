@@ -2815,6 +2815,7 @@ export type Database = {
       }
       check_stuck_citation_jobs: { Args: never; Returns: undefined }
       check_stuck_cluster_jobs: { Args: never; Returns: undefined }
+      check_stuck_qa_jobs: { Args: never; Returns: undefined }
       cleanup_duplicate_replacements: {
         Args: never
         Returns: {
