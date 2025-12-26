@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RotateCcw, Loader2 } from "lucide-react";
+import { Search, RotateCcw, Loader2, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useLocations } from "@/hooks/useLocations";
 import { usePropertyTypes } from "@/hooks/usePropertyTypes";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { PropertySearchParams } from "@/types/property";
 
 interface PropertyFiltersProps {
@@ -60,6 +62,7 @@ export const PropertyFilters = ({
 }: PropertyFiltersProps) => {
   const { locations, loading: locationsLoading } = useLocations();
   const { flattenedTypes, loading: typesLoading } = usePropertyTypes();
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const [reference, setReference] = useState(initialParams.reference || "");
   const [location, setLocation] = useState(initialParams.location || "");
@@ -71,7 +74,6 @@ export const PropertyFilters = ({
   const [priceMax, setPriceMax] = useState(initialParams.priceMax?.toString() || "");
   const [status, setStatus] = useState(initialParams.newDevs === "only" ? "new-developments" : "sales");
 
-  // Update local state when initialParams change
   useEffect(() => {
     setReference(initialParams.reference || "");
     setLocation(initialParams.location || "");
@@ -117,199 +119,230 @@ export const PropertyFilters = ({
 
   const isLoading = locationsLoading || typesLoading;
 
+  // Count active filters
+  const activeFilters = [reference, location, sublocation, propertyType, bedrooms, bathrooms, priceMin, priceMax]
+    .filter(f => f && f !== "any").length;
+
   return (
-    <div className="bg-gray-200 rounded-xl p-4 md:p-6 space-y-4">
-      {/* Row 1: Reference, Location, Sublocation, Property Type, Search */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Reference */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Reference</label>
-          <Input
-            placeholder="e.g. R5014453"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            className="h-11 bg-white border-gray-300 focus:border-primary"
-          />
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="relative"
+    >
+      {/* Glass Card Container */}
+      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] overflow-hidden">
+        {/* Decorative gradient accent */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-amber-500 to-primary" />
+        
+        <div className="p-6">
+          {/* Main Search Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Location */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</label>
+              <Select value={location} onValueChange={(val) => { setLocation(val); setSublocation(""); }}>
+                <SelectTrigger className="h-12 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300">
+                  {locationsLoading ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Any Location" />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                  <SelectItem value="any" className="rounded-lg">Any Location</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.value} value={loc.value} className="rounded-lg">
+                      {loc.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Location */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Location</label>
-          <Select value={location} onValueChange={(val) => { setLocation(val); setSublocation(""); }}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              {locationsLoading ? (
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </span>
-              ) : (
-                <SelectValue placeholder="Any Location" />
-              )}
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              <SelectItem value="any">Any Location</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.value} value={loc.value}>
-                  {loc.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            {/* Property Type */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Property Type</label>
+              <Select value={propertyType} onValueChange={setPropertyType}>
+                <SelectTrigger className="h-12 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300">
+                  {typesLoading ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    <SelectValue placeholder="Any Type" />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl max-h-80">
+                  <SelectItem value="any" className="rounded-lg">Any Type</SelectItem>
+                  {flattenedTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="rounded-lg">
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Sublocation */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Sublocation</label>
-          <Select value={sublocation} onValueChange={setSublocation} disabled={!location || location === "any"}>
-            <SelectTrigger className="h-11 bg-white border-gray-300 disabled:opacity-50">
-              <SelectValue placeholder="Any Sublocation" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              <SelectItem value="any">Any Sublocation</SelectItem>
-              {/* Sublocations would be fetched based on location */}
-            </SelectContent>
-          </Select>
-        </div>
+            {/* Price Range */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price Range</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={priceMin} onValueChange={setPriceMin}>
+                  <SelectTrigger className="h-12 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300">
+                    <SelectValue placeholder="Min" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                    {PRICE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value || "any-min"} value={opt.value || "any"} className="rounded-lg">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={priceMax} onValueChange={setPriceMax}>
+                  <SelectTrigger className="h-12 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300">
+                    <SelectValue placeholder="Max" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                    {PRICE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value || "any-max"} value={opt.value || "any"} className="rounded-lg">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-        {/* Property Type */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Property Type</label>
-          <Select value={propertyType} onValueChange={setPropertyType}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              {typesLoading ? (
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </span>
-              ) : (
-                <SelectValue placeholder="Any Type" />
-              )}
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50 max-h-80">
-              <SelectItem value="any">Any Type</SelectItem>
-              {flattenedTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            {/* Search Button */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider invisible">Search</label>
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search{resultCount !== undefined && resultCount > 0 && ` (${resultCount.toLocaleString()})`}
+              </Button>
+            </div>
+          </div>
 
-        {/* Search Button */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide invisible">Search</label>
-          <Button
-            onClick={handleSearch}
-            disabled={isLoading}
-            className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-semibold"
-          >
-            <Search className="w-4 h-4 mr-2" />
-            Search{resultCount !== undefined && ` (${resultCount})`}
-          </Button>
+          {/* Advanced Filters Collapsible */}
+          <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 mt-4 text-sm font-medium text-muted-foreground hover:text-primary transition-colors duration-300 group">
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Advanced Filters</span>
+                {activeFilters > 0 && (
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+                    {activeFilters} active
+                  </span>
+                )}
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isAdvancedOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+              <div className="pt-4 mt-4 border-t border-border/30">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {/* Reference */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Reference</label>
+                    <Input
+                      placeholder="e.g. R5014453"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                      className="h-11 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300"
+                    />
+                  </div>
+
+                  {/* Sublocation */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sublocation</label>
+                    <Select value={sublocation} onValueChange={setSublocation} disabled={!location || location === "any"}>
+                      <SelectTrigger className="h-11 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 disabled:opacity-50 transition-all duration-300">
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                        <SelectItem value="any" className="rounded-lg">Any Sublocation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Bedrooms */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bedrooms</label>
+                    <Select value={bedrooms} onValueChange={setBedrooms}>
+                      <SelectTrigger className="h-11 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 transition-all duration-300">
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                        {BEDROOM_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value || "any-bed"} value={opt.value || "any"} className="rounded-lg">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Bathrooms */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bathrooms</label>
+                    <Select value={bathrooms} onValueChange={setBathrooms}>
+                      <SelectTrigger className="h-11 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 transition-all duration-300">
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                        {BATHROOM_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value || "any-bath"} value={opt.value || "any"} className="rounded-lg">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Status */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger className="h-11 bg-white/60 border-border/50 rounded-xl hover:border-primary/50 transition-all duration-300">
+                        <SelectValue placeholder="Sales" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="rounded-lg">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Reset Button */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider invisible">Reset</label>
+                    <Button
+                      variant="outline"
+                      onClick={handleReset}
+                      className="w-full h-11 rounded-xl border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
-
-      {/* Row 2: Bedrooms, Bathrooms, Min Price, Max Price, Status, Reset */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Bedrooms */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Bedrooms</label>
-          <Select value={bedrooms} onValueChange={setBedrooms}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              <SelectValue placeholder="Any" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              {BEDROOM_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || "any-bed"} value={opt.value || "any"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Bathrooms */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Bathrooms</label>
-          <Select value={bathrooms} onValueChange={setBathrooms}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              <SelectValue placeholder="Any" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              {BATHROOM_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || "any-bath"} value={opt.value || "any"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Min Price */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Min. Price</label>
-          <Select value={priceMin} onValueChange={setPriceMin}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              <SelectValue placeholder="Any" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              {PRICE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || "any-min"} value={opt.value || "any"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Max Price */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Max. Price</label>
-          <Select value={priceMax} onValueChange={setPriceMax}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              <SelectValue placeholder="Any" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              {PRICE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value || "any-max"} value={opt.value || "any"}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Status */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Status</label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="h-11 bg-white border-gray-300">
-              <SelectValue placeholder="Sales" />
-            </SelectTrigger>
-            <SelectContent className="bg-white z-50">
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Reset Button */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-600 uppercase tracking-wide invisible">Reset</label>
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            className="w-full h-11 border-gray-400 hover:bg-gray-100"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Reset
-          </Button>
-        </div>
-      </div>
-    </div>
+    </motion.div>
   );
 };
