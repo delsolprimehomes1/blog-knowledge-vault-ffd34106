@@ -126,6 +126,49 @@ export default function FAQGenerator() {
     refetchInterval: 30000, // Check every 30 seconds
   });
 
+  // Detect partial articles (those with incomplete Q&A pages)
+  const { data: partialArticles = [] } = useQuery({
+    queryKey: ['partial-qa-articles', trackingData],
+    queryFn: async () => {
+      // Find tracking records with less than 20 pages (10 langs * 2 types)
+      const incompleteTracking = trackingData.filter(t => 
+        t.languages_generated.length < 10 && t.status === 'completed'
+      );
+      
+      if (incompleteTracking.length === 0) return [];
+      
+      // For each incomplete tracking, count actual QA pages
+      const results: { trackingId: string; articleId: string; headline: string; expectedPages: number; actualPages: number; missingLanguages: string[] }[] = [];
+      
+      for (const tracking of incompleteTracking) {
+        const { count } = await supabase
+          .from('qa_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('source_article_id', tracking.source_article_id);
+        
+        const actualPages = count || 0;
+        const expectedPages = 20; // 10 languages * 2 types
+        
+        if (actualPages < expectedPages) {
+          const missingLanguages = LANGUAGES.map(l => l.code).filter(
+            l => !tracking.languages_generated.includes(l)
+          );
+          results.push({
+            trackingId: tracking.id,
+            articleId: tracking.source_article_id,
+            headline: tracking.source_article_headline,
+            expectedPages,
+            actualPages,
+            missingLanguages,
+          });
+        }
+      }
+      
+      return results;
+    },
+    enabled: trackingData.length > 0,
+  });
+
   const usedArticleIds = new Set(trackingData.map(t => t.source_article_id));
 
   // Fetch published English articles
@@ -380,6 +423,29 @@ export default function FAQGenerator() {
     },
   });
 
+  // Complete missing Q&A pages for a partially generated article
+  const completeMissingMutation = useMutation({
+    mutationFn: async (articleId: string) => {
+      const response = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds: [articleId],
+          languages: ['all'],
+          completeMissing: true,
+        },
+      });
+      if (response.error) throw response.error;
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Generated ${data.generatedPages} missing Q&A pages`);
+      refetchQaPages();
+      refetchTracking();
+    },
+    onError: (error) => {
+      toast.error(`Failed to complete missing pages: ${error.message}`);
+    },
+  });
+
   // Update QA page mutation
   const updateQaMutation = useMutation({
     mutationFn: async (qa: any) => {
@@ -602,6 +668,50 @@ export default function FAQGenerator() {
                     <Button size="sm" variant="outline" onClick={() => resumeJob(job)}>
                       <Play className="mr-1 h-3 w-3" />
                       Resume
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Partial Articles Alert - Missing Q&A Pages */}
+        {partialArticles.length > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-orange-800">
+                <AlertTriangle className="h-4 w-4" />
+                {partialArticles.length} article(s) have incomplete Q&A pages
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="space-y-2">
+                {partialArticles.slice(0, 3).map((partial) => (
+                  <div key={partial.trackingId} className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="text-sm">
+                      <span className="font-medium truncate max-w-[300px] inline-block align-bottom" title={partial.headline}>
+                        {partial.headline.substring(0, 40)}...
+                      </span>
+                      <span className="text-muted-foreground ml-2">
+                        {partial.actualPages}/{partial.expectedPages} pages
+                      </span>
+                      <span className="text-orange-600 ml-2">
+                        Missing: {partial.missingLanguages.map(l => LANGUAGE_FLAGS[l]).join(' ')}
+                      </span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => completeMissingMutation.mutate(partial.articleId)}
+                      disabled={completeMissingMutation.isPending}
+                    >
+                      {completeMissingMutation.isPending ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Plus className="mr-1 h-3 w-3" />
+                      )}
+                      Complete
                     </Button>
                   </div>
                 ))}
