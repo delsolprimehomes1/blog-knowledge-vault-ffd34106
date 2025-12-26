@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, MapPin, Wallet, Home, Loader2 } from 'lucide-react';
-import { LOCATIONS } from '../../../constants/home';
+import { Search, ChevronDown, MapPin, Wallet, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useTranslation } from '../../../i18n';
 import { supabase } from '../../../integrations/supabase/client';
+import { useLocations } from '../../../hooks/useLocations';
 
 interface Property {
   id: string;
@@ -25,10 +25,12 @@ export const QuickSearch: React.FC = () => {
   const navigate = useNavigate();
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState('');
-  // SALES-ONLY: No more rent option - hardcoded for luxury residential
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Fetch dynamic locations from API
+  const { locations, loading: locationsLoading } = useLocations();
 
   // Fetch properties when filters change
   useEffect(() => {
@@ -40,13 +42,12 @@ export const QuickSearch: React.FC = () => {
       
       try {
         const params: Record<string, string | number> = {
-          transactionType: 'sale', // HARD-LOCKED: Sales only
-          priceMin: 400000, // ALWAYS enforce €400k minimum for luxury positioning
+          transactionType: 'sale',
         };
         if (location) params.location = location;
         if (budget) {
           const [min, max] = budget.split('-');
-          if (min) params.priceMin = parseInt(min); // Override with user selection if higher
+          if (min) params.priceMin = parseInt(min);
           if (max && max !== '+') params.priceMax = parseInt(max);
         }
 
@@ -56,7 +57,6 @@ export const QuickSearch: React.FC = () => {
 
         if (error) throw error;
         
-        // Take first 3 properties for preview
         setProperties((data?.properties || []).slice(0, 3));
       } catch (err) {
         console.error('Error fetching properties:', err);
@@ -72,12 +72,11 @@ export const QuickSearch: React.FC = () => {
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    params.append("transactionType", "sale"); // HARD-LOCKED: Sales only
-    params.append("priceMin", "400000"); // ALWAYS enforce €400k minimum
+    params.append("transactionType", "sale");
     if (location) params.append("location", location);
     if (budget) {
       const [min, max] = budget.split("-");
-      if (min) params.set("priceMin", min); // Override with user selection
+      if (min) params.set("priceMin", min);
       if (max && max !== "+") params.append("priceMax", max);
     }
     navigate(`/property-finder?${params.toString()}`);
@@ -114,11 +113,20 @@ export const QuickSearch: React.FC = () => {
                 className="w-full appearance-none bg-slate-50 hover:bg-white border border-slate-200 hover:border-prime-gold/50 rounded-xl px-5 py-4 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-prime-gold/20 focus:border-prime-gold transition-all duration-300 cursor-pointer shadow-sm"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                disabled={locationsLoading}
               >
-                <option value="">{t.quickSearch.placeholders.location}</option>
-                {LOCATIONS.map(loc => <option key={loc.value} value={loc.value}>{loc.label}</option>)}
+                <option value="">
+                  {locationsLoading ? 'Loading locations...' : t.quickSearch.placeholders.location}
+                </option>
+                {locations.map(loc => (
+                  <option key={loc.value} value={loc.value}>{loc.label}</option>
+                ))}
               </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
+              {locationsLoading ? (
+                <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none animate-spin" size={18} />
+              ) : (
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
+              )}
             </div>
           </div>
 
@@ -134,11 +142,13 @@ export const QuickSearch: React.FC = () => {
                 onChange={(e) => setBudget(e.target.value)}
               >
                 <option value="">{t.quickSearch.placeholders.budget}</option>
-                <option value="400000-600000">€400k - €600k</option>
-                <option value="600000-900000">€600k - €900k</option>
-                <option value="900000-1500000">€900k - €1.5M</option>
-                <option value="1500000-3000000">€1.5M - €3M</option>
-                <option value="3000000+">€3M+</option>
+                <option value="0-300000">Under €300k</option>
+                <option value="300000-500000">€300k - €500k</option>
+                <option value="500000-750000">€500k - €750k</option>
+                <option value="750000-1000000">€750k - €1M</option>
+                <option value="1000000-2000000">€1M - €2M</option>
+                <option value="2000000-5000000">€2M - €5M</option>
+                <option value="5000000+">€5M+</option>
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-prime-gold transition-colors" size={18} />
             </div>

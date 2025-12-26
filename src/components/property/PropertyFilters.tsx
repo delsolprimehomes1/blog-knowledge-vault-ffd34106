@@ -5,13 +5,16 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LOCATIONS, PROPERTY_TYPES } from "@/constants/home";
+import { useLocations } from "@/hooks/useLocations";
+import { usePropertyTypes } from "@/hooks/usePropertyTypes";
 import type { PropertySearchParams } from "@/types/property";
-import { Search, RotateCcw, MapPin, Home, DollarSign, Bed, Bath, Sparkles } from "lucide-react";
+import { Search, RotateCcw, MapPin, Home, DollarSign, Bed, Bath, Sparkles, Loader2 } from "lucide-react";
 
 interface PropertyFiltersProps {
   onSearch: (params: PropertySearchParams) => void;
@@ -20,18 +23,20 @@ interface PropertyFiltersProps {
 
 export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProps) => {
   const [location, setLocation] = useState(initialParams?.location || "");
-  // SALES-ONLY: Transaction type is hard-locked to 'sale'
   const [propertyType, setPropertyType] = useState(initialParams?.propertyType || "");
-  // Default minimum price €400k for luxury positioning
-  const [priceMin, setPriceMin] = useState(initialParams?.priceMin?.toString() || "400000");
+  const [priceMin, setPriceMin] = useState(initialParams?.priceMin?.toString() || "");
   const [priceMax, setPriceMax] = useState(initialParams?.priceMax?.toString() || "");
   const [bedrooms, setBedrooms] = useState(initialParams?.bedrooms?.toString() || "");
   const [bathrooms, setBathrooms] = useState(initialParams?.bathrooms?.toString() || "");
 
+  // Fetch dynamic data from API
+  const { locations, loading: locationsLoading } = useLocations();
+  const { propertyTypes, loading: propertyTypesLoading } = usePropertyTypes();
+
   const handleSearch = () => {
     const params: PropertySearchParams = {
       location: location || undefined,
-      transactionType: 'sale', // HARD-LOCKED: Sales only
+      transactionType: 'sale',
       propertyType: propertyType && propertyType !== 'all' ? propertyType : undefined,
       priceMin: priceMin ? parseInt(priceMin) : undefined,
       priceMax: priceMax ? parseInt(priceMax) : undefined,
@@ -44,11 +49,11 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
   const handleReset = () => {
     setLocation("");
     setPropertyType("");
-    setPriceMin("400000"); // Reset to luxury default
+    setPriceMin("");
     setPriceMax("");
     setBedrooms("");
     setBathrooms("");
-    onSearch({ transactionType: 'sale', priceMin: 400000 }); // HARD-LOCKED: Sales only + luxury min
+    onSearch({ transactionType: 'sale' });
   };
 
   return (
@@ -83,10 +88,17 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
           </Label>
           <Select value={location} onValueChange={setLocation}>
             <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-colors">
-              <SelectValue placeholder="Select location" />
+              {locationsLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </div>
+              ) : (
+                <SelectValue placeholder="Select location" />
+              )}
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
-              {LOCATIONS.map((loc) => (
+            <SelectContent className="rounded-xl border-slate-200 bg-white z-50 max-h-[300px]">
+              {locations.map((loc) => (
                 <SelectItem key={loc.value} value={loc.value} className="rounded-lg">
                   {loc.label}
                 </SelectItem>
@@ -103,13 +115,34 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
           </Label>
           <Select value={propertyType} onValueChange={setPropertyType}>
             <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-colors">
-              <SelectValue placeholder="Any type" />
+              {propertyTypesLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </div>
+              ) : (
+                <SelectValue placeholder="Any type" />
+              )}
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
-              {PROPERTY_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value} className="rounded-lg">
-                  {type.label}
-                </SelectItem>
+            <SelectContent className="rounded-xl border-slate-200 bg-white z-50 max-h-[300px]">
+              <SelectItem value="all" className="rounded-lg font-medium">
+                All Property Types
+              </SelectItem>
+              {propertyTypes.map((type) => (
+                <SelectGroup key={type.value}>
+                  <SelectItem value={type.value} className="rounded-lg font-medium">
+                    {type.label}
+                  </SelectItem>
+                  {type.subtypes.map((subtype) => (
+                    <SelectItem 
+                      key={subtype.value} 
+                      value={subtype.value} 
+                      className="rounded-lg pl-6 text-muted-foreground"
+                    >
+                      {subtype.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -151,7 +184,7 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
               <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-colors">
                 <SelectValue placeholder="Any" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
+              <SelectContent className="rounded-xl border-slate-200 bg-white z-50">
                 {[1, 2, 3, 4, 5, 6].map((num) => (
                   <SelectItem key={num} value={num.toString()} className="rounded-lg">
                     {num}+
@@ -171,7 +204,7 @@ export const PropertyFilters = ({ onSearch, initialParams }: PropertyFiltersProp
               <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-colors">
                 <SelectValue placeholder="Any" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
+              <SelectContent className="rounded-xl border-slate-200 bg-white z-50">
                 {[1, 2, 3, 4, 5].map((num) => (
                   <SelectItem key={num} value={num.toString()} className="rounded-lg">
                     {num}+

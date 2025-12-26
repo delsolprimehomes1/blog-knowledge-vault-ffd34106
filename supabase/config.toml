@@ -122,3 +122,12 @@ verify_jwt = false
 
 [functions.regenerate-sitemap]
 verify_jwt = false
+
+[functions.fetch-locations]
+verify_jwt = false
+
+[functions.fetch-property-types]
+verify_jwt = false
+
+[functions.register-lead]
+verify_jwt = false

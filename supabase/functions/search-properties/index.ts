@@ -152,16 +152,18 @@ function isExcludedPropertyType(propertyType: string): boolean {
 }
 
 /**
- * Default minimum price for luxury positioning (€400,000)
+ * Language code mapping for API
  */
-const DEFAULT_MIN_PRICE = 400000;
+const LANGUAGE_MAP: Record<string, number> = {
+  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13
+};
 
 /**
  * Extracts main image URL from various response structures
  */
 function extractMainImage(prop: any): string {
   return prop.MainImage || 
-         prop.mainImage || 
+         prop.mainImage ||
          prop.MainImageUrl || 
          prop.Pictures?.Picture?.[0]?.PictureURL ||
          prop.Picture?.MainImage || 
@@ -217,44 +219,45 @@ serve(async (req) => {
 
     const {
       location = '',
-      priceMin: requestedPriceMin,
+      sublocation = '',
+      priceMin,
       priceMax,
       propertyType = '',
       bedrooms,
       bathrooms,
       page = 1,
       limit = 20,
-      lang = 'en'
+      lang = 'en',
+      queryId = ''
     } = body;
-    
-    // Apply default minimum price for luxury positioning if not specified
-    const priceMin = requestedPriceMin ?? DEFAULT_MIN_PRICE;
 
-    // Call the proxy server
-    const proxyUrl = 'http://188.34.164.137:3000/search';
+    // Build GET URL with query parameters (no minimum price restriction)
+    const params = new URLSearchParams();
     
-    const proxyPayload = {
-      location,
-      transactionType, // Always 'sale'
-      priceMin,
-      priceMax,
-      propertyType,
-      bedrooms,
-      bathrooms,
-      page,
-      limit,
-      lang // Forward language for translated content
-    };
+    if (location) params.append('location', location);
+    if (sublocation) params.append('sublocation', sublocation);
+    if (propertyType) params.append('propertyType', propertyType);
+    if (bedrooms) params.append('bedrooms', String(bedrooms));
+    if (bathrooms) params.append('bathrooms', String(bathrooms));
+    if (priceMin) params.append('minPrice', String(priceMin));
+    if (priceMax) params.append('maxPrice', String(priceMax));
+    params.append('pageSize', String(limit));
+    params.append('pageNo', String(page));
+    if (queryId) params.append('queryId', queryId);
+    
+    // Map language code to API language number
+    const langNum = LANGUAGE_MAP[lang] || 1;
+    params.append('lang', String(langNum));
+
+    const proxyUrl = `http://188.34.164.137:3000/search?${params.toString()}`;
 
     if (isDebugMode) {
       console.log('📡 Proxy URL:', proxyUrl);
-      console.log('📤 Request payload:', JSON.stringify(proxyPayload, null, 2));
     }
 
     const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(proxyPayload),
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     });
 
     if (!response.ok) {
@@ -386,7 +389,7 @@ serve(async (req) => {
     if (isDebugMode) {
       responseBody.debug = {
         proxyUrl,
-        requestBody: { ...proxyPayload, transactionType: 'sale (FORCED)' },
+        requestParams: { location, sublocation, propertyType, bedrooms, bathrooms, priceMin, priceMax, page, limit, lang },
         queryInfo,
         totalReceived,
         totalFilteredOut,
