@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building, ExternalLink, Languages, Plus } from 'lucide-react';
+import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building, ExternalLink, Languages, Plus, Play, AlertTriangle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -65,25 +65,39 @@ interface TrackingRecord {
   created_at: string;
 }
 
+interface JobState {
+  jobId: string;
+  articleIds: string[];
+  languages: string[];
+  processedArticles: number;
+  totalArticles: number;
+  generatedPages: number;
+  status: 'running' | 'completed' | 'failed';
+  lastArticle?: { id: string; headline: string; pagesGenerated: number };
+}
+
 export default function FAQGenerator() {
   const queryClient = useQueryClient();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['all']); // Default to all languages
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['all']);
   const [activeTab, setActiveTab] = useState('available');
-  const [jobId, setJobId] = useState<string | null>(null);
   const [editingFaq, setEditingFaq] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
   // City Q&A state
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  const [cityLanguages, setCityLanguages] = useState<string[]>(['all']); // Default to all languages
+  const [cityLanguages, setCityLanguages] = useState<string[]>(['all']);
   const [cityJobId, setCityJobId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch tracking data to know which articles are already used
+  // Job state for chunked processing
+  const [jobState, setJobState] = useState<JobState | null>(null);
+  const isProcessingRef = useRef(false);
+
+  // Fetch tracking data
   const { data: trackingData = [], refetch: refetchTracking } = useQuery({
     queryKey: ['qa-article-tracking'],
     queryFn: async () => {
@@ -96,10 +110,25 @@ export default function FAQGenerator() {
     },
   });
 
-  // Get IDs of articles already used for Q&A
+  // Fetch stuck jobs that can be resumed
+  const { data: stuckJobs = [], refetch: refetchStuckJobs } = useQuery({
+    queryKey: ['stuck-qa-jobs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('qa_generation_jobs')
+        .select('*')
+        .eq('status', 'running')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000, // Check every 30 seconds
+  });
+
   const usedArticleIds = new Set(trackingData.map(t => t.source_article_id));
 
-  // Fetch published English articles only (for Q&A generation)
+  // Fetch published English articles
   const { data: allArticles = [], isLoading: articlesLoading } = useQuery({
     queryKey: ['published-english-articles-for-faq'],
     queryFn: async () => {
@@ -107,14 +136,13 @@ export default function FAQGenerator() {
         .from('blog_articles')
         .select('id, headline, language, category, funnel_stage, date_published, slug')
         .eq('status', 'published')
-        .eq('language', 'en') // Only English articles
+        .eq('language', 'en')
         .order('date_published', { ascending: false });
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Split articles into available (no Q&As) and used (has Q&As)
   const availableArticles = allArticles.filter(a => !usedArticleIds.has(a.id));
 
   // Fetch categories
@@ -140,31 +168,131 @@ export default function FAQGenerator() {
     },
   });
 
-  // Poll job status (article-based QA)
-  useEffect(() => {
-    if (!jobId) return;
+  // Process next article in the queue
+  const processNextArticle = useCallback(async (currentJobState: JobState) => {
+    if (isProcessingRef.current) return;
+    if (currentJobState.status === 'completed' || currentJobState.status === 'failed') return;
     
-    const interval = setInterval(async () => {
-      const response = await supabase.functions.invoke('check-qa-job-status', {
-        body: { jobId },
-      });
+    isProcessingRef.current = true;
+    
+    try {
+      console.log(`[Frontend] Processing article ${currentJobState.processedArticles + 1}/${currentJobState.totalArticles}`);
       
-      if (response.data?.status === 'completed') {
-        clearInterval(interval);
-        toast.success(`Generated ${response.data.generatedQaPages} QA pages!`);
-        setJobId(null);
-        setActiveTab('results');
+      const response = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds: currentJobState.articleIds,
+          languages: currentJobState.languages,
+          jobId: currentJobState.jobId,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to process article');
+      }
+
+      const data = response.data;
+      
+      const newJobState: JobState = {
+        ...currentJobState,
+        processedArticles: data.processedArticles,
+        generatedPages: data.generatedPages || currentJobState.generatedPages,
+        status: data.status === 'completed' ? 'completed' : 'running',
+        lastArticle: data.lastArticle,
+      };
+
+      setJobState(newJobState);
+
+      if (data.continueProcessing) {
+        // Continue processing next article
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          processNextArticle(newJobState);
+        }, 500); // Small delay between articles
+      } else {
+        // All done
+        isProcessingRef.current = false;
+        toast.success(`Generated ${data.generatedPages} Q&A pages!`);
         refetchQaPages();
         refetchTracking();
-      } else if (response.data?.status === 'failed') {
-        clearInterval(interval);
-        toast.error(response.data.error || 'Generation failed');
-        setJobId(null);
+        refetchStuckJobs();
       }
-    }, 3000);
+    } catch (error) {
+      console.error('[Frontend] Error processing article:', error);
+      isProcessingRef.current = false;
+      setJobState(prev => prev ? { ...prev, status: 'failed' } : null);
+      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [refetchQaPages, refetchTracking, refetchStuckJobs]);
 
-    return () => clearInterval(interval);
-  }, [jobId, refetchQaPages, refetchTracking]);
+  // Start generation
+  const startGeneration = useCallback(async () => {
+    if (selectedArticles.length === 0) return;
+    
+    const langs = selectedLanguages.includes('all') ? ['all'] : selectedLanguages;
+    
+    try {
+      // Create initial job
+      const response = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds: selectedArticles,
+          languages: langs,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to start generation');
+      }
+
+      const data = response.data;
+      
+      const newJobState: JobState = {
+        jobId: data.jobId,
+        articleIds: selectedArticles,
+        languages: langs,
+        processedArticles: data.processedArticles || 0,
+        totalArticles: selectedArticles.length,
+        generatedPages: data.generatedPages || 0,
+        status: data.status === 'completed' ? 'completed' : 'running',
+        lastArticle: data.lastArticle,
+      };
+
+      setJobState(newJobState);
+      setActiveTab('progress');
+      toast.info('Q&A generation started...');
+
+      if (data.continueProcessing) {
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          processNextArticle(newJobState);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('[Frontend] Error starting generation:', error);
+      toast.error(`Failed to start: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [selectedArticles, selectedLanguages, processNextArticle]);
+
+  // Resume a stuck job
+  const resumeJob = useCallback(async (job: any) => {
+    const jobState: JobState = {
+      jobId: job.id,
+      articleIds: job.article_ids || [],
+      languages: job.languages || ['all'],
+      processedArticles: job.processed_articles || 0,
+      totalArticles: job.total_articles || 0,
+      generatedPages: job.generated_faq_pages || 0,
+      status: 'running',
+    };
+
+    setJobState(jobState);
+    setActiveTab('progress');
+    toast.info('Resuming Q&A generation...');
+
+    setTimeout(() => {
+      isProcessingRef.current = false;
+      processNextArticle(jobState);
+    }, 500);
+  }, [processNextArticle]);
 
   // Poll city job status
   useEffect(() => {
@@ -190,29 +318,6 @@ export default function FAQGenerator() {
 
     return () => clearInterval(interval);
   }, [cityJobId, refetchQaPages]);
-
-  // Generate QA pages mutation (article-based)
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const response = await supabase.functions.invoke('generate-qa-pages', {
-        body: {
-          articleIds: selectedArticles,
-          mode: selectedArticles.length > 1 ? 'bulk' : 'single',
-          languages: selectedLanguages.includes('all') ? ['all'] : selectedLanguages,
-        },
-      });
-      if (response.error) throw response.error;
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setJobId(data.jobId);
-      setActiveTab('progress');
-      toast.info('QA page generation started...');
-    },
-    onError: (error) => {
-      toast.error(`Failed to start generation: ${error.message}`);
-    },
-  });
 
   // Generate City Q&A pages mutation
   const generateCityQaMutation = useMutation({
@@ -250,9 +355,25 @@ export default function FAQGenerator() {
       return response.data;
     },
     onSuccess: (data) => {
-      setJobId(data.jobId);
+      const newJobState: JobState = {
+        jobId: data.jobId,
+        articleIds: [data.lastArticle?.id].filter(Boolean) as string[],
+        languages: data.languages || ['all'],
+        processedArticles: data.processedArticles || 0,
+        totalArticles: 1,
+        generatedPages: data.generatedPages || 0,
+        status: data.status === 'completed' ? 'completed' : 'running',
+      };
+      setJobState(newJobState);
       setActiveTab('progress');
       toast.info('Adding missing languages...');
+
+      if (data.continueProcessing) {
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          processNextArticle(newJobState);
+        }, 500);
+      }
     },
     onError: (error) => {
       toast.error(`Failed to add languages: ${error.message}`);
@@ -322,7 +443,6 @@ export default function FAQGenerator() {
     },
   });
 
-  // Count drafts and published
   const draftCount = qaPages.filter((qa: any) => qa.status === 'draft').length;
   const publishedCount = qaPages.filter((qa: any) => qa.status === 'published').length;
 
@@ -354,13 +474,12 @@ export default function FAQGenerator() {
     return matchesSearch && matchesCategory;
   });
 
-  // Pagination calculations
+  // Pagination
   const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredArticles.length);
   const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, languageFilter, categoryFilter]);
@@ -371,7 +490,6 @@ export default function FAQGenerator() {
     );
   };
 
-  // Toggle all on current page
   const toggleAllOnPage = () => {
     const pageArticleIds = paginatedArticles.map((a) => a.id);
     const allPageSelected = pageArticleIds.every((id) => selectedArticles.includes(id));
@@ -383,7 +501,6 @@ export default function FAQGenerator() {
     }
   };
 
-  // Select all filtered articles
   const selectAllFiltered = () => {
     const allFilteredIds = filteredArticles.map((a) => a.id);
     setSelectedArticles(allFilteredIds);
@@ -403,7 +520,6 @@ export default function FAQGenerator() {
     }
   };
 
-  // City Q&A helper functions
   const toggleCity = (slug: string) => {
     setSelectedCities((prev) =>
       prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug]
@@ -428,7 +544,6 @@ export default function FAQGenerator() {
     }
   };
 
-  // Add missing languages to an existing Q&A set
   const handleAddMissingLanguages = (tracking: TrackingRecord) => {
     const missingLangs = LANGUAGES.map(l => l.code).filter(
       l => !tracking.languages_generated.includes(l)
@@ -442,6 +557,10 @@ export default function FAQGenerator() {
       languages: missingLangs,
     });
   };
+
+  const progressPercent = jobState 
+    ? Math.round((jobState.processedArticles / jobState.totalArticles) * 100) 
+    : 0;
 
   return (
     <AdminLayout>
@@ -461,6 +580,36 @@ export default function FAQGenerator() {
           </Button>
         </div>
 
+        {/* Stuck Jobs Alert */}
+        {stuckJobs.length > 0 && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="h-4 w-4" />
+                {stuckJobs.length} job(s) can be resumed
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="space-y-2">
+                {stuckJobs.slice(0, 3).map((job: any) => (
+                  <div key={job.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="text-sm">
+                      <span className="font-medium">{job.processed_articles}/{job.total_articles} articles</span>
+                      <span className="text-muted-foreground ml-2">
+                        Started {format(new Date(job.created_at), 'MMM d, HH:mm')}
+                      </span>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => resumeJob(job)}>
+                      <Play className="mr-1 h-3 w-3" />
+                      Resume
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="available">
@@ -473,8 +622,8 @@ export default function FAQGenerator() {
               <MapPin className="mr-1 h-4 w-4" />
               City Q&A
             </TabsTrigger>
-            <TabsTrigger value="progress" disabled={!jobId && !cityJobId}>
-              Progress {(jobId || cityJobId) && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            <TabsTrigger value="progress" disabled={!jobState && !cityJobId}>
+              Progress {(jobState?.status === 'running' || cityJobId) && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             </TabsTrigger>
             <TabsTrigger value="results">Generated QAs ({qaPages.length})</TabsTrigger>
           </TabsList>
@@ -515,7 +664,7 @@ export default function FAQGenerator() {
                   </Select>
                 </div>
 
-                {/* Language Selection for Generation - Default to All */}
+                {/* Language Selection */}
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <p className="text-sm font-medium mb-2">Generate Q&A pages for languages:</p>
                   <div className="flex flex-wrap gap-2">
@@ -539,7 +688,7 @@ export default function FAQGenerator() {
                   </div>
                 </div>
 
-                {/* Results count and bulk select */}
+                {/* Results count */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
                     Showing {filteredArticles.length > 0 ? startIndex + 1 : 0}-{endIndex} of {filteredArticles.length} articles
@@ -619,7 +768,7 @@ export default function FAQGenerator() {
                   </Table>
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2">
                     <Button
@@ -664,10 +813,10 @@ export default function FAQGenerator() {
                       </Button>
                     )}
                     <Button
-                      onClick={() => generateMutation.mutate()}
-                      disabled={selectedArticles.length === 0 || generateMutation.isPending}
+                      onClick={startGeneration}
+                      disabled={selectedArticles.length === 0 || jobState?.status === 'running'}
                     >
-                      {generateMutation.isPending ? (
+                      {jobState?.status === 'running' ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <FileQuestion className="mr-2 h-4 w-4" />
@@ -895,28 +1044,79 @@ export default function FAQGenerator() {
             </Card>
           </TabsContent>
 
+          {/* Progress Tab */}
           <TabsContent value="progress">
             <Card>
               <CardHeader>
                 <CardTitle>Generation Progress</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {cityJobId ? 'Generating City Q&A pages...' : 'Generating Q&A pages...'}
+                {jobState ? (
+                  <>
+                    <div className="flex items-center gap-4">
+                      {jobState.status === 'running' ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      ) : jobState.status === 'completed' ? (
+                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      ) : (
+                        <XCircle className="h-8 w-8 text-red-600" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {jobState.status === 'running' 
+                            ? `Processing article ${jobState.processedArticles + 1} of ${jobState.totalArticles}...`
+                            : jobState.status === 'completed'
+                            ? 'Generation complete!'
+                            : 'Generation failed'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {jobState.generatedPages} Q&A pages generated so far
+                        </p>
+                        {jobState.lastArticle && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Last: {jobState.lastArticle.headline} (+{jobState.lastArticle.pagesGenerated} pages)
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Progress value={progressPercent} className="h-2" />
+                    <p className="text-center text-sm text-muted-foreground">
+                      {progressPercent}% complete ({jobState.processedArticles}/{jobState.totalArticles} articles)
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      This may take a few minutes depending on the number of {cityJobId ? 'cities and languages' : 'articles'}
-                    </p>
-                  </div>
-                </div>
-                <Progress value={50} className="h-2" />
+                    {jobState.status === 'completed' && (
+                      <div className="flex justify-center pt-4">
+                        <Button onClick={() => {
+                          setJobState(null);
+                          setActiveTab('results');
+                        }}>
+                          View Generated Q&A Pages
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : cityJobId ? (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <div className="flex-1">
+                        <p className="font-medium">Generating City Q&A pages...</p>
+                        <p className="text-sm text-muted-foreground">
+                          This may take a few minutes depending on the number of cities and languages
+                        </p>
+                      </div>
+                    </div>
+                    <Progress value={50} className="h-2" />
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No generation in progress. Go to "Available Articles" to start.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Results Tab */}
           <TabsContent value="results" className="space-y-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -1006,22 +1206,22 @@ export default function FAQGenerator() {
                         qaPages.slice(0, 50).map((qa: any) => (
                           <TableRow key={qa.id}>
                             <TableCell className="font-medium max-w-[250px] truncate">
-                              {qa.title || qa.question_main}
+                              {qa.title}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{qa.qa_type || 'N/A'}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">
-                                {LANGUAGE_FLAGS[qa.language]} {qa.language?.toUpperCase()}
+                              <Badge variant={qa.qa_type === 'core' ? 'default' : 'secondary'}>
+                                {qa.qa_type}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={qa.status === 'published' ? 'default' : 'secondary'}>
+                              {LANGUAGE_FLAGS[qa.language]} {qa.language?.toUpperCase()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={qa.status === 'published' ? 'default' : 'outline'}>
                                 {qa.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell>
                               {qa.created_at ? format(new Date(qa.created_at), 'MMM d, yyyy') : '-'}
                             </TableCell>
                             <TableCell>
@@ -1050,14 +1250,13 @@ export default function FAQGenerator() {
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Delete Q&A Page?</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the Q&A page.
+                                        This will permanently delete this Q&A page.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() => deleteQaMutation.mutate(qa.id)}
-                                        className="bg-destructive hover:bg-destructive/90"
                                       >
                                         Delete
                                       </AlertDialogAction>
@@ -1073,126 +1272,138 @@ export default function FAQGenerator() {
                   </Table>
                 </div>
                 {qaPages.length > 50 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Showing first 50 of {qaPages.length} Q&A pages. View all in the Dashboard.
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
+                    Showing first 50 of {qaPages.length} Q&A pages
                   </p>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
 
-        {/* Edit Dialog */}
-        <Dialog open={!!editingFaq} onOpenChange={() => setEditingFaq(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Q&A Page</DialogTitle>
-            </DialogHeader>
-            {editingFaq && (
-              <div className="space-y-4">
+      {/* Edit Dialog */}
+      <Dialog open={!!editingFaq} onOpenChange={() => setEditingFaq(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Q&A Page</DialogTitle>
+          </DialogHeader>
+          {editingFaq && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Title</label>
+                <Input
+                  value={editingFaq.title || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Main Question</label>
+                <Input
+                  value={editingFaq.question_main || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, question_main: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Main Answer</label>
+                <Textarea
+                  value={editingFaq.answer_main || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, answer_main: e.target.value })}
+                  rows={6}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Speakable Answer</label>
+                <Textarea
+                  value={editingFaq.speakable_answer || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, speakable_answer: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Title</label>
+                  <label className="text-sm font-medium">Meta Title</label>
                   <Input
-                    value={editingFaq.title || ''}
-                    onChange={(e) => setEditingFaq({ ...editingFaq, title: e.target.value })}
+                    value={editingFaq.meta_title || ''}
+                    onChange={(e) => setEditingFaq({ ...editingFaq, meta_title: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Main Question</label>
-                  <Input
-                    value={editingFaq.question_main || ''}
-                    onChange={(e) => setEditingFaq({ ...editingFaq, question_main: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium">Main Answer</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'answer_main' })}
-                      disabled={regenerateSectionMutation.isPending}
-                    >
-                      <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
-                      Regenerate
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={editingFaq.answer_main || ''}
-                    onChange={(e) => setEditingFaq({ ...editingFaq, answer_main: e.target.value })}
-                    rows={6}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium">Speakable Answer</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'speakable_answer' })}
-                      disabled={regenerateSectionMutation.isPending}
-                    >
-                      <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
-                      Regenerate
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={editingFaq.speakable_answer || ''}
-                    onChange={(e) => setEditingFaq({ ...editingFaq, speakable_answer: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Meta Title</label>
-                    <Input
-                      value={editingFaq.meta_title || ''}
-                      onChange={(e) => setEditingFaq({ ...editingFaq, meta_title: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Status</label>
-                    <Select
-                      value={editingFaq.status}
-                      onValueChange={(value) => setEditingFaq({ ...editingFaq, status: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Meta Description</label>
-                  <Textarea
-                    value={editingFaq.meta_description || ''}
-                    onChange={(e) => setEditingFaq({ ...editingFaq, meta_description: e.target.value })}
-                    rows={2}
-                  />
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={editingFaq.status || 'draft'}
+                    onValueChange={(v) => setEditingFaq({ ...editingFaq, status: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingFaq(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => updateQaMutation.mutate(editingFaq)}
-                disabled={updateQaMutation.isPending}
-              >
-                {updateQaMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <div>
+                <label className="text-sm font-medium">Meta Description</label>
+                <Textarea
+                  value={editingFaq.meta_description || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, meta_description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              
+              {/* Regenerate buttons */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-2">Regenerate Sections</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'answer' })}
+                    disabled={regenerateSectionMutation.isPending}
+                  >
+                    <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
+                    Answer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'speakable' })}
+                    disabled={regenerateSectionMutation.isPending}
+                  >
+                    <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
+                    Speakable
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => regenerateSectionMutation.mutate({ qaPageId: editingFaq.id, section: 'seo' })}
+                    disabled={regenerateSectionMutation.isPending}
+                  >
+                    <RefreshCw className={`mr-1 h-3 w-3 ${regenerateSectionMutation.isPending ? 'animate-spin' : ''}`} />
+                    SEO
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingFaq(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => updateQaMutation.mutate(editingFaq)}
+              disabled={updateQaMutation.isPending}
+            >
+              {updateQaMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
