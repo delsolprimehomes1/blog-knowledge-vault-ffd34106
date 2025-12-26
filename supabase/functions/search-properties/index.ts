@@ -29,78 +29,12 @@ interface NormalizedProperty {
   views?: string;
 }
 
-interface FilteredOutItem {
-  reference: string;
-  reason: string;
-}
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
 /**
- * Detects if a property is a rental listing based on rental-specific fields.
- * ANY rental indicator = filtered out (sales-only purity)
+ * Language code mapping for API
  */
-function isRentalListing(prop: any): { isRental: boolean; reason: string } {
-  // Check RentalPeriod (e.g., "Week", "Month", "Long Season")
-  if (prop.RentalPeriod && prop.RentalPeriod.trim() !== '') {
-    return { isRental: true, reason: `Has RentalPeriod: "${prop.RentalPeriod}"` };
-  }
-  
-  // Check various rental price fields
-  const rentalPrice1 = parseFloat(prop.RentalPrice1 || '0');
-  if (rentalPrice1 > 0) {
-    return { isRental: true, reason: `Has RentalPrice1: €${rentalPrice1}` };
-  }
-  
-  const rentalPrice2 = parseFloat(prop.RentalPrice2 || '0');
-  if (rentalPrice2 > 0) {
-    return { isRental: true, reason: `Has RentalPrice2: €${rentalPrice2}` };
-  }
-  
-  const pricePerWeek = parseFloat(prop.PricePerWeek || prop.WeeklyPrice || '0');
-  if (pricePerWeek > 0) {
-    return { isRental: true, reason: `Has PricePerWeek: €${pricePerWeek}` };
-  }
-  
-  const pricePerMonth = parseFloat(prop.PricePerMonth || prop.MonthlyPrice || '0');
-  if (pricePerMonth > 0) {
-    return { isRental: true, reason: `Has PricePerMonth: €${pricePerMonth}` };
-  }
-  
-  // Check for rental-related property types or descriptions
-  const propertyType = typeof prop.PropertyType === 'object' 
-    ? (prop.PropertyType?.NameType || prop.PropertyType?.Type || '') 
-    : (prop.PropertyType || '');
-  
-  if (propertyType.toLowerCase().includes('rental') || propertyType.toLowerCase().includes('holiday let')) {
-    return { isRental: true, reason: `PropertyType indicates rental: "${propertyType}"` };
-  }
-  
-  return { isRental: false, reason: '' };
-}
-
-/**
- * Parses and validates sale price from various field names.
- * Returns 0 if no valid sale price found.
- */
-function parseSalePrice(prop: any): number {
-  // Try multiple field names for sale price (DO NOT use rental prices as fallback!)
-  const priceFields = ['Price', 'price', 'SalePrice', 'CurrentPrice', 'OriginalPrice'];
-  
-  for (const field of priceFields) {
-    const value = prop[field];
-    if (value !== undefined && value !== null && value !== '') {
-      const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
-      if (!isNaN(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
-  }
-  
-  return 0;
-}
+const LANGUAGE_MAP: Record<string, number> = {
+  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13
+};
 
 /**
  * Extracts property type string from various formats
@@ -114,49 +48,6 @@ function extractPropertyType(prop: any): string {
   }
   return prop.PropertyType || prop.propertyType || '';
 }
-
-// ============================================
-// LUXURY RESIDENTIAL FILTERING
-// ============================================
-
-/**
- * Property types to EXCLUDE (non-residential / non-luxury)
- */
-const EXCLUDED_PROPERTY_TYPES = [
-  'storage room', 'storage', 'trastero',
-  'commercial premises', 'commercial', 'local comercial', 'local',
-  'commercial plot', 'plot comercial',
-  'parking space', 'parking', 'aparcamiento',
-  'garage', 'garaje',
-  'land', 'plot', 'terreno', 'parcela',
-  'shop', 'tienda',
-  'office', 'oficina',
-  'warehouse', 'almacén', 'nave industrial', 'nave',
-  'industrial', 'hotel', 'hostel', 'motel',
-  'building', 'edificio',
-  // Hospitality & Food Service exclusions
-  'restaurant', 'restaurante',
-  'bar', 'cafe', 'cafetería', 'cafeteria',
-  'pub', 'nightclub', 'discoteca'
-];
-
-/**
- * Checks if property type should be excluded (non-residential)
- */
-function isExcludedPropertyType(propertyType: string): boolean {
-  if (!propertyType) return false;
-  const normalizedType = propertyType.toLowerCase().trim();
-  return EXCLUDED_PROPERTY_TYPES.some(excluded => 
-    normalizedType.includes(excluded) || normalizedType === excluded
-  );
-}
-
-/**
- * Language code mapping for API
- */
-const LANGUAGE_MAP: Record<string, number> = {
-  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13
-};
 
 /**
  * Extracts main image URL from various response structures
@@ -173,50 +64,87 @@ function extractMainImage(prop: any): string {
          '';
 }
 
+/**
+ * Parses price from various field names
+ */
+function parsePrice(prop: any): number {
+  const priceFields = ['Price', 'price', 'SalePrice', 'CurrentPrice', 'OriginalPrice'];
+  
+  for (const field of priceFields) {
+    const value = prop[field];
+    if (value !== undefined && value !== null && value !== '') {
+      const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * Extracts all images from a property
+ */
+function extractAllImages(prop: any): string[] {
+  const images: string[] = [];
+  
+  // Try Pictures.Picture array
+  if (prop.Pictures?.Picture && Array.isArray(prop.Pictures.Picture)) {
+    for (const pic of prop.Pictures.Picture) {
+      if (pic.PictureURL) images.push(pic.PictureURL);
+    }
+  }
+  
+  // Try direct Pictures array
+  if (Array.isArray(prop.Pictures)) {
+    for (const pic of prop.Pictures) {
+      if (typeof pic === 'string') images.push(pic);
+      else if (pic.PictureURL) images.push(pic.PictureURL);
+      else if (pic.url) images.push(pic.url);
+    }
+  }
+  
+  // Try images array
+  if (Array.isArray(prop.images)) {
+    for (const img of prop.images) {
+      if (typeof img === 'string') images.push(img);
+      else if (img.url) images.push(img.url);
+      else if (img.PictureURL) images.push(img.PictureURL);
+    }
+  }
+  
+  // Add main image if not already included
+  const mainImage = extractMainImage(prop);
+  if (mainImage && !images.includes(mainImage)) {
+    images.unshift(mainImage);
+  }
+  
+  return images;
+}
+
 serve(async (req) => {
+  console.log('🚀 Search-properties function called');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Handle GET requests or empty bodies gracefully
+    // Parse request body
     let body: any = {};
     try {
-      body = await req.json();
-    } catch {
-      body = {}; // Empty body for GET requests
+      const text = await req.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch (e) {
+      console.log('⚠️ Could not parse request body:', e);
+      body = {};
     }
     
-    // Check for debug mode (request body or header)
-    const debugHeader = req.headers.get('x-debug');
-    const isDebugMode = body.debug === true || debugHeader === '1' || debugHeader === 'true';
+    console.log('📥 Request body:', JSON.stringify(body));
     
-    // Check for diagnostic mode (lightweight health check)
-    if (body.mode === 'diagnostic') {
-      return handleDiagnosticMode(isDebugMode);
-    }
-    
-    // ============================================
-    // SINGLE PROPERTY LOOKUP BY REFERENCE
-    // ============================================
-    if (body.reference) {
-      const lang = body.lang || 'en';
-      console.log(`🔍 Single property lookup: ${body.reference} (lang: ${lang})`);
-      return await handleSinglePropertyLookup(body.reference, lang, isDebugMode);
-    }
-    
-    // ============================================
-    // FORCE SALES-ONLY (NON-NEGOTIABLE)
-    // ============================================
-    // Override ANY transactionType to 'sale' - we do not support rentals
-    const transactionType = 'sale';
-    
-    if (isDebugMode) {
-      console.log('🔒 SALES-ONLY MODE ENFORCED');
-      console.log('📥 Original transactionType from request:', body.transactionType);
-      console.log('✅ Forced transactionType:', transactionType);
-    }
-
     const {
       reference = '',
       location = '',
@@ -230,16 +158,9 @@ serve(async (req) => {
       page = 1,
       limit = 20,
       lang = 'en',
-      queryId = ''
     } = body;
 
-    // If searching by reference in list mode, redirect to single property lookup
-    if (reference && reference.trim()) {
-      console.log(`🔍 Reference search in list mode: ${reference}`);
-      return await handleSinglePropertyLookup(reference.trim(), lang, isDebugMode);
-    }
-
-    // Build GET URL with query parameters (no minimum price restriction)
+    // Build GET URL with query parameters
     const params = new URLSearchParams();
     
     if (location) params.append('location', location);
@@ -250,9 +171,9 @@ serve(async (req) => {
     if (priceMin) params.append('minPrice', String(priceMin));
     if (priceMax) params.append('maxPrice', String(priceMax));
     if (newDevs === 'only') params.append('newDevs', 'only');
+    if (reference) params.append('reference', reference);
     params.append('pageSize', String(limit));
     params.append('pageNo', String(page));
-    if (queryId) params.append('queryId', queryId);
     
     // Map language code to API language number
     const langNum = LANGUAGE_MAP[lang] || 1;
@@ -260,14 +181,14 @@ serve(async (req) => {
 
     const proxyUrl = `http://188.34.164.137:3000/search?${params.toString()}`;
 
-    if (isDebugMode) {
-      console.log('📡 Proxy URL:', proxyUrl);
-    }
+    console.log('📡 Calling proxy URL:', proxyUrl);
 
     const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
+
+    console.log('📥 Proxy response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -275,84 +196,48 @@ serve(async (req) => {
       throw new Error(`Proxy server error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const responseData = await response.json();
     
-    // Extract query info for debugging
-    const queryInfo = data.QueryInfo || {};
-    
-    if (isDebugMode) {
-      console.log('📊 QueryInfo from Resales API:', JSON.stringify(queryInfo, null, 2));
-      if (queryInfo.SearchType && queryInfo.SearchType !== 'Sale') {
-        console.warn('⚠️ WARNING: SearchType is NOT "Sale":', queryInfo.SearchType);
-      }
-    }
+    console.log('📥 Response data keys:', Object.keys(responseData));
 
-    // Get raw properties from response
-    const rawProperties = data.Properties || data.Property || data.properties || [];
+    // The proxy returns: { success: true, data: { Property: [...], QueryInfo: {...} } }
+    // So we need to access responseData.data.Property
+    const data = responseData.data || responseData;
+    
+    console.log('📥 Inner data keys:', Object.keys(data));
+
+    // Get raw properties from response - check all possible paths
+    let rawProperties: any[] = [];
+    
+    if (data.Property && Array.isArray(data.Property)) {
+      rawProperties = data.Property;
+      console.log('📦 Found properties at data.Property');
+    } else if (data.Properties && Array.isArray(data.Properties)) {
+      rawProperties = data.Properties;
+      console.log('📦 Found properties at data.Properties');
+    } else if (data.properties && Array.isArray(data.properties)) {
+      rawProperties = data.properties;
+      console.log('📦 Found properties at data.properties');
+    } else if (Array.isArray(data)) {
+      rawProperties = data;
+      console.log('📦 Data is a direct array');
+    } else {
+      console.log('⚠️ Could not find properties array. Available keys:', Object.keys(data));
+    }
+    
     const totalReceived = rawProperties.length;
+    console.log(`📦 Total properties received: ${totalReceived}`);
     
-    if (isDebugMode) {
-      console.log(`📦 Received ${totalReceived} properties from proxy`);
+    if (totalReceived > 0) {
+      console.log('📦 First property reference:', rawProperties[0].Reference);
     }
 
-    // ============================================
-    // STRICT RENTAL FILTERING
-    // ============================================
-    const filteredOutItems: FilteredOutItem[] = [];
-    const saleProperties: any[] = [];
-
-    for (const prop of rawProperties) {
-      const reference = prop.Reference || prop.reference || prop.Ref || 'unknown';
-      
-      // Step 1: Check if it's a rental listing
-      const rentalCheck = isRentalListing(prop);
-      if (rentalCheck.isRental) {
-        filteredOutItems.push({ reference, reason: rentalCheck.reason });
-        if (isDebugMode) {
-          console.log(`🚫 FILTERED OUT ${reference}: ${rentalCheck.reason}`);
-        }
-        continue;
-      }
-      
-      // Step 2: Validate sale price exists and is > 0
-      const salePrice = parseSalePrice(prop);
-      if (salePrice <= 0) {
-        filteredOutItems.push({ reference, reason: `No valid sale Price (found: ${salePrice})` });
-        if (isDebugMode) {
-          console.log(`🚫 FILTERED OUT ${reference}: No valid sale Price`);
-        }
-        continue;
-      }
-      
-      // Step 3: Filter out non-residential property types (luxury residential only)
-      const propertyTypeStr = extractPropertyType(prop);
-      if (isExcludedPropertyType(propertyTypeStr)) {
-        filteredOutItems.push({ reference, reason: `Non-residential type: "${propertyTypeStr}"` });
-        if (isDebugMode) {
-          console.log(`🚫 FILTERED OUT ${reference}: Non-residential type "${propertyTypeStr}"`);
-        }
-        continue;
-      }
-      
-      // Passed all checks - this is a valid luxury residential sale property
-      saleProperties.push(prop);
-    }
-
-    const totalFilteredOut = filteredOutItems.length;
-    const totalReturned = saleProperties.length;
-
-    if (isDebugMode) {
-      console.log(`✅ Valid sale properties: ${totalReturned}`);
-      console.log(`❌ Filtered out: ${totalFilteredOut}`);
-    }
-
-    // ============================================
-    // NORMALIZE PROPERTIES
-    // ============================================
-    const properties: NormalizedProperty[] = saleProperties.map((prop: any) => {
+    // Normalize properties (NO FILTERING for now)
+    const properties: NormalizedProperty[] = rawProperties.map((prop: any) => {
       const propertyTypeStr = extractPropertyType(prop);
       const mainImage = extractMainImage(prop);
-      const salePrice = parseSalePrice(prop);
+      const price = parsePrice(prop);
+      const allImages = extractAllImages(prop);
       
       const title = prop.Title || prop.Name || prop.PropertyName || 
                    `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
@@ -361,18 +246,18 @@ serve(async (req) => {
         id: prop.Reference || prop.reference || prop.Ref || '',
         reference: prop.Reference || prop.reference || prop.Ref || '',
         title,
-        price: salePrice,
+        price,
         currency: prop.Currency || prop.currency || 'EUR',
         location: prop.Location || prop.location || prop.Area || '',
         province: prop.Province || prop.province || prop.Country || '',
         bedrooms: parseInt(prop.Bedrooms || prop.bedrooms) || 0,
         bathrooms: parseInt(prop.Bathrooms || prop.bathrooms) || 0,
-        builtArea: parseFloat(prop.BuiltArea || prop.builtArea || prop.Built) || 0,
-        plotArea: parseFloat(prop.PlotArea || prop.plotArea || prop.Plot) || undefined,
+        builtArea: parseFloat(prop.Built || prop.BuiltArea || prop.builtArea) || 0,
+        plotArea: parseFloat(prop.GardenPlot || prop.PlotArea || prop.plotArea || prop.Plot) || undefined,
         propertyType: propertyTypeStr,
         mainImage,
-        images: prop.Images || prop.images || prop.Pictures || [],
-        description: prop.Description || prop.description || '',
+        images: allImages,
+        description: typeof prop.Description === 'string' ? prop.Description : '',
         features: prop.Features || prop.features || [],
         pool: prop.Pool || prop.pool,
         garden: prop.Garden || prop.garden,
@@ -382,32 +267,27 @@ serve(async (req) => {
       };
     });
 
-    // Build response
-    const responseBody: any = {
+    // Get total from QueryInfo
+    const queryInfo = data.QueryInfo || {};
+    const total = queryInfo.PropertyCount || 
+                  queryInfo.TotalResults ||
+                  data.TotalResults || 
+                  data.total || 
+                  totalReceived;
+
+    console.log(`✅ Returning ${properties.length} properties, total from API: ${total}`);
+
+    const responseBody = {
       properties,
-      total: data.TotalResults || data.QueryInfo?.TotalResults || data.total || totalReturned,
+      total: parseInt(String(total)) || totalReceived,
       page,
       pageSize: limit,
       queryInfo: {
         searchType: queryInfo.SearchType || 'Sale',
-        totalResults: queryInfo.TotalResults,
+        propertyCount: queryInfo.PropertyCount,
+        currentPage: queryInfo.CurrentPage,
       },
     };
-
-    // Add debug info if enabled
-    if (isDebugMode) {
-      responseBody.debug = {
-        proxyUrl,
-        requestParams: { location, sublocation, propertyType, bedrooms, bathrooms, priceMin, priceMax, page, limit, lang },
-        queryInfo,
-        totalReceived,
-        totalFilteredOut,
-        totalReturned,
-        filteredSamples: filteredOutItems.slice(0, 5), // First 5 filtered items
-      };
-    }
-
-    console.log(`✅ Returning ${totalReturned} SALE properties (filtered out ${totalFilteredOut} rentals)`);
 
     return new Response(
       JSON.stringify(responseBody),
@@ -426,254 +306,3 @@ serve(async (req) => {
     );
   }
 });
-
-/**
- * Handle single property lookup by reference
- */
-async function handleSinglePropertyLookup(reference: string, lang: string, isDebugMode: boolean): Promise<Response> {
-  const proxyUrl = `http://188.34.164.137:3000/property/${encodeURIComponent(reference)}?lang=${lang}`;
-  
-  if (isDebugMode) {
-    console.log('📡 Property detail URL:', proxyUrl);
-  }
-
-  try {
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Proxy property detail error:', response.status, errorText);
-      
-      // If property not found, return empty result
-      if (response.status === 404) {
-        return new Response(
-          JSON.stringify({ property: null, error: 'Property not found' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`Proxy server error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // The proxy should return property data - normalize it
-    const prop = data.Property || data.property || data;
-    
-    if (!prop || (!prop.Reference && !prop.reference)) {
-      return new Response(
-        JSON.stringify({ property: null, error: 'Property not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Extract all images from the property
-    const allImages = extractAllImages(prop);
-    
-    const propertyTypeStr = extractPropertyType(prop);
-    const mainImage = extractMainImage(prop);
-    const salePrice = parseSalePrice(prop);
-    
-    const title = prop.Title || prop.Name || prop.PropertyName || 
-                 `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
-    
-    // Extract description - handle multi-language object using requested language
-    let description = '';
-    if (typeof prop.Description === 'object' && prop.Description !== null) {
-      description = prop.Description[lang] || prop.Description.en || prop.Description.es || Object.values(prop.Description)[0] || '';
-    } else {
-      description = prop.Description || prop.description || '';
-    }
-    
-    // Extract features from PropertyFeatures
-    const features: string[] = [];
-    if (prop.PropertyFeatures?.Category) {
-      const categories = Array.isArray(prop.PropertyFeatures.Category) 
-        ? prop.PropertyFeatures.Category 
-        : [prop.PropertyFeatures.Category];
-      
-      for (const cat of categories) {
-        if (cat.Value) {
-          const values = Array.isArray(cat.Value) ? cat.Value : [cat.Value];
-          features.push(...values);
-        }
-      }
-    }
-
-    const normalizedProperty = {
-      id: prop.Reference || prop.reference || prop.Ref || '',
-      reference: prop.Reference || prop.reference || prop.Ref || '',
-      title,
-      price: salePrice,
-      currency: prop.Currency || prop.currency || 'EUR',
-      location: prop.Location || prop.location || prop.Area || '',
-      province: prop.Province || prop.province || prop.Country || '',
-      bedrooms: parseInt(prop.Bedrooms || prop.bedrooms) || 0,
-      bathrooms: parseInt(prop.Bathrooms || prop.bathrooms) || 0,
-      builtArea: parseFloat(prop.BuiltArea || prop.builtArea || prop.Built) || 0,
-      plotArea: parseFloat(prop.PlotArea || prop.plotArea || prop.GardenPlot || prop.Plot) || undefined,
-      propertyType: propertyTypeStr,
-      mainImage,
-      images: allImages,
-      description,
-      features,
-      pool: prop.Pool === 1 || prop.Pool === '1' ? 'Yes' : (prop.Pool || undefined),
-      garden: prop.Garden === 1 || prop.Garden === '1' ? 'Yes' : (prop.Garden || undefined),
-      parking: prop.Parking === 1 || prop.Parking === '1' ? 'Yes' : (prop.Parking || undefined),
-      orientation: prop.Orientation || prop.orientation,
-      views: prop.Views || prop.views,
-    };
-
-    console.log(`✅ Returning property: ${reference} with ${allImages.length} images`);
-
-    return new Response(
-      JSON.stringify({ 
-        property: normalizedProperty,
-        debug: isDebugMode ? { proxyUrl, rawPropertyKeys: Object.keys(prop) } : undefined
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('❌ Error fetching single property:', error);
-    return new Response(
-      JSON.stringify({ 
-        property: null, 
-        error: error instanceof Error ? error.message : 'Failed to fetch property' 
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-  }
-}
-
-/**
- * Extract all images from property data
- */
-function extractAllImages(prop: any): string[] {
-  const images: string[] = [];
-  
-  // Try Pictures array (Resales Online format)
-  if (prop.Pictures?.Picture) {
-    const pictureArray = Array.isArray(prop.Pictures.Picture) 
-      ? prop.Pictures.Picture 
-      : [prop.Pictures.Picture];
-    
-    for (const pic of pictureArray) {
-      const url = pic.PictureURL || pic.URL || pic.url || pic;
-      if (typeof url === 'string' && url.trim()) {
-        images.push(url);
-      }
-    }
-  }
-  
-  // Try Images array
-  if (prop.Images) {
-    const imageArray = Array.isArray(prop.Images) ? prop.Images : [prop.Images];
-    for (const img of imageArray) {
-      const url = typeof img === 'string' ? img : (img.url || img.URL || img.PictureURL);
-      if (typeof url === 'string' && url.trim() && !images.includes(url)) {
-        images.push(url);
-      }
-    }
-  }
-  
-  // Try images (lowercase) array
-  if (prop.images) {
-    const imageArray = Array.isArray(prop.images) ? prop.images : [prop.images];
-    for (const img of imageArray) {
-      const url = typeof img === 'string' ? img : (img.url || img.URL || img.PictureURL);
-      if (typeof url === 'string' && url.trim() && !images.includes(url)) {
-        images.push(url);
-      }
-    }
-  }
-  
-  return images;
-}
-
-/**
- * Lightweight diagnostic mode for health checks
- */
-async function handleDiagnosticMode(isDebugMode: boolean): Promise<Response> {
-  console.log('🔍 Running diagnostic mode...');
-  
-  const proxyUrl = 'http://188.34.164.137:3000/search';
-  const testPayload = {
-    transactionType: 'sale',
-    location: '',
-    page: 1,
-    limit: 5, // Small sample
-  };
-
-  try {
-    const startTime = Date.now();
-    const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(testPayload),
-    });
-    const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return new Response(
-        JSON.stringify({
-          status: 'error',
-          message: `Proxy returned ${response.status}`,
-          latency,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const rawProperties = data.Properties || data.Property || data.properties || [];
-    
-    // Count rental vs sale properties in sample
-    let rentalCount = 0;
-    let saleCount = 0;
-    
-    for (const prop of rawProperties) {
-      const rentalCheck = isRentalListing(prop);
-      const salePrice = parseSalePrice(prop);
-      
-      if (rentalCheck.isRental || salePrice <= 0) {
-        rentalCount++;
-      } else {
-        saleCount++;
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        status: 'ok',
-        proxyUrl,
-        latency,
-        queryInfo: data.QueryInfo || {},
-        sampleSize: rawProperties.length,
-        salePropertiesInSample: saleCount,
-        rentalPropertiesInSample: rentalCount,
-        message: rentalCount > 0 
-          ? `⚠️ Proxy is still returning ${rentalCount} rental properties - check p_agency_filterid` 
-          : '✅ All sample properties are valid sales',
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Diagnostic failed',
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-  }
-}
