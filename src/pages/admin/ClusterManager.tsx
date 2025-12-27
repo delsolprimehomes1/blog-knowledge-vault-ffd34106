@@ -31,7 +31,11 @@ interface ClusterData {
   all_published: boolean;
   created_at: string;
   job_status?: string;
+  languages_queue?: string[] | null;
 }
+
+// Backend default translation languages (English + these = 10 languages total)
+const DEFAULT_TRANSLATION_LANGUAGES = ["de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"];
 
 const ClusterManager = () => {
   const navigate = useNavigate();
@@ -44,8 +48,14 @@ const ClusterManager = () => {
   const [translatingCluster, setTranslatingCluster] = useState<string | null>(null);
   const [translationProgress, setTranslationProgress] = useState<{ current: string; remaining: number } | null>(null);
 
-  // All target languages for translations (9 languages + English = 10 total)
-  const ALL_LANGUAGES = ["en", "de", "nl", "fr", "es", "pl", "sv", "da", "hu"];
+  const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
+    const queue =
+      cluster?.languages_queue && cluster.languages_queue.length > 0
+        ? cluster.languages_queue
+        : DEFAULT_TRANSLATION_LANGUAGES;
+
+    return ["en", ...queue.filter((l) => l !== "en")];
+  };
 
   // Fetch articles grouped by cluster
   const { data: articles, isLoading } = useQuery({
@@ -68,7 +78,7 @@ const ClusterManager = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cluster_generations")
-        .select("id, status, topic, created_at");
+        .select("id, status, topic, created_at, languages_queue");
       
       if (error) throw error;
       return data;
@@ -127,6 +137,7 @@ const ClusterManager = () => {
       const job = clusterJobs?.find((j) => j.id === cluster.cluster_id);
       if (job) {
         cluster.job_status = job.status;
+        cluster.languages_queue = job.languages_queue ?? null;
       }
     });
 
@@ -235,12 +246,25 @@ const ClusterManager = () => {
   const completeTranslationsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setTranslatingCluster(clusterId);
-      
+
       const { data, error } = await supabase.functions.invoke("translate-cluster", {
         body: { jobId: clusterId },
       });
-      
-      if (error) throw error;
+
+      if (error) {
+        const resp = (error as any)?.context?.response as Response | undefined;
+        if (resp) {
+          try {
+            const payload = await resp.clone().json();
+            const msg = payload?.error || payload?.message;
+            if (msg) throw new Error(msg);
+          } catch {
+            // fall through to generic error below
+          }
+        }
+        throw error;
+      }
+
       return data;
     },
     onSuccess: (data) => {
@@ -272,10 +296,9 @@ const ClusterManager = () => {
     },
   });
 
-  // Calculate missing languages for a cluster
   const getMissingLanguages = (cluster: ClusterData) => {
-    const existingLanguages = Object.keys(cluster.languages);
-    return ALL_LANGUAGES.filter(lang => !existingLanguages.includes(lang));
+    const existingLanguages = new Set(Object.keys(cluster.languages));
+    return getAllExpectedLanguages(cluster).filter((lang) => !existingLanguages.has(lang));
   };
 
   const copyClusterId = (id: string) => {
@@ -294,6 +317,8 @@ const ClusterManager = () => {
       sv: "🇸🇪",
       da: "🇩🇰",
       hu: "🇭🇺",
+      fi: "🇫🇮",
+      no: "🇳🇴",
     };
     return flags[lang] || lang.toUpperCase();
   };
@@ -592,7 +617,13 @@ const ClusterManager = () => {
                       <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                         Last translated: {translationProgress.current}
                       </p>
-                      <Progress value={((ALL_LANGUAGES.length - 1 - translationProgress.remaining) / (ALL_LANGUAGES.length - 1)) * 100} />
+                      {(() => {
+                        const selectedCluster = clusters.find((c) => c.cluster_id === clusterToTranslate);
+                        const totalTranslationLanguages = getAllExpectedLanguages(selectedCluster).length - 1; // exclude English
+                        const completed = Math.max(0, totalTranslationLanguages - translationProgress.remaining);
+                        const percent = totalTranslationLanguages > 0 ? (completed / totalTranslationLanguages) * 100 : 0;
+                        return <Progress value={percent} />;
+                      })()}
                       <p className="text-xs text-amber-600 dark:text-amber-400">
                         {translationProgress.remaining} languages remaining
                       </p>

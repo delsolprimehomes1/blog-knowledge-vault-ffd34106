@@ -276,25 +276,26 @@ serve(async (req) => {
     }
 
     console.log(`[translate-cluster] Found ${englishArticles.length} English articles to translate`);
+    const expectedCount = englishArticles.length;
 
     // Determine which language to translate
     const languagesQueue = job.languages_queue || TARGET_LANGUAGES;
     const languageStatus = { ...(job.language_status || {}) };
-    
+
     // Find next language to translate
     let currentLanguage = targetLanguage;
     if (!currentLanguage) {
       for (const lang of languagesQueue) {
         if (lang === 'en') continue;
-        
+
         // Check if this language is already done
         const { count } = await supabase
           .from('blog_articles')
           .select('*', { count: 'exact', head: true })
           .eq('cluster_id', jobId)
           .eq('language', lang);
-        
-        if ((count || 0) < 6) {
+
+        if ((count || 0) < expectedCount) {
           currentLanguage = lang;
           break;
         }
@@ -304,7 +305,7 @@ serve(async (req) => {
     if (!currentLanguage) {
       // All translations complete
       await linkTranslations(supabase, jobId);
-      
+
       await supabase
         .from('cluster_generations')
         .update({
@@ -328,6 +329,31 @@ serve(async (req) => {
 
     console.log(`[translate-cluster] Translating to: ${currentLanguage}`);
 
+    // Fetch existing translations for this language so the function can safely resume
+    const { data: existingForLang, error: existingForLangError } = await supabase
+      .from('blog_articles')
+      .select('id, cluster_number')
+      .eq('cluster_id', jobId)
+      .eq('language', currentLanguage);
+
+    if (existingForLangError) {
+      console.warn(
+        `[translate-cluster] Could not fetch existing translations for ${currentLanguage}:`,
+        existingForLangError
+      );
+    }
+
+    const existingClusterNumbers = new Set<number>(
+      (existingForLang ?? [])
+        .map((a: any) => a.cluster_number)
+        .filter((n: any): n is number => typeof n === 'number')
+    );
+    const initialExistingCount = existingClusterNumbers.size;
+
+    console.log(
+      `[translate-cluster] Existing ${currentLanguage} articles: ${initialExistingCount}/${expectedCount}`
+    );
+
     // Update status
     languageStatus[currentLanguage] = 'running';
     await supabase
@@ -346,7 +372,7 @@ serve(async (req) => {
     let translatedCount = 0;
     const translatedArticles: any[] = [];
 
-    // Translate all 6 English articles
+    // Translate all English articles
     for (let i = 0; i < englishArticles.length; i++) {
       // Check timeout
       if (Date.now() - FUNCTION_START_TIME > MAX_RUNTIME) {
@@ -355,12 +381,23 @@ serve(async (req) => {
       }
 
       const englishArticle = englishArticles[i];
-      
+      const clusterNumber = englishArticle.cluster_number;
+
+      // Skip if already translated for this language (safe resume)
+      if (typeof clusterNumber === 'number' && existingClusterNumbers.has(clusterNumber)) {
+        console.log(
+          `[translate-cluster] ⏭️ Skipping article ${i + 1}/${expectedCount} (cluster_number ${clusterNumber}) - already exists for ${currentLanguage}`
+        );
+        continue;
+      }
+
       try {
-        console.log(`[translate-cluster] Translating article ${i + 1}/6: ${englishArticle.headline}`);
-        
+        console.log(
+          `[translate-cluster] Translating article ${i + 1}/${expectedCount}: ${englishArticle.headline}`
+        );
+
         const translated = await translateArticle(englishArticle, currentLanguage, LOVABLE_API_KEY);
-        
+
         // Save to database
         const { data: savedArticle, error: saveError } = await supabase
           .from('blog_articles')
@@ -400,6 +437,28 @@ serve(async (req) => {
           .single();
 
         if (saveError) {
+          // If the button is pressed again mid-run, we may hit duplicates.
+          if (saveError.code === '23505') {
+            const { data: existingArticle, error: existingFetchError } = await supabase
+              .from('blog_articles')
+              .select('*')
+              .eq('cluster_id', translated.cluster_id)
+              .eq('language', translated.language)
+              .eq('cluster_number', translated.cluster_number)
+              .maybeSingle();
+
+            if (!existingFetchError && existingArticle) {
+              console.warn(
+                `[translate-cluster] Duplicate detected for ${currentLanguage} cluster_number ${translated.cluster_number}. Using existing row.`
+              );
+              if (typeof translated.cluster_number === 'number') {
+                existingClusterNumbers.add(translated.cluster_number);
+              }
+              translatedArticles.push(existingArticle);
+              continue;
+            }
+          }
+
           console.error(`Failed to save translation ${i + 1}:`, saveError);
           throw new Error(
             `Failed to save translation ${i + 1}: ${saveError.message}` +
@@ -409,17 +468,23 @@ serve(async (req) => {
 
         translatedArticles.push(savedArticle);
         translatedCount++;
-        
-        console.log(`[translate-cluster] ✅ Article ${i + 1}/6 saved: ${translated.headline}`);
+
+        if (typeof translated.cluster_number === 'number') {
+          existingClusterNumbers.add(translated.cluster_number);
+        }
+
+        const totalNow = initialExistingCount + translatedCount;
+
+        console.log(`[translate-cluster] ✅ Article ${i + 1}/${expectedCount} saved: ${translated.headline}`);
 
         // Update progress
         await supabase
           .from('cluster_generations')
           .update({
             progress: {
-              message: `Translating to ${LANGUAGE_NAMES[currentLanguage]}: ${translatedCount}/6 articles...`,
+              message: `Translating to ${LANGUAGE_NAMES[currentLanguage] || currentLanguage}: ${totalNow}/${expectedCount} articles...`,
               current_language: currentLanguage,
-              articles_translated: translatedCount,
+              articles_translated: totalNow,
             },
             updated_at: new Date().toISOString()
           })
@@ -431,13 +496,23 @@ serve(async (req) => {
       }
     }
 
-    // Update language status
+    // Determine language completion based on what's in the database (idempotent)
+    const { count: languageCount } = await supabase
+      .from('blog_articles')
+      .select('*', { count: 'exact', head: true })
+      .eq('cluster_id', jobId)
+      .eq('language', currentLanguage);
+
     const completedLanguages = (job.completed_languages || []);
-    if (translatedCount === 6) {
+    const isLanguageComplete = (languageCount || 0) >= expectedCount;
+
+    if (isLanguageComplete) {
       languageStatus[currentLanguage] = 'completed';
-      completedLanguages.push(currentLanguage);
+      if (!completedLanguages.includes(currentLanguage)) {
+        completedLanguages.push(currentLanguage);
+      }
     } else {
-      languageStatus[currentLanguage] = 'partial';
+      languageStatus[currentLanguage] = (languageCount || 0) > 0 ? 'partial' : 'partial';
     }
 
     // Count total translated articles
@@ -446,11 +521,11 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('cluster_id', jobId);
 
-    const remainingLanguages = languagesQueue.filter((l: string) => 
+    const remainingLanguages = languagesQueue.filter((l: string) =>
       l !== 'en' && languageStatus[l] !== 'completed'
     );
 
-    const isComplete = remainingLanguages.length === 0 && translatedCount === 6;
+    const isComplete = remainingLanguages.length === 0;
 
     if (isComplete) {
       await linkTranslations(supabase, jobId);
@@ -467,7 +542,7 @@ serve(async (req) => {
           total_steps: 16,
           message: isComplete 
             ? '✅ All 60 articles generated and linked!' 
-            : `${LANGUAGE_NAMES[currentLanguage]} complete. ${remainingLanguages.length} languages remaining.`,
+            : `${LANGUAGE_NAMES[currentLanguage] || currentLanguage} complete. ${remainingLanguages.length} languages remaining.`,
           generated_articles: totalCount || 0,
           total_articles: 60,
           current_language: currentLanguage,
@@ -475,24 +550,26 @@ serve(async (req) => {
         },
         completion_note: isComplete
           ? 'Multilingual cluster complete: 6 English articles + 54 translations (60 total)'
-          : `${completedLanguages.length + 1}/10 languages complete. Next: ${remainingLanguages[0] || 'none'}`,
+          : `${completedLanguages.length + 1}/${languagesQueue.length + 1} languages complete (incl. English). Next: ${remainingLanguages[0] || 'none'}`,
         updated_at: new Date().toISOString()
       })
       .eq('id', jobId);
 
-    console.log(`[translate-cluster] ✅ ${currentLanguage} complete: ${translatedCount}/6 articles`);
+    console.log(
+      `[translate-cluster] ✅ ${currentLanguage} status: ${(languageCount || 0)}/${expectedCount} total (+${translatedCount} new)`
+    );
 
     return new Response(
       JSON.stringify({
         success: true,
         status: isComplete ? 'completed' : 'partial',
         language: currentLanguage,
-        articlesTranslated: translatedCount,
+        articlesTranslated: languageCount || 0,
         totalArticles: totalCount || 0,
         remainingLanguages: remainingLanguages,
         message: isComplete 
           ? 'All translations complete!' 
-          : `${LANGUAGE_NAMES[currentLanguage]} complete. Click Resume for ${LANGUAGE_NAMES[remainingLanguages[0]] || 'next language'}.`
+          : `${LANGUAGE_NAMES[currentLanguage] || currentLanguage} complete. Click again to continue.`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
