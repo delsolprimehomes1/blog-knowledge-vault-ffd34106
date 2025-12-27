@@ -17,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -39,6 +40,12 @@ const ClusterManager = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clusterToDelete, setClusterToDelete] = useState<string | null>(null);
   const [clusterToPublish, setClusterToPublish] = useState<string | null>(null);
+  const [clusterToTranslate, setClusterToTranslate] = useState<string | null>(null);
+  const [translatingCluster, setTranslatingCluster] = useState<string | null>(null);
+  const [translationProgress, setTranslationProgress] = useState<{ current: string; remaining: number } | null>(null);
+
+  // All target languages for translations (9 languages + English = 10 total)
+  const ALL_LANGUAGES = ["en", "de", "nl", "fr", "es", "pl", "sv", "da", "hu"];
 
   // Fetch articles grouped by cluster
   const { data: articles, isLoading } = useQuery({
@@ -223,6 +230,53 @@ const ClusterManager = () => {
       toast.error(`Failed to start QA generation: ${error.message}`);
     },
   });
+
+  // Complete translations for cluster
+  const completeTranslationsMutation = useMutation({
+    mutationFn: async (clusterId: string) => {
+      setTranslatingCluster(clusterId);
+      
+      const { data, error } = await supabase.functions.invoke("translate-cluster", {
+        body: { jobId: clusterId },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
+      queryClient.invalidateQueries({ queryKey: ["cluster-jobs"] });
+      
+      if (data.status === "completed") {
+        toast.success(`All translations complete! ${data.totalArticles || 'All'} articles translated.`);
+        setTranslatingCluster(null);
+        setTranslationProgress(null);
+      } else if (data.status === "partial" || data.language) {
+        const remainingCount = data.remainingLanguages?.length || 0;
+        setTranslationProgress({
+          current: data.language || "Unknown",
+          remaining: remainingCount,
+        });
+        toast.info(`${data.language} translation complete! ${remainingCount} languages remaining. Click again to continue.`);
+        setTranslatingCluster(null);
+      } else {
+        toast.info("Translation progress updated. Click again to continue.");
+        setTranslatingCluster(null);
+      }
+      setClusterToTranslate(null);
+    },
+    onError: (error) => {
+      toast.error(`Translation failed: ${error.message}`);
+      setTranslatingCluster(null);
+      setTranslationProgress(null);
+    },
+  });
+
+  // Calculate missing languages for a cluster
+  const getMissingLanguages = (cluster: ClusterData) => {
+    const existingLanguages = Object.keys(cluster.languages);
+    return ALL_LANGUAGES.filter(lang => !existingLanguages.includes(lang));
+  };
 
   const copyClusterId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -413,6 +467,28 @@ const ClusterManager = () => {
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Publish All
                     </Button>
+                    {/* Complete Translations Button - show if missing languages or partial status */}
+                    {(getMissingLanguages(cluster).length > 0 || cluster.job_status === "partial") && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        onClick={() => setClusterToTranslate(cluster.cluster_id)}
+                        disabled={translatingCluster === cluster.cluster_id || completeTranslationsMutation.isPending}
+                      >
+                        {translatingCluster === cluster.cluster_id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Translating...
+                          </>
+                        ) : (
+                          <>
+                            <Languages className="mr-2 h-4 w-4" />
+                            Complete Translations ({getMissingLanguages(cluster).length} remaining)
+                          </>
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -479,6 +555,79 @@ const ClusterManager = () => {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Complete Translations Confirmation Dialog */}
+        <AlertDialog open={!!clusterToTranslate} onOpenChange={() => setClusterToTranslate(null)}>
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Languages className="h-5 w-5 text-amber-600" />
+                Complete Translations
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-4">
+                  <p>
+                    This will translate the 6 English articles into remaining languages.
+                  </p>
+                  
+                  {clusterToTranslate && (
+                    <div className="bg-muted p-3 rounded-md space-y-2">
+                      <p className="text-sm font-medium">Missing languages:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {getMissingLanguages(clusters.find(c => c.cluster_id === clusterToTranslate) || { languages: {} } as ClusterData).map(lang => (
+                          <Badge key={lang} variant="outline">
+                            {getLanguageFlag(lang)} {lang.toUpperCase()}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {translationProgress && (
+                    <div className="bg-amber-50 dark:bg-amber-950 p-3 rounded-md space-y-2">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Last translated: {translationProgress.current}
+                      </p>
+                      <Progress value={((ALL_LANGUAGES.length - 1 - translationProgress.remaining) / (ALL_LANGUAGES.length - 1)) * 100} />
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        {translationProgress.remaining} languages remaining
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>• Each click translates <strong>1 language</strong> (6 articles)</p>
+                    <p>• Takes approximately 3-5 minutes per language</p>
+                    <p>• You may need to click multiple times</p>
+                    <p>• Uses same images as English articles</p>
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={completeTranslationsMutation.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => clusterToTranslate && completeTranslationsMutation.mutate(clusterToTranslate)}
+                disabled={completeTranslationsMutation.isPending}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {completeTranslationsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Translating...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="mr-2 h-4 w-4" />
+                    Start Translation
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
