@@ -17,6 +17,7 @@ const LANGUAGE_CODE_MAP: Record<string, string> = {
 
 // Note: We still use FAQPage schema type for SEO purposes as it's a recognized schema.org type
 export function generateFAQPageSchema(qaPage: QAPage) {
+  const lang = qaPage.language || 'en';
   const mainEntity = [
     {
       '@type': 'Question',
@@ -36,12 +37,28 @@ export function generateFAQPageSchema(qaPage: QAPage) {
     })),
   ];
 
-  return {
+  const schema: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage', // Keep FAQPage for SEO - it's a recognized schema.org type
+    '@id': `${BASE_URL}/${lang}/qa/${qaPage.slug}#faq`,
     mainEntity,
     inLanguage: LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language,
   };
+
+  // Add reference to source blog article for AI discoverability
+  if (qaPage.source_article_slug) {
+    schema.isBasedOn = {
+      '@type': 'BlogPosting',
+      '@id': `${BASE_URL}/${lang}/blog/${qaPage.source_article_slug}`,
+      'url': `${BASE_URL}/${lang}/blog/${qaPage.source_article_slug}`,
+    };
+    schema.about = {
+      '@type': 'Article',
+      '@id': `${BASE_URL}/${lang}/blog/${qaPage.source_article_slug}`,
+    };
+  }
+
+  return schema;
 }
 
 // Organization schema with expertise signals for E-E-A-T

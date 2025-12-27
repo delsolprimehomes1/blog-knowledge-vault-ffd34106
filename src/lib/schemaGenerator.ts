@@ -7,6 +7,13 @@ export interface SchemaValidationError {
   severity: 'error' | 'warning';
 }
 
+export interface QAPageReference {
+  id: string;
+  slug: string;
+  question_main: string;
+  qa_type: 'core' | 'decision';
+}
+
 export interface GeneratedSchemas {
   article: any;
   speakable: any;
@@ -88,7 +95,8 @@ export function generateArticleSchema(
   article: BlogArticle,
   author: Author | null,
   reviewer: Author | null,
-  baseUrl: string = "https://www.delsolprimehomes.com"
+  baseUrl: string = "https://www.delsolprimehomes.com",
+  qaPages?: QAPageReference[]
 ): { schema: any; errors: SchemaValidationError[]; entities: EntityExtractionResult } {
   const errors: SchemaValidationError[] = [];
   
@@ -158,6 +166,18 @@ export function generateArticleSchema(
       "name": citation.source,
       "url": citation.url
     }));
+  }
+  
+  // Add QA page references for AI discoverability
+  if (qaPages && qaPages.length > 0) {
+    schema.hasPart = qaPages.map(qa => ({
+      "@type": "Question",
+      "@id": `${baseUrl}/${article.language}/qa/${qa.slug}#question`,
+      "name": qa.question_main,
+    }));
+    schema.relatedLink = qaPages.map(qa => 
+      `${baseUrl}/${article.language}/qa/${qa.slug}`
+    );
   }
   
   return { schema, errors, entities };
@@ -400,9 +420,10 @@ export function generateAllSchemas(
   article: BlogArticle,
   author: Author | null,
   reviewer: Author | null,
-  baseUrl: string = "https://www.delsolprimehomes.com"
+  baseUrl: string = "https://www.delsolprimehomes.com",
+  qaPages?: QAPageReference[]
 ): GeneratedSchemas {
-  const articleResult = generateArticleSchema(article, author, reviewer, baseUrl);
+  const articleResult = generateArticleSchema(article, author, reviewer, baseUrl, qaPages);
   const speakable = generateSpeakableSchema(article);
   const breadcrumb = generateBreadcrumbSchema(article, baseUrl);
   const faq = generateFAQSchema(article, author);

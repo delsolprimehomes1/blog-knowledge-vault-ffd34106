@@ -20,7 +20,7 @@ import { FunnelCTA } from "@/components/blog-article/FunnelCTA";
 import { ArticleFooter } from "@/components/blog-article/ArticleFooter";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import { BlogHreflangTags } from "@/components/BlogHreflangTags";
-import { generateAllSchemas } from "@/lib/schemaGenerator";
+import { generateAllSchemas, type QAPageReference } from "@/lib/schemaGenerator";
 import { isFeatureEnabled } from "@/lib/featureFlags";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, FunnelStage, InternalLink } from "@/types/blog";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
@@ -42,6 +42,7 @@ const LOCALE_MAP: Record<string, string> = {
 const BlogArticle = () => {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
   const [hreflangEnabled, setHreflangEnabled] = useState(false);
+  const [qaPageReferences, setQAPageReferences] = useState<QAPageReference[]>([]);
 
   // Check feature flag on mount
   useEffect(() => {
@@ -147,6 +148,33 @@ const BlogArticle = () => {
     enabled: !!article?.cluster_id,
   });
 
+  // Fetch QA pages for JSON-LD schema (bidirectional linking)
+  useEffect(() => {
+    const fetchQAPagesForSchema = async () => {
+      if (!article?.generated_qa_page_ids || article.generated_qa_page_ids.length === 0) {
+        setQAPageReferences([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('qa_pages')
+        .select('id, slug, question_main, qa_type')
+        .in('id', article.generated_qa_page_ids as string[])
+        .eq('language', article.language)
+        .eq('status', 'published')
+        .order('qa_type', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching QA pages for schema:', error);
+        setQAPageReferences([]);
+      } else if (data) {
+        setQAPageReferences(data as QAPageReference[]);
+      }
+    };
+
+    fetchQAPagesForSchema();
+  }, [article?.id, article?.language, article?.generated_qa_page_ids]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
@@ -206,7 +234,7 @@ const BlogArticle = () => {
     );
   }
 
-  const schemas = generateAllSchemas(article, author || null, reviewer || null);
+  const schemas = generateAllSchemas(article, author || null, reviewer || null, 'https://www.delsolprimehomes.com', qaPageReferences);
 
   // Consolidate all schemas into single @graph structure for Helmet
   const consolidatedSchema = {
