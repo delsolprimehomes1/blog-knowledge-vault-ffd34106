@@ -959,9 +959,16 @@ const ClusterGenerator = () => {
               </CardTitle>
               <CardDescription className="text-lg">
                 {isMultilingualEnabled 
-                  ? 'Generate 60 interconnected articles (6 × 10 languages) with one click'
+                  ? 'Generate 6 English articles, then translate to 9 languages (60 total)'
                   : 'Generate 6 interconnected articles with one click'}
               </CardDescription>
+              {isMultilingualEnabled && (
+                <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                  <p>✓ Same content across all languages (true translations)</p>
+                  <p>✓ Same images (no regeneration needed)</p>
+                  <p>✓ Proper hreflang tags for SEO</p>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">

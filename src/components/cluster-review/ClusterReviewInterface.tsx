@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle, Language, FunnelStage } from "@/types/blog";
@@ -9,7 +9,22 @@ import { ValidationSummary } from "./ValidationSummary";
 import { toast } from "sonner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { validateAllArticles, LinkValidationResult } from "@/lib/linkValidation";
+
+const LANGUAGE_INFO: Record<string, { name: string; flag: string }> = {
+  'en': { name: 'English', flag: '🇬🇧' },
+  'de': { name: 'German', flag: '🇩🇪' },
+  'nl': { name: 'Dutch', flag: '🇳🇱' },
+  'fr': { name: 'French', flag: '🇫🇷' },
+  'pl': { name: 'Polish', flag: '🇵🇱' },
+  'sv': { name: 'Swedish', flag: '🇸🇪' },
+  'da': { name: 'Danish', flag: '🇩🇰' },
+  'hu': { name: 'Hungarian', flag: '🇭🇺' },
+  'fi': { name: 'Finnish', flag: '🇫🇮' },
+  'no': { name: 'Norwegian', flag: '🇳🇴' },
+};
 
 interface ClusterReviewInterfaceProps {
   articles: Partial<BlogArticle>[];
@@ -40,6 +55,29 @@ export const ClusterReviewInterface = ({
   const [isFixingLinks, setIsFixingLinks] = useState(false);
 
   const currentArticle = articles[activeTab];
+  
+  // Group articles by language for multilingual clusters
+  const groupedArticles = useMemo(() => {
+    const grouped: Record<string, Partial<BlogArticle>[]> = {};
+    articles.forEach(article => {
+      const lang = article.language || 'en';
+      if (!grouped[lang]) grouped[lang] = [];
+      grouped[lang].push(article);
+    });
+    // Sort each group by cluster_number
+    Object.keys(grouped).forEach(lang => {
+      grouped[lang].sort((a, b) => (a.cluster_number || 0) - (b.cluster_number || 0));
+    });
+    return grouped;
+  }, [articles]);
+  
+  const languages = useMemo(() => 
+    Object.keys(groupedArticles).sort((a, b) => a === 'en' ? -1 : b === 'en' ? 1 : a.localeCompare(b)),
+    [groupedArticles]
+  );
+  
+  const isMultilingual = languages.length > 1;
+  const [activeLanguage, setActiveLanguage] = useState('en');
 
   // Validate links whenever articles change
   useEffect(() => {

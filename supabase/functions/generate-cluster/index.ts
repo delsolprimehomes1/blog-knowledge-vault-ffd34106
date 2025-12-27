@@ -2198,6 +2198,9 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
         
         console.log(`💾 [Job ${jobId}] Article ${i + 1} - Saving to blog_articles table...`);
         
+        // Generate hreflang_group_id for English articles (translations will share this)
+        const hreflangGroupId = currentLanguage === 'en' ? crypto.randomUUID() : null;
+        
         const { data: savedArticle, error: saveError } = await supabase
           .from('blog_articles')
           .insert([{
@@ -2207,6 +2210,8 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
             funnel_stage: article.funnel_stage,
             language: article.language,
             source_language: 'en', // English-first strategy: all content originates from English
+            is_primary: currentLanguage === 'en', // English articles are primary
+            hreflang_group_id: hreflangGroupId, // For translation linking
             status: 'draft',
             detailed_content: article.detailed_content,
             speakable_answer: article.speakable_answer,
@@ -2612,22 +2617,20 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
         .eq('id', jobId);
       
       if (remainingLanguages.length > 0) {
-        // More languages to generate - mark as partial
+        // More languages to translate - mark as partial
         finalStatus = 'partial';
-        completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete (${completedLanguages.join(', ') || 'none'}). Next: ${remainingLanguages[0]}. Click Resume to continue.`;
-        console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining.`);
-        console.log(`[Job ${jobId}] ℹ️ AUTO-CONTINUATION DISABLED - User must click "Resume" for next language: ${remainingLanguages[0]}`);
         
-        // AUTO-CONTINUATION DISABLED FOR RELIABILITY
-        // User clicks "Resume" manually between languages to ensure predictable behavior
-        // This prevents cascading timeouts and makes debugging easier
-        // 
-        // Previously this code auto-invoked resume-cluster, but it caused:
-        // 1. Chain timeouts when one language took too long
-        // 2. Stuck "running" states when auto-resume failed
-        // 3. Unpredictable job states
-        //
-        // Manual resume is more reliable: user clicks Resume, sees status, clicks again if needed
+        // Check if English is complete - if so, remaining languages will be TRANSLATED
+        const englishComplete = completedLanguages.includes('en');
+        
+        if (englishComplete) {
+          completionNote = `English complete (6 articles). Ready to translate to ${remainingLanguages.length} languages. Click Resume to start translations.`;
+          console.log(`[Job ${jobId}] ✅ English complete. Ready for TRANSLATION workflow.`);
+          console.log(`[Job ${jobId}] ℹ️ Next: Translate to ${remainingLanguages[0]} (${remainingLanguages.length} languages remaining)`);
+        } else {
+          completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete. Next: ${remainingLanguages[0]}. Click Resume to continue.`;
+          console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining.`);
+        }
       } else {
         // All languages complete - run translation linking
         console.log(`[Job ${jobId}] 🌍 ALL LANGUAGES COMPLETE! Running translation linking...`);
@@ -2636,10 +2639,10 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
           await linkTranslations(supabase, jobId);
           console.log(`[Job ${jobId}] ✅ Translation linking complete`);
           finalStatus = 'completed';
-          completionNote = `Multilingual cluster complete: All ${languagesQueue.length} languages generated and linked (60 articles total).`;
+          completionNote = `Multilingual cluster complete: 6 English articles + 54 translations (60 total).`;
         } catch (linkError) {
           console.error(`[Job ${jobId}] ❌ Translation linking failed:`, linkError);
-          finalStatus = 'completed'; // Still mark as completed even if linking fails
+          finalStatus = 'completed';
           completionNote = `Multilingual cluster complete with ${languagesQueue.length} languages, but translation linking failed: ${linkError instanceof Error ? linkError.message : 'Unknown error'}`;
         }
       }
