@@ -198,16 +198,79 @@ function extractClaimsNeedingCitations(content: string): Claim[] {
   
   sentences.forEach((sentence, index) => {
     // Identify factual claims that need citations
+    // Multi-language patterns for: da, de, en, es, fi, fr, hu, nl, no, pl, sv
     const needsCitation = 
-      /\d+%/.test(sentence) || // Percentages
-      /\d{4}/.test(sentence) || // Years
-      /€\d+|£\d+|\$\d+/.test(sentence) || // Prices/amounts
-      /\d+\s*(million|thousand|billion|millón|mil|millones)/i.test(sentence) || // Statistics
-      /(increased|decreased|rose|fell|grew|declined|subió|bajó|creció|disminuyó)/i.test(sentence) || // Change verbs
-      /(according to|statistics show|data indicates|según|estadísticas|datos)/i.test(sentence) || // Citation phrases
-      /(government|study|research|report|gobierno|estudio|investigación|informe)/i.test(sentence) || // Authority mentions
-      /(requires|mandatory|obligatory|necesita|obligatorio|requerido)/i.test(sentence) || // Requirements
-      /(average|median|mean|promedio|media)/i.test(sentence); // Statistical terms
+      // === UNIVERSAL NUMERIC PATTERNS (work for ALL languages) ===
+      /\d+%/.test(sentence) ||                                    // Percentages
+      /\d{4}/.test(sentence) ||                                   // Years
+      /€\d+|£\d+|\$\d+|kr\s*\d+|zł\s*\d+|Ft\s*\d+/.test(sentence) || // Prices (EUR, GBP, USD, Nordic kr, Polish zł, Hungarian Ft)
+      /\d+\s*(million|thousand|billion)/i.test(sentence) ||       // English numbers
+      
+      // === ENGLISH (en) ===
+      /(according to|statistics show|data indicates|research shows)/i.test(sentence) ||
+      /(government|study|research|report|survey|analysis)/i.test(sentence) ||
+      /(increased|decreased|rose|fell|grew|declined|average|median)/i.test(sentence) ||
+      /(requires|mandatory|obligatory)/i.test(sentence) ||
+      
+      // === SPANISH (es) ===
+      /(según|estadísticas|datos|de acuerdo con)/i.test(sentence) ||
+      /(gobierno|estudio|investigación|informe|encuesta)/i.test(sentence) ||
+      /(subió|bajó|creció|disminuyó|promedio|media)/i.test(sentence) ||
+      /(millón|mil|millones|necesita|obligatorio|requerido)/i.test(sentence) ||
+      
+      // === GERMAN (de) ===
+      /(laut|gemäß|zufolge|nach Angaben)/i.test(sentence) ||
+      /(Regierung|Studie|Forschung|Bericht|Umfrage)/i.test(sentence) ||
+      /(gestiegen|gesunken|gewachsen|Durchschnitt|Mittelwert)/i.test(sentence) ||
+      /(Millionen|Tausend|Milliarden|erfordert|Pflicht)/i.test(sentence) ||
+      
+      // === FRENCH (fr) ===
+      /(selon|d'après|conformément à|les données montrent)/i.test(sentence) ||
+      /(gouvernement|étude|recherche|rapport|enquête)/i.test(sentence) ||
+      /(augmenté|diminué|moyenne|médiane)/i.test(sentence) ||
+      /(millions|milliers|milliards|obligatoire|requis)/i.test(sentence) ||
+      
+      // === DUTCH (nl) ===
+      /(volgens|uit onderzoek blijkt|gegevens tonen)/i.test(sentence) ||
+      /(overheid|regering|onderzoek|studie|rapport)/i.test(sentence) ||
+      /(gestegen|gedaald|gegroeid|gemiddelde|mediaan)/i.test(sentence) ||
+      /(miljoen|duizend|miljard|verplicht|vereist)/i.test(sentence) ||
+      
+      // === DANISH (da) ===
+      /(ifølge|i henhold til|data viser)/i.test(sentence) ||
+      /(regering|undersøgelse|forskning|rapport)/i.test(sentence) ||
+      /(steg|faldt|voksede|gennemsnit|median)/i.test(sentence) ||
+      /(millioner|tusinde|milliarder|krævet|obligatorisk)/i.test(sentence) ||
+      
+      // === SWEDISH (sv) ===
+      /(enligt|i enlighet med|data visar)/i.test(sentence) ||
+      /(regering|studie|forskning|rapport|undersökning)/i.test(sentence) ||
+      /(ökade|minskade|växte|genomsnitt|median)/i.test(sentence) ||
+      /(miljoner|tusen|miljarder|krävs|obligatorisk)/i.test(sentence) ||
+      
+      // === NORWEGIAN (no) ===
+      /(ifølge|i henhold til|data viser)/i.test(sentence) ||
+      /(regjering|studie|forskning|rapport|undersøkelse)/i.test(sentence) ||
+      /(økte|sank|vokste|gjennomsnitt|median)/i.test(sentence) ||
+      /(millioner|tusen|milliarder|påkrevd|obligatorisk)/i.test(sentence) ||
+      
+      // === FINNISH (fi) ===
+      /(mukaan|tutkimuksen mukaan|tiedot osoittavat)/i.test(sentence) ||
+      /(hallitus|tutkimus|raportti|selvitys)/i.test(sentence) ||
+      /(kasvoi|laski|keskiarvo|mediaani)/i.test(sentence) ||
+      /(miljoonaa|tuhatta|miljardia|vaaditaan|pakollinen)/i.test(sentence) ||
+      
+      // === POLISH (pl) ===
+      /(według|zgodnie z|dane pokazują)/i.test(sentence) ||
+      /(rząd|badanie|raport|analiza)/i.test(sentence) ||
+      /(wzrosła|spadła|średnia|mediana)/i.test(sentence) ||
+      /(milion|tysiąc|miliard|wymagany|obowiązkowy)/i.test(sentence) ||
+      
+      // === HUNGARIAN (hu) ===
+      /(szerint|az adatok azt mutatják|kutatások alapján)/i.test(sentence) ||
+      /(kormány|tanulmány|kutatás|jelentés)/i.test(sentence) ||
+      /(nőtt|csökkent|átlag|medián)/i.test(sentence) ||
+      /(millió|ezer|milliárd|szükséges|kötelező)/i.test(sentence);
     
     if (needsCitation) {
       // Get 3-sentence context window
