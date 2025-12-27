@@ -288,14 +288,18 @@ const ClusterAudit = () => {
         }
       };
 
+      let successCounter = 0;
+      
       const { succeeded, failed } = await processArticlesInBatches(
         articlesNeedingCitations,
         processCitationArticle,
         (completed, total, current) => {
           if (current) setCurrentArticle(current);
-          setSuccessCount(succeeded?.length || 0);
+          // Note: successCounter is updated after each batch completes in the loop
         }
       );
+      
+      setSuccessCount(succeeded.length);
 
       setFailedCitationArticles(failed);
       
@@ -389,14 +393,18 @@ const ClusterAudit = () => {
         }
       };
 
+      let successCounter = 0;
+      
       const { succeeded, failed } = await processArticlesInBatches(
         articlesNeedingLinks,
         processLinkArticle,
         (completed, total, current) => {
           if (current) setCurrentArticle(current);
-          setSuccessCount(succeeded?.length || 0);
+          // Note: successCounter is updated after each batch completes in the loop
         }
       );
+      
+      setSuccessCount(succeeded.length);
 
       setFailedLinkArticles(failed);
       
