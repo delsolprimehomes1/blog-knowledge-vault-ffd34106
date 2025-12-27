@@ -530,8 +530,13 @@ export const ClusterReviewInterface = ({
         onSaveAllAsDrafts={onSaveAll}
         onExportCluster={onExport}
         onFixAllCitations={citationsNeeded > 0 ? handleFixAllCitations : undefined}
+        onGenerateAllQA={async () => {
+          // Trigger re-fetch of articles to update QA counts
+          toast.info('Refreshing article data...');
+        }}
         articleCount={articles.length}
         citationsNeeded={citationsNeeded}
+        articles={articles}
       />
     </div>
   );

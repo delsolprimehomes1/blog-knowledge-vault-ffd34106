@@ -12,12 +12,13 @@ import { AuthorSuggestionCard } from "./AuthorSuggestionCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Check, AlertCircle, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Check, AlertCircle, CheckCircle2, HelpCircle, Loader2, ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { countWords } from "@/lib/articleUtils";
 import { LazyRichTextEditor } from "@/components/LazyRichTextEditor";
 import { AIImageGenerator } from "@/components/AIImageGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface ArticleReviewCardProps {
   article: Partial<BlogArticle>;
@@ -59,8 +60,52 @@ export const ArticleReviewCard = ({
 }: ArticleReviewCardProps) => {
   const [expandedContent, setExpandedContent] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [isGeneratingQA, setIsGeneratingQA] = useState(false);
+  const [qaPageCount, setQAPageCount] = useState<number>(
+    (article as any).generated_qa_page_ids?.length || 0
+  );
   const contentWords = countWords(article?.detailed_content?.replace(/<[^>]*>/g, ' ').trim() || "");
   const targetKeyword = article?.meta_title?.split(' ')[0] || '';
+
+  const handleGenerateQA = async () => {
+    if (!article.id) {
+      toast.error('Article must be saved before generating QA pages');
+      return;
+    }
+    
+    setIsGeneratingQA(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds: [article.id],
+          languages: [article.language || 'en'],
+          mode: 'standard'
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('QA pages generated successfully!');
+      
+      // Refetch article to get updated QA page IDs
+      const { data: updatedArticle } = await supabase
+        .from('blog_articles')
+        .select('generated_qa_page_ids')
+        .eq('id', article.id)
+        .single();
+      
+      if (updatedArticle) {
+        setQAPageCount(updatedArticle.generated_qa_page_ids?.length || 0);
+      }
+
+    } catch (error: any) {
+      console.error('QA generation error:', error);
+      toast.error(`Failed to generate QA pages: ${error.message}`);
+    } finally {
+      setIsGeneratingQA(false);
+    }
+  };
 
   const handleImageUpload = async (file: File) => {
     setImageUploading(true);
@@ -306,6 +351,83 @@ export const ArticleReviewCard = ({
               </Card>
             ) : (
               <p className="text-sm text-muted-foreground">No author assigned yet. Click "Get New Suggestions" to get AI-powered recommendations.</p>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Q&A Pages Section */}
+        <AccordionItem value="qa" className="border rounded-lg">
+          <AccordionTrigger className="px-6 hover:no-underline">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">❓ Q&A Pages</h3>
+              {qaPageCount > 0 && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  {qaPageCount} pages
+                </Badge>
+              )}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-6 space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <HelpCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 mb-1">Generate Q&A Pages</h4>
+                  <p className="text-sm text-blue-800">
+                    Create 2 focused Q&A pages from this article for better AI search visibility and FAQ schema markup.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {qaPageCount > 0 ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-700">
+                      {qaPageCount} QA page{qaPageCount !== 1 ? 's' : ''} generated
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No QA pages yet</span>
+                )}
+              </div>
+
+              <Button
+                onClick={handleGenerateQA}
+                disabled={isGeneratingQA || !article.id}
+                size="sm"
+                variant={qaPageCount > 0 ? "outline" : "default"}
+              >
+                {isGeneratingQA ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : qaPageCount > 0 ? (
+                  'Regenerate QA Pages'
+                ) : (
+                  <>
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Generate QA Pages
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {qaPageCount > 0 && (
+              <div className="pt-2 border-t">
+                <a
+                  href={`/admin/qa-dashboard?article=${article.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  View/Edit QA Pages
+                  <ExternalLinkIcon className="h-3 w-3" />
+                </a>
+              </div>
             )}
           </AccordionContent>
         </AccordionItem>
