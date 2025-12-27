@@ -2617,17 +2617,54 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
         .eq('id', jobId);
       
       if (remainingLanguages.length > 0) {
-        // More languages to translate - mark as partial
-        finalStatus = 'partial';
+        // More languages to translate
         
-        // Check if English is complete - if so, remaining languages will be TRANSLATED
+        // Check if English is complete - if so, AUTO-INVOKE translate-cluster!
         const englishComplete = completedLanguages.includes('en');
         
         if (englishComplete) {
-          completionNote = `English complete (6 articles). Ready to translate to ${remainingLanguages.length} languages. Click Resume to start translations.`;
-          console.log(`[Job ${jobId}] ✅ English complete. Ready for TRANSLATION workflow.`);
-          console.log(`[Job ${jobId}] ℹ️ Next: Translate to ${remainingLanguages[0]} (${remainingLanguages.length} languages remaining)`);
+          console.log(`[Job ${jobId}] ✅ English complete. AUTO-INVOKING translate-cluster...`);
+          
+          // Auto-invoke translate-cluster function to start translations
+          try {
+            const translateResponse = await fetch(
+              `${SUPABASE_URL}/functions/v1/translate-cluster`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({ jobId }),
+              }
+            );
+            
+            if (translateResponse.ok) {
+              const translateResult = await translateResponse.json();
+              console.log(`[Job ${jobId}] ✅ translate-cluster invoked successfully:`, translateResult);
+              
+              if (translateResult.status === 'completed') {
+                // All translations complete!
+                finalStatus = 'completed';
+                completionNote = 'Multilingual cluster complete: 6 English articles + 54 translations (60 total).';
+              } else {
+                // Translation in progress or partial
+                finalStatus = 'partial';
+                completionNote = translateResult.message || `English complete. ${remainingLanguages.length} languages being translated...`;
+              }
+            } else {
+              const errorText = await translateResponse.text();
+              console.error(`[Job ${jobId}] ❌ translate-cluster failed:`, errorText);
+              finalStatus = 'partial';
+              completionNote = `English complete (6 articles). Translation start failed: ${errorText}. Click Resume to retry.`;
+            }
+          } catch (translateError) {
+            console.error(`[Job ${jobId}] ❌ Failed to invoke translate-cluster:`, translateError);
+            finalStatus = 'partial';
+            completionNote = `English complete (6 articles). Ready to translate to ${remainingLanguages.length} languages. Click Resume to start.`;
+          }
         } else {
+          finalStatus = 'partial';
           completionNote = `Multilingual: ${completedLanguages.length}/${languagesQueue.length} languages complete. Next: ${remainingLanguages[0]}. Click Resume to continue.`;
           console.log(`[Job ${jobId}] ✅ Language ${currentLanguage} complete. ${remainingLanguages.length} languages remaining.`);
         }
