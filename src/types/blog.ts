@@ -56,6 +56,8 @@ export interface BlogArticle {
   
   // Cluster Fields
   cluster_id?: string;
+  cluster_number?: number;
+  cluster_theme?: string;
   is_primary: boolean;
   
   // Hreflang Fields
