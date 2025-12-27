@@ -5,11 +5,11 @@ export interface DomainValidationResult {
   actualLanguage: string | null;
   domain: string;
   sourceName?: string;
+  rejectionReason?: string;
 }
 
 /**
- * Validates that a citation URL's domain matches the expected article language
- * by checking against the approved_domains table
+ * BLACKLIST APPROACH: Accept ANY domain by default, only block competitors
  */
 export async function validateDomainLanguage(
   url: string,
@@ -18,115 +18,79 @@ export async function validateDomainLanguage(
   const domain = extractDomain(url);
   
   if (!domain) {
-    return { isValid: false, actualLanguage: null, domain: '' };
+    return { isValid: false, actualLanguage: null, domain: '', rejectionReason: 'Invalid URL' };
   }
   
-  const { data, error } = await supabase
-    .from('approved_domains')
-    .select('language, domain, category')
+  // STEP 1: Check blocked_domains table
+  const { data: blockedData } = await supabase
+    .from('blocked_domains')
+    .select('domain, reason, category')
     .eq('domain', domain)
-    .eq('is_allowed', true)
-    .single();
+    .eq('is_blocked', true)
+    .maybeSingle();
   
-  if (error || !data) {
-    // Domain not in approved list
-    return { isValid: false, actualLanguage: null, domain };
-  }
-  
-  // Priority 1: Check for language in URL path (highest priority)
-  const pathLanguage = extractLanguageFromPath(url);
-  if (pathLanguage) {
-    console.log(`Using path language ${pathLanguage} (overriding domain language ${data.language}) for ${url}`);
-    return {
-      isValid: pathLanguage === expectedLanguage,
-      actualLanguage: pathLanguage,
+  if (blockedData) {
+    return { 
+      isValid: false, 
+      actualLanguage: null, 
       domain,
-      sourceName: data.category || domain
+      rejectionReason: `Blocked: ${blockedData.reason} (${blockedData.category})`
     };
   }
   
-  // Priority 2: Check if it's a universal EU/Global source
-  const isUniversal = data.language?.toUpperCase() === 'EU' || 
-                     data.language?.toUpperCase() === 'GLOBAL' ||
-                     data.language?.toUpperCase() === 'EU/GLOBAL';
-  
-  if (isUniversal) {
-    console.log(`Universal source detected (${data.language}) for ${url}`);
-  } else {
-    console.log(`Using domain language ${data.language} for ${url}`);
+  // STEP 2: Check competitor patterns
+  const competitorPatterns = ['realestate', 'realtor', 'property', 'properties', 'inmobiliaria', 'immobilien', 'vastgoed', 'makelaar'];
+  const domainLower = domain.toLowerCase();
+  for (const pattern of competitorPatterns) {
+    if (domainLower.includes(pattern)) {
+      return { isValid: false, actualLanguage: null, domain, rejectionReason: `Competitor pattern: '${pattern}'` };
+    }
   }
   
-  // Priority 3: Fall back to domain language
-  return {
-    isValid: data.language === expectedLanguage || isUniversal,
-    actualLanguage: data.language,
-    domain,
-    sourceName: data.category || domain
+  // STEP 3: Check path-based language
+  const pathLanguage = extractLanguageFromPath(url);
+  if (pathLanguage) {
+    const matches = pathLanguage === expectedLanguage;
+    return { isValid: matches, actualLanguage: pathLanguage, domain, rejectionReason: matches ? undefined : `Path language mismatch` };
+  }
+  
+  // STEP 4: Validate TLD
+  const universalTLDs = ['com', 'org', 'net', 'gov', 'edu', 'int', 'eu'];
+  const langToTLDs: Record<string, string[]> = {
+    'en': ['com', 'org', 'net', 'uk', 'us', 'gov', 'edu', 'eu'], 'de': ['de', 'at', 'ch', 'eu', 'com', 'org'],
+    'nl': ['nl', 'be', 'eu', 'com', 'org'], 'fr': ['fr', 'be', 'ch', 'eu', 'com', 'org'], 'es': ['es', 'eu', 'com', 'org'],
+    'pl': ['pl', 'eu', 'com', 'org'], 'sv': ['se', 'eu', 'com', 'org'], 'da': ['dk', 'eu', 'com', 'org'],
+    'no': ['no', 'eu', 'com', 'org'], 'hu': ['hu', 'eu', 'com', 'org'], 'fi': ['fi', 'eu', 'com', 'org'],
   };
+  
+  const tld = domain.split('.').pop()?.toLowerCase() || '';
+  const acceptableTLDs = langToTLDs[expectedLanguage] || universalTLDs;
+  
+  if (!universalTLDs.includes(tld) && !acceptableTLDs.includes(tld)) {
+    return { isValid: false, actualLanguage: null, domain, rejectionReason: `TLD .${tld} doesn't match language ${expectedLanguage}` };
+  }
+  
+  return { isValid: true, actualLanguage: expectedLanguage, domain };
 }
 
-/**
- * Extract language code from URL path (e.g., /en/, /es/, /de/)
- */
 export function extractLanguageFromPath(url: string): string | null {
   try {
-    const urlObj = new URL(url);
-    const pathSegments = urlObj.pathname.split('/').filter(Boolean);
-    
-    // Common language codes to detect
-    const languageCodes = ['en', 'de', 'fr', 'nl', 'pl', 'sv', 'da', 'hu', 'it', 'pt'];
-    
-    // Check first path segment for language code
+    const pathSegments = new URL(url).pathname.split('/').filter(Boolean);
+    const languageCodes = ['en', 'de', 'fr', 'nl', 'pl', 'sv', 'da', 'hu', 'it', 'pt', 'es', 'no', 'fi'];
     if (pathSegments.length > 0) {
-      const firstSegment = pathSegments[0].toLowerCase();
-      
-      // Direct match (e.g., /en/, /es/)
-      if (languageCodes.includes(firstSegment)) {
-        console.log(`Path language detected: ${firstSegment} from ${url}`);
-        return firstSegment;
-      }
-      
-      // Handle variants like /en-us/, /en_US/
-      const baseLanguage = firstSegment.split(/[-_]/)[0];
-      if (languageCodes.includes(baseLanguage)) {
-        console.log(`Path language detected: ${baseLanguage} from ${url}`);
-        return baseLanguage;
-      }
+      const first = pathSegments[0].toLowerCase().split(/[-_]/)[0];
+      if (languageCodes.includes(first)) return first;
     }
-    
     return null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-/**
- * Extract clean domain from URL
- */
 export function extractDomain(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname.replace('www.', '');
-  } catch {
-    return '';
-  }
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
 }
 
-/**
- * Batch validate multiple URLs for language matching
- */
-export async function validateMultipleDomains(
-  urls: string[],
-  expectedLanguage: string
-): Promise<Map<string, DomainValidationResult>> {
+export async function validateMultipleDomains(urls: string[], expectedLanguage: string): Promise<Map<string, DomainValidationResult>> {
   const results = new Map<string, DomainValidationResult>();
-  
-  await Promise.all(
-    urls.map(async (url) => {
-      const result = await validateDomainLanguage(url, expectedLanguage);
-      results.set(url, result);
-    })
-  );
-  
+  await Promise.all(urls.map(async (url) => { results.set(url, await validateDomainLanguage(url, expectedLanguage)); }));
   return results;
 }
