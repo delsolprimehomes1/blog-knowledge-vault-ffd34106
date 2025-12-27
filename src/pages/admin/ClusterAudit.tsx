@@ -39,6 +39,9 @@ interface ArticleStatus {
     accepted?: number;
     rejected?: number;
     rejectionReasons?: Record<string, number>;
+    rejectionExamples?: Record<string, string[]>;
+    authorityAccepted?: number;
+    governmentAccepted?: number;
   };
   detailed_content?: string;
 }
@@ -185,16 +188,26 @@ export default function ClusterAudit() {
 
         if (updateError) throw updateError;
 
-        // Success log
+        // Success log with authority domain info
         const successLog = `✅ SUCCESS: Added ${data.citations.length} citations via Perplexity`;
         setProcessingLog(prev => [...prev, successLog]);
         
         if (data.diagnostics) {
           const debugLog = `   📊 Claims analyzed: ${data.diagnostics.claimsAnalyzed || '?'}, Found: ${data.citations.length}, Time: ${data.diagnostics.timeElapsed || '?'}`;
           setProcessingLog(prev => [...prev, debugLog]);
+          
+          // Show authority domain acceptance if present
+          if (data.diagnostics.authorityAccepted) {
+            const authorityLog = `   🏛️ Authority domains accepted: ${data.diagnostics.authorityAccepted}`;
+            setProcessingLog(prev => [...prev, authorityLog]);
+          }
+          if (data.diagnostics.governmentAccepted) {
+            const govLog = `   🏛️ Government sources accepted: ${data.diagnostics.governmentAccepted}`;
+            setProcessingLog(prev => [...prev, govLog]);
+          }
         }
 
-        // Update article status
+        // Update article status with enhanced debug info
         setArticles(prev => prev.map((a, i) => 
           i === currentIndex 
             ? { 
@@ -205,6 +218,10 @@ export default function ClusterAudit() {
                   aiGenerated: data.diagnostics?.claimsAnalyzed || 0,
                   accepted: data.citations.length,
                   rejected: data.diagnostics?.competitorsBlocked || 0,
+                  authorityAccepted: data.diagnostics?.authorityAccepted || 0,
+                  governmentAccepted: data.diagnostics?.governmentAccepted || 0,
+                  rejectionReasons: data.diagnostics?.rejectionReasons,
+                  rejectionExamples: data.diagnostics?.rejectionExamples,
                 } 
               } 
             : a

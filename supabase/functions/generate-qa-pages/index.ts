@@ -20,8 +20,265 @@ const LANGUAGE_NAMES: Record<string, string> = {
 };
 
 const ALL_SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+const TRANSLATION_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 
-// Process ONE article at a time (called per-article, not background)
+/**
+ * Translate a Q&A page from English to target language
+ */
+async function translateQAPage(
+  englishQA: any,
+  targetLanguage: string,
+  lovableApiKey: string
+): Promise<any> {
+  const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
+
+  console.log(`[Translation] Translating to ${targetLanguageName}...`);
+
+  const translationPrompt = `Translate this Q&A page from English to ${targetLanguageName}.
+
+CRITICAL: Translate EVERYTHING while keeping ALL HTML tags intact.
+
+English Q&A Page:
+
+**Title:**
+${englishQA.title}
+
+**Main Question:**
+${englishQA.question_main}
+
+**Main Answer (HTML):**
+${englishQA.answer_main}
+
+**Related Q&As:**
+${JSON.stringify(englishQA.related_qas, null, 2)}
+
+**Meta Title:**
+${englishQA.meta_title}
+
+**Meta Description:**
+${englishQA.meta_description}
+
+**Speakable Answer:**
+${englishQA.speakable_answer}
+
+---
+
+Respond in JSON format ONLY:
+{
+  "title": "translated title",
+  "slug": "url-friendly-slug-in-${targetLanguage}",
+  "question_main": "translated main question",
+  "answer_main": "translated HTML answer (keep all tags)",
+  "related_qas": [
+    {"question": "translated", "answer": "translated"},
+    {"question": "translated", "answer": "translated"}
+  ],
+  "meta_title": "translated (max 60 chars)",
+  "meta_description": "translated (max 160 chars)",
+  "speakable_answer": "translated (50-80 words)"
+}`;
+
+  const MAX_RETRIES = 2;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${lovableApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: `You are an expert translator. Translate all content to ${targetLanguageName}. Return only valid JSON.` },
+            { role: 'user', content: translationPrompt }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      let content = data.choices?.[0]?.message?.content || '';
+      
+      // Robust JSON cleanup
+      content = content
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/^\s+|\s+$/g, '')
+        .replace(/,\s*]/g, ']')
+        .replace(/,\s*}/g, '}')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[\x00-\x1F\x7F]/g, '');
+
+      let translated;
+      try {
+        translated = JSON.parse(content);
+      } catch {
+        const start = content.indexOf('{');
+        const end = content.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+          translated = JSON.parse(content.slice(start, end + 1));
+        } else {
+          throw new Error('Failed to parse translation JSON');
+        }
+      }
+
+      // Merge with original English data, replacing translated fields
+      return {
+        ...englishQA,
+        language: targetLanguage,
+        title: translated.title || englishQA.title,
+        slug: translated.slug || `${englishQA.slug}-${targetLanguage}`,
+        question_main: translated.question_main || englishQA.question_main,
+        answer_main: translated.answer_main || englishQA.answer_main,
+        related_qas: translated.related_qas || englishQA.related_qas,
+        meta_title: (translated.meta_title || englishQA.meta_title).substring(0, 60),
+        meta_description: (translated.meta_description || englishQA.meta_description).substring(0, 160),
+        speakable_answer: translated.speakable_answer || englishQA.speakable_answer,
+      };
+
+    } catch (error) {
+      console.error(`[Translation] Attempt ${attempt + 1} failed:`, error);
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error('Translation failed after all retries');
+}
+
+/**
+ * Generate English Q&A pages for an article
+ */
+async function generateEnglishQAPages(
+  article: any,
+  lovableApiKey: string
+): Promise<any[]> {
+  console.log(`[Generate] Creating English Q&A pages for: ${article.headline}`);
+
+  const prompt = `You are generating 2 standalone Q&A pages derived from this blog article:
+
+ARTICLE TITLE: ${article.headline}
+ARTICLE CONTENT: ${article.detailed_content?.substring(0, 4000)}
+LANGUAGE: English
+
+Generate exactly 2 Q&A pages with DIFFERENT angles:
+
+Q&A PAGE #1 (TYPE: "core"):
+- Focus: Core explanation, how-to, educational
+- Main question should be "What is..." or "How to..." style
+- Answer should be comprehensive, helpful, structured
+
+Q&A PAGE #2 (TYPE: "decision"):  
+- Focus: Decision-making, comparison, common mistakes
+- Main question should be "Should I...", "What to avoid...", "Best way to..." style
+- Answer should help readers make informed decisions
+
+For EACH Q&A page, return a JSON object with these exact fields:
+{
+  "qa_type": "core" or "decision",
+  "title": "Full page title (50-60 chars)",
+  "slug": "url-friendly-slug",
+  "question_main": "The primary question",
+  "answer_main": "Complete, citeable, helpful answer in HTML format (300-500 words)",
+  "related_qas": [
+    {"question": "Related Q1", "answer": "Answer"},
+    {"question": "Related Q2", "answer": "Answer"}
+  ],
+  "speakable_answer": "Short, citation-ready voice answer (50-80 words)",
+  "meta_title": "SEO title ≤60 chars",
+  "meta_description": "SEO description ≤160 chars"
+}
+
+Return a JSON array with exactly 2 objects. No markdown, no explanation, just valid JSON.`;
+
+  const MAX_RETRIES = 2;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: 'You are an expert SEO content generator. Return only valid JSON, no markdown or explanation.' },
+            { role: 'user', content: prompt }
+          ],
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        throw new Error(`AI API error: ${aiResponse.status}`);
+      }
+
+      const aiData = await aiResponse.json();
+      let content = aiData.choices?.[0]?.message?.content || '';
+      
+      // Robust JSON cleanup
+      content = content
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/^\s+|\s+$/g, '')
+        .replace(/,\s*]/g, ']')
+        .replace(/,\s*}/g, '}')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[\x00-\x1F\x7F]/g, '');
+
+      let qaPagesData;
+      try {
+        qaPagesData = JSON.parse(content);
+      } catch {
+        const start = content.indexOf('[');
+        const end = content.lastIndexOf(']');
+        if (start !== -1 && end !== -1 && end > start) {
+          qaPagesData = JSON.parse(content.slice(start, end + 1));
+        } else {
+          throw new Error('Failed to parse AI response as JSON');
+        }
+      }
+
+      if (!Array.isArray(qaPagesData) || qaPagesData.length === 0) {
+        throw new Error('AI response is not a valid array of QA pages');
+      }
+
+      // Add language and source info
+      return qaPagesData.map((qa: any) => ({
+        ...qa,
+        language: 'en',
+        source_article_id: article.id,
+        source_article_slug: article.slug,
+      }));
+
+    } catch (error) {
+      console.error(`[Generate] Attempt ${attempt + 1} failed:`, error);
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error('English QA generation failed after all retries');
+}
+
+/**
+ * Process ONE article with English-first + translation workflow
+ * 1. Generate 2 English Q&A pages
+ * 2. Translate to 9 other languages
+ * 3. Save all 20 pages to database
+ */
 async function processOneArticle(
   supabase: any,
   article: any,
@@ -30,12 +287,9 @@ async function processOneArticle(
   jobId: string
 ): Promise<{ success: boolean; generatedPages: number; error?: string }> {
   console.log(`[Process] Processing article: ${article.headline}`);
-  const results: any[] = [];
   let generatedPages = 0;
 
   try {
-    const sourceLanguageName = LANGUAGE_NAMES[article.language] || 'English';
-
     // Check if this article already has tracking
     const { data: existingTracking } = await supabase
       .from('qa_article_tracking')
@@ -99,194 +353,125 @@ async function processOneArticle(
 
     console.log(`[Process] Generating Q&As for languages: ${languagesToGenerate.join(', ')}`);
 
-    // Generate Q&As for each language
-    for (const lang of languagesToGenerate) {
-      const targetLanguageName = LANGUAGE_NAMES[lang] || 'English';
-      const isTranslation = lang !== article.language;
+    // STEP 1: Generate English Q&A pages first (if needed)
+    let englishQAPages: any[] = [];
+    
+    if (languagesToGenerate.includes('en')) {
+      console.log(`[Process] Step 1: Generating English Q&A pages...`);
+      englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+      console.log(`[Process] ✅ Generated ${englishQAPages.length} English Q&A pages`);
+    } else {
+      // Fetch existing English Q&A pages for translation base
+      const { data: existingEnglish } = await supabase
+        .from('qa_pages')
+        .select('*')
+        .eq('source_article_id', article.id)
+        .eq('language', 'en');
       
-      const translationInstruction = isTranslation 
-        ? `\n\nIMPORTANT: The source article is in ${sourceLanguageName}. You MUST translate all content to ${targetLanguageName}. Do not leave any text in ${sourceLanguageName}.`
-        : '';
+      if (existingEnglish && existingEnglish.length > 0) {
+        englishQAPages = existingEnglish;
+        console.log(`[Process] Using ${englishQAPages.length} existing English Q&A pages for translation`);
+      } else {
+        // Need to generate English first even if not in target list
+        console.log(`[Process] No English pages found, generating for translation base...`);
+        englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+      }
+    }
+
+    // Prepare all Q&A pages to save
+    const allQAPages: any[] = [];
+
+    // Add English pages if they need to be saved
+    if (languagesToGenerate.includes('en')) {
+      for (const englishQA of englishQAPages) {
+        allQAPages.push({
+          ...englishQA,
+          hreflang_group_id: englishQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
+          tracking_id: trackingId,
+        });
+      }
+      existingLanguages.push('en');
+    }
+
+    // STEP 2: Translate to other languages
+    const translationLanguages = languagesToGenerate.filter(lang => lang !== 'en');
+    
+    for (const targetLang of translationLanguages) {
+      console.log(`[Process] Step 2: Translating to ${targetLang}...`);
       
-      const prompt = `CRITICAL: ALL OUTPUT MUST BE WRITTEN ENTIRELY IN ${targetLanguageName}.
-Do NOT use English unless the target language IS English.
-Every word, phrase, and sentence must be native ${targetLanguageName}.${translationInstruction}
-
-You are generating 2 standalone Q&A pages derived from this blog article:
-
-ARTICLE TITLE: ${article.headline}
-ARTICLE CONTENT: ${article.detailed_content?.substring(0, 4000)}
-SOURCE LANGUAGE: ${sourceLanguageName}
-TARGET LANGUAGE: ${targetLanguageName}
-
-Generate exactly 2 Q&A pages with DIFFERENT angles:
-
-Q&A PAGE #1 (TYPE: "core"):
-- Focus: Core explanation, how-to, educational
-- Main question should be "What is..." or "How to..." style
-- Answer should be comprehensive, helpful, structured
-
-Q&A PAGE #2 (TYPE: "decision"):  
-- Focus: Decision-making, comparison, common mistakes
-- Main question should be "Should I...", "What to avoid...", "Best way to..." style
-- Answer should help readers make informed decisions
-
-For EACH Q&A page, return a JSON object with these exact fields:
-{
-  "qa_type": "core" or "decision",
-  "title": "Full page title in ${targetLanguageName} (50-60 chars)",
-  "slug": "url-friendly-slug-in-target-language",
-  "question_main": "The primary question in ${targetLanguageName}",
-  "answer_main": "Complete, citeable, helpful answer in HTML format (300-500 words) in ${targetLanguageName}",
-  "related_qas": [
-    {"question": "Related Q1 in ${targetLanguageName}", "answer": "Answer in ${targetLanguageName}"},
-    {"question": "Related Q2 in ${targetLanguageName}", "answer": "Answer in ${targetLanguageName}"}
-  ],
-  "speakable_answer": "Short, citation-ready voice answer (50-80 words) in ${targetLanguageName}",
-  "meta_title": "SEO title ≤60 chars in ${targetLanguageName}",
-  "meta_description": "SEO description ≤160 chars in ${targetLanguageName}"
-}
-
-Return a JSON array with exactly 2 objects. No markdown, no explanation, just valid JSON.`;
-
-      const MAX_RETRIES = 2;
-      let qaPagesData;
-      let lastError;
-
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      for (const englishQA of englishQAPages) {
         try {
-          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${lovableApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
-              messages: [
-                { role: 'system', content: 'You are an expert SEO content generator and translator. Return only valid JSON, no markdown or explanation.' },
-                { role: 'user', content: prompt }
-              ],
-            }),
-          });
-
-          if (!aiResponse.ok) {
-            const errorText = await aiResponse.text();
-            console.error('[Process] AI API error:', errorText);
-            throw new Error(`AI API error: ${aiResponse.status}`);
-          }
-
-          const aiData = await aiResponse.json();
-          let content = aiData.choices?.[0]?.message?.content || '';
+          const translatedQA = await translateQAPage(englishQA, targetLang, lovableApiKey);
           
-          // Robust JSON cleanup
-          content = content
-            .replace(/```json\n?/g, '')
-            .replace(/```\n?/g, '')
-            .replace(/^\s+|\s+$/g, '')
-            .replace(/,\s*]/g, ']')
-            .replace(/,\s*}/g, '}')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
-            .replace(/[\x00-\x1F\x7F]/g, '');
-
-          try {
-            qaPagesData = JSON.parse(content);
-          } catch {
-            const start = content.indexOf('[');
-            const end = content.lastIndexOf(']');
-            if (start !== -1 && end !== -1 && end > start) {
-              const extracted = content.slice(start, end + 1);
-              qaPagesData = JSON.parse(extracted);
-              console.log(`[Process] Fallback JSON extraction succeeded`);
-            } else {
-              throw new Error('Failed to parse AI response as JSON');
-            }
-          }
-
-          if (!Array.isArray(qaPagesData) || qaPagesData.length === 0) {
-            throw new Error('AI response is not a valid array of QA pages');
-          }
-
-          break;
-
+          allQAPages.push({
+            ...translatedQA,
+            hreflang_group_id: translatedQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
+            tracking_id: trackingId,
+            source_article_id: article.id,
+            source_article_slug: article.slug,
+          });
         } catch (error) {
-          lastError = error;
-          if (attempt < MAX_RETRIES) {
-            console.log(`[Process] Retry attempt ${attempt + 1} for lang ${lang}`);
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-          }
+          console.error(`[Process] Failed to translate ${englishQA.qa_type} to ${targetLang}:`, error);
+          // Continue with other translations
         }
       }
+      
+      existingLanguages.push(targetLang);
+      console.log(`[Process] ✅ Translated to ${targetLang}`);
+    }
 
-      if (!qaPagesData) {
-        console.error(`[Process] Failed to generate Q&A for ${lang}:`, lastError);
+    console.log(`[Process] 🎉 Total Q&A pages prepared: ${allQAPages.length}`);
+
+    // STEP 3: Save all Q&A pages to database
+    for (const qaData of allQAPages) {
+      const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
+      
+      // Check for existing slug
+      const { data: existing } = await supabase
+        .from('qa_pages')
+        .select('id')
+        .eq('slug', baseSlug)
+        .eq('language', qaData.language)
+        .single();
+
+      if (existing) {
+        console.log(`[Process] Q&A page already exists: ${baseSlug} (${qaData.language})`);
         continue;
       }
 
-      // Save each Q&A page
-      for (const qaData of qaPagesData) {
-        const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
-        const slug = baseSlug;
-        
-        // Check for existing slug
-        const { data: existing } = await supabase
-          .from('qa_pages')
-          .select('id')
-          .eq('slug', slug)
-          .eq('language', lang)
-          .single();
-
-        if (existing) {
-          console.log(`[Process] Q&A page already exists: ${slug}`);
-          continue;
-        }
-
-        const hreflangGroupId = qaData.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision;
-
-        const { error: insertError } = await supabase
-          .from('qa_pages')
-          .insert({
-            source_article_id: article.id,
-            language: lang,
-            source_language: 'en',
-            hreflang_group_id: hreflangGroupId,
-            tracking_id: trackingId,
-            qa_type: qaData.qa_type,
-            title: qaData.title,
-            slug,
-            canonical_url: `https://www.delsolprimehomes.com/${lang}/qa/${slug}`,
-            question_main: qaData.question_main,
-            answer_main: qaData.answer_main,
-            related_qas: qaData.related_qas || [],
-            speakable_answer: qaData.speakable_answer,
-            meta_title: qaData.meta_title?.substring(0, 60) || qaData.title.substring(0, 60),
-            meta_description: qaData.meta_description?.substring(0, 160) || '',
-            featured_image_url: article.featured_image_url,
-            featured_image_alt: article.featured_image_alt || qaData.title,
-            featured_image_caption: article.featured_image_caption,
-            source_article_slug: article.slug,
-            author_id: article.author_id,
-            category: article.category,
-            status: 'draft',
-          });
-
-        if (insertError) {
-          console.error('[Process] Insert error:', insertError);
-          continue;
-        }
-
-        generatedPages++;
-        results.push({
+      const { error: insertError } = await supabase
+        .from('qa_pages')
+        .insert({
           source_article_id: article.id,
-          language: lang,
+          language: qaData.language,
+          source_language: 'en',
+          hreflang_group_id: qaData.hreflang_group_id,
+          tracking_id: trackingId,
           qa_type: qaData.qa_type,
           title: qaData.title,
-          slug,
-          hreflang_group_id: hreflangGroupId,
+          slug: baseSlug,
+          canonical_url: `https://www.delsolprimehomes.com/${qaData.language}/qa/${baseSlug}`,
+          question_main: qaData.question_main,
+          answer_main: qaData.answer_main,
+          related_qas: qaData.related_qas || [],
+          speakable_answer: qaData.speakable_answer,
+          meta_title: qaData.meta_title?.substring(0, 60) || qaData.title.substring(0, 60),
+          meta_description: qaData.meta_description?.substring(0, 160) || '',
+          featured_image_url: article.featured_image_url,
+          featured_image_alt: article.featured_image_alt || qaData.title,
+          featured_image_caption: article.featured_image_caption,
+          source_article_slug: article.slug,
+          author_id: article.author_id,
+          category: article.category,
+          status: 'draft',
         });
+
+      if (insertError) {
+        console.error('[Process] Insert error:', insertError);
+        continue;
       }
 
-      existingLanguages.push(lang);
+      generatedPages++;
     }
 
     // Update tracking record
@@ -301,37 +486,28 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
       .eq('id', trackingId);
 
     // Link translations between Q&A pages from same hreflang group
-    const qaPagesByGroup: Record<string, any[]> = {};
-    for (const result of results) {
-      if (result.hreflang_group_id) {
-        const key = result.hreflang_group_id;
-        if (!qaPagesByGroup[key]) qaPagesByGroup[key] = [];
-        qaPagesByGroup[key].push(result);
-      }
-    }
-
-    for (const [groupId] of Object.entries(qaPagesByGroup)) {
-      const { data: existingPages } = await supabase
+    for (const groupId of [hreflangGroupCore, hreflangGroupDecision]) {
+      const { data: pagesInGroup } = await supabase
         .from('qa_pages')
         .select('id, language, slug')
         .eq('hreflang_group_id', groupId);
       
-      if (existingPages && existingPages.length > 0) {
-        const fullTranslations: Record<string, string> = {};
-        for (const p of existingPages) {
-          fullTranslations[p.language] = p.slug;
+      if (pagesInGroup && pagesInGroup.length > 0) {
+        const translations: Record<string, string> = {};
+        for (const p of pagesInGroup) {
+          translations[p.language] = p.slug;
         }
         
-        for (const p of existingPages) {
+        for (const p of pagesInGroup) {
           await supabase
             .from('qa_pages')
-            .update({ translations: fullTranslations })
+            .update({ translations })
             .eq('id', p.id);
         }
       }
     }
 
-    // Update source blog article with generated QA page IDs for bidirectional linking
+    // Update source blog article with generated QA page IDs
     if (generatedPages > 0) {
       const { data: generatedQAPages } = await supabase
         .from('qa_pages')
@@ -341,7 +517,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
       if (generatedQAPages && generatedQAPages.length > 0) {
         const qaPageIds = generatedQAPages.map((qa: { id: string }) => qa.id);
         
-        const { error: updateError } = await supabase
+        await supabase
           .from('blog_articles')
           .update({ 
             generated_qa_page_ids: qaPageIds,
@@ -349,11 +525,7 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
           })
           .eq('id', article.id);
         
-        if (updateError) {
-          console.error('[Process] Failed to update blog article with QA IDs:', updateError);
-        } else {
-          console.log(`[Process] ✅ Updated blog article ${article.id} with ${qaPageIds.length} QA page IDs`);
-        }
+        console.log(`[Process] ✅ Updated blog article ${article.id} with ${qaPageIds.length} QA page IDs`);
       }
     }
 
@@ -451,19 +623,27 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      console.log(`[CompleteMissing] Found ${missingCombos.length} missing combinations:`, missingCombos);
+      console.log(`[CompleteMissing] Found ${missingCombos.length} missing combinations`);
       
-      // Group missing by language for efficient generation
-      const missingByLang: Record<string, string[]> = {};
-      for (const combo of missingCombos) {
-        if (!missingByLang[combo.language]) missingByLang[combo.language] = [];
-        missingByLang[combo.language].push(combo.qaType);
+      // Use English-first workflow for missing pages too
+      let englishQAPages: any[] = [];
+      
+      // Check if we have English pages, if not generate them
+      const hasEnglishCore = existingCombos.has('en_core');
+      const hasEnglishDecision = existingCombos.has('en_decision');
+      
+      if (!hasEnglishCore || !hasEnglishDecision) {
+        englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+      } else {
+        const { data: existingEnglish } = await supabase
+          .from('qa_pages')
+          .select('*')
+          .eq('source_article_id', articleId)
+          .eq('language', 'en');
+        englishQAPages = existingEnglish || [];
       }
 
       let generatedPages = 0;
-      const sourceLanguageName = LANGUAGE_NAMES[article.language] || 'English';
-
-      // Get or create tracking record
       const { data: tracking } = await supabase
         .from('qa_article_tracking')
         .select('id, languages_generated')
@@ -491,132 +671,40 @@ serve(async (req) => {
         trackingId = newTracking?.id;
       }
 
-      // Generate each missing language
+      // Group missing by language
+      const missingByLang: Record<string, string[]> = {};
+      for (const combo of missingCombos) {
+        if (!missingByLang[combo.language]) missingByLang[combo.language] = [];
+        missingByLang[combo.language].push(combo.qaType);
+      }
+
+      // Generate/translate missing pages
       for (const [lang, qaTypes] of Object.entries(missingByLang)) {
-        const targetLanguageName = LANGUAGE_NAMES[lang] || 'English';
-        const isTranslation = lang !== article.language;
-        
-        const translationInstruction = isTranslation 
-          ? `\n\nIMPORTANT: The source article is in ${sourceLanguageName}. You MUST translate all content to ${targetLanguageName}. Do not leave any text in ${sourceLanguageName}.`
-          : '';
-
-        // Only generate the specific qa_types needed
-        const qaTypeFilter = qaTypes.join(' and ');
-        const prompt = `CRITICAL: ALL OUTPUT MUST BE WRITTEN ENTIRELY IN ${targetLanguageName}.
-Do NOT use English unless the target language IS English.
-Every word, phrase, and sentence must be native ${targetLanguageName}.${translationInstruction}
-
-You are generating ${qaTypes.length} standalone Q&A page(s) derived from this blog article:
-
-ARTICLE TITLE: ${article.headline}
-ARTICLE CONTENT: ${article.detailed_content?.substring(0, 4000)}
-SOURCE LANGUAGE: ${sourceLanguageName}
-TARGET LANGUAGE: ${targetLanguageName}
-
-Generate exactly ${qaTypes.length} Q&A page(s) of type: ${qaTypeFilter}
-
-${qaTypes.includes('core') ? `Q&A PAGE (TYPE: "core"):
-- Focus: Core explanation, how-to, educational
-- Main question should be "What is..." or "How to..." style
-- Answer should be comprehensive, helpful, structured` : ''}
-
-${qaTypes.includes('decision') ? `Q&A PAGE (TYPE: "decision"):  
-- Focus: Decision-making, comparison, common mistakes
-- Main question should be "Should I...", "What to avoid...", "Best way to..." style
-- Answer should help readers make informed decisions` : ''}
-
-For EACH Q&A page, return a JSON object with these exact fields:
-{
-  "qa_type": "core" or "decision",
-  "title": "Full page title in ${targetLanguageName} (50-60 chars)",
-  "slug": "url-friendly-slug-in-target-language",
-  "question_main": "The primary question in ${targetLanguageName}",
-  "answer_main": "Complete, citeable, helpful answer in HTML format (300-500 words) in ${targetLanguageName}",
-  "related_qas": [
-    {"question": "Related Q1 in ${targetLanguageName}", "answer": "Answer in ${targetLanguageName}"},
-    {"question": "Related Q2 in ${targetLanguageName}", "answer": "Answer in ${targetLanguageName}"}
-  ],
-  "speakable_answer": "Short, citation-ready voice answer (50-80 words) in ${targetLanguageName}",
-  "meta_title": "SEO title ≤60 chars in ${targetLanguageName}",
-  "meta_description": "SEO description ≤160 chars in ${targetLanguageName}"
-}
-
-Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no explanation, just valid JSON.`;
-
-        try {
-          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${lovableApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
-              messages: [
-                { role: 'system', content: 'You are an expert SEO content generator and translator. Return only valid JSON, no markdown or explanation.' },
-                { role: 'user', content: prompt }
-              ],
-            }),
-          });
-
-          if (!aiResponse.ok) {
-            console.error(`[CompleteMissing] AI API error for ${lang}`);
-            continue;
-          }
-
-          const aiData = await aiResponse.json();
-          let content = aiData.choices?.[0]?.message?.content || '';
-          
-          // Robust JSON cleanup
-          content = content
-            .replace(/```json\n?/g, '')
-            .replace(/```\n?/g, '')
-            .replace(/^\s+|\s+$/g, '')
-            .replace(/,\s*]/g, ']')
-            .replace(/,\s*}/g, '}')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
-            .replace(/[\x00-\x1F\x7F]/g, '');
-
-          let qaPagesData;
-          try {
-            qaPagesData = JSON.parse(content);
-          } catch {
-            const start = content.indexOf('[');
-            const end = content.lastIndexOf(']');
-            if (start !== -1 && end !== -1 && end > start) {
-              qaPagesData = JSON.parse(content.slice(start, end + 1));
-            } else {
-              console.error(`[CompleteMissing] Failed to parse JSON for ${lang}`);
-              continue;
-            }
-          }
-
-          // Save each Q&A page
-          for (const qaData of qaPagesData) {
-            const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
-            const hreflangGroupId = qaData.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision;
-
+        if (lang === 'en') {
+          // Save English pages directly
+          for (const englishQA of englishQAPages) {
+            if (!qaTypes.includes(englishQA.qa_type)) continue;
+            
             const { error: insertError } = await supabase
               .from('qa_pages')
               .insert({
                 source_article_id: article.id,
-                language: lang,
+                language: 'en',
                 source_language: 'en',
-                hreflang_group_id: hreflangGroupId,
+                hreflang_group_id: englishQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
                 tracking_id: trackingId,
-                qa_type: qaData.qa_type,
-                title: qaData.title,
-                slug: baseSlug,
-                canonical_url: `https://www.delsolprimehomes.com/${lang}/qa/${baseSlug}`,
-                question_main: qaData.question_main,
-                answer_main: qaData.answer_main,
-                related_qas: qaData.related_qas || [],
-                speakable_answer: qaData.speakable_answer,
-                meta_title: qaData.meta_title?.substring(0, 60) || qaData.title.substring(0, 60),
-                meta_description: qaData.meta_description?.substring(0, 160) || '',
+                qa_type: englishQA.qa_type,
+                title: englishQA.title,
+                slug: englishQA.slug,
+                canonical_url: `https://www.delsolprimehomes.com/en/qa/${englishQA.slug}`,
+                question_main: englishQA.question_main,
+                answer_main: englishQA.answer_main,
+                related_qas: englishQA.related_qas || [],
+                speakable_answer: englishQA.speakable_answer,
+                meta_title: englishQA.meta_title?.substring(0, 60),
+                meta_description: englishQA.meta_description?.substring(0, 160),
                 featured_image_url: article.featured_image_url,
-                featured_image_alt: article.featured_image_alt || qaData.title,
-                featured_image_caption: article.featured_image_caption,
+                featured_image_alt: article.featured_image_alt,
                 source_article_slug: article.slug,
                 author_id: article.author_id,
                 category: article.category,
@@ -625,18 +713,53 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
 
             if (!insertError) {
               generatedPages++;
-              console.log(`[CompleteMissing] Created ${lang}/${qaData.qa_type} page`);
-            } else {
-              console.error(`[CompleteMissing] Insert error:`, insertError);
             }
           }
+        } else {
+          // Translate from English
+          for (const englishQA of englishQAPages) {
+            if (!qaTypes.includes(englishQA.qa_type)) continue;
+            
+            try {
+              const translatedQA = await translateQAPage(englishQA, lang, lovableApiKey);
+              
+              const { error: insertError } = await supabase
+                .from('qa_pages')
+                .insert({
+                  source_article_id: article.id,
+                  language: lang,
+                  source_language: 'en',
+                  hreflang_group_id: translatedQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
+                  tracking_id: trackingId,
+                  qa_type: translatedQA.qa_type,
+                  title: translatedQA.title,
+                  slug: translatedQA.slug,
+                  canonical_url: `https://www.delsolprimehomes.com/${lang}/qa/${translatedQA.slug}`,
+                  question_main: translatedQA.question_main,
+                  answer_main: translatedQA.answer_main,
+                  related_qas: translatedQA.related_qas || [],
+                  speakable_answer: translatedQA.speakable_answer,
+                  meta_title: translatedQA.meta_title?.substring(0, 60),
+                  meta_description: translatedQA.meta_description?.substring(0, 160),
+                  featured_image_url: article.featured_image_url,
+                  featured_image_alt: article.featured_image_alt,
+                  source_article_slug: article.slug,
+                  author_id: article.author_id,
+                  category: article.category,
+                  status: 'draft',
+                });
 
-          // Mark this language as generated if both types are now present
-          if (!languagesGenerated.includes(lang)) {
-            languagesGenerated.push(lang);
+              if (!insertError) {
+                generatedPages++;
+              }
+            } catch (error) {
+              console.error(`[CompleteMissing] Failed to translate to ${lang}:`, error);
+            }
           }
-        } catch (error) {
-          console.error(`[CompleteMissing] Error generating ${lang}:`, error);
+        }
+
+        if (!languagesGenerated.includes(lang)) {
+          languagesGenerated.push(lang);
         }
       }
 
@@ -652,7 +775,7 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
           .eq('id', trackingId);
       }
 
-      // Update source blog article with all QA page IDs for bidirectional linking
+      // Update source blog article with all QA page IDs
       if (generatedPages > 0) {
         const { data: allQAPages } = await supabase
           .from('qa_pages')
@@ -660,27 +783,19 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
           .eq('source_article_id', articleId);
         
         if (allQAPages && allQAPages.length > 0) {
-          const qaPageIds = allQAPages.map((qa: { id: string }) => qa.id);
-          
-          const { error: updateError } = await supabase
+          await supabase
             .from('blog_articles')
             .update({ 
-              generated_qa_page_ids: qaPageIds,
+              generated_qa_page_ids: allQAPages.map((qa: { id: string }) => qa.id),
               updated_at: new Date().toISOString()
             })
             .eq('id', articleId);
-          
-          if (updateError) {
-            console.error('[CompleteMissing] Failed to update blog article with QA IDs:', updateError);
-          } else {
-            console.log(`[CompleteMissing] ✅ Updated blog article ${articleId} with ${qaPageIds.length} QA page IDs`);
-          }
         }
       }
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Generated ${generatedPages} missing Q&A pages`,
+        message: `Generated ${generatedPages} missing Q&A pages using English-first translation`,
         generatedPages,
         missingCombos,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -734,7 +849,7 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
       jobId = job.id;
       console.log(`[Main] Created new job ${jobId}`);
     } else {
-      // Resume existing job - get current progress
+      // Resume existing job
       const { data: existingJob } = await supabase
         .from('qa_generation_jobs')
         .select('*')
@@ -745,7 +860,6 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
         currentIndex = existingJob.processed_articles || 0;
         console.log(`[Main] Resuming job ${jobId} from article index ${currentIndex}`);
         
-        // Update job status back to running
         await supabase
           .from('qa_generation_jobs')
           .update({ 
@@ -782,7 +896,6 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
     // Process ONE article (the next one)
     const articleIdToProcess = articleIds[currentIndex];
     
-    // Fetch the article
     const { data: articles, error: articlesError } = await supabase
       .from('blog_articles')
       .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
@@ -793,7 +906,6 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
     
     const article = articles?.[0];
     if (!article) {
-      // Article not found, skip to next
       currentIndex++;
       await supabase
         .from('qa_generation_jobs')
@@ -816,7 +928,7 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
       });
     }
 
-    // Process this one article
+    // Process this one article with English-first workflow
     const result = await processOneArticle(supabase, article, targetLanguages, lovableApiKey, jobId);
     
     // Update job progress
@@ -858,7 +970,7 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
       jobId,
       status: isComplete ? 'completed' : 'running',
       message: isComplete 
-        ? `Completed! Generated ${newGeneratedPages} Q&A pages` 
+        ? `Completed! Generated ${newGeneratedPages} Q&A pages using English-first translation` 
         : `Processed article ${currentIndex}/${articleIds.length}`,
       processedArticles: currentIndex,
       totalArticles: articleIds.length,

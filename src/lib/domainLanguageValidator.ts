@@ -6,6 +6,62 @@ export interface DomainValidationResult {
   domain: string;
   sourceName?: string;
   rejectionReason?: string;
+  note?: string;
+}
+
+// Authority domains that can be cited regardless of URL language
+const AUTHORITY_DOMAINS = [
+  // International Organizations
+  'who.int', 'un.org', 'oecd.org', 'imf.org', 'worldbank.org',
+  'europa.eu', 'eurostat', 'ec.europa.eu', 'eea.europa.eu',
+  'weforum.org', 'wto.org', 'unesco.org', 'unicef.org',
+  
+  // Global research & data
+  'statista.com', 'ourworldindata.org', 'data.worldbank.org',
+  
+  // Official tourism sites
+  'spain.info', 'germany.travel', 'visitnorway.com', 'holland.com',
+  'visitdenmark.com', 'visitfinland.com', 'visitsweden.com',
+];
+
+// Government and statistical agency patterns - accept from ANY country
+const GOVERNMENT_PATTERNS = [
+  // Government TLD patterns
+  '.gov', '.gob', '.gouv', 
+  
+  // Statistics agencies
+  'stat.', 'statistics.', 'census.',
+  'ine.es', 'insee.fr', 'destatis.de', 'scb.se', 'ssb.no', 'dst.dk', 'ksh.hu', 'cbs.nl', 'stat.fi',
+  
+  // Legal databases
+  'boe.es', 'legifrance.fr', 'gesetze-im-internet.de',
+  
+  // Regional governments (Spain)
+  'juntadeandalucia.es', 'generalitat.cat', 'euskadi.eus',
+  
+  // Other national governments
+  'bundesregierung.de', 'government.nl', 'gouvernement.fr', 'rijksoverheid.nl',
+  'regjeringen.no', 'regeringen.se', 'stm.fi', 'kormany.hu',
+];
+
+/**
+ * Check if domain is an authority domain (WHO, EU, UN, etc.)
+ */
+function isAuthorityDomain(domain: string): boolean {
+  const lowerDomain = domain.toLowerCase();
+  return AUTHORITY_DOMAINS.some(auth => 
+    lowerDomain.includes(auth) || lowerDomain.endsWith(auth)
+  );
+}
+
+/**
+ * Check if domain is a government/statistical site
+ */
+function isGovernmentSite(domain: string): boolean {
+  const lowerDomain = domain.toLowerCase();
+  return GOVERNMENT_PATTERNS.some(pattern => 
+    lowerDomain.includes(pattern) || lowerDomain.startsWith(pattern)
+  );
 }
 
 /**
@@ -47,14 +103,37 @@ export async function validateDomainLanguage(
     }
   }
   
-  // STEP 3: Check path-based language
+  // STEP 3: Check if this is an authority domain (bypass language checks)
+  if (isAuthorityDomain(domain)) {
+    return {
+      isValid: true,
+      actualLanguage: expectedLanguage,
+      domain,
+      note: 'Authority domain - cross-language allowed'
+    };
+  }
+  
+  // STEP 4: Check if this is a government/statistical site (bypass language checks)
+  if (isGovernmentSite(domain)) {
+    return {
+      isValid: true,
+      actualLanguage: expectedLanguage,
+      domain,
+      note: 'Government/statistical source - universally acceptable'
+    };
+  }
+  
+  // STEP 5: Check path-based language
   const pathLanguage = extractLanguageFromPath(url);
   if (pathLanguage) {
     const matches = pathLanguage === expectedLanguage;
-    return { isValid: matches, actualLanguage: pathLanguage, domain, rejectionReason: matches ? undefined : `Path language mismatch` };
+    if (matches) {
+      return { isValid: true, actualLanguage: pathLanguage, domain };
+    }
+    // Fall through to TLD check if path doesn't match
   }
   
-  // STEP 4: Validate TLD
+  // STEP 6: Validate TLD
   const universalTLDs = ['com', 'org', 'net', 'gov', 'edu', 'int', 'eu'];
   const langToTLDs: Record<string, string[]> = {
     'en': ['com', 'org', 'net', 'uk', 'us', 'gov', 'edu', 'eu'], 'de': ['de', 'at', 'ch', 'eu', 'com', 'org'],
