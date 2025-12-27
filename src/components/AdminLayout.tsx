@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale, Map, Globe2, HeartPulse, Database } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Settings, Menu, Bot, Download, CheckCircle, Sparkles, Image, Activity, Languages, Link2, MapPin, HelpCircle, Scale, Map, Globe2, HeartPulse, Database, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "@/assets/logo.png";
@@ -12,6 +12,7 @@ interface AdminLayoutProps {
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Articles", href: "/admin/articles", icon: FileText },
+  { name: "Cluster Manager", href: "/admin/clusters", icon: FolderKanban },
   { name: "Authors", href: "/admin/authors", icon: Users },
   { name: "AI Tools", href: "/admin/ai-tools", icon: Bot },
   { name: "Cluster Generator", href: "/admin/cluster-generator", icon: Sparkles },

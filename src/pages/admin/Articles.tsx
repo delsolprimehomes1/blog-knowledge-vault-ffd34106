@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle, ArticleStatus, FunnelStage, Language } from "@/types/blog";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -19,22 +20,33 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { Search, Edit, Eye, Trash2, Plus, AlertCircle } from "lucide-react";
+import { Search, Edit, Eye, Trash2, Plus, AlertCircle, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const Articles = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const clusterIdFromUrl = searchParams.get("cluster");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [languageFilter, setLanguageFilter] = useState<string>("all");
   const [funnelFilter, setFunnelFilter] = useState<string>("all");
+  const [clusterFilter, setClusterFilter] = useState<string>(clusterIdFromUrl || "all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
   const [articleToDelete, setArticleToDelete] = useState<string | null>(null);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+
+  // Sync cluster filter with URL param
+  useEffect(() => {
+    if (clusterIdFromUrl) {
+      setClusterFilter(clusterIdFromUrl);
+    }
+  }, [clusterIdFromUrl]);
 
   const { data: articles, isLoading, error } = useQuery({
     queryKey: ["articles"],
@@ -48,6 +60,32 @@ const Articles = () => {
       if (!data) return [];
 
       return data as unknown as BlogArticle[];
+    },
+  });
+
+  // Fetch unique cluster IDs for dropdown
+  const { data: clusterIds } = useQuery({
+    queryKey: ["cluster-ids"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blog_articles")
+        .select("cluster_id, cluster_theme")
+        .not("cluster_id", "is", null);
+      
+      if (error) throw error;
+      
+      // Get unique cluster IDs with themes
+      const uniqueClusters = new Map<string, string | null>();
+      data.forEach((a) => {
+        if (a.cluster_id && !uniqueClusters.has(a.cluster_id)) {
+          uniqueClusters.set(a.cluster_id, a.cluster_theme);
+        }
+      });
+      
+      return Array.from(uniqueClusters.entries()).map(([id, theme]) => ({
+        id,
+        theme,
+      }));
     },
   });
 
@@ -133,6 +171,12 @@ const Articles = () => {
     );
   }
 
+  // Clear cluster filter
+  const clearClusterFilter = () => {
+    setClusterFilter("all");
+    setSearchParams({});
+  };
+
   // Filter articles
   const filteredArticles = articles?.filter(article => {
     const matchesSearch = searchQuery === "" || 
@@ -143,8 +187,9 @@ const Articles = () => {
     const matchesCategory = categoryFilter === "all" || article.category === categoryFilter;
     const matchesLanguage = languageFilter === "all" || article.language === languageFilter;
     const matchesFunnel = funnelFilter === "all" || article.funnel_stage === funnelFilter;
+    const matchesCluster = clusterFilter === "all" || article.cluster_id === clusterFilter;
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesLanguage && matchesFunnel;
+    return matchesSearch && matchesStatus && matchesCategory && matchesLanguage && matchesFunnel && matchesCluster;
   }) || [];
 
   // Pagination
@@ -253,8 +298,27 @@ const Articles = () => {
               />
             </div>
 
+            {/* Cluster Filter Banner */}
+            {clusterFilter !== "all" && (
+              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <span className="text-sm font-medium">Filtering by cluster:</span>
+                <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
+                  {clusterFilter.slice(0, 8)}...
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 ml-auto"
+                  onClick={clearClusterFilter}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            )}
+
             {/* Filter Row */}
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
@@ -306,6 +370,27 @@ const Articles = () => {
                   <SelectItem value="TOFU">TOFU</SelectItem>
                   <SelectItem value="MOFU">MOFU</SelectItem>
                   <SelectItem value="BOFU">BOFU</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={clusterFilter} onValueChange={(v) => {
+                setClusterFilter(v);
+                if (v === "all") {
+                  setSearchParams({});
+                } else {
+                  setSearchParams({ cluster: v });
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Cluster" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clusters</SelectItem>
+                  {clusterIds?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.theme ? `${c.theme.slice(0, 30)}...` : c.id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
