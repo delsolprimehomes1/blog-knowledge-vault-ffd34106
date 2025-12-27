@@ -99,6 +99,8 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [{ role: 'user', content: translationPrompt }],
+      // Force the model to return strict JSON to avoid intermittent parse failures
+      response_format: { type: 'json_object' },
       max_tokens: 16000,
     }),
   });
@@ -109,7 +111,15 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
   }
 
   const data = await response.json();
-  let translatedText = data.choices[0].message.content.trim();
+  const translatedTextRaw = data?.choices?.[0]?.message?.content;
+
+  if (!translatedTextRaw) {
+    throw new Error(
+      `Translation API returned empty content. Raw response (first 1000 chars): ${JSON.stringify(data).slice(0, 1000)}`
+    );
+  }
+
+  let translatedText = String(translatedTextRaw).trim();
 
   // Remove markdown code fences if present
   translatedText = translatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -119,10 +129,19 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     translated = JSON.parse(translatedText);
   } catch (e) {
     const jsonMatch = translatedText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+
+    if (!jsonMatch) {
+      throw new Error(
+        `Failed to parse translation response as JSON. Raw (first 1000 chars): ${translatedText.slice(0, 1000)}`
+      );
+    }
+
+    try {
       translated = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error(`Failed to parse translation response: ${e}`);
+    } catch (e2) {
+      throw new Error(
+        `Failed to parse translation JSON. Raw (first 1000 chars): ${jsonMatch[0].slice(0, 1000)}`
+      );
     }
   }
 
