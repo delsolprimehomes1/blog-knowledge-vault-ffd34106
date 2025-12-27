@@ -220,19 +220,29 @@ const ClusterManager = () => {
   // Generate QA for cluster
   const generateQAMutation = useMutation({
     mutationFn: async (clusterId: string) => {
-      // Get all article IDs in the cluster
+      // Get only English published article IDs in the cluster
       const { data: clusterArticles, error: fetchError } = await supabase
         .from("blog_articles")
         .select("id")
-        .eq("cluster_id", clusterId);
+        .eq("cluster_id", clusterId)
+        .eq("language", "en")
+        .eq("status", "published");
       
       if (fetchError) throw fetchError;
       
+      if (!clusterArticles || clusterArticles.length === 0) {
+        throw new Error("No published English articles found in this cluster");
+      }
+      
       const articleIds = clusterArticles.map((a) => a.id);
       
-      // Invoke QA generation edge function
+      // Invoke QA generation edge function with proper parameters
       const { error } = await supabase.functions.invoke("generate-qa-pages", {
-        body: { articleIds },
+        body: { 
+          articleIds,
+          languages: ['all'],
+          mode: 'batch'
+        },
       });
       
       if (error) throw error;
