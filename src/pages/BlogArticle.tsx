@@ -15,6 +15,7 @@ import { RelatedArticles } from "@/components/blog-article/RelatedArticles";
 import { TrustSignals } from "@/components/blog-article/TrustSignals";
 import { QASection } from "@/components/blog-article/QASection";
 import { AuthorBio } from "@/components/blog-article/AuthorBio";
+import { RelatedQAPages } from "@/components/blog-article/RelatedQAPages";
 import { FunnelCTA } from "@/components/blog-article/FunnelCTA";
 import { ArticleFooter } from "@/components/blog-article/ArticleFooter";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
@@ -404,6 +405,15 @@ const BlogArticle = () => {
                 faqs={article.qa_entities as QAEntity[]} 
                 topic={article.headline}
                 language={article.language}
+              />
+            )}
+
+            {/* Related Q&A Pages - Bidirectional linking */}
+            {article.generated_qa_page_ids && article.generated_qa_page_ids.length > 0 && (
+              <RelatedQAPages
+                articleId={article.id}
+                language={article.language}
+                qaPageIds={article.generated_qa_page_ids as string[]}
               />
             )}
 

@@ -96,6 +96,7 @@ export interface BlogArticle {
   
   // Q&A
   qa_entities?: QAEntity[];
+  generated_qa_page_ids?: string[];
   
   // Status
   status: ArticleStatus;
