@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,8 @@ import {
   ExternalLink,
   ArrowLeft,
   Shield,
-  Zap
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -45,6 +46,22 @@ interface AuditResult {
   articleDetails: ArticleDetail[];
 }
 
+// Batch processing constants
+const BATCH_SIZE = 3;
+const BATCH_DELAY_MS = 10000; // 10 seconds between batches
+const AVG_TIME_PER_ARTICLE_MS = 45000; // 45 seconds average per article
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const formatTimeRemaining = (ms: number): string => {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  if (minutes > 0) {
+    return `~${minutes}m ${seconds}s remaining`;
+  }
+  return `~${seconds}s remaining`;
+};
+
 const ClusterAudit = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
   const navigate = useNavigate();
@@ -55,6 +72,14 @@ const ClusterAudit = () => {
   const [currentArticle, setCurrentArticle] = useState<string>('');
   const [auditResults, setAuditResults] = useState<AuditResult | null>(null);
   const [clusterTheme, setClusterTheme] = useState<string>('');
+  
+  // Batch processing state
+  const [failedCitationArticles, setFailedCitationArticles] = useState<ArticleDetail[]>([]);
+  const [failedLinkArticles, setFailedLinkArticles] = useState<ArticleDetail[]>([]);
+  const [successCount, setSuccessCount] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<string>('');
+  const [currentBatch, setCurrentBatch] = useState(0);
+  const [totalBatches, setTotalBatches] = useState(0);
 
   // Auto-audit on load
   useEffect(() => {
@@ -141,10 +166,70 @@ const ClusterAudit = () => {
     }
   };
 
-  const handleFixCitations = async () => {
-    if (!auditResults) return;
+  // Process articles in batches with retry support
+  const processArticlesInBatches = async (
+    articles: ArticleDetail[],
+    processFunction: (article: ArticleDetail) => Promise<boolean>,
+    onProgress: (completed: number, total: number, current: string) => void
+  ): Promise<{ succeeded: string[]; failed: ArticleDetail[] }> => {
+    const succeeded: string[] = [];
+    const failed: ArticleDetail[] = [];
+    const total = articles.length;
+    const batches = Math.ceil(total / BATCH_SIZE);
+    
+    setTotalBatches(batches);
+    
+    for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
+      setCurrentBatch(batchIndex + 1);
+      const batchStart = batchIndex * BATCH_SIZE;
+      const batch = articles.slice(batchStart, batchStart + BATCH_SIZE);
+      
+      // Update estimated time remaining
+      const articlesRemaining = total - batchStart;
+      const timeRemaining = articlesRemaining * AVG_TIME_PER_ARTICLE_MS;
+      setEstimatedTimeRemaining(formatTimeRemaining(timeRemaining));
+      
+      // Process batch in parallel
+      const results = await Promise.allSettled(
+        batch.map(async (article) => {
+          onProgress(batchStart + batch.indexOf(article), total, `${article.language.toUpperCase()}: ${article.headline.slice(0, 40)}...`);
+          const success = await processFunction(article);
+          return { article, success };
+        })
+      );
+      
+      // Collect results
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          if (result.value.success) {
+            succeeded.push(result.value.article.id);
+          } else {
+            failed.push(result.value.article);
+          }
+        } else {
+          failed.push(batch[index]);
+        }
+      });
+      
+      // Update progress
+      const completed = batchStart + batch.length;
+      onProgress(completed, total, '');
+      setFixProgress(Math.round((completed / total) * 100));
+      
+      // Delay between batches (except for the last one)
+      if (batchIndex < batches - 1) {
+        setCurrentArticle(`Waiting 10s before next batch (${batchIndex + 2}/${batches})...`);
+        await delay(BATCH_DELAY_MS);
+      }
+    }
+    
+    return { succeeded, failed };
+  };
 
-    const articlesNeedingCitations = auditResults.articleDetails.filter(
+  const handleFixCitations = async (articlesToFix?: ArticleDetail[]) => {
+    if (!auditResults && !articlesToFix) return;
+
+    const articlesNeedingCitations = articlesToFix || auditResults!.articleDetails.filter(
       a => a.citationCount === 0
     );
 
@@ -155,16 +240,14 @@ const ClusterAudit = () => {
 
     setIsFixingCitations(true);
     setFixProgress(0);
+    setSuccessCount(0);
+    setFailedCitationArticles([]);
 
     try {
-      let completed = 0;
-      let successCount = 0;
-
-      for (const article of articlesNeedingCitations) {
-        setCurrentArticle(`${article.language.toUpperCase()}: ${article.headline.slice(0, 40)}...`);
-        
+      const processCitationArticle = async (article: ArticleDetail): Promise<boolean> => {
         try {
-          // Call find-external-links edge function with correct payload
+          console.log(`[Citations] Processing: ${article.slug}`);
+          
           const { data, error } = await supabase.functions.invoke('find-external-links', {
             body: {
               content: article.detailed_content || '',
@@ -174,9 +257,11 @@ const ClusterAudit = () => {
           });
 
           if (error) {
-            console.error(`Failed to find citations for ${article.slug}:`, error);
-          } else if (data?.citations && Array.isArray(data.citations)) {
-            // Save citations to article
+            console.error(`[Citations] Edge function error for ${article.slug}:`, error);
+            return false;
+          }
+          
+          if (data?.citations && Array.isArray(data.citations) && data.citations.length > 0) {
             const { error: updateError } = await supabase
               .from('blog_articles')
               .update({ 
@@ -187,26 +272,38 @@ const ClusterAudit = () => {
               .eq('id', article.id);
 
             if (updateError) {
-              console.error(`Failed to save citations for ${article.slug}:`, updateError);
-            } else {
-              successCount++;
+              console.error(`[Citations] Update error for ${article.slug}:`, updateError);
+              return false;
             }
+            
+            console.log(`[Citations] Success: ${article.slug} - ${data.citations.length} citations`);
+            return true;
           }
-
-          completed++;
-          setFixProgress(Math.round((completed / articlesNeedingCitations.length) * 100));
-
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-
+          
+          console.log(`[Citations] No citations returned for ${article.slug}`);
+          return false;
         } catch (err) {
-          console.error(`Error processing ${article.slug}:`, err);
-          completed++;
-          setFixProgress(Math.round((completed / articlesNeedingCitations.length) * 100));
+          console.error(`[Citations] Exception for ${article.slug}:`, err);
+          return false;
         }
-      }
+      };
 
-      toast.success(`Added citations to ${successCount} of ${articlesNeedingCitations.length} articles!`);
+      const { succeeded, failed } = await processArticlesInBatches(
+        articlesNeedingCitations,
+        processCitationArticle,
+        (completed, total, current) => {
+          if (current) setCurrentArticle(current);
+          setSuccessCount(succeeded?.length || 0);
+        }
+      );
+
+      setFailedCitationArticles(failed);
+      
+      if (failed.length > 0) {
+        toast.warning(`Added citations to ${succeeded.length} articles. ${failed.length} failed - click "Retry Failed" to try again.`);
+      } else {
+        toast.success(`Successfully added citations to all ${succeeded.length} articles!`);
+      }
       
       // Re-audit
       await handleAudit();
@@ -217,13 +314,14 @@ const ClusterAudit = () => {
       setIsFixingCitations(false);
       setFixProgress(0);
       setCurrentArticle('');
+      setEstimatedTimeRemaining('');
     }
   };
 
-  const handleFixInternalLinks = async () => {
-    if (!auditResults) return;
+  const handleFixInternalLinks = async (articlesToFix?: ArticleDetail[]) => {
+    if (!auditResults && !articlesToFix) return;
 
-    const articlesNeedingLinks = auditResults.articleDetails.filter(
+    const articlesNeedingLinks = articlesToFix || auditResults!.articleDetails.filter(
       a => a.internalLinkCount === 0
     );
 
@@ -234,16 +332,14 @@ const ClusterAudit = () => {
 
     setIsFixingLinks(true);
     setFixProgress(0);
+    setSuccessCount(0);
+    setFailedLinkArticles([]);
 
     try {
-      let completed = 0;
-      let successCount = 0;
-
-      for (const article of articlesNeedingLinks) {
-        setCurrentArticle(`${article.language.toUpperCase()}: ${article.headline.slice(0, 40)}...`);
-        
+      const processLinkArticle = async (article: ArticleDetail): Promise<boolean> => {
         try {
-          // Call find-internal-links edge function
+          console.log(`[Links] Processing: ${article.slug}`);
+          
           const { data, error } = await supabase.functions.invoke('find-internal-links', {
             body: {
               content: article.detailed_content || '',
@@ -255,9 +351,11 @@ const ClusterAudit = () => {
           });
 
           if (error) {
-            console.error(`Failed to find internal links for ${article.slug}:`, error);
-          } else if (data?.suggestions && Array.isArray(data.suggestions)) {
-            // Transform suggestions to internal_links format
+            console.error(`[Links] Edge function error for ${article.slug}:`, error);
+            return false;
+          }
+          
+          if (data?.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
             const internalLinks = data.suggestions.map((s: any) => ({
               articleId: s.articleId,
               url: s.url,
@@ -266,7 +364,6 @@ const ClusterAudit = () => {
               relevanceScore: s.relevanceScore || 0.8,
             }));
 
-            // Save internal links to article
             const { error: updateError } = await supabase
               .from('blog_articles')
               .update({ 
@@ -276,26 +373,38 @@ const ClusterAudit = () => {
               .eq('id', article.id);
 
             if (updateError) {
-              console.error(`Failed to save internal links for ${article.slug}:`, updateError);
-            } else {
-              successCount++;
+              console.error(`[Links] Update error for ${article.slug}:`, updateError);
+              return false;
             }
+            
+            console.log(`[Links] Success: ${article.slug} - ${internalLinks.length} links`);
+            return true;
           }
-
-          completed++;
-          setFixProgress(Math.round((completed / articlesNeedingLinks.length) * 100));
-
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-
+          
+          console.log(`[Links] No links returned for ${article.slug}`);
+          return false;
         } catch (err) {
-          console.error(`Error processing ${article.slug}:`, err);
-          completed++;
-          setFixProgress(Math.round((completed / articlesNeedingLinks.length) * 100));
+          console.error(`[Links] Exception for ${article.slug}:`, err);
+          return false;
         }
-      }
+      };
 
-      toast.success(`Added internal links to ${successCount} of ${articlesNeedingLinks.length} articles!`);
+      const { succeeded, failed } = await processArticlesInBatches(
+        articlesNeedingLinks,
+        processLinkArticle,
+        (completed, total, current) => {
+          if (current) setCurrentArticle(current);
+          setSuccessCount(succeeded?.length || 0);
+        }
+      );
+
+      setFailedLinkArticles(failed);
+      
+      if (failed.length > 0) {
+        toast.warning(`Added links to ${succeeded.length} articles. ${failed.length} failed - click "Retry Failed" to try again.`);
+      } else {
+        toast.success(`Successfully added internal links to all ${succeeded.length} articles!`);
+      }
       
       // Re-audit
       await handleAudit();
@@ -306,12 +415,25 @@ const ClusterAudit = () => {
       setIsFixingLinks(false);
       setFixProgress(0);
       setCurrentArticle('');
+      setEstimatedTimeRemaining('');
     }
   };
 
   const handleFixAll = async () => {
     await handleFixCitations();
     await handleFixInternalLinks();
+  };
+
+  const handleRetryCitations = () => {
+    if (failedCitationArticles.length > 0) {
+      handleFixCitations(failedCitationArticles);
+    }
+  };
+
+  const handleRetryLinks = () => {
+    if (failedLinkArticles.length > 0) {
+      handleFixInternalLinks(failedLinkArticles);
+    }
   };
 
   const getLanguageFlag = (lang: string) => {
@@ -394,7 +516,7 @@ const ClusterAudit = () => {
 
           {auditResults && auditResults.issues.missingCitations > 0 && (
             <Button
-              onClick={handleFixCitations}
+              onClick={() => handleFixCitations()}
               disabled={isFixing}
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -414,7 +536,7 @@ const ClusterAudit = () => {
 
           {auditResults && auditResults.issues.missingInternalLinks > 0 && (
             <Button
-              onClick={handleFixInternalLinks}
+              onClick={() => handleFixInternalLinks()}
               disabled={isFixing}
               className="bg-amber-600 hover:bg-amber-700"
             >
@@ -442,6 +564,29 @@ const ClusterAudit = () => {
               Fix All Issues
             </Button>
           )}
+
+          {/* Retry Failed Buttons */}
+          {!isFixing && failedCitationArticles.length > 0 && (
+            <Button
+              onClick={handleRetryCitations}
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-50"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Retry Failed Citations ({failedCitationArticles.length})
+            </Button>
+          )}
+
+          {!isFixing && failedLinkArticles.length > 0 && (
+            <Button
+              onClick={handleRetryLinks}
+              variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Retry Failed Links ({failedLinkArticles.length})
+            </Button>
+          )}
         </div>
 
         {/* Progress Bar */}
@@ -453,9 +598,26 @@ const ClusterAudit = () => {
                   <span className="text-muted-foreground truncate max-w-md">
                     {currentArticle || 'Processing...'}
                   </span>
-                  <span className="font-medium">{fixProgress}%</span>
+                  <div className="flex items-center gap-4">
+                    {totalBatches > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        Batch {currentBatch}/{totalBatches}
+                      </span>
+                    )}
+                    {estimatedTimeRemaining && (
+                      <span className="text-xs text-muted-foreground">
+                        {estimatedTimeRemaining}
+                      </span>
+                    )}
+                    <span className="font-medium">{fixProgress}%</span>
+                  </div>
                 </div>
                 <Progress value={fixProgress} />
+                {successCount > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✓ {successCount} articles processed successfully
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
