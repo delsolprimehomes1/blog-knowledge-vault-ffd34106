@@ -246,30 +246,85 @@ const ClusterManager = () => {
     },
   });
 
+  // Poll job status after network disconnect
+  const pollJobStatus = async (clusterId: string, maxAttempts = 15): Promise<{ status: string; error?: string; progress?: any }> => {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const { data: job } = await supabase
+        .from("cluster_generations")
+        .select("status, error, progress")
+        .eq("id", clusterId)
+        .single();
+      
+      if (job) {
+        if (job.status === "completed") {
+          return { status: "completed", progress: job.progress };
+        }
+        if (job.status === "partial" || job.status === "failed") {
+          return { status: job.status, error: job.error, progress: job.progress };
+        }
+        // Still in progress, continue polling
+      }
+    }
+    return { status: "timeout", error: "Job status check timed out" };
+  };
+
   // Complete translations for cluster
   const completeTranslationsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setTranslatingCluster(clusterId);
 
-      const { data, error } = await supabase.functions.invoke("translate-cluster", {
-        body: { jobId: clusterId },
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke("translate-cluster", {
+          body: { jobId: clusterId },
+        });
 
-      if (error) {
-        const resp = (error as any)?.context?.response as Response | undefined;
-        if (resp) {
-          try {
-            const payload = await resp.clone().json();
-            const msg = payload?.error || payload?.message;
-            if (msg) throw new Error(msg);
-          } catch {
-            // fall through to generic error below
+        if (error) {
+          const errorMsg = error.message || String(error);
+          // Check for network errors that might be false negatives
+          if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
+            toast.info("Connection lost — checking job status...");
+            const polledResult = await pollJobStatus(clusterId);
+            
+            if (polledResult.status === "completed") {
+              return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
+            } else if (polledResult.status === "partial" || polledResult.status === "failed") {
+              throw new Error(polledResult.error || `Job ${polledResult.status}`);
+            } else {
+              throw new Error("Connection lost and job status unclear. Try again.");
+            }
+          }
+          
+          const resp = (error as any)?.context?.response as Response | undefined;
+          if (resp) {
+            try {
+              const payload = await resp.clone().json();
+              const msg = payload?.error || payload?.message;
+              if (msg) throw new Error(msg);
+            } catch {
+              // fall through to generic error below
+            }
+          }
+          throw error;
+        }
+
+        return data;
+      } catch (err: any) {
+        // Double-check for network errors in catch block
+        const errorMsg = err.message || String(err);
+        if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network")) {
+          toast.info("Connection lost — checking job status...");
+          const polledResult = await pollJobStatus(clusterId);
+          
+          if (polledResult.status === "completed") {
+            return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
+          } else if (polledResult.status === "partial" || polledResult.status === "failed") {
+            throw new Error(polledResult.error || `Job ${polledResult.status}`);
           }
         }
-        throw error;
+        throw err;
       }
-
-      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
@@ -294,6 +349,8 @@ const ClusterManager = () => {
       setClusterToTranslate(null);
     },
     onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
+      queryClient.invalidateQueries({ queryKey: ["cluster-jobs"] });
       toast.error(`Translation failed: ${error.message}`);
       setTranslatingCluster(null);
       setTranslationProgress(null);

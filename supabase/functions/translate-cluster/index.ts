@@ -364,7 +364,8 @@ async function linkTranslations(supabase: any, clusterId: string) {
     };
   }
   
-  // Update each article with its siblings
+  // Build update payloads
+  const updates: Array<{ id: string; translations: Record<string, string> }> = [];
   for (const article of articles) {
     const siblings: Record<string, string> = {};
     for (const [lang, data] of Object.entries(groups[article.cluster_number])) {
@@ -372,11 +373,21 @@ async function linkTranslations(supabase: any, clusterId: string) {
         siblings[lang] = data.slug;
       }
     }
-    
-    await supabase
-      .from('blog_articles')
-      .update({ translations: siblings })
-      .eq('id', article.id);
+    updates.push({ id: article.id, translations: siblings });
+  }
+  
+  // Process updates with concurrency limit (10 at a time for speed)
+  const CONCURRENCY = 10;
+  for (let i = 0; i < updates.length; i += CONCURRENCY) {
+    const batch = updates.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(u => 
+        supabase
+          .from('blog_articles')
+          .update({ translations: u.translations })
+          .eq('id', u.id)
+      )
+    );
   }
   
   console.log(`[Link Translations] ✅ Complete: ${articles.length} articles linked`);
