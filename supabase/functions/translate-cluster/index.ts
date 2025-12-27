@@ -135,8 +135,14 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     .replace(/^-+|-+$/g, '');
 
   // Truncate fields to meet database constraints
-  const truncatedMetaDescription = (translated.meta_description || '').slice(0, 160);
-  const truncatedMetaTitle = (translated.meta_title || '').slice(0, 70);
+  const truncatedMetaDescription = String(translated.meta_description ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  const truncatedMetaTitle = String(translated.meta_title ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 70);
 
   return {
     language: targetLanguage,
@@ -395,7 +401,10 @@ serve(async (req) => {
 
         if (saveError) {
           console.error(`Failed to save translation ${i + 1}:`, saveError);
-          throw saveError;
+          throw new Error(
+            `Failed to save translation ${i + 1}: ${saveError.message}` +
+              (saveError.code ? ` (code: ${saveError.code})` : "")
+          );
         }
 
         translatedArticles.push(savedArticle);
@@ -490,7 +499,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[translate-cluster] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : (error && typeof error === 'object' && 'message' in (error as any))
+            ? String((error as any).message)
+            : JSON.stringify(error);
+
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       {
