@@ -160,18 +160,19 @@ export default function ClusterAudit() {
     setProcessingLog(prev => [...prev, logEntry]);
 
     try {
-      const { data, error } = await supabase.functions.invoke('find-external-links', {
+      // Use Perplexity API for faster, more accurate citation finding
+      const { data, error } = await supabase.functions.invoke('find-citations-perplexity', {
         body: {
-          content: article.detailed_content || '',
-          headline: article.headline,
-          language: article.language,
+          articleContent: article.detailed_content || '',
+          articleTopic: article.headline,
+          articleLanguage: article.language,
         }
       });
 
       if (error) throw error;
 
-      // Check results
-      if (data?.citations && Array.isArray(data.citations) && data.citations.length > 0) {
+      // Check results - Perplexity returns { success, citations, diagnostics }
+      if (data?.success && data?.citations && Array.isArray(data.citations) && data.citations.length > 0) {
         // Update the article in database
         const { error: updateError } = await supabase
           .from('blog_articles')
@@ -185,11 +186,11 @@ export default function ClusterAudit() {
         if (updateError) throw updateError;
 
         // Success log
-        const successLog = `✅ SUCCESS: Added ${data.citations.length} citations`;
+        const successLog = `✅ SUCCESS: Added ${data.citations.length} citations via Perplexity`;
         setProcessingLog(prev => [...prev, successLog]);
         
-        if (data.debug) {
-          const debugLog = `   📊 Generated: ${data.debug.aiGenerated || '?'}, Accepted: ${data.citations.length}, Rejected: ${data.debug.rejected || 0}`;
+        if (data.diagnostics) {
+          const debugLog = `   📊 Claims analyzed: ${data.diagnostics.claimsAnalyzed || '?'}, Found: ${data.citations.length}, Time: ${data.diagnostics.timeElapsed || '?'}`;
           setProcessingLog(prev => [...prev, debugLog]);
         }
 
@@ -200,12 +201,16 @@ export default function ClusterAudit() {
                 ...a, 
                 status: 'success' as const, 
                 citationCount: data.citations.length,
-                debug: data.debug 
+                debug: {
+                  aiGenerated: data.diagnostics?.claimsAnalyzed || 0,
+                  accepted: data.citations.length,
+                  rejected: data.diagnostics?.competitorsBlocked || 0,
+                } 
               } 
             : a
         ));
 
-        toast.success(`Added ${data.citations.length} citations!`);
+        toast.success(`Added ${data.citations.length} citations via Perplexity!`);
 
         // Auto-move to next pending article after 1 second
         setTimeout(() => {
@@ -223,14 +228,12 @@ export default function ClusterAudit() {
 
       } else {
         // Failed - no citations found
-        const failLog = `❌ FAILED: No citations found`;
+        const failLog = `❌ FAILED: ${data?.message || 'No citations found'}`;
         setProcessingLog(prev => [...prev, failLog]);
         
-        if (data?.debug?.rejectionReasons) {
-          const reasons = Object.entries(data.debug.rejectionReasons)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join(', ');
-          const reasonsLog = `   Reasons: ${reasons}`;
+        if (data?.diagnostics?.suggestions) {
+          const suggestions = data.diagnostics.suggestions.join('; ');
+          const reasonsLog = `   Suggestions: ${suggestions}`;
           setProcessingLog(prev => [...prev, reasonsLog]);
         }
 
@@ -239,13 +242,13 @@ export default function ClusterAudit() {
             ? { 
                 ...a, 
                 status: 'failed' as const, 
-                error: data?.debug?.message || 'No citations found',
-                debug: data?.debug 
+                error: data?.message || 'No citations found',
+                debug: data?.diagnostics 
               } 
             : a
         ));
 
-        toast.error('Failed to find citations');
+        toast.error(data?.message || 'Failed to find citations');
       }
 
     } catch (error: any) {
