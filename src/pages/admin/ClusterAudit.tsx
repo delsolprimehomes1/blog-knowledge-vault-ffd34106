@@ -160,8 +160,8 @@ export default function ClusterAudit() {
     setProcessingLog(prev => [...prev, logEntry]);
 
     try {
-      // Use Perplexity API for faster, more accurate citation finding
-      const { data, error } = await supabase.functions.invoke('find-citations-perplexity', {
+      // Use fast single-call Perplexity citation finder (10-20s instead of 100s+)
+      const { data, error } = await supabase.functions.invoke('find-citations-fast', {
         body: {
           articleContent: article.detailed_content || '',
           articleTopic: article.headline,
