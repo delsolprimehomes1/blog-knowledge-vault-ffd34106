@@ -347,6 +347,7 @@ export type Database = {
           featured_image_caption: string | null
           featured_image_url: string
           funnel_stage: string
+          generated_qa_page_ids: string[] | null
           has_dead_citations: boolean | null
           headline: string
           hreflang_group_id: string | null
@@ -398,6 +399,7 @@ export type Database = {
           featured_image_caption?: string | null
           featured_image_url: string
           funnel_stage: string
+          generated_qa_page_ids?: string[] | null
           has_dead_citations?: boolean | null
           headline: string
           hreflang_group_id?: string | null
@@ -449,6 +451,7 @@ export type Database = {
           featured_image_caption?: string | null
           featured_image_url?: string
           funnel_stage?: string
+          generated_qa_page_ids?: string[] | null
           has_dead_citations?: boolean | null
           headline?: string
           hreflang_group_id?: string | null

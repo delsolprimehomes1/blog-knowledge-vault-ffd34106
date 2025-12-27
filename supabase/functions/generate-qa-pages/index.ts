@@ -331,6 +331,32 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
       }
     }
 
+    // Update source blog article with generated QA page IDs for bidirectional linking
+    if (generatedPages > 0) {
+      const { data: generatedQAPages } = await supabase
+        .from('qa_pages')
+        .select('id')
+        .eq('source_article_id', article.id);
+      
+      if (generatedQAPages && generatedQAPages.length > 0) {
+        const qaPageIds = generatedQAPages.map((qa: { id: string }) => qa.id);
+        
+        const { error: updateError } = await supabase
+          .from('blog_articles')
+          .update({ 
+            generated_qa_page_ids: qaPageIds,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', article.id);
+        
+        if (updateError) {
+          console.error('[Process] Failed to update blog article with QA IDs:', updateError);
+        } else {
+          console.log(`[Process] ✅ Updated blog article ${article.id} with ${qaPageIds.length} QA page IDs`);
+        }
+      }
+    }
+
     console.log(`[Process] Completed article ${article.id}: ${generatedPages} pages generated`);
     return { success: true, generatedPages };
 
@@ -624,6 +650,32 @@ Return a JSON array with exactly ${qaTypes.length} object(s). No markdown, no ex
             status: 'completed',
           })
           .eq('id', trackingId);
+      }
+
+      // Update source blog article with all QA page IDs for bidirectional linking
+      if (generatedPages > 0) {
+        const { data: allQAPages } = await supabase
+          .from('qa_pages')
+          .select('id')
+          .eq('source_article_id', articleId);
+        
+        if (allQAPages && allQAPages.length > 0) {
+          const qaPageIds = allQAPages.map((qa: { id: string }) => qa.id);
+          
+          const { error: updateError } = await supabase
+            .from('blog_articles')
+            .update({ 
+              generated_qa_page_ids: qaPageIds,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', articleId);
+          
+          if (updateError) {
+            console.error('[CompleteMissing] Failed to update blog article with QA IDs:', updateError);
+          } else {
+            console.log(`[CompleteMissing] ✅ Updated blog article ${articleId} with ${qaPageIds.length} QA page IDs`);
+          }
+        }
       }
 
       return new Response(JSON.stringify({
