@@ -51,12 +51,56 @@ serve(async (req) => {
       pl: 'Polish', sv: 'Swedish', da: 'Danish', hu: 'Hungarian', fi: 'Finnish', no: 'Norwegian'
     };
     const langName = languageNames[articleLanguage] || articleLanguage;
+    const isNonEnglish = articleLanguage !== 'en';
 
     // Truncate content to avoid token limits (keep first ~4000 chars)
     const truncatedContent = articleContent.substring(0, 4000);
 
-    // SINGLE Perplexity API call with comprehensive prompt
-    const prompt = `Find 3-5 authoritative citations for this ${langName} article about "${articleTopic}".
+    // Helper function to make Perplexity API call
+    async function callPerplexity(prompt: string): Promise<any[]> {
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sonar',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a citation research assistant. Return ONLY valid JSON arrays of citations. Never include real estate or property websites.'
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.1,
+          max_tokens: 2000
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[find-citations-fast] Perplexity API error: ${response.status}`, errorText);
+        throw new Error(`Perplexity API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      console.log(`[find-citations-fast] Raw response: ${content.substring(0, 200)}...`);
+
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.error(`[find-citations-fast] JSON parse error:`, e);
+      }
+      return [];
+    }
+
+    // ATTEMPT 1: Strict search - government/official sources
+    const strictPrompt = `Find 3-5 authoritative citations for this ${langName} article about "${articleTopic}".
 
 ARTICLE CONTENT:
 ${truncatedContent}
@@ -74,71 +118,19 @@ CRITICAL REQUIREMENTS:
    - Banking/financial institutions (ECB, Bank of Spain)
 
 4. Citations should support factual claims in the article
-5. Prefer sources in ${langName} or English
+5. ${isNonEnglish ? 'Sources can be in English OR ' + langName : 'Prefer English sources'}
 6. Each citation must have a working, publicly accessible URL
 
 Return a JSON array with 3-5 citations:
-[
-  {
-    "url": "https://example.gov/page",
-    "source": "Official Source Name",
-    "quote": "A brief relevant quote or description (1-2 sentences)",
-    "relevance": 8
-  }
-]
+[{"url": "https://example.gov/page", "source": "Official Source Name", "quote": "A brief relevant quote", "relevance": 8}]
 
 Only return the JSON array, no other text.`;
 
-    console.log(`[find-citations-fast] Making Perplexity API call...`);
+    console.log(`[find-citations-fast] Attempt 1: Strict search...`);
+    let citations = await callPerplexity(strictPrompt);
     
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a citation research assistant. Return ONLY valid JSON arrays of citations. Never include real estate or property websites.'
-          },
-          {
-            role: 'user', 
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[find-citations-fast] Perplexity API error: ${response.status}`, errorText);
-      throw new Error(`Perplexity API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    
-    console.log(`[find-citations-fast] Raw response length: ${content.length}`);
-
-    // Parse the JSON response
-    let citations: any[] = [];
-    try {
-      // Try to extract JSON array from response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        citations = JSON.parse(jsonMatch[0]);
-      }
-    } catch (parseError) {
-      console.error(`[find-citations-fast] Failed to parse citations:`, parseError);
-    }
-
-    // Filter out any blocked domains that slipped through
-    const validCitations = citations.filter((c: any) => {
+    // Filter blocked domains
+    citations = citations.filter((c: any) => {
       if (!c.url || typeof c.url !== 'string') return false;
       if (isBlockedDomain(c.url)) {
         console.log(`[find-citations-fast] Blocked: ${c.url}`);
@@ -147,8 +139,67 @@ Only return the JSON array, no other text.`;
       return true;
     });
 
+    // ATTEMPT 2: Broader search if strict returned empty/few results
+    if (citations.length < 2) {
+      console.log(`[find-citations-fast] Attempt 2: Broader search (only ${citations.length} found)...`);
+      
+      const broadPrompt = `Find 3-5 credible citations for this article about "${articleTopic}" related to Spain/Costa del Sol.
+
+ARTICLE EXCERPT:
+${truncatedContent.substring(0, 2000)}
+
+ACCEPTABLE SOURCES (broader criteria):
+- Major news outlets (The Guardian, Forbes, CNN, El País, Le Monde, Der Spiegel)
+- Travel and lifestyle publications (Condé Nast Traveler, Travel + Leisure, Lonely Planet)
+- Expat community resources (Expatica, InterNations)
+- Healthcare/retirement comparison sites (OECD health data, WHO)
+- Financial publications (Bloomberg, Financial Times)
+- Government and tourism sites from any country
+- Academic and research institutions
+
+DO NOT USE: Real estate websites, property portals, inmobiliarias, or property listing sites.
+
+Return JSON array:
+[{"url": "https://...", "source": "Source Name", "quote": "relevant quote", "relevance": 7}]
+
+Only return the JSON array.`;
+
+      const broadCitations = await callPerplexity(broadPrompt);
+      const filteredBroad = broadCitations.filter((c: any) => {
+        if (!c.url || typeof c.url !== 'string') return false;
+        if (isBlockedDomain(c.url)) return false;
+        return true;
+      });
+      
+      // Merge with any existing citations
+      citations = [...citations, ...filteredBroad].slice(0, 5);
+    }
+
+    // ATTEMPT 3: Generic topic search if still empty
+    if (citations.length === 0) {
+      console.log(`[find-citations-fast] Attempt 3: Generic topic search...`);
+      
+      const genericPrompt = `Find 2-3 credible English-language sources with statistics or facts about:
+- Spain as a destination for expats/retirees
+- Costa del Sol tourism or lifestyle
+- Spanish property market trends (NOT listings)
+- Healthcare in Spain for foreigners
+
+Return JSON array:
+[{"url": "https://...", "source": "Source Name", "quote": "relevant statistic or fact", "relevance": 6}]
+
+Only return the JSON array.`;
+
+      const genericCitations = await callPerplexity(genericPrompt);
+      citations = genericCitations.filter((c: any) => {
+        if (!c.url || typeof c.url !== 'string') return false;
+        if (isBlockedDomain(c.url)) return false;
+        return true;
+      });
+    }
+
     // Format citations for storage
-    const formattedCitations = validCitations.map((c: any) => ({
+    const formattedCitations = citations.map((c: any) => ({
       url: c.url,
       source: c.source || new URL(c.url).hostname,
       text: c.quote || c.text || `Source: ${c.source}`,
@@ -164,7 +215,6 @@ Only return the JSON array, no other text.`;
         citations: [],
         diagnostics: {
           rawCitationsFound: citations.length,
-          blockedCount: citations.length - validCitations.length,
           timeElapsed: `${elapsed}ms`
         }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -175,7 +225,6 @@ Only return the JSON array, no other text.`;
       citations: formattedCitations,
       diagnostics: {
         citationsFound: formattedCitations.length,
-        blockedCount: citations.length - validCitations.length,
         timeElapsed: `${elapsed}ms`
       }
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
