@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -557,8 +557,15 @@ const ClusterManager = () => {
                     ))}
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/clusters/${cluster.cluster_id}/audit`)}
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      AEO Audit
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

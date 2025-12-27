@@ -88,6 +88,7 @@ const SEOMonitor = lazy(() => import("./pages/admin/SEOMonitor"));
 const SystemHealth = lazy(() => import("./pages/admin/SystemHealth"));
 const SchemaHealth = lazy(() => import("./pages/admin/SchemaHealth"));
 const ClusterManager = lazy(() => import("./pages/admin/ClusterManager"));
+const ClusterAudit = lazy(() => import("./pages/admin/ClusterAudit"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -162,6 +163,7 @@ const App = () => (
               <Route path="/admin/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
               <Route path="/admin/schema-health" element={<ProtectedRoute><SchemaHealth /></ProtectedRoute>} />
               <Route path="/admin/clusters" element={<ProtectedRoute><ClusterManager /></ProtectedRoute>} />
+              <Route path="/admin/clusters/:clusterId/audit" element={<ProtectedRoute><ClusterAudit /></ProtectedRoute>} />
               
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
