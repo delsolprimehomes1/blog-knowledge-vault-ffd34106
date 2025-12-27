@@ -2118,7 +2118,7 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
           
           const faqText = faqData.choices[0].message.content;
           const faqResult = JSON.parse(faqText.replace(/```json\n?|\n?```/g, ''));
-          article.faq_entities = faqResult.faqs;
+          article.qa_entities = faqResult.faqs;
           console.log(`✅ [Job ${jobId}] Article ${i + 1} - Generated ${faqResult.faqs.length} FAQs successfully`);
           
         } catch (faqError) {
@@ -2133,10 +2133,10 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
           }
           
           // NON-FATAL: Continue without FAQs rather than crashing entire cluster
-          article.faq_entities = [];
+          article.qa_entities = [];
         }
       } else {
-        article.faq_entities = [];
+        article.qa_entities = [];
       }
 
 
@@ -2224,7 +2224,7 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
             internal_links: article.internal_links || [],
             author_id: article.author_id || null,
             reviewer_id: article.reviewer_id || null,
-            faq_entities: article.faq_entities || [],
+            qa_entities: article.qa_entities || [],
             read_time: article.read_time,
             cluster_id: jobId,
             cluster_number: i + 1,

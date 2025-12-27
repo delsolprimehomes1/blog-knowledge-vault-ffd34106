@@ -1047,14 +1047,14 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
             const faqData = JSON.parse(await faqResponse.text());
             const faqText = faqData.choices[0].message.content;
             const faqResult = JSON.parse(faqText.replace(/```json\n?|\n?```/g, ''));
-            article.faq_entities = faqResult.faqs;
+            article.qa_entities = faqResult.faqs;
           } catch (faqError) {
             clearTimeout(faqTimeoutId);
             console.warn(`[Resume ${jobId}] FAQ generation failed, continuing without FAQs`);
-            article.faq_entities = [];
+            article.qa_entities = [];
           }
         } else {
-          article.faq_entities = [];
+          article.qa_entities = [];
         }
 
         // 12. Calculate read time
@@ -1113,7 +1113,7 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
             internal_links: article.internal_links || [],
             author_id: article.author_id || null,
             reviewer_id: article.reviewer_id || null,
-            faq_entities: article.faq_entities || [],
+            qa_entities: article.qa_entities || [],
             read_time: article.read_time,
             cluster_id: jobId,
             cluster_number: index + 1,
