@@ -134,12 +134,16 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+  // Truncate fields to meet database constraints
+  const truncatedMetaDescription = (translated.meta_description || '').slice(0, 160);
+  const truncatedMetaTitle = (translated.meta_title || '').slice(0, 70);
+
   return {
     language: targetLanguage,
     headline: translated.headline,
     slug: slug,
-    meta_title: translated.meta_title,
-    meta_description: translated.meta_description,
+    meta_title: truncatedMetaTitle,
+    meta_description: truncatedMetaDescription,
     speakable_answer: translated.speakable_answer,
     detailed_content: translated.detailed_content,
     qa_entities: translated.qa_entities,
