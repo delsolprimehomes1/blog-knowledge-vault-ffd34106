@@ -321,6 +321,33 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_domains: {
+        Row: {
+          added_at: string | null
+          category: string
+          domain: string
+          id: string
+          is_blocked: boolean | null
+          reason: string
+        }
+        Insert: {
+          added_at?: string | null
+          category: string
+          domain: string
+          id?: string
+          is_blocked?: boolean | null
+          reason: string
+        }
+        Update: {
+          added_at?: string | null
+          category?: string
+          domain?: string
+          id?: string
+          is_blocked?: boolean | null
+          reason?: string
+        }
+        Relationships: []
+      }
       blog_articles: {
         Row: {
           author_id: string | null

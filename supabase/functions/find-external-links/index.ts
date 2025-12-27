@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
-import { validateDomainLanguage } from '../shared/domainLanguageValidator.ts';
+import { validateDomainLanguage, isBlockedDomain, matchesCompetitorPattern, validateDomainLanguageByTLD } from '../shared/domainLanguageValidator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -178,38 +178,40 @@ function extractDomain(url: string): string {
   }
 }
 
-// Fetch approved AND blacklisted domains from Supabase
-async function getApprovedAndBlockedDomains(supabase: any) {
-  const { data: approved, error: approvedError } = await supabase
+// Fetch blocked domains from the NEW blocked_domains table (BLACKLIST approach)
+async function getBlockedDomains(supabase: any): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('blocked_domains')
+    .select('domain')
+    .eq('is_blocked', true);
+  
+  if (error) {
+    console.error('Error fetching blocked domains:', error);
+    return []; // Fail open - don't block all citations on error
+  }
+  
+  return data?.map((d: any) => d.domain) || [];
+}
+
+// Fetch approved domains for reference scoring (not for blocking)
+async function getApprovedDomainsForScoring(supabase: any) {
+  const { data, error } = await supabase
     .from('approved_domains')
     .select('domain, category, tier, trust_score')
     .eq('is_allowed', true);
   
-  const { data: blocked, error: blockedError } = await supabase
-    .from('approved_domains')
-    .select('domain, category, notes')
-    .eq('is_allowed', false);
-  
-  if (approvedError) {
-    console.error('Error fetching approved domains:', approvedError);
-    throw approvedError;
-  }
-  if (blockedError) {
-    console.error('Error fetching blocked domains:', blockedError);
-    throw blockedError;
+  if (error) {
+    console.error('Error fetching approved domains:', error);
+    return [];
   }
   
-  return {
-    whitelistDomains: approved?.map((d: any) => d.domain) || [],
-    blacklistDomains: blocked?.map((d: any) => d.domain) || [],
-    approvedByCategory: approved || []
-  };
+  return data || [];
 }
 
-// Check if domain is a competitor
-function isCompetitorDomain(url: string, blacklist: string[]): boolean {
+// Check if domain is explicitly blocked (from blocked_domains table)
+function isExplicitlyBlockedDomain(url: string, blockedDomains: string[]): boolean {
   const domain = extractDomain(url);
-  return blacklist.includes(domain);
+  return blockedDomains.includes(domain);
 }
 
 // Check if domain is an authoritative source that should be auto-approved
@@ -410,11 +412,11 @@ async function getApprovedDomainsByCategory(supabase: any): Promise<DomainCatego
 }
 
 /**
- * Legacy function for backward compatibility
+ * Legacy function for backward compatibility - now uses scoring domains
  */
 async function getApprovedDomains(supabase: any): Promise<string[]> {
-  const { whitelistDomains } = await getApprovedAndBlockedDomains(supabase);
-  return whitelistDomains;
+  const domains = await getApprovedDomainsForScoring(supabase);
+  return domains.map((d: any) => d.domain);
 }
 
 /**
@@ -604,17 +606,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Phase 1 & 2: Load ALL approved domains organized by category with topic mapping
+    // BLACKLIST APPROACH: Load blocked domains (competitors) and approved domains (for scoring bonus)
     const domainCategories = await getApprovedDomainsByCategory(supabase);
-    const { whitelistDomains: approvedDomains, blacklistDomains } = await getApprovedAndBlockedDomains(supabase);
-    const totalDomains = approvedDomains.length;
+    const blockedDomainsList = await getBlockedDomains(supabase);
+    const approvedDomainsForScoring = await getApprovedDomainsForScoring(supabase);
+    const approvedDomains = approvedDomainsForScoring.map((d: any) => d.domain);
     
-    console.log(`✅ Loaded ${totalDomains} whitelisted domains`);
-    console.log(`🚫 Loaded ${blacklistDomains.length} blacklisted competitor domains`);
+    console.log(`🚫 Loaded ${blockedDomainsList.length} BLOCKED competitor domains`);
+    console.log(`✅ Loaded ${approvedDomains.length} approved domains (for scoring bonus, NOT for blocking)`);
     
-    if (approvedDomains.length === 0) {
-      throw new Error('No approved domains found in database. Please configure approved_domains table.');
-    }
+    // CRITICAL: We now accept ANY domain by default, only blocking those in blockedDomainsList
     
     // Phase 3: Parse article into sections for paragraph-level context
     const sections = parseArticleSections(content, headline);
@@ -699,9 +700,9 @@ Citation Needs: ${section.citationNeeds}
     // Strip HTML but preserve structure for full article context
     const fullArticleText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     
-    // Create blacklist text for prompt
-    const competitorText = blacklistDomains.length > 0
-      ? `\n\n🚫 NEVER USE THESE COMPETITOR DOMAINS:\n${blacklistDomains.slice(0, 20).join(', ')}`
+    // Create blacklist text for prompt (now using blocked_domains table)
+    const competitorText = blockedDomainsList.length > 0
+      ? `\n\n🚫 NEVER USE THESE COMPETITOR DOMAINS (${blockedDomainsList.length} blocked):\n${blockedDomainsList.slice(0, 30).join(', ')}`
       : '';
     
     const strictEnforcementNotice = `
@@ -802,40 +803,44 @@ Focus on government (.gov, .gob.es), educational (.edu, .ac.uk), and official st
 
     // Build comprehensive domain statistics for AI
     const articleWordCount = fullArticleText.split(/\s+/).length;
+    const totalApprovedDomains = approvedDomainsForScoring.length;
     const domainStats = {
-      total: totalDomains,
+      total: totalApprovedDomains,
       byLanguage: {
-        [language]: approvedDomains.filter((d: any) => d.language === language).length,
-        'EU': approvedDomains.filter((d: any) => d.language === 'EU').length,
-        'GLOBAL': approvedDomains.filter((d: any) => d.language === 'GLOBAL').length
+        [language]: approvedDomainsForScoring.filter((d: any) => d.language === language).length,
+        'EU': approvedDomainsForScoring.filter((d: any) => d.language === 'EU').length,
+        'GLOBAL': approvedDomainsForScoring.filter((d: any) => d.language === 'GLOBAL').length
       },
       byTier: {
-        'Tier 1 (Gov)': approvedDomains.filter((d: any) => d.tier === 'Tier 1').length,
-        'Tier 2 (Edu)': approvedDomains.filter((d: any) => d.tier === 'Tier 2').length,
-        'Tier 3 (Stats)': approvedDomains.filter((d: any) => d.tier === 'Tier 3').length,
-        'Tier 4 (Other)': approvedDomains.filter((d: any) => d.tier === 'Tier 4').length
+        'Tier 1 (Gov)': approvedDomainsForScoring.filter((d: any) => d.tier === 'Tier 1').length,
+        'Tier 2 (Edu)': approvedDomainsForScoring.filter((d: any) => d.tier === 'Tier 2').length,
+        'Tier 3 (Stats)': approvedDomainsForScoring.filter((d: any) => d.tier === 'Tier 3').length,
+        'Tier 4 (Other)': approvedDomainsForScoring.filter((d: any) => d.tier === 'Tier 4').length
       }
     };
 
     const domainStatsText = `
-📊 DOMAIN INVENTORY (You have ${totalDomains} approved domains to search):
+📊 DOMAIN HINTS (${totalApprovedDomains} pre-approved domains available, but ANY non-competitor domain is accepted):
 
-BY LANGUAGE:
-- ${language.toUpperCase()}: ${domainStats.byLanguage[language]} domains
-- EU/GLOBAL: ${(domainStats.byLanguage['EU'] || 0) + (domainStats.byLanguage['GLOBAL'] || 0)} domains
+PRIORITY DOMAINS (higher authority scores):
+- ${language.toUpperCase()} domains: ${domainStats.byLanguage[language]} pre-approved
+- EU/GLOBAL: ${(domainStats.byLanguage['EU'] || 0) + (domainStats.byLanguage['GLOBAL'] || 0)} pre-approved
 
-BY AUTHORITY TIER:
-- ${Object.entries(domainStats.byTier).map(([tier, count]) => `${tier}: ${count}`).join('\n- ')}
+🎯 NEW APPROACH - BLACKLIST MODE:
+- ✅ ANY domain is accepted by default (government, news, educational, etc.)
+- 🚫 ONLY blocked: real estate competitors, property portals, agencies
+- 🌍 Language must match: .${getLanguageTLD(language)} domains preferred for ${language}
 
-🎯 SEARCH STRATEGY:
-1. Start with Tier 1 (Government) domains: ${domainStats.byTier['Tier 1 (Gov)']} options
-2. Then try Tier 2 (Educational): ${domainStats.byTier['Tier 2 (Edu)']} options
-3. Then Tier 3 (Statistics): ${domainStats.byTier['Tier 3 (Stats)']} options
-4. Finally Tier 4 (Category-specific): ${domainStats.byTier['Tier 4 (Other)']} options
-
-🚨 CRITICAL: Search through ALL ${totalDomains} domains systematically. DO NOT stop after checking only 10-20 domains.
-You have access to hundreds of approved sources across all categories.
+Pre-approved domains get scoring bonuses but are NOT required.
 `;
+
+    function getLanguageTLD(lang: string): string {
+      const tldMap: Record<string, string> = {
+        'en': 'com/org/uk', 'de': 'de', 'nl': 'nl', 'fr': 'fr', 'es': 'es',
+        'pl': 'pl', 'sv': 'se', 'da': 'dk', 'no': 'no', 'hu': 'hu', 'fi': 'fi', 'it': 'it'
+      };
+      return tldMap[lang] || 'com';
+    }
 
     const prompt = `${strictEnforcementNotice}
 
@@ -863,7 +868,7 @@ ${topicGuidance}
 
 ${domainStatsText}
 
-✅ APPROVED DOMAINS BY CATEGORY (${totalDomains} total):
+✅ PRE-APPROVED DOMAINS (bonus scoring, ${totalApprovedDomains} available):
 ${whitelistByCategory}
 ${competitorText}
 
@@ -1195,70 +1200,45 @@ Return ONLY the JSON array - no markdown, no code blocks, no explanations.`;
       
       const domain = extractDomain(citation.url);
       
-      // 🚫 FIRST: Check blacklist (highest priority rejection)
-      if (isCompetitorDomain(citation.url, blacklistDomains)) {
-        console.warn(`🚫 BLACKLIST REJECTION: ${domain} - Competitor domain`);
-        rejectedDomains.set(domain, 'Competitor/blacklisted domain');
+      // 🚫 STEP 1: Check explicit blocklist (blocked_domains table)
+      if (isExplicitlyBlockedDomain(citation.url, blockedDomainsList)) {
+        console.warn(`🚫 BLOCKED DOMAIN: ${domain} - In blocked_domains table`);
+        rejectedDomains.set(domain, 'Competitor in blocked_domains table');
         return false;
       }
       
-      // ✅ SECOND: Check whitelist (fast approval for known good domains)
-      const isApproved = isApprovedDomain(citation.url, approvedDomains);
-      
-      if (isApproved) {
-        console.log(`✅ APPROVED DOMAIN: ${domain} - TRUSTED SOURCE (no usage limits)`);
-        return true; // IMMEDIATE APPROVAL - approved domains are always trusted
-      }
-      
-      // Layer 3: GOVERNMENT-ONLY MODE - Requires BOTH gov/official domain AND correct language
-      if (attemptNumber === 3) {
-        const isGovOrOfficial = domain.includes('.gov') || 
-                                domain.includes('.gob.') || 
-                                domain.includes('.edu') ||
-                                domain.includes('.ac.uk') ||
-                                domain.includes('eurostat') ||
-                                domain.includes('europa.eu') ||
-                                domain.includes('ine.');
-        
-        if (!isGovOrOfficial) {
-          console.warn(`🚫 Layer 3 BLOCKED: ${domain} - Not government/official domain`);
-          rejectedDomains.set(domain, 'Not government/official (Layer 3 strict mode)');
-          return false;
-        }
-        
-        console.log(`✅ Layer 3 APPROVED: ${domain} - Government/official with correct language`);
-      }
-      
-      // Layer 1-2: Use normal approved domain logic
-      if (requireApprovedDomains) {
-        console.warn(`🚫 Layer 1-2 REJECTION: ${domain} - Not in approved list (requireApprovedDomains=true)`);
-        rejectedDomains.set(domain, 'Not in approved domains list');
+      // 🚫 STEP 2: Check competitor patterns (heuristic)
+      const patternCheck = matchesCompetitorPattern(citation.url);
+      if (patternCheck.matches) {
+        console.warn(`🚫 COMPETITOR PATTERN: ${domain} - Matches '${patternCheck.pattern}'`);
+        rejectedDomains.set(domain, `Competitor pattern: ${patternCheck.pattern}`);
         return false;
       }
       
-      // 🔍 THIRD: Unknown domain - apply heuristic checks (only when not forcing approved domains)
-      console.log(`🔍 Unknown domain detected: ${domain} - Running competitor detection...`);
-      
-      // Check if it looks like a real estate competitor
+      // 🚫 STEP 3: Check heuristic competitor detection
       if (looksLikeRealEstateCompetitor(citation.url, citation.sourceName)) {
         console.warn(`🚫 HEURISTIC REJECTION: ${domain} - Appears to be real estate competitor`);
         rejectedDomains.set(domain, 'Looks like real estate competitor (heuristic)');
         return false;
       }
       
-      // Check language match
-      const isCorrectLanguage = checkUrlLanguage(citation.url.toLowerCase(), language);
-      if (!isCorrectLanguage) {
-        console.warn(`⚠️ LANGUAGE MISMATCH: ${domain}`);
-        rejectedDomains.set(domain, 'Language mismatch');
+      // ✅ STEP 4: Validate language (TLD-based)
+      const tldCheck = validateDomainLanguageByTLD(citation.url, language);
+      if (!tldCheck.isValid) {
+        console.warn(`⚠️ LANGUAGE MISMATCH: ${domain} - ${tldCheck.reason}`);
+        rejectedDomains.set(domain, tldCheck.reason || 'Language mismatch');
         return false;
       }
       
-      // ✅ ALLOW: Unknown domain that passed all checks
-      console.log(`✅ UNKNOWN DOMAIN APPROVED: ${domain} - Not a competitor, correct language`);
-      
-      // Log this discovered domain for admin review
-      logDiscoveredDomain(supabase, domain, citation.sourceName, headline, citation.url);
+      // ⭐ BONUS: Check if in approved domains for scoring boost (but NOT blocking)
+      const isApproved = isApprovedDomain(citation.url, approvedDomains);
+      if (isApproved) {
+        console.log(`⭐ APPROVED DOMAIN BONUS: ${domain} - In approved list (higher authority score)`);
+      } else {
+        console.log(`✅ DOMAIN ACCEPTED: ${domain} - Not blocked, correct language`);
+        // Log discovered domain for future review
+        logDiscoveredDomain(supabase, domain, citation.sourceName, headline, citation.url);
+      }
       
       return true;
     });
