@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.find-citations-perplexity]
 verify_jwt = false
 
+[functions.find-citations-fast]
+verify_jwt = false
+
 [functions.resume-cluster]
 verify_jwt = false
 
