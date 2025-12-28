@@ -191,9 +191,15 @@ const ClusterPriorities = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Generated ${data.generatedArticles} articles`, {
-        description: `Cluster now has ${data.totalArticles} total articles`
-      });
+      if (data.articlesToGenerate === 0) {
+        toast.info(`Cluster already complete`, {
+          description: `This cluster already has ${data.existingCount} English articles`
+        });
+      } else {
+        toast.success(`Generated ${data.generatedArticles || data.articlesToGenerate || 0} articles`, {
+          description: `Cluster now has ${data.totalArticles || data.existingCount || 'all'} total articles`
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["incomplete-clusters-priority"] });
       setCompletingCluster(null);
     },
