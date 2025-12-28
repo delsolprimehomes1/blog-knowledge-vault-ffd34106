@@ -1257,6 +1257,54 @@ export type Database = {
           },
         ]
       }
+      cluster_completion_progress: {
+        Row: {
+          articles_completed: number | null
+          cluster_id: string
+          cluster_theme: string | null
+          completed_at: string | null
+          english_articles: number | null
+          error_count: number | null
+          last_updated: string | null
+          priority_score: number | null
+          started_at: string | null
+          status: string
+          tier: string | null
+          total_articles_needed: number | null
+          translations_completed: number | null
+        }
+        Insert: {
+          articles_completed?: number | null
+          cluster_id: string
+          cluster_theme?: string | null
+          completed_at?: string | null
+          english_articles?: number | null
+          error_count?: number | null
+          last_updated?: string | null
+          priority_score?: number | null
+          started_at?: string | null
+          status?: string
+          tier?: string | null
+          total_articles_needed?: number | null
+          translations_completed?: number | null
+        }
+        Update: {
+          articles_completed?: number | null
+          cluster_id?: string
+          cluster_theme?: string | null
+          completed_at?: string | null
+          english_articles?: number | null
+          error_count?: number | null
+          last_updated?: string | null
+          priority_score?: number | null
+          started_at?: string | null
+          status?: string
+          tier?: string | null
+          total_articles_needed?: number | null
+          translations_completed?: number | null
+        }
+        Relationships: []
+      }
       cluster_generations: {
         Row: {
           article_structure: Json | null
@@ -1355,6 +1403,83 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      cluster_translation_queue: {
+        Row: {
+          cluster_id: string
+          completed_at: string | null
+          created_article_id: string | null
+          created_at: string | null
+          english_article_id: string | null
+          error_message: string | null
+          id: string
+          max_retries: number | null
+          priority: number | null
+          retry_count: number | null
+          started_at: string | null
+          status: string
+          target_language: string
+        }
+        Insert: {
+          cluster_id: string
+          completed_at?: string | null
+          created_article_id?: string | null
+          created_at?: string | null
+          english_article_id?: string | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          priority?: number | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          target_language: string
+        }
+        Update: {
+          cluster_id?: string
+          completed_at?: string | null
+          created_article_id?: string | null
+          created_at?: string | null
+          english_article_id?: string | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          priority?: number | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          target_language?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cluster_translation_queue_created_article_id_fkey"
+            columns: ["created_article_id"]
+            isOneToOne: false
+            referencedRelation: "blog_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_translation_queue_created_article_id_fkey"
+            columns: ["created_article_id"]
+            isOneToOne: false
+            referencedRelation: "content_freshness_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_translation_queue_english_article_id_fkey"
+            columns: ["english_article_id"]
+            isOneToOne: false
+            referencedRelation: "blog_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_translation_queue_english_article_id_fkey"
+            columns: ["english_article_id"]
+            isOneToOne: false
+            referencedRelation: "content_freshness_report"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comparison_pages: {
         Row: {
