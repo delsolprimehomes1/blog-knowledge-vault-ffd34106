@@ -126,21 +126,43 @@ serve(async (req) => {
       console.log(`[translate-cluster-to-language] Translating article ${i + 1}/${articlesToTranslate.length}: "${article.headline}"`);
 
       try {
-        // Call the translate-article edge function
-        const translateResponse = await fetch(`${SUPABASE_URL}/functions/v1/translate-article`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          },
-          body: JSON.stringify({
-            englishArticle: article,
-            targetLanguage: targetLanguage
-          }),
-        });
+        // Call the translate-article edge function with 2-minute timeout
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+        
+        let translateResponse: Response;
+        try {
+          translateResponse = await fetch(`${SUPABASE_URL}/functions/v1/translate-article`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({
+              englishArticle: article,
+              targetLanguage: targetLanguage
+            }),
+            signal: controller.signal,
+          });
+        } catch (fetchError) {
+          clearTimeout(timeout);
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            throw new Error(`Translation timed out after 2 minutes - article may be too long (${(article.detailed_content?.length || 0).toLocaleString()} chars)`);
+          }
+          throw fetchError;
+        }
+        
+        clearTimeout(timeout);
 
         if (!translateResponse.ok) {
           const errorText = await translateResponse.text();
+          // Provide clearer error messages
+          if (translateResponse.status === 504) {
+            throw new Error(`Translation gateway timeout - article too long (${(article.detailed_content?.length || 0).toLocaleString()} chars)`);
+          }
+          if (errorText.includes('aborted') || errorText.includes('timeout')) {
+            throw new Error(`Translation timed out - article content: ${(article.detailed_content?.length || 0).toLocaleString()} chars`);
+          }
           throw new Error(`Translation API error (${translateResponse.status}): ${errorText}`);
         }
 
