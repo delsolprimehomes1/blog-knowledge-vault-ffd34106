@@ -39,12 +39,12 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Supabase configuration is missing');
@@ -66,22 +66,18 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
     console.log('Generating location image for:', city_name, topic_slug);
     console.log('Using prompt:', finalPrompt);
 
-    // Generate image using Gemini
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Generate image using OpenAI GPT Image
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: finalPrompt
-          }
-        ],
-        modalities: ['image', 'text']
+        model: 'gpt-image-1',
+        prompt: finalPrompt,
+        n: 1,
+        size: '1920x1080'
       }),
     });
 
@@ -106,9 +102,21 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
     }
 
     const aiData = await response.json();
-    const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const imageUrl = aiData.data?.[0]?.url;
+    const imageB64 = aiData.data?.[0]?.b64_json;
 
-    if (!imageData || !imageData.startsWith('data:image')) {
+    // OpenAI returns URL or base64 - handle both
+    let imageData: string;
+    if (imageB64) {
+      imageData = `data:image/png;base64,${imageB64}`;
+    } else if (imageUrl) {
+      // Fetch the image and convert to base64
+      const imgResponse = await fetch(imageUrl);
+      const imgBlob = await imgResponse.blob();
+      const imgBuffer = await imgBlob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+      imageData = `data:image/png;base64,${base64}`;
+    } else {
       console.error('No valid image data in response:', aiData);
       throw new Error('No valid image data received from AI');
     }

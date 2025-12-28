@@ -497,7 +497,7 @@ serve(async (req) => {
 
       try {
         // Fetch necessary data (categories, authors, master prompt, LOVABLE_API_KEY)
-        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
         
         const { data: categories } = await supabase
           .from('categories')
@@ -551,21 +551,21 @@ Return ONLY the category name exactly as shown above. No explanation, no JSON, j
         let finalCategory;
         
         try {
-          const categoryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const categoryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'gpt-4o-mini',
               max_tokens: 256,
               messages: [{ role: 'user', content: categoryPrompt }],
             }),
           });
 
           if (!categoryResponse.ok && (categoryResponse.status === 429 || categoryResponse.status === 402)) {
-            throw new Error(`Lovable AI error: ${categoryResponse.status}`);
+            throw new Error(`OpenAI error: ${categoryResponse.status}`);
           }
 
           const categoryData = JSON.parse(await categoryResponse.text());
@@ -612,14 +612,14 @@ Return ONLY valid JSON with text in ${seoLanguageName}:
   "description": "Description in ${seoLanguageName} with benefits and CTA (max 160 chars)"
 }`;
 
-        const seoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const seoResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             max_tokens: 512,
             messages: [{ role: 'user', content: seoPrompt }],
           }),
@@ -661,14 +661,14 @@ CRITICAL: The response MUST be in ${speakableLangName}. Do not write in English 
 
 Return ONLY the speakable text in ${speakableLangName}, no JSON, no formatting.`;
 
-        const speakableResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const speakableResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             max_tokens: 256,
             messages: [{ role: 'user', content: speakablePrompt }],
           }),
@@ -739,14 +739,14 @@ Return ONLY the HTML content.`;
           contentResponse = await withHeartbeat(
             supabase,
             jobId,
-            fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY!}`,
+                'Authorization': `Bearer ${OPENAI_API_KEY!}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
+                model: 'gpt-4o',
                 max_tokens: 8192,
                 messages: contentPromptMessages,
               }),
@@ -763,10 +763,10 @@ Return ONLY the HTML content.`;
         if (!contentResponse.ok) {
           const errorText = await contentResponse.text();
           if (contentResponse.status === 429) {
-            throw new Error('Lovable AI rate limit exceeded');
+            throw new Error('OpenAI rate limit exceeded');
           }
           if (contentResponse.status === 402) {
-            throw new Error('Lovable AI credits depleted');
+            throw new Error('OpenAI credits depleted');
           }
           throw new Error(`AI API error: ${contentResponse.status}`);
         }
@@ -877,14 +877,14 @@ Requirements:
 
 Return ONLY the alt text in ${languageName}, no quotes, no JSON.`;
 
-          const altResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const altResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'gpt-4o-mini',
               max_tokens: 256,
               messages: [{ role: 'user', content: altPrompt }],
             }),
@@ -959,14 +959,14 @@ Return ONLY valid JSON:
   "confidence": 90
 }`;
 
-            const authorResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            const authorResponse = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
+                model: 'gpt-4o-mini',
                 max_tokens: 512,
                 messages: [{ role: 'user', content: authorPrompt }],
               }),
@@ -1028,14 +1028,14 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
           const faqTimeoutId = setTimeout(() => faqAbortController.abort(), 45000);
 
           try {
-            const faqResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            const faqResponse = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
+                model: 'gpt-4o-mini',
                 max_tokens: 2048,
                 messages: [{ role: 'user', content: faqPrompt }],
               }),

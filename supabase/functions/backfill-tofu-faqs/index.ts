@@ -24,7 +24,7 @@ const languageMap: Record<string, string> = {
 
 async function generateFAQsForArticle(
   article: Article,
-  LOVABLE_API_KEY: string
+  OPENAI_API_KEY: string
 ): Promise<Array<{ question: string; answer: string }>> {
   const faqLanguageName = languageMap[article.language] || 'English';
   
@@ -55,7 +55,7 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -107,10 +107,10 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -165,7 +165,7 @@ serve(async (req) => {
       try {
         console.log(`🔄 Generating FAQs for: ${article.headline.substring(0, 50)}...`);
         
-        const faqs = await generateFAQsForArticle(article as Article, LOVABLE_API_KEY);
+        const faqs = await generateFAQsForArticle(article as Article, OPENAI_API_KEY);
         
         if (!dryRun) {
           const { error: updateError } = await supabase
