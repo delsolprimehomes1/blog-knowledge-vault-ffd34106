@@ -210,10 +210,11 @@ Headline: ${plan.headline}
 Keyword: ${plan.targetKeyword}
 
 Requirements:
-- Meta Title: max 60 chars, include keyword and "Costa del Sol"
-- Meta Description: max 160 chars, include CTA
+- Meta Title: MAXIMUM 55 characters, include keyword and "Costa del Sol"
+- Meta Description: MAXIMUM 150 characters, include CTA
 
-Return ONLY JSON: {"title": "...", "description": "..."}`;
+IMPORTANT: Keep descriptions under 150 characters.
+Return ONLY valid JSON: {"title": "...", "description": "..."}`;
 
       const seoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -230,7 +231,24 @@ Return ONLY JSON: {"title": "...", "description": "..."}`;
 
       const seoData = await seoResponse.json();
       const seoText = seoData.choices?.[0]?.message?.content || '{}';
-      const seoMeta = JSON.parse(seoText.replace(/```json\n?|\n?```/g, ''));
+      let seoMeta;
+      try {
+        seoMeta = JSON.parse(seoText.replace(/```json\n?|\n?```/g, '').trim());
+      } catch (e) {
+        console.warn('[Complete Cluster] Failed to parse SEO meta, using defaults');
+        seoMeta = { title: '', description: '' };
+      }
+      
+      // Ensure meta_description is within 160 char limit
+      let metaDescription = (seoMeta.description || plan.contentAngle || '').trim();
+      if (metaDescription.length > 160) {
+        metaDescription = metaDescription.substring(0, 157) + '...';
+      }
+      
+      let metaTitle = (seoMeta.title || plan.headline || '').trim();
+      if (metaTitle.length > 60) {
+        metaTitle = metaTitle.substring(0, 57) + '...';
+      }
 
       // Generate speakable answer
       const speakablePrompt = `Write a 40-60 word speakable answer for: "${plan.headline}"
@@ -305,8 +323,8 @@ Return ONLY the HTML content.`;
         funnel_stage: plan.funnelStage,
         category,
         status: 'draft',
-        meta_title: seoMeta.title || plan.headline.substring(0, 60),
-        meta_description: seoMeta.description || plan.contentAngle?.substring(0, 160) || '',
+        meta_title: metaTitle,
+        meta_description: metaDescription,
         speakable_answer: speakableAnswer,
         detailed_content: detailedContent,
         canonical_url: `https://www.delsolprimehomes.com/en/blog/${slug}`,
