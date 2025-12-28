@@ -37,6 +37,9 @@ export interface ExternalCitation {
   url: string;
   source: string;
   verified?: boolean;
+  // Alternative field names for backwards compatibility
+  anchorText?: string;
+  sourceName?: string;
 }
 
 export interface QAEntity {

@@ -114,17 +114,23 @@ export const ArticleContent = ({
 
   // Process content: sanitize -> bold markers -> internal links -> external links -> citation markers
   const processContent = (htmlContent: string) => {
-    let processed = sanitizeContent(htmlContent);
-    
-    // SAFETY: Remove any [CITATION_NEEDED] markers that shouldn't be visible
-    processed = processed.replace(/\[CITATION_NEEDED:[^\]]*\]/g, '');
-    processed = processed.replace(/\[CITATION_NEEDED\]/g, '');
-    
-    processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    processed = processInternalLinks(processed);
-    processed = injectExternalLinks(processed, externalCitations);
-    processed = addCitationMarkers(processed, externalCitations);
-    return processed;
+    try {
+      let processed = sanitizeContent(htmlContent);
+      
+      // SAFETY: Remove any [CITATION_NEEDED] markers that shouldn't be visible
+      processed = processed.replace(/\[CITATION_NEEDED:[^\]]*\]/g, '');
+      processed = processed.replace(/\[CITATION_NEEDED\]/g, '');
+      
+      processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      processed = processInternalLinks(processed);
+      processed = injectExternalLinks(processed, externalCitations);
+      processed = addCitationMarkers(processed, externalCitations);
+      return processed;
+    } catch (error) {
+      console.error('Error processing article content:', error);
+      // Return sanitized content without link processing as fallback
+      return sanitizeContent(htmlContent);
+    }
   };
   
   const processedContent = processContent(content);
