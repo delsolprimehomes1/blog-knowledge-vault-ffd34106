@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.translate-cluster]
 verify_jwt = false
+
+[functions.regenerate-cluster-links]
+verify_jwt = false
