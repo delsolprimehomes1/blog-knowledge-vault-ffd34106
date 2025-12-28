@@ -1265,9 +1265,13 @@ export type Database = {
           cluster_count: number | null
           cluster_focus_areas: Json | null
           completed_languages: string[] | null
+          completion_completed_at: string | null
           completion_note: string | null
+          completion_started_at: string | null
+          completion_status: string | null
           created_at: string | null
           current_language_index: number | null
+          english_articles_count: number | null
           error: string | null
           id: string
           is_multilingual: boolean | null
@@ -1282,6 +1286,7 @@ export type Database = {
           timeout_at: string | null
           topic: string
           total_articles: number | null
+          translated_articles_count: number | null
           updated_at: string | null
           user_id: string | null
         }
@@ -1292,9 +1297,13 @@ export type Database = {
           cluster_count?: number | null
           cluster_focus_areas?: Json | null
           completed_languages?: string[] | null
+          completion_completed_at?: string | null
           completion_note?: string | null
+          completion_started_at?: string | null
+          completion_status?: string | null
           created_at?: string | null
           current_language_index?: number | null
+          english_articles_count?: number | null
           error?: string | null
           id?: string
           is_multilingual?: boolean | null
@@ -1309,6 +1318,7 @@ export type Database = {
           timeout_at?: string | null
           topic: string
           total_articles?: number | null
+          translated_articles_count?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -1319,9 +1329,13 @@ export type Database = {
           cluster_count?: number | null
           cluster_focus_areas?: Json | null
           completed_languages?: string[] | null
+          completion_completed_at?: string | null
           completion_note?: string | null
+          completion_started_at?: string | null
+          completion_status?: string | null
           created_at?: string | null
           current_language_index?: number | null
+          english_articles_count?: number | null
           error?: string | null
           id?: string
           is_multilingual?: boolean | null
@@ -1336,6 +1350,7 @@ export type Database = {
           timeout_at?: string | null
           topic?: string
           total_articles?: number | null
+          translated_articles_count?: number | null
           updated_at?: string | null
           user_id?: string | null
         }

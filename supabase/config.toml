@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.complete-cluster]
 verify_jwt = false
+
+[functions.complete-incomplete-cluster]
+verify_jwt = false
+
+[functions.batch-complete-clusters]
+verify_jwt = false
