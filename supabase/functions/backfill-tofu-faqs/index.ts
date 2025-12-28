@@ -52,14 +52,14 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
   const timeoutId = setTimeout(() => abortController.abort(), 45000);
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         max_tokens: 2048,
         messages: [{ role: 'user', content: faqPrompt }],
       }),

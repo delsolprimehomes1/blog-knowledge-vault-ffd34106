@@ -464,7 +464,7 @@ async function generateCluster(
   const MAX_FUNCTION_RUNTIME = 4.5 * 60 * 1000; // 4.5 minutes (safety margin before 5-min Supabase limit)
   const ARTICLE_TIME_ESTIMATE = 30000; // 30 seconds per article estimate
   
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -566,14 +566,14 @@ async function generateCluster(
     console.log(`[Job ${jobId}] 🔐 Validating LOVABLE_API_KEY...`);
     try {
       const testResponse = await withTimeout(
-        fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY!}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY!}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             max_tokens: 10,
             messages: [{ role: 'user', content: 'test' }],
           }),
@@ -583,12 +583,12 @@ async function generateCluster(
       );
       
       if (!testResponse.ok && testResponse.status === 401) {
-        throw new Error('LOVABLE_API_KEY is invalid or expired');
+        throw new Error('OPENAI_API_KEY is invalid or expired');
       }
-      console.log(`[Job ${jobId}] ✅ LOVABLE_API_KEY validated successfully`);
+      console.log(`[Job ${jobId}] ✅ OPENAI_API_KEY validated successfully`);
     } catch (error) {
       console.error(`[Job ${jobId}] ❌ API key validation failed:`, error);
-      throw new Error(`Lovable AI key validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`OpenAI key validation failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // Fetch master content prompt from database
@@ -663,14 +663,14 @@ Return ONLY the JSON object above, nothing else. No markdown, no explanations, n
     // Wrap AI call with timeout and retry
     const structureResponse = await retryWithBackoff(
       () => withTimeout(
-        fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o',
             max_tokens: 4096,
             messages: [
               { role: 'system', content: 'You are an SEO expert specializing in real estate content strategy. Return only valid JSON.' },
@@ -688,13 +688,13 @@ Return ONLY the JSON object above, nothing else. No markdown, no explanations, n
 
     if (!structureResponse.ok) {
       if (structureResponse.status === 429) {
-        throw new Error('Lovable AI rate limit exceeded. Please wait and try again.');
+        throw new Error('OpenAI rate limit exceeded. Please wait and try again.');
       }
       if (structureResponse.status === 402) {
-        throw new Error('Lovable AI credits depleted. Please add credits in workspace settings.');
+        throw new Error('OpenAI credits depleted. Please add credits.');
       }
       const errorText = await structureResponse.text();
-      throw new Error(`Lovable AI error (${structureResponse.status}): ${errorText}`);
+      throw new Error(`OpenAI error (${structureResponse.status}): ${errorText}`);
     }
 
     // Send heartbeat after major operation
@@ -859,14 +859,14 @@ Return ONLY the category name exactly as shown above. No explanation, no JSON, j
       let finalCategory;
       
       try {
-        const categoryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const categoryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             max_tokens: 256,
             messages: [{ role: 'user', content: categoryPrompt }],
           }),
@@ -1027,21 +1027,21 @@ CRITICAL: The response MUST be in ${speakableLangName}. Do not write in English 
 
 Return ONLY the speakable text in ${speakableLangName}, no JSON, no formatting, no quotes.`;
 
-      const speakableResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const speakableResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           max_tokens: 256,
           messages: [{ role: 'user', content: speakablePrompt }],
         }),
       });
 
       if (!speakableResponse.ok && (speakableResponse.status === 429 || speakableResponse.status === 402)) {
-        throw new Error(`Lovable AI error: ${speakableResponse.status}`);
+        throw new Error(`OpenAI error: ${speakableResponse.status}`);
       }
 
       let speakableData;
@@ -1141,9 +1141,9 @@ Return ONLY the HTML content, no JSON wrapper, no markdown code blocks.`;
         }
       };
 
-      // Build Lovable AI request
+      // Build OpenAI request
       let aiRequestBody: any = {
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o',
         max_tokens: 8192,
         messages: contentPromptMessages,
       };
@@ -1168,15 +1168,15 @@ Return ONLY the HTML content, no JSON wrapper, no markdown code blocks.`;
       }, contentTimeout);
 
       try {
-        console.log(`🤖 [Job ${jobId}] Article ${i + 1} - Calling Lovable AI (timeout: ${contentTimeout/1000}s)...`);
+        console.log(`🤖 [Job ${jobId}] Article ${i + 1} - Calling OpenAI (timeout: ${contentTimeout/1000}s)...`);
         
         contentResponse = await withHeartbeat(
           supabase,
           jobId,
-          fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY!}`,
+              'Authorization': `Bearer ${OPENAI_API_KEY!}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(aiRequestBody),
@@ -1259,10 +1259,10 @@ Return ONLY the HTML content, no JSON wrapper, no markdown code blocks.`;
         });
         
         if (contentResponse.status === 429) {
-          throw new Error('Lovable AI rate limit exceeded. Please wait and try again.');
+          throw new Error('OpenAI rate limit exceeded. Please wait and try again.');
         }
         if (contentResponse.status === 402) {
-          throw new Error('Lovable AI credits depleted. Please add credits in workspace settings.');
+          throw new Error('OpenAI credits depleted.');
         }
         throw new Error(`AI API returned ${contentResponse.status}: ${errorText}`);
       }

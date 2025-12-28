@@ -104,14 +104,14 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     try {
       console.log(`[Translation] Attempt ${attempt}/${MAX_RETRIES}...`);
       
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${lovableApiKey}`,
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           messages: [{ role: 'user', content: translationPrompt }],
           max_tokens: 16000,
         }),
@@ -235,14 +235,14 @@ serve(async (req) => {
       throw new Error('englishArticle and targetLanguage are required');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     console.log(`[translate-article] Translating to ${targetLanguage}...`);
 
-    const translatedArticle = await translateArticle(englishArticle, targetLanguage, LOVABLE_API_KEY);
+    const translatedArticle = await translateArticle(englishArticle, targetLanguage, OPENAI_API_KEY);
 
     console.log(`[translate-article] ✅ Translation complete: ${translatedArticle.headline}`);
 

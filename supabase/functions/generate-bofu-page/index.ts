@@ -123,13 +123,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  if (!LOVABLE_API_KEY) {
+  if (!OPENAI_API_KEY) {
     return new Response(
-      JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }),
+      JSON.stringify({ error: 'OPENAI_API_KEY not configured' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -260,14 +260,14 @@ CRITICAL REQUIREMENTS:
 
 Return ONLY valid JSON, no markdown code blocks.`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o',
             messages: [
               { role: 'system', content: 'You are a professional real estate content writer. Return only valid JSON.' },
               { role: 'user', content: prompt }

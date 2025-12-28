@@ -225,9 +225,9 @@ serve(async (req) => {
 
 // Translation function (embedded to avoid function-to-function calls)
 async function translateArticle(englishArticle: any, targetLanguage: string) {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
   if (!apiKey) {
-    throw new Error('LOVABLE_API_KEY not configured');
+    throw new Error('OPENAI_API_KEY not configured');
   }
 
   const languageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
@@ -263,16 +263,17 @@ Respond in JSON format:
   "detailed_content": "full translated HTML content"
 }`;
 
-  const response = await fetch('https://api.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
+      temperature: 0.3,
+      max_tokens: 8000
     })
   });
 

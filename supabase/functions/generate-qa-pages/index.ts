@@ -82,18 +82,19 @@ Respond in JSON format ONLY:
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${lovableApiKey}`,
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: `You are an expert translator. Translate all content to ${targetLanguageName}. Return only valid JSON.` },
             { role: 'user', content: translationPrompt }
           ],
+          max_tokens: 4096,
         }),
       });
 
@@ -203,18 +204,19 @@ Return a JSON array with exactly 2 objects. No markdown, no explanation, just va
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: 'You are an expert SEO content generator. Return only valid JSON, no markdown or explanation.' },
             { role: 'user', content: prompt }
           ],
+          max_tokens: 4096,
         }),
       });
 
@@ -562,7 +564,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -633,7 +635,7 @@ serve(async (req) => {
       const hasEnglishDecision = existingCombos.has('en_decision');
       
       if (!hasEnglishCore || !hasEnglishDecision) {
-        englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+        englishQAPages = await generateEnglishQAPages(article, openaiApiKey);
       } else {
         const { data: existingEnglish } = await supabase
           .from('qa_pages')
@@ -721,7 +723,7 @@ serve(async (req) => {
             if (!qaTypes.includes(englishQA.qa_type)) continue;
             
             try {
-              const translatedQA = await translateQAPage(englishQA, lang, lovableApiKey);
+              const translatedQA = await translateQAPage(englishQA, lang, openaiApiKey);
               
               const { error: insertError } = await supabase
                 .from('qa_pages')
@@ -929,7 +931,7 @@ serve(async (req) => {
     }
 
     // Process this one article with English-first workflow
-    const result = await processOneArticle(supabase, article, targetLanguages, lovableApiKey, jobId);
+    const result = await processOneArticle(supabase, article, targetLanguages, openaiApiKey, jobId);
     
     // Update job progress
     currentIndex++;
