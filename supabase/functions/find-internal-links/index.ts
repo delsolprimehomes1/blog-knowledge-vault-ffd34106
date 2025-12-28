@@ -71,7 +71,7 @@ serve(async (req) => {
     }
 
     // Single mode (existing functionality)
-    const { content, headline, currentArticleId, language = 'en', funnelStage = 'TOFU', availableArticles } = requestData;
+    const { content, headline, currentArticleId, language = 'en', funnelStage = 'TOFU', availableArticles, clusterId } = requestData;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -87,12 +87,21 @@ serve(async (req) => {
     if (!articles || articles.length === 0) {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      const { data: dbArticles, error: articlesError } = await supabase
+      // Build query with cluster_id filter if provided
+      let query = supabase
         .from('blog_articles')
-        .select('id, slug, headline, speakable_answer, category, funnel_stage, language')
+        .select('id, slug, headline, speakable_answer, category, funnel_stage, language, cluster_id')
         .eq('status', 'published')
         .neq('id', currentArticleId)
         .eq('language', language);
+
+      // CRITICAL: Filter by cluster_id to enforce cluster boundaries
+      if (clusterId) {
+        query = query.eq('cluster_id', clusterId);
+        console.log(`[Strategic Linking] Filtering by cluster_id: ${clusterId}`);
+      }
+
+      const { data: dbArticles, error: articlesError } = await query;
 
       if (articlesError) {
         console.error('Error fetching articles:', articlesError);
@@ -100,6 +109,7 @@ serve(async (req) => {
       }
 
       articles = dbArticles || [];
+      console.log(`[Strategic Linking] Found ${articles.length} articles within cluster`);
     }
 
     if (!articles || articles.length === 0) {
@@ -303,24 +313,34 @@ async function handleBatchMode(requestData: any) {
 
   for (const article of articlesToProcess || []) {
     try {
-      // Fetch available articles in same language
-      const { data: availableArticles } = await supabase
+      // Build query - filter by cluster_id to enforce cluster boundaries
+      let query = supabase
         .from('blog_articles')
-        .select('id, slug, headline, funnel_stage, language, category, speakable_answer')
+        .select('id, slug, headline, funnel_stage, language, category, speakable_answer, cluster_id')
         .eq('status', 'published')
         .eq('language', article.language)
-        .neq('id', article.id)
-        .limit(100);
+        .neq('id', article.id);
+
+      // CRITICAL: Filter by cluster_id if article belongs to a cluster
+      if (article.cluster_id) {
+        query = query.eq('cluster_id', article.cluster_id);
+        console.log(`[Batch Strategic Linking] Filtering by cluster_id: ${article.cluster_id}`);
+      }
+
+      const { data: availableArticles } = await query.limit(100);
 
       if (!availableArticles || availableArticles.length === 0) {
         results.push({
           articleId: article.id,
           success: false,
-          error: 'No available articles to link to',
+          error: 'No available articles to link to within cluster',
           linkCount: 0
         });
         continue;
       }
+      
+      console.log(`[Batch Strategic Linking] Found ${availableArticles.length} articles within cluster for "${article.headline}"`);
+
 
       const languageName = getLanguageName(article.language);
       const funnelStage = article.funnel_stage || 'TOFU';
