@@ -485,7 +485,7 @@ const Articles = () => {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => navigate(`/blog/${article.language}/${article.slug}`)}
+                              onClick={() => navigate(`/${article.language}/blog/${article.slug}`)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
