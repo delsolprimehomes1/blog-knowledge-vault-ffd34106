@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.regenerate-cluster-links]
 verify_jwt = false
+
+[functions.regenerate-all-cluster-links]
+verify_jwt = false

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -50,6 +50,7 @@ const ClusterManager = () => {
   const [translatingCluster, setTranslatingCluster] = useState<string | null>(null);
   const [translationProgress, setTranslationProgress] = useState<{ current: string; remaining: number } | null>(null);
   const [regeneratingLinks, setRegeneratingLinks] = useState<string | null>(null);
+  const [regeneratingAllLinks, setRegeneratingAllLinks] = useState(false);
 
   const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
     const queue =
@@ -391,6 +392,30 @@ const ClusterManager = () => {
     }
   });
 
+  // Bulk regenerate strategic internal links for ALL clusters
+  const regenerateAllLinksMutation = useMutation({
+    mutationFn: async () => {
+      setRegeneratingAllLinks(true);
+      const { data, error } = await supabase.functions.invoke('regenerate-all-cluster-links', {
+        body: { batchSize: 50, dryRun: false }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      const summary = data.summary;
+      toast.success(`Regenerated links for ${summary?.totalArticles || 0} articles across ${summary?.totalClusters || 0} clusters`, {
+        description: `Strategic funnel-based linking applied (max 3 links per article)`
+      });
+      setRegeneratingAllLinks(false);
+      queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to regenerate all links: ${error.message}`);
+      setRegeneratingAllLinks(false);
+    }
+  });
+
   const getMissingLanguages = (cluster: ClusterData) => {
     const existingLanguages = new Set(Object.keys(cluster.languages));
     return getAllExpectedLanguages(cluster).filter((lang) => !existingLanguages.has(lang));
@@ -455,13 +480,32 @@ const ClusterManager = () => {
               Manage article clusters ({clusters.length} clusters, {articles?.length || 0} total articles)
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["cluster-articles"] })}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => regenerateAllLinksMutation.mutate()}
+              disabled={regeneratingAllLinks}
+            >
+              {regeneratingAllLinks ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Regenerating All...
+                </>
+              ) : (
+                <>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Regenerate All Links
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["cluster-articles"] })}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
