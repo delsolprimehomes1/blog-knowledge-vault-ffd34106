@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,104 +17,222 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'no': 'Norwegian'
 };
 
-const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+const MAX_CONTENT_LENGTH = 12000; // Characters before chunking
+const REQUEST_TIMEOUT_MS = 55000; // 55 seconds (edge functions timeout at 60s)
+
+/**
+ * Repair malformed JSON from AI responses
+ */
+function repairJson(text: string): any {
+  // Remove markdown code fences
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  
+  // Remove control characters except newlines
+  text = text.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // First try direct parse
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.log('[JSON Repair] Direct parse failed, attempting repair...');
+  }
+  
+  // Try to extract JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.log('[JSON Repair] Extracted JSON parse failed, trying fixes...');
+    }
+    
+    // Try to fix common issues
+    let fixed = jsonMatch[0];
+    
+    // Fix unescaped newlines in strings
+    fixed = fixed.replace(/(?<!\\)\\n(?![\"\\])/g, '\\\\n');
+    
+    // If truncated, try to complete
+    if (!fixed.trim().endsWith('}')) {
+      console.log('[JSON Repair] JSON appears truncated, attempting to complete...');
+      // Find last complete key-value pair
+      const lastCompleteValue = fixed.lastIndexOf('",');
+      if (lastCompleteValue > 0) {
+        fixed = fixed.substring(0, lastCompleteValue + 1) + '}';
+      }
+    }
+    
+    try {
+      return JSON.parse(fixed);
+    } catch (e) {
+      console.log('[JSON Repair] Fixed JSON still invalid');
+    }
+  }
+  
+  throw new Error('Could not repair JSON response');
+}
+
+/**
+ * Split HTML content by H2 headings for chunked translation
+ */
+function splitContentByHeadings(html: string): string[] {
+  if (!html || html.length < MAX_CONTENT_LENGTH) {
+    return [html];
+  }
+  
+  // Split by H2 tags but keep the tag with the content
+  const parts = html.split(/(?=<h2[^>]*>)/i);
+  
+  // Combine small chunks to reduce API calls
+  const chunks: string[] = [];
+  let currentChunk = '';
+  
+  for (const part of parts) {
+    if ((currentChunk + part).length < MAX_CONTENT_LENGTH / 2) {
+      currentChunk += part;
+    } else {
+      if (currentChunk) chunks.push(currentChunk);
+      currentChunk = part;
+    }
+  }
+  if (currentChunk) chunks.push(currentChunk);
+  
+  console.log(`[Chunking] Split content into ${chunks.length} chunks`);
+  return chunks;
+}
+
+/**
+ * Translate a single chunk of content
+ */
+async function translateContentChunk(
+  chunk: string,
+  targetLanguageName: string,
+  apiKey: string
+): Promise<string> {
+  const prompt = `Translate this HTML content from English to ${targetLanguageName}.
+Keep ALL HTML tags exactly as-is. Only translate the text content.
+Keep proper nouns like "Costa del Sol" unchanged.
+
+Content:
+${chunk}
+
+Respond with ONLY the translated HTML, no explanations.`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 8000,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  } catch (error) {
+    clearTimeout(timeout);
+    throw error;
+  }
+}
 
 /**
  * Translates an English article to target language using AI
- * Keeps same images, structure, and metadata
  */
 async function translateArticle(
   englishArticle: any,
   targetLanguage: string,
-  lovableApiKey: string
+  apiKey: string
 ): Promise<any> {
   const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
-
+  const contentLength = englishArticle.detailed_content?.length || 0;
+  
   console.log(`[Translation] Translating article "${englishArticle.headline}" to ${targetLanguageName}...`);
+  console.log(`[Translation] Content length: ${contentLength} characters`);
 
-  const translationPrompt = `You are a professional translator specializing in luxury real estate content.
+  // For very long content, use chunked translation
+  let translatedContent = englishArticle.detailed_content;
+  if (contentLength > MAX_CONTENT_LENGTH) {
+    console.log(`[Translation] Content is long (${contentLength} chars), using chunked translation...`);
+    const chunks = splitContentByHeadings(englishArticle.detailed_content);
+    const translatedChunks: string[] = [];
+    
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`[Translation] Translating chunk ${i + 1}/${chunks.length}...`);
+      const translated = await translateContentChunk(chunks[i], targetLanguageName, apiKey);
+      translatedChunks.push(translated);
+    }
+    
+    translatedContent = translatedChunks.join('\n');
+    console.log(`[Translation] All ${chunks.length} chunks translated successfully`);
+  }
 
-TASK: Translate this article from English to ${targetLanguageName}.
+  // Now translate metadata (smaller payload, more reliable)
+  const metadataPrompt = `You are a professional translator for luxury real estate content.
 
-CRITICAL REQUIREMENTS:
-- Translate EVERYTHING (headline, content, meta tags, FAQs, speakable answer)
-- Keep ALL HTML tags intact (<h2>, <p>, <strong>, <a>, etc.)
-- Maintain the same structure and formatting
-- Keep tone professional and natural in ${targetLanguageName}
-- Do NOT add or remove content
-- Keep all links and citations as-is (just translate surrounding text)
-- Keep proper nouns like "Costa del Sol" unchanged
-- Keep brand names unchanged
+Translate these fields from English to ${targetLanguageName}:
 
-**CRITICAL LENGTH LIMITS:**
-- meta_title: MUST be 60 characters or less
-- meta_description: MUST be 155 characters or less (HARD LIMIT - no exceptions!)
-- speakable_answer: 50-80 words
+**Headline:** ${englishArticle.headline}
+**Meta Title (max 60 chars):** ${englishArticle.meta_title}
+**Meta Description (max 155 chars):** ${englishArticle.meta_description}
+**Speakable Answer (50-80 words):** ${englishArticle.speakable_answer}
+**Image Alt:** ${englishArticle.featured_image_alt}
+**Image Caption:** ${englishArticle.featured_image_caption || ''}
+**FAQs:** ${JSON.stringify(englishArticle.qa_entities || [], null, 2)}
 
-ENGLISH ARTICLE TO TRANSLATE:
+${contentLength > MAX_CONTENT_LENGTH ? '' : `**Content (HTML - keep all tags):** ${englishArticle.detailed_content}`}
 
-**Headline:**
-${englishArticle.headline}
-
-**Meta Title (max 60 chars):**
-${englishArticle.meta_title}
-
-**Meta Description (MUST be ≤155 chars):**
-${englishArticle.meta_description}
-
-**Speakable Answer (50-80 words):**
-${englishArticle.speakable_answer}
-
-**Main Content (HTML):**
-${englishArticle.detailed_content}
-
-**FAQs:**
-${JSON.stringify(englishArticle.qa_entities || [], null, 2)}
-
-**Featured Image Alt Text:**
-${englishArticle.featured_image_alt}
-
-**Featured Image Caption:**
-${englishArticle.featured_image_caption || ''}
-
----
-
-RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
+RESPOND IN JSON ONLY (no markdown):
 {
-  "headline": "translated headline",
-  "meta_title": "translated meta title (max 60 chars)",
-  "meta_description": "translated meta description (MUST be ≤155 chars)",
-  "speakable_answer": "translated speakable answer (50-80 words)",
-  "detailed_content": "translated HTML content (keep all tags and links)",
-  "qa_entities": [
-    {"question": "translated question", "answer": "translated answer"},
-    ...
-  ],
-  "featured_image_alt": "translated alt text",
-  "featured_image_caption": "translated caption"
+  "headline": "...",
+  "meta_title": "... (max 60 chars)",
+  "meta_description": "... (max 155 chars)",
+  "speakable_answer": "...",
+  "featured_image_alt": "...",
+  "featured_image_caption": "...",
+  "qa_entities": [{"question": "...", "answer": "..."}]${contentLength > MAX_CONTENT_LENGTH ? '' : ',\n  "detailed_content": "..."'}
 }`;
 
-  // Retry logic for AI translation
   const MAX_RETRIES = 3;
   let lastError: Error | null = null;
   let translated: any = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
-      console.log(`[Translation] Attempt ${attempt}/${MAX_RETRIES}...`);
+      console.log(`[Translation] Metadata attempt ${attempt}/${MAX_RETRIES}...`);
       
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${lovableApiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: translationPrompt }],
-          max_tokens: 16000,
+          messages: [{ role: 'user', content: metadataPrompt }],
+          max_tokens: contentLength > MAX_CONTENT_LENGTH ? 4000 : 16000,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -123,32 +240,29 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
       }
 
       const data = await response.json();
-      let translatedText = data.choices[0].message.content.trim();
-
-      // Remove markdown code fences if present
-      translatedText = translatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-      try {
-        translated = JSON.parse(translatedText);
-      } catch (parseError) {
-        // Try to extract JSON from text
-        const jsonMatch = translatedText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          translated = JSON.parse(jsonMatch[0]);
-        } else {
-          console.error(`[Translation] JSON parse failed on attempt ${attempt}. Raw response:`, translatedText.substring(0, 500));
-          throw new Error(`Failed to parse translation response: ${parseError}`);
-        }
+      const translatedText = data.choices[0].message.content.trim();
+      
+      // Use robust JSON repair
+      translated = repairJson(translatedText);
+      
+      // If we used chunked translation, use that content instead
+      if (contentLength > MAX_CONTENT_LENGTH) {
+        translated.detailed_content = translatedContent;
       }
-
-      // Success - break out of retry loop
-      break;
+      
+      break; // Success
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`[Translation] Attempt ${attempt} failed:`, lastError.message);
+      clearTimeout(timeout);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        lastError = new Error('Request timed out after 55 seconds');
+        console.error(`[Translation] Attempt ${attempt} timed out`);
+      } else {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`[Translation] Attempt ${attempt} failed:`, lastError.message);
+      }
       
       if (attempt < MAX_RETRIES) {
-        // Wait before retry (exponential backoff)
         const delay = attempt * 2000;
         console.log(`[Translation] Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -160,13 +274,12 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     throw lastError || new Error('Translation failed after all retries');
   }
 
-  // CRITICAL: Truncate meta_description if over 160 chars (database constraint)
+  // Truncate meta fields if needed
   if (translated.meta_description && translated.meta_description.length > 160) {
     console.log(`[Translation] Truncating meta_description from ${translated.meta_description.length} to 157 chars`);
     translated.meta_description = translated.meta_description.substring(0, 157) + '...';
   }
 
-  // Also truncate meta_title if over 60 chars
   if (translated.meta_title && translated.meta_title.length > 60) {
     console.log(`[Translation] Truncating meta_title from ${translated.meta_title.length} to 60 chars`);
     translated.meta_title = translated.meta_title.substring(0, 57) + '...';
@@ -176,13 +289,11 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
   const slug = translated.headline
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  // Create translated article object
   return {
-    // Override with translations
     language: targetLanguage,
     headline: translated.headline,
     slug: slug,
@@ -194,7 +305,7 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     featured_image_alt: translated.featured_image_alt,
     featured_image_caption: translated.featured_image_caption || englishArticle.featured_image_caption,
     
-    // Keep same images (no regeneration!)
+    // Keep same images
     featured_image_url: englishArticle.featured_image_url,
     diagram_url: englishArticle.diagram_url,
     diagram_description: englishArticle.diagram_description,
@@ -203,8 +314,8 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     
     // Set proper metadata
     source_language: 'en',
-    is_primary: false, // English is primary
-    hreflang_group_id: englishArticle.hreflang_group_id, // Same group!
+    is_primary: false,
+    hreflang_group_id: englishArticle.hreflang_group_id,
     cluster_id: englishArticle.cluster_id,
     cluster_number: englishArticle.cluster_number,
     cluster_theme: englishArticle.cluster_theme,
@@ -213,13 +324,10 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
     content_type: englishArticle.content_type,
     read_time: englishArticle.read_time,
     
-    // Keep same author/reviewer
     author_id: englishArticle.author_id,
     reviewer_id: englishArticle.reviewer_id,
-    
-    // Keep citations (don't translate URLs)
     external_citations: englishArticle.external_citations,
-    internal_links: [], // Will be populated later with same-language links
+    internal_links: [],
   };
 }
 
@@ -250,7 +358,6 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         article: translatedArticle,
-        // Also include as translatedArticle for backwards compatibility
         translatedArticle: translatedArticle 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
