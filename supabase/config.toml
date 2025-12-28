@@ -149,3 +149,6 @@ verify_jwt = false
 
 [functions.backfill-tofu-faqs]
 verify_jwt = false
+
+[functions.complete-cluster]
+verify_jwt = false
