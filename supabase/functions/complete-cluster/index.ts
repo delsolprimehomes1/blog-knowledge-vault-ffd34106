@@ -322,7 +322,7 @@ Return ONLY the HTML content.`;
         language: 'en',
         funnel_stage: plan.funnelStage,
         category,
-        status: 'draft',
+        status: 'published',
         meta_title: metaTitle,
         meta_description: metaDescription,
         speakable_answer: speakableAnswer,
@@ -331,7 +331,7 @@ Return ONLY the HTML content.`;
         featured_image_url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
         featured_image_alt: plan.headline,
         author_id: randomAuthor?.id || null,
-        date_published: null,
+        date_published: new Date().toISOString(),
         date_modified: new Date().toISOString(),
       };
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -23,7 +23,8 @@ import {
   Target, 
   TrendingUp,
   FileText,
-  HelpCircle
+  HelpCircle,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +46,32 @@ const ClusterPriorities = () => {
   const [funnelFilter, setFunnelFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [completingCluster, setCompletingCluster] = useState<string | null>(null);
+
+  // Real-time subscription to blog_articles changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('cluster-priority-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'blog_articles'
+        },
+        (payload) => {
+          // Only refresh if the inserted article has a cluster_id
+          if (payload.new && payload.new.cluster_id) {
+            console.log('[ClusterPriorities] New article inserted, refreshing...');
+            queryClient.invalidateQueries({ queryKey: ["incomplete-clusters-priority"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Fetch incomplete clusters with priority scoring
   const { data: incompleteData, isLoading } = useQuery({
@@ -281,6 +308,15 @@ const ClusterPriorities = () => {
               Incomplete clusters ranked by business value for completion
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["incomplete-clusters-priority"] })}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
         {/* Stats Cards */}
