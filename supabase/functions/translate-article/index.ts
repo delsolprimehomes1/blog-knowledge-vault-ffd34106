@@ -17,8 +17,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'no': 'Norwegian'
 };
 
-const MAX_CONTENT_LENGTH = 12000; // Characters before chunking
-const REQUEST_TIMEOUT_MS = 55000; // 55 seconds (edge functions timeout at 60s)
+const MAX_CONTENT_LENGTH = 6000; // Characters before chunking (reduced for reliability)
+const REQUEST_TIMEOUT_MS = 45000; // 45 seconds per chunk (edge functions timeout at 60s)
+const FUNCTION_START_TIME = Date.now();
+const FUNCTION_TIMEOUT_MS = 55000; // 55 seconds total function time limit
 
 /**
  * Repair malformed JSON from AI responses
@@ -107,8 +109,16 @@ function splitContentByHeadings(html: string): string[] {
 async function translateContentChunk(
   chunk: string,
   targetLanguageName: string,
-  apiKey: string
+  apiKey: string,
+  chunkIndex: number = 0,
+  totalChunks: number = 1
 ): Promise<string> {
+  // Check if we're approaching function timeout
+  const elapsed = Date.now() - FUNCTION_START_TIME;
+  if (elapsed > FUNCTION_TIMEOUT_MS - 15000) {
+    throw new Error(`Approaching function timeout (${Math.round(elapsed/1000)}s elapsed), aborting at chunk ${chunkIndex + 1}/${totalChunks}`);
+  }
+
   const prompt = `Translate this HTML content from English to ${targetLanguageName}.
 Keep ALL HTML tags exactly as-is. Only translate the text content.
 Keep proper nouns like "Costa del Sol" unchanged.
@@ -146,6 +156,9 @@ Respond with ONLY the translated HTML, no explanations.`;
     return data.choices[0].message.content.trim();
   } catch (error) {
     clearTimeout(timeout);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Chunk ${chunkIndex + 1}/${totalChunks} timed out after ${REQUEST_TIMEOUT_MS/1000}s`);
+    }
     throw error;
   }
 }
@@ -172,13 +185,20 @@ async function translateArticle(
     const translatedChunks: string[] = [];
     
     for (let i = 0; i < chunks.length; i++) {
-      console.log(`[Translation] Translating chunk ${i + 1}/${chunks.length}...`);
-      const translated = await translateContentChunk(chunks[i], targetLanguageName, apiKey);
+      const elapsed = Date.now() - FUNCTION_START_TIME;
+      console.log(`[Translation] Translating chunk ${i + 1}/${chunks.length}... (${Math.round(elapsed/1000)}s elapsed)`);
+      
+      // Check function-level timeout before each chunk
+      if (elapsed > FUNCTION_TIMEOUT_MS - 15000) {
+        throw new Error(`Function timeout approaching (${Math.round(elapsed/1000)}s), completed ${i}/${chunks.length} chunks`);
+      }
+      
+      const translated = await translateContentChunk(chunks[i], targetLanguageName, apiKey, i, chunks.length);
       translatedChunks.push(translated);
     }
     
     translatedContent = translatedChunks.join('\n');
-    console.log(`[Translation] All ${chunks.length} chunks translated successfully`);
+    console.log(`[Translation] All ${chunks.length} chunks translated successfully in ${Math.round((Date.now() - FUNCTION_START_TIME)/1000)}s`);
   }
 
   // Now translate metadata (smaller payload, more reliable)

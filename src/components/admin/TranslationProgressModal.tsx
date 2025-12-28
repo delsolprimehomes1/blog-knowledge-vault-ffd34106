@@ -128,10 +128,16 @@ export function TranslationProgressModal({
                     ) : (
                       <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate">{result.headline || 'Unknown article'}</p>
                       {result.error && (
-                        <p className="text-xs text-destructive truncate">{result.error}</p>
+                        <p className="text-xs text-destructive break-words">
+                          {result.error.includes('timeout') || result.error.includes('timed out')
+                            ? '⏱️ Translation timed out - article may be too long'
+                            : result.error.includes('too long')
+                            ? '📏 Article content exceeds translation limit'
+                            : result.error}
+                        </p>
                       )}
                     </div>
                   </div>
