@@ -203,12 +203,37 @@ serve(async (req) => {
             body: JSON.stringify({ clusterId, dryRun: false })
           });
 
-          const result = await response.json();
+          // Robust JSON parsing with error handling
+          const responseText = await response.text();
+          
+          if (!responseText || responseText.trim() === '') {
+            console.warn(`[batch-complete-clusters] Empty response for cluster ${clusterId}`);
+            results.push({
+              clusterId,
+              success: false,
+              error: 'Empty response from complete-incomplete-cluster'
+            });
+            continue;
+          }
+
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error(`[batch-complete-clusters] JSON parse error for ${clusterId}. Response: ${responseText.substring(0, 500)}`);
+            results.push({
+              clusterId,
+              success: false,
+              error: `JSON parse error: ${parseError instanceof Error ? parseError.message : 'Unknown'}`
+            });
+            continue;
+          }
+
           results.push({
             clusterId,
             success: response.ok,
             result: response.ok ? result : null,
-            error: !response.ok ? result.error : null
+            error: !response.ok ? (result?.error || 'Unknown API error') : null
           });
         } catch (error: unknown) {
           console.error(`[batch-complete-clusters] Error processing ${clusterId}:`, error);
@@ -246,7 +271,30 @@ serve(async (req) => {
             body: JSON.stringify({ clusterId, dryRun: true })
           });
 
-          const result = await response.json();
+          // Robust JSON parsing with error handling
+          const responseText = await response.text();
+          
+          if (!responseText || responseText.trim() === '') {
+            console.warn(`[batch-complete-clusters] Empty preview response for cluster ${clusterId}`);
+            previews.push({
+              clusterId,
+              error: 'Empty response from complete-incomplete-cluster'
+            });
+            continue;
+          }
+
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error(`[batch-complete-clusters] JSON parse error for preview ${clusterId}. Response: ${responseText.substring(0, 500)}`);
+            previews.push({
+              clusterId,
+              error: `JSON parse error: ${parseError instanceof Error ? parseError.message : 'Unknown'}`
+            });
+            continue;
+          }
+
           previews.push({
             clusterId,
             ...result
