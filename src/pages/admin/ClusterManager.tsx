@@ -282,14 +282,27 @@ const ClusterManager = () => {
     return { status: "timeout", error: "Job status check timed out" };
   };
 
-  // Complete translations for cluster
+  // Complete translations for cluster (or complete cluster if < 6 source articles)
   const completeTranslationsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setTranslatingCluster(clusterId);
 
+      // Check if cluster needs more source articles first
+      const clusterData = clusters.find(c => c.cluster_id === clusterId);
+      const sourceInfo = clusterData ? getSourceLanguageInfo(clusterData) : { needsMoreSource: false };
+      
+      // Use complete-incomplete-cluster if source articles < 6, otherwise translate-cluster
+      const functionName = sourceInfo.needsMoreSource 
+        ? "complete-incomplete-cluster" 
+        : "translate-cluster";
+      
+      const bodyParam = sourceInfo.needsMoreSource 
+        ? { clusterId, dryRun: false }
+        : { jobId: clusterId };
+
       try {
-        const { data, error } = await supabase.functions.invoke("translate-cluster", {
-          body: { jobId: clusterId },
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: bodyParam,
         });
 
         if (error) {
@@ -419,6 +432,32 @@ const ClusterManager = () => {
   const getMissingLanguages = (cluster: ClusterData) => {
     const existingLanguages = new Set(Object.keys(cluster.languages));
     return getAllExpectedLanguages(cluster).filter((lang) => !existingLanguages.has(lang));
+  };
+
+  // Detect if cluster needs more source articles (< 6 in any single language)
+  const getSourceLanguageInfo = (cluster: ClusterData) => {
+    // Find the "source" language - the one with articles (preferring 'en' if exists)
+    const langCounts = Object.entries(cluster.languages).map(([lang, stats]) => ({
+      lang,
+      count: stats.total
+    }));
+    
+    // Sort by count desc, prefer English if equal
+    langCounts.sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (a.lang === 'en') return -1;
+      if (b.lang === 'en') return 1;
+      return 0;
+    });
+    
+    const sourceInfo = langCounts[0];
+    if (!sourceInfo) return { sourceLanguage: 'en', sourceCount: 0, needsMoreSource: true };
+    
+    return {
+      sourceLanguage: sourceInfo.lang,
+      sourceCount: sourceInfo.count,
+      needsMoreSource: sourceInfo.count < 6
+    };
   };
 
   const copyClusterId = (id: string) => {
@@ -661,28 +700,46 @@ const ClusterManager = () => {
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Publish All
                     </Button>
-                    {/* Complete Translations Button - show if missing languages or partial status */}
-                    {(getMissingLanguages(cluster).length > 0 || cluster.job_status === "partial") && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="bg-amber-600 hover:bg-amber-700 text-white"
-                        onClick={() => setClusterToTranslate(cluster.cluster_id)}
-                        disabled={translatingCluster === cluster.cluster_id || completeTranslationsMutation.isPending}
-                      >
-                        {translatingCluster === cluster.cluster_id ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Translating...
-                          </>
-                        ) : (
-                          <>
-                            <Languages className="mr-2 h-4 w-4" />
-                            Complete Translations ({getMissingLanguages(cluster).length} remaining)
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    {/* Complete Cluster / Translations Button */}
+                    {(() => {
+                      const sourceInfo = getSourceLanguageInfo(cluster);
+                      const missingLangs = getMissingLanguages(cluster);
+                      const showButton = sourceInfo.needsMoreSource || missingLangs.length > 0 || cluster.job_status === "partial";
+                      
+                      if (!showButton) return null;
+                      
+                      // Show "Complete Cluster" if source articles < 6, otherwise "Complete Translations"
+                      const isCompleteCluster = sourceInfo.needsMoreSource;
+                      
+                      return (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className={isCompleteCluster 
+                            ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                            : "bg-amber-600 hover:bg-amber-700 text-white"}
+                          onClick={() => setClusterToTranslate(cluster.cluster_id)}
+                          disabled={translatingCluster === cluster.cluster_id || completeTranslationsMutation.isPending}
+                        >
+                          {translatingCluster === cluster.cluster_id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              {isCompleteCluster ? "Completing..." : "Translating..."}
+                            </>
+                          ) : isCompleteCluster ? (
+                            <>
+                              <Globe className="mr-2 h-4 w-4" />
+                              Complete Cluster ({sourceInfo.sourceCount}/6 {getLanguageFlag(sourceInfo.sourceLanguage)})
+                            </>
+                          ) : (
+                            <>
+                              <Languages className="mr-2 h-4 w-4" />
+                              Complete Translations ({missingLangs.length} remaining)
+                            </>
+                          )}
+                        </Button>
+                      );
+                    })()}
                     <Button
                       variant="outline"
                       size="sm"
