@@ -13,20 +13,74 @@ interface QAPage {
   title: string;
   question_main: string;
   meta_description: string;
+  source_article_id: string;
 }
 
 interface RelatedQAPagesProps {
   articleId: string;
   language: string;
   qaPageIds: string[];
+  clusterId?: string; // NEW: for cluster-wide Q&As
 }
 
-export function RelatedQAPages({ articleId, language, qaPageIds }: RelatedQAPagesProps) {
+export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: RelatedQAPagesProps) {
   const [qaPages, setQAPages] = useState<QAPage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchQAPages = async () => {
+      // If we have a clusterId, fetch Q&As from all articles in the cluster
+      if (clusterId) {
+        // Step 1: Get all article IDs in this cluster with same language
+        const { data: clusterArticles, error: clusterError } = await supabase
+          .from('blog_articles')
+          .select('id')
+          .eq('cluster_id', clusterId)
+          .eq('language', language)
+          .eq('status', 'published');
+
+        if (clusterError) {
+          console.error('Error fetching cluster articles:', clusterError);
+          setLoading(false);
+          return;
+        }
+
+        const clusterArticleIds = clusterArticles?.map(a => a.id) || [];
+
+        if (clusterArticleIds.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        // Step 2: Fetch Q&As from all those articles
+        const { data: allQAs, error: qaError } = await supabase
+          .from('qa_pages')
+          .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id')
+          .in('source_article_id', clusterArticleIds)
+          .eq('language', language)
+          .eq('status', 'published')
+          .limit(10); // Get more than 4 for sorting
+
+        if (qaError) {
+          console.error('Error fetching cluster QA pages:', qaError);
+          setLoading(false);
+          return;
+        }
+
+        // Step 3: Sort to prioritize current article's Q&As first
+        const sorted = (allQAs || []).sort((a, b) => {
+          if (a.source_article_id === articleId && b.source_article_id !== articleId) return -1;
+          if (b.source_article_id === articleId && a.source_article_id !== articleId) return 1;
+          return 0;
+        });
+
+        // Step 4: Take top 4
+        setQAPages((sorted.slice(0, 4) as QAPage[]) || []);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: use qaPageIds directly (legacy behavior)
       if (!qaPageIds || qaPageIds.length === 0) {
         setLoading(false);
         return;
@@ -34,7 +88,7 @@ export function RelatedQAPages({ articleId, language, qaPageIds }: RelatedQAPage
 
       const { data, error } = await supabase
         .from('qa_pages')
-        .select('id, slug, language, qa_type, title, question_main, meta_description')
+        .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id')
         .in('id', qaPageIds)
         .eq('language', language)
         .eq('status', 'published')
@@ -50,13 +104,15 @@ export function RelatedQAPages({ articleId, language, qaPageIds }: RelatedQAPage
     };
 
     fetchQAPages();
-  }, [articleId, language, qaPageIds]);
+  }, [articleId, language, qaPageIds, clusterId]);
 
   if (loading) {
     return (
       <section className="py-8 space-y-6">
         <div className="h-8 bg-muted/50 rounded-lg w-64 animate-pulse" />
         <div className="grid md:grid-cols-2 gap-6">
+          <div className="h-48 bg-muted/30 rounded-2xl animate-pulse" />
+          <div className="h-48 bg-muted/30 rounded-2xl animate-pulse" />
           <div className="h-48 bg-muted/30 rounded-2xl animate-pulse" />
           <div className="h-48 bg-muted/30 rounded-2xl animate-pulse" />
         </div>
@@ -80,7 +136,7 @@ export function RelatedQAPages({ articleId, language, qaPageIds }: RelatedQAPage
             Common Questions Answered
           </h2>
           <p className="text-muted-foreground text-sm">
-            Deep-dive Q&A pages based on this article
+            Deep-dive Q&A pages based on this topic
           </p>
         </div>
       </div>
@@ -138,11 +194,11 @@ export function RelatedQAPages({ articleId, language, qaPageIds }: RelatedQAPage
       </div>
 
       {/* Footer Note */}
-      {qaPages.length === 2 && (
+      {qaPages.length > 0 && (
         <div className="text-center">
           <p className="text-sm text-muted-foreground inline-flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            2 focused Q&A pages available in {language.toUpperCase()}
+            {qaPages.length} Q&A page{qaPages.length !== 1 ? 's' : ''} available in {language.toUpperCase()}
           </p>
         </div>
       )}
