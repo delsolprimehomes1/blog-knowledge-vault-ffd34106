@@ -446,15 +446,56 @@ serve(async (req) => {
 
     console.log(`[translate-cluster] Starting translation for job ${jobId}`);
 
-    // Fetch job details
-    const { data: job, error: jobError } = await supabase
+    // Fetch job details - first try cluster_generations
+    let { data: job, error: jobError } = await supabase
       .from('cluster_generations')
       .select('*')
       .eq('id', jobId)
       .single();
 
+    // If job not found, check if this is a valid cluster_id with articles
     if (jobError || !job) {
-      throw new Error(`Job not found: ${jobId}`);
+      console.log(`[translate-cluster] Job record not found, checking for cluster articles...`);
+      
+      // Try to find English articles with this cluster_id
+      const { data: clusterArticles, error: clusterError } = await supabase
+        .from('blog_articles')
+        .select('id, cluster_theme, cluster_id')
+        .eq('cluster_id', jobId)
+        .eq('language', 'en')
+        .limit(1);
+      
+      if (clusterError || !clusterArticles?.length) {
+        throw new Error(`No job or cluster found: ${jobId}`);
+      }
+      
+      // Create a job record for this cluster
+      console.log(`[translate-cluster] Creating job record for existing cluster...`);
+      const { data: newJob, error: createError } = await supabase
+        .from('cluster_generations')
+        .insert({
+          id: jobId, // Use cluster_id as job_id
+          topic: clusterArticles[0].cluster_theme || 'Translation Job',
+          primary_keyword: clusterArticles[0].cluster_theme || 'translation',
+          target_audience: 'Property buyers',
+          language: 'en',
+          status: 'translating',
+          progress: { message: 'Starting translations...' },
+          languages_queue: TARGET_LANGUAGES,
+          language_status: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error(`[translate-cluster] Failed to create job record:`, createError);
+        throw new Error(`Failed to create job record: ${createError.message}`);
+      }
+      
+      job = newJob;
+      console.log(`[translate-cluster] Created job record for cluster ${jobId}`);
     }
 
     // Fetch English articles for this cluster
