@@ -2045,8 +2045,8 @@ Return ONLY valid JSON:
         }
       }
 
-      // 11. FAQ ENTITIES (for MOFU/BOFU)
-      if (plan.funnelStage !== 'TOFU') {
+      // 11. FAQ ENTITIES (for ALL funnel stages including TOFU)
+      {
         // Language-aware FAQ generation
         const faqLanguageName = {
           'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
@@ -2135,8 +2135,6 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
           // NON-FATAL: Continue without FAQs rather than crashing entire cluster
           article.qa_entities = [];
         }
-      } else {
-        article.qa_entities = [];
       }
 
 

@@ -998,8 +998,8 @@ Return ONLY valid JSON:
         article.citation_status = 'pending';
         article.citation_failure_reason = 'Citations to be added during post-generation review';
 
-        // 11. FAQs (for MOFU/BOFU) - Language-aware
-        if (plan.funnelStage !== 'TOFU') {
+        // 11. FAQs (for ALL funnel stages including TOFU) - Language-aware
+        {
           const languageMap: Record<string, string> = {
             'en': 'English', 'de': 'German', 'nl': 'Dutch', 'fr': 'French',
             'pl': 'Polish', 'sv': 'Swedish', 'da': 'Danish', 'hu': 'Hungarian',
@@ -1053,8 +1053,6 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
             console.warn(`[Resume ${jobId}] FAQ generation failed, continuing without FAQs`);
             article.qa_entities = [];
           }
-        } else {
-          article.qa_entities = [];
         }
 
         // 12. Calculate read time
