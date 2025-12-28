@@ -962,21 +962,21 @@ Return ONLY valid JSON with text in ${seoLanguageName}:
   "description": "Description in ${seoLanguageName} with benefits and CTA (max 160 chars)"
 }`;
 
-      const seoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const seoResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'gpt-4o-mini',
           max_tokens: 512,
           messages: [{ role: 'user', content: seoPrompt }],
         }),
       });
 
       if (!seoResponse.ok && (seoResponse.status === 429 || seoResponse.status === 402)) {
-        throw new Error(`Lovable AI error: ${seoResponse.status}`);
+        throw new Error(`OpenAI error: ${seoResponse.status}`);
       }
 
       let seoData;
@@ -1778,21 +1778,21 @@ Requirements:
 
 IMPORTANT: Return ONLY the alt text in ${languageName}, no quotes, no JSON, no English.`;
 
-        const altResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const altResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             max_tokens: 256,
             messages: [{ role: 'user', content: altPrompt }],
           }),
         });
 
         if (!altResponse.ok && (altResponse.status === 429 || altResponse.status === 402)) {
-          throw new Error(`Lovable AI error: ${altResponse.status}`);
+          throw new Error(`OpenAI error: ${altResponse.status}`);
         }
 
         let altData;
@@ -1901,21 +1901,21 @@ Return ONLY valid JSON:
   "confidence": 90
 }`;
 
-          const authorResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const authorResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'gpt-4o-mini',
               max_tokens: 512,
               messages: [{ role: 'user', content: authorPrompt }],
             }),
           });
 
           if (!authorResponse.ok && (authorResponse.status === 429 || authorResponse.status === 402)) {
-            throw new Error(`Lovable AI error: ${authorResponse.status}`);
+            throw new Error(`OpenAI error: ${authorResponse.status}`);
           }
 
           let authorData;
@@ -2082,14 +2082,14 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
         try {
           console.log(`📋 [Job ${jobId}] Article ${i + 1} - Generating FAQs (timeout: 45s)...`);
           
-          const faqResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          const faqResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
+              model: 'gpt-4o-mini',
               max_tokens: 2048,
               messages: [{ role: 'user', content: faqPrompt }],
             }),
