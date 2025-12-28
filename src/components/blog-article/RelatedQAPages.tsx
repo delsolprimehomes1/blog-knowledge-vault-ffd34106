@@ -29,34 +29,12 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
 
   useEffect(() => {
     const fetchQAPages = async () => {
-      // If we have a clusterId, fetch Q&As from all articles in the cluster
+      // If we have a clusterId, fetch Q&As directly by cluster_id (single query)
       if (clusterId) {
-        // Step 1: Get all article IDs in this cluster with same language
-        const { data: clusterArticles, error: clusterError } = await supabase
-          .from('blog_articles')
-          .select('id')
-          .eq('cluster_id', clusterId)
-          .eq('language', language)
-          .eq('status', 'published');
-
-        if (clusterError) {
-          console.error('Error fetching cluster articles:', clusterError);
-          setLoading(false);
-          return;
-        }
-
-        const clusterArticleIds = clusterArticles?.map(a => a.id) || [];
-
-        if (clusterArticleIds.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        // Step 2: Fetch Q&As from all those articles
-        const { data: allQAs, error: qaError } = await supabase
+        const { data: clusterQAs, error: qaError } = await supabase
           .from('qa_pages')
           .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id')
-          .in('source_article_id', clusterArticleIds)
+          .eq('cluster_id', clusterId)
           .eq('language', language)
           .eq('status', 'published')
           .limit(10); // Get more than 4 for sorting
@@ -67,14 +45,14 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
           return;
         }
 
-        // Step 3: Sort to prioritize current article's Q&As first
-        const sorted = (allQAs || []).sort((a, b) => {
+        // Sort to prioritize current article's Q&As first
+        const sorted = (clusterQAs || []).sort((a, b) => {
           if (a.source_article_id === articleId && b.source_article_id !== articleId) return -1;
           if (b.source_article_id === articleId && a.source_article_id !== articleId) return 1;
           return 0;
         });
 
-        // Step 4: Take top 4
+        // Take top 4
         setQAPages((sorted.slice(0, 4) as QAPage[]) || []);
         setLoading(false);
         return;

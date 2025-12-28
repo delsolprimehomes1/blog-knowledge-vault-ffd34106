@@ -2426,6 +2426,7 @@ export type Database = {
           author_id: string | null
           canonical_url: string | null
           category: string | null
+          cluster_id: string | null
           content_type: string | null
           created_at: string | null
           featured_image_alt: string
@@ -2456,6 +2457,7 @@ export type Database = {
           author_id?: string | null
           canonical_url?: string | null
           category?: string | null
+          cluster_id?: string | null
           content_type?: string | null
           created_at?: string | null
           featured_image_alt: string
@@ -2486,6 +2488,7 @@ export type Database = {
           author_id?: string | null
           canonical_url?: string | null
           category?: string | null
+          cluster_id?: string | null
           content_type?: string | null
           created_at?: string | null
           featured_image_alt?: string

@@ -445,6 +445,7 @@ async function processOneArticle(
         .from('qa_pages')
         .insert({
           source_article_id: article.id,
+          cluster_id: article.cluster_id || null,
           language: qaData.language,
           source_language: 'en',
           hreflang_group_id: qaData.hreflang_group_id,
