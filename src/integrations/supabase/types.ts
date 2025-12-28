@@ -1265,6 +1265,7 @@ export type Database = {
           completed_at: string | null
           english_articles: number | null
           error_count: number | null
+          languages_status: Json | null
           last_updated: string | null
           priority_score: number | null
           started_at: string | null
@@ -1280,6 +1281,7 @@ export type Database = {
           completed_at?: string | null
           english_articles?: number | null
           error_count?: number | null
+          languages_status?: Json | null
           last_updated?: string | null
           priority_score?: number | null
           started_at?: string | null
@@ -1295,6 +1297,7 @@ export type Database = {
           completed_at?: string | null
           english_articles?: number | null
           error_count?: number | null
+          languages_status?: Json | null
           last_updated?: string | null
           priority_score?: number | null
           started_at?: string | null

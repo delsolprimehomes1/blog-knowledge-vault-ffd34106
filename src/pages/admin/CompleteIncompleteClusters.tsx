@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Play, 
-  Pause, 
   RefreshCw, 
   Globe, 
   FileText, 
@@ -22,6 +21,9 @@ import {
   Clock
 } from "lucide-react";
 import { toast } from "sonner";
+import { LanguageStatusGrid } from "@/components/admin/LanguageStatusGrid";
+import { TranslateDropdown } from "@/components/admin/TranslateDropdown";
+import { TranslationProgressModal } from "@/components/admin/TranslationProgressModal";
 
 interface ClusterStats {
   cluster_id: string;
@@ -31,6 +33,7 @@ interface ClusterStats {
   english_count: number;
   has_english: boolean;
   languages: string[];
+  language_counts?: Record<string, number>;
   priority: 'english_only' | 'non_english' | 'partial' | 'complete';
 }
 
@@ -42,13 +45,52 @@ interface ClusterSummary {
   total_clusters: number;
 }
 
+interface TranslationState {
+  isOpen: boolean;
+  clusterId: string;
+  clusterTheme: string;
+  targetLanguage: string;
+  languageName: string;
+  languageFlag: string;
+  isTranslating: boolean;
+  progress: { current: number; total: number; currentHeadline?: string };
+  results: { success: boolean; headline?: string; error?: string }[];
+  error: string | null;
+  duration?: string;
+}
+
+const LANGUAGE_INFO: Record<string, { name: string; flag: string }> = {
+  'en': { name: 'English', flag: '🇬🇧' },
+  'de': { name: 'German', flag: '🇩🇪' },
+  'nl': { name: 'Dutch', flag: '🇳🇱' },
+  'fr': { name: 'French', flag: '🇫🇷' },
+  'pl': { name: 'Polish', flag: '🇵🇱' },
+  'sv': { name: 'Swedish', flag: '🇸🇪' },
+  'da': { name: 'Danish', flag: '🇩🇰' },
+  'hu': { name: 'Hungarian', flag: '🇭🇺' },
+  'fi': { name: 'Finnish', flag: '🇫🇮' },
+  'no': { name: 'Norwegian', flag: '🇳🇴' },
+};
+
 const CompleteIncompleteClusters = () => {
   const queryClient = useQueryClient();
   const [selectedClusters, setSelectedClusters] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingResults, setProcessingResults] = useState<any[]>([]);
+  const [translationState, setTranslationState] = useState<TranslationState>({
+    isOpen: false,
+    clusterId: '',
+    clusterTheme: '',
+    targetLanguage: '',
+    languageName: '',
+    languageFlag: '',
+    isTranslating: false,
+    progress: { current: 0, total: 0 },
+    results: [],
+    error: null,
+  });
 
-  // Fetch cluster status
+  // Fetch cluster status with language breakdown
   const { data: statusData, isLoading, refetch } = useQuery({
     queryKey: ['cluster-completion-status'],
     queryFn: async () => {
@@ -56,6 +98,53 @@ const CompleteIncompleteClusters = () => {
         body: { action: 'status' }
       });
       if (error) throw error;
+      
+      // Fetch language counts for each cluster
+      const allClusters = [
+        ...(data.clusters?.english_only || []),
+        ...(data.clusters?.non_english || []),
+        ...(data.clusters?.partial || []),
+        ...(data.clusters?.complete || []),
+      ];
+      
+      if (allClusters.length > 0) {
+        const clusterIds = allClusters.map(c => c.cluster_id);
+        
+        // Get article counts per language per cluster
+        const { data: articles } = await supabase
+          .from('blog_articles')
+          .select('cluster_id, language')
+          .in('cluster_id', clusterIds)
+          .eq('status', 'published');
+        
+        // Build language counts map
+        const languageCountsMap: Record<string, Record<string, number>> = {};
+        (articles || []).forEach(article => {
+          if (!languageCountsMap[article.cluster_id]) {
+            languageCountsMap[article.cluster_id] = {};
+          }
+          const lang = article.language;
+          languageCountsMap[article.cluster_id][lang] = 
+            (languageCountsMap[article.cluster_id][lang] || 0) + 1;
+        });
+        
+        // Attach language counts to clusters
+        const enrichCluster = (cluster: ClusterStats): ClusterStats => ({
+          ...cluster,
+          language_counts: languageCountsMap[cluster.cluster_id] || {}
+        });
+        
+        return {
+          summary: data.summary,
+          clusters: {
+            english_only: (data.clusters?.english_only || []).map(enrichCluster),
+            non_english: (data.clusters?.non_english || []).map(enrichCluster),
+            partial: (data.clusters?.partial || []).map(enrichCluster),
+            complete: (data.clusters?.complete || []).map(enrichCluster),
+          }
+        };
+      }
+      
       return data as { 
         summary: ClusterSummary; 
         clusters: {
@@ -68,25 +157,44 @@ const CompleteIncompleteClusters = () => {
     }
   });
 
-  // Preview mutation
-  const previewMutation = useMutation({
-    mutationFn: async (clusterIds: string[]) => {
-      const { data, error } = await supabase.functions.invoke('batch-complete-clusters', {
-        body: { action: 'preview', specificClusterIds: clusterIds }
+  // Translate to specific language mutation
+  const translateMutation = useMutation({
+    mutationFn: async ({ clusterId, targetLanguage }: { clusterId: string; targetLanguage: string }) => {
+      const { data, error } = await supabase.functions.invoke('translate-cluster-to-language', {
+        body: { clusterId, targetLanguage }
       });
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Preview generated for ${data.previews?.length || 0} clusters`);
-      console.log('Preview results:', data);
+      setTranslationState(prev => ({
+        ...prev,
+        isTranslating: false,
+        progress: { current: data.articlesTranslated + data.articlesSkipped, total: data.totalEnglishArticles || 6 },
+        results: data.results || [],
+        error: null,
+        duration: data.duration,
+      }));
+      
+      if (data.articlesFailed > 0) {
+        toast.warning(`Translation completed with ${data.articlesFailed} error(s)`);
+      } else {
+        toast.success(`${data.languageFlag} ${data.articlesTranslated} articles translated to ${data.languageName}`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['cluster-completion-status'] });
     },
     onError: (error: Error) => {
-      toast.error(`Preview failed: ${error.message}`);
+      setTranslationState(prev => ({
+        ...prev,
+        isTranslating: false,
+        error: error.message,
+      }));
+      toast.error(`Translation failed: ${error.message}`);
     }
   });
 
-  // Start batch mutation
+  // Start batch mutation (legacy)
   const startBatchMutation = useMutation({
     mutationFn: async ({ priorityFilter, clusterIds }: { priorityFilter?: string; clusterIds?: string[] }) => {
       const { data, error } = await supabase.functions.invoke('batch-complete-clusters', {
@@ -112,19 +220,38 @@ const CompleteIncompleteClusters = () => {
     }
   });
 
+  const handleTranslate = (cluster: ClusterStats, targetLanguage: string) => {
+    const langInfo = LANGUAGE_INFO[targetLanguage];
+    const englishCount = cluster.language_counts?.['en'] || cluster.english_count || 6;
+    
+    setTranslationState({
+      isOpen: true,
+      clusterId: cluster.cluster_id,
+      clusterTheme: cluster.theme || 'Unknown Cluster',
+      targetLanguage,
+      languageName: langInfo.name,
+      languageFlag: langInfo.flag,
+      isTranslating: true,
+      progress: { current: 0, total: englishCount },
+      results: [],
+      error: null,
+    });
+
+    translateMutation.mutate({ 
+      clusterId: cluster.cluster_id, 
+      targetLanguage 
+    });
+  };
+
+  const handleCloseTranslationModal = () => {
+    setTranslationState(prev => ({ ...prev, isOpen: false }));
+  };
+
   const handleStartBatch = (priorityFilter?: string) => {
     setIsProcessing(true);
     setProcessingResults([]);
     const clusterIds = selectedClusters.size > 0 ? Array.from(selectedClusters) : undefined;
     startBatchMutation.mutate({ priorityFilter, clusterIds });
-  };
-
-  const handlePreview = () => {
-    if (selectedClusters.size === 0) {
-      toast.error('Select at least one cluster to preview');
-      return;
-    }
-    previewMutation.mutate(Array.from(selectedClusters));
   };
 
   const toggleClusterSelection = (clusterId: string) => {
@@ -155,7 +282,7 @@ const CompleteIncompleteClusters = () => {
         <TableRow>
           <TableHead className="w-12">
             <Checkbox 
-              checked={clusters.every(c => selectedClusters.has(c.cluster_id))}
+              checked={clusters.length > 0 && clusters.every(c => selectedClusters.has(c.cluster_id))}
               onCheckedChange={() => {
                 if (clusters.every(c => selectedClusters.has(c.cluster_id))) {
                   setSelectedClusters(prev => {
@@ -169,11 +296,11 @@ const CompleteIncompleteClusters = () => {
               }}
             />
           </TableHead>
-          <TableHead>Theme</TableHead>
+          <TableHead className="min-w-[200px]">Theme</TableHead>
           <TableHead>Category</TableHead>
-          <TableHead className="text-center">Articles</TableHead>
-          <TableHead className="text-center">English</TableHead>
-          <TableHead>Languages</TableHead>
+          <TableHead className="text-center">EN</TableHead>
+          <TableHead className="min-w-[300px]">Languages</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -191,27 +318,35 @@ const CompleteIncompleteClusters = () => {
             <TableCell>
               <Badge variant="outline">{cluster.category}</Badge>
             </TableCell>
-            <TableCell className="text-center">{cluster.total_articles}</TableCell>
             <TableCell className="text-center">
-              {cluster.has_english ? (
-                <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-yellow-500 mx-auto" />
-              )}
-            </TableCell>
-            <TableCell>
-              <div className="flex gap-1 flex-wrap">
-                {cluster.languages.slice(0, 3).map(lang => (
-                  <Badge key={lang} variant="secondary" className="text-xs">
-                    {lang.toUpperCase()}
-                  </Badge>
-                ))}
-                {cluster.languages.length > 3 && (
-                  <Badge variant="secondary" className="text-xs">
-                    +{cluster.languages.length - 3}
-                  </Badge>
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-sm">{cluster.language_counts?.['en'] || cluster.english_count || 0}</span>
+                {cluster.has_english ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-yellow-500" />
                 )}
               </div>
+            </TableCell>
+            <TableCell>
+              <LanguageStatusGrid
+                languageCounts={cluster.language_counts || {}}
+                englishCount={cluster.english_count || 6}
+                onTranslate={(lang) => handleTranslate(cluster, lang)}
+                isTranslating={translationState.isTranslating && translationState.clusterId === cluster.cluster_id}
+                currentlyTranslating={translationState.clusterId === cluster.cluster_id ? translationState.targetLanguage : null}
+                compact={false}
+              />
+            </TableCell>
+            <TableCell className="text-right">
+              <TranslateDropdown
+                languageCounts={cluster.language_counts || {}}
+                englishCount={cluster.english_count || 6}
+                onTranslate={(lang) => handleTranslate(cluster, lang)}
+                isTranslating={translationState.isTranslating && translationState.clusterId === cluster.cluster_id}
+                currentlyTranslating={translationState.clusterId === cluster.cluster_id ? translationState.targetLanguage : null}
+                disabled={!cluster.has_english}
+              />
             </TableCell>
           </TableRow>
         ))}
@@ -229,7 +364,7 @@ const CompleteIncompleteClusters = () => {
           <div>
             <h1 className="text-3xl font-bold">Complete Incomplete Clusters</h1>
             <p className="text-muted-foreground mt-1">
-              Translate and generate articles to complete your content clusters
+              Translate clusters one language at a time for full control
             </p>
           </div>
           <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
@@ -249,7 +384,7 @@ const CompleteIncompleteClusters = () => {
                 <FileText className="w-5 h-5 text-blue-500" />
                 <span className="text-2xl font-bold">{summary?.english_only_count || 0}</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Easiest to complete</p>
+              <p className="text-xs text-muted-foreground mt-1">Ready to translate</p>
             </CardContent>
           </Card>
 
@@ -300,7 +435,7 @@ const CompleteIncompleteClusters = () => {
             <CardDescription>
               {selectedClusters.size > 0 
                 ? `${selectedClusters.size} clusters selected` 
-                : 'Select clusters or use priority-based batch processing'}
+                : 'Select clusters or click language buttons to translate one-by-one'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -308,6 +443,7 @@ const CompleteIncompleteClusters = () => {
               <Button 
                 onClick={() => handleStartBatch('english_only')} 
                 disabled={isProcessing}
+                variant="outline"
               >
                 <Play className="w-4 h-4 mr-2" />
                 Complete English-Only (5)
@@ -324,13 +460,6 @@ const CompleteIncompleteClusters = () => {
 
               {selectedClusters.size > 0 && (
                 <>
-                  <Button 
-                    variant="secondary"
-                    onClick={handlePreview}
-                    disabled={previewMutation.isPending}
-                  >
-                    Preview Selected
-                  </Button>
                   <Button 
                     onClick={() => handleStartBatch()} 
                     disabled={isProcessing}
@@ -400,11 +529,11 @@ const CompleteIncompleteClusters = () => {
               <CardHeader>
                 <CardTitle>English-Only Clusters</CardTitle>
                 <CardDescription>
-                  These clusters only have English articles. Easiest to complete - just translate to 9 languages.
+                  Click any language flag to translate. Each translation takes ~3 minutes.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[500px]">
                   {clusters?.english_only && renderClusterTable(clusters.english_only, 'english_only')}
                 </ScrollArea>
               </CardContent>
@@ -416,11 +545,11 @@ const CompleteIncompleteClusters = () => {
               <CardHeader>
                 <CardTitle>Non-English Clusters</CardTitle>
                 <CardDescription>
-                  These clusters have no English articles. Will be translated to English first.
+                  These clusters have no English articles. Create English versions first.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[500px]">
                   {clusters?.non_english && renderClusterTable(clusters.non_english, 'non_english')}
                 </ScrollArea>
               </CardContent>
@@ -432,11 +561,11 @@ const CompleteIncompleteClusters = () => {
               <CardHeader>
                 <CardTitle>Partial Clusters</CardTitle>
                 <CardDescription>
-                  These clusters have some translations but are not complete.
+                  These clusters have some translations. Continue translating to complete.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[500px]">
                   {clusters?.partial && renderClusterTable(clusters.partial, 'partial')}
                 </ScrollArea>
               </CardContent>
@@ -452,7 +581,7 @@ const CompleteIncompleteClusters = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="h-[500px]">
                   {clusters?.complete && renderClusterTable(clusters.complete, 'complete')}
                 </ScrollArea>
               </CardContent>
@@ -460,6 +589,30 @@ const CompleteIncompleteClusters = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Translation Progress Modal */}
+      <TranslationProgressModal
+        open={translationState.isOpen}
+        onClose={handleCloseTranslationModal}
+        clusterTheme={translationState.clusterTheme}
+        targetLanguage={translationState.targetLanguage}
+        languageName={translationState.languageName}
+        languageFlag={translationState.languageFlag}
+        isTranslating={translationState.isTranslating}
+        progress={translationState.progress}
+        results={translationState.results}
+        error={translationState.error}
+        duration={translationState.duration}
+        onRetry={() => {
+          if (translationState.clusterId && translationState.targetLanguage) {
+            translateMutation.mutate({
+              clusterId: translationState.clusterId,
+              targetLanguage: translationState.targetLanguage
+            });
+            setTranslationState(prev => ({ ...prev, isTranslating: true, error: null }));
+          }
+        }}
+      />
     </AdminLayout>
   );
 };
