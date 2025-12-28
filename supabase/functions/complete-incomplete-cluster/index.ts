@@ -212,31 +212,74 @@ serve(async (req) => {
       })
       .eq('id', clusterId);
 
-    // STEP 3: Translate to all other languages
+    // STEP 3: Translate English articles to all other languages using translate-article
     if (missingLanguages.length > 0) {
       console.log(`[complete-incomplete-cluster] Translating to ${missingLanguages.length} languages...`);
       
-      try {
-        const translateClusterResponse = await fetch(`${supabaseUrl}/functions/v1/translate-cluster`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({
-            jobId: clusterId
-          })
-        });
+      // Get all English articles in this cluster
+      const { data: englishArticles } = await supabase
+        .from('blog_articles')
+        .select('*')
+        .eq('cluster_id', clusterId)
+        .eq('language', 'en')
+        .eq('status', 'published');
 
-        if (!translateClusterResponse.ok) {
-          const errorText = await translateClusterResponse.text();
-          console.error(`[complete-incomplete-cluster] Translate cluster failed: ${errorText}`);
-        } else {
-          const translateResult = await translateClusterResponse.json();
-          console.log(`[complete-incomplete-cluster] Translation started: ${JSON.stringify(translateResult)}`);
+      if (englishArticles && englishArticles.length > 0) {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const targetLang of missingLanguages) {
+          console.log(`[complete-incomplete-cluster] Translating ${englishArticles.length} articles to ${targetLang}...`);
+          
+          for (const article of englishArticles) {
+            try {
+              const translateResponse = await fetch(`${supabaseUrl}/functions/v1/translate-article`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify({
+                  englishArticle: article,
+                  targetLanguage: targetLang
+                })
+              });
+
+              if (translateResponse.ok) {
+                const { translatedArticle } = await translateResponse.json();
+                
+                // Save translated article
+                const { error: insertError } = await supabase
+                  .from('blog_articles')
+                  .insert({
+                    ...translatedArticle,
+                    cluster_id: clusterId,
+                    language: targetLang,
+                    status: 'published',
+                    date_published: new Date().toISOString(),
+                    hreflang_group_id: article.hreflang_group_id || clusterId,
+                    source_language: 'en'
+                  });
+
+                if (insertError) {
+                  console.error(`[complete-incomplete-cluster] Failed to save ${targetLang} article: ${insertError.message}`);
+                  errorCount++;
+                } else {
+                  successCount++;
+                }
+              } else {
+                console.error(`[complete-incomplete-cluster] Translation to ${targetLang} failed for article ${article.id}`);
+                errorCount++;
+              }
+            } catch (translateError) {
+              console.error(`[complete-incomplete-cluster] Error translating to ${targetLang}:`, translateError);
+              errorCount++;
+            }
+          }
         }
-      } catch (translateError) {
-        console.error(`[complete-incomplete-cluster] Error translating cluster:`, translateError);
+        
+        console.log(`[complete-incomplete-cluster] Translation complete: ${successCount} success, ${errorCount} errors`);
+        translatedCount = successCount;
       }
     }
 
