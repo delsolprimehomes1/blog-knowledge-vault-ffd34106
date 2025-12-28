@@ -18,6 +18,8 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'no': 'Norwegian'
 };
 
+const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+
 /**
  * Translates an English article to target language using AI
  * Keeps same images, structure, and metadata
@@ -45,15 +47,20 @@ CRITICAL REQUIREMENTS:
 - Keep proper nouns like "Costa del Sol" unchanged
 - Keep brand names unchanged
 
+**CRITICAL LENGTH LIMITS:**
+- meta_title: MUST be 60 characters or less
+- meta_description: MUST be 155 characters or less (HARD LIMIT - no exceptions!)
+- speakable_answer: 50-80 words
+
 ENGLISH ARTICLE TO TRANSLATE:
 
 **Headline:**
 ${englishArticle.headline}
 
-**Meta Title:**
+**Meta Title (max 60 chars):**
 ${englishArticle.meta_title}
 
-**Meta Description:**
+**Meta Description (MUST be ≤155 chars):**
 ${englishArticle.meta_description}
 
 **Speakable Answer (50-80 words):**
@@ -77,7 +84,7 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
 {
   "headline": "translated headline",
   "meta_title": "translated meta title (max 60 chars)",
-  "meta_description": "translated meta description (max 160 chars)",
+  "meta_description": "translated meta description (MUST be ≤155 chars)",
   "speakable_answer": "translated speakable answer (50-80 words)",
   "detailed_content": "translated HTML content (keep all tags and links)",
   "qa_entities": [
@@ -88,41 +95,81 @@ RESPOND IN JSON FORMAT ONLY (no markdown code blocks):
   "featured_image_caption": "translated caption"
 }`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${lovableApiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [{ role: 'user', content: translationPrompt }],
-      max_tokens: 16000,
-    }),
-  });
+  // Retry logic for AI translation
+  const MAX_RETRIES = 3;
+  let lastError: Error | null = null;
+  let translated: any = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Translation API error (${response.status}): ${errorText}`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[Translation] Attempt ${attempt}/${MAX_RETRIES}...`);
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${lovableApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{ role: 'user', content: translationPrompt }],
+          max_tokens: 16000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Translation API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      let translatedText = data.choices[0].message.content.trim();
+
+      // Remove markdown code fences if present
+      translatedText = translatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+      try {
+        translated = JSON.parse(translatedText);
+      } catch (parseError) {
+        // Try to extract JSON from text
+        const jsonMatch = translatedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          translated = JSON.parse(jsonMatch[0]);
+        } else {
+          console.error(`[Translation] JSON parse failed on attempt ${attempt}. Raw response:`, translatedText.substring(0, 500));
+          throw new Error(`Failed to parse translation response: ${parseError}`);
+        }
+      }
+
+      // Success - break out of retry loop
+      break;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`[Translation] Attempt ${attempt} failed:`, lastError.message);
+      
+      if (attempt < MAX_RETRIES) {
+        // Wait before retry (exponential backoff)
+        const delay = attempt * 2000;
+        console.log(`[Translation] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
 
-  const data = await response.json();
-  let translatedText = data.choices[0].message.content.trim();
+  if (!translated) {
+    throw lastError || new Error('Translation failed after all retries');
+  }
 
-  // Remove markdown code fences if present
-  translatedText = translatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  // CRITICAL: Truncate meta_description if over 160 chars (database constraint)
+  if (translated.meta_description && translated.meta_description.length > 160) {
+    console.log(`[Translation] Truncating meta_description from ${translated.meta_description.length} to 157 chars`);
+    translated.meta_description = translated.meta_description.substring(0, 157) + '...';
+  }
 
-  let translated;
-  try {
-    translated = JSON.parse(translatedText);
-  } catch (e) {
-    // Try to extract JSON from text
-    const jsonMatch = translatedText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      translated = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error(`Failed to parse translation response: ${e}`);
-    }
+  // Also truncate meta_title if over 60 chars
+  if (translated.meta_title && translated.meta_title.length > 60) {
+    console.log(`[Translation] Truncating meta_title from ${translated.meta_title.length} to 60 chars`);
+    translated.meta_title = translated.meta_title.substring(0, 57) + '...';
   }
 
   // Generate slug from translated headline
