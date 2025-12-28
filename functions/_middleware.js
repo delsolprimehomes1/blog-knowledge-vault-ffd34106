@@ -303,24 +303,60 @@ export async function onRequest(context) {
       console.log(`[SEO Middleware] Detected as HTML: ${isHtmlContent}`);
     }
     
-    // If response contains HTML content, serve it directly (regardless of Content-Type header)
+    // If response contains HTML content, extract SEO tags and inject into real index.html
     if (isHtmlContent) {
-      console.log(`[SEO Middleware] Serving edge function HTML (${responseBody.length} bytes)`);
+      console.log(`[SEO Middleware] Extracting SEO from edge function HTML (${responseBody.length} bytes)`);
       
-      return new Response(responseBody, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`,
-          'X-Middleware-Active': 'true',
-          'X-Middleware-Version': '2025-12-24',
-          'X-SEO-Source': 'edge-function',
-          'X-SEO-Matched-Path': path,
-          'X-Content-Language': lang,
-          'X-Edge-Content-Type': contentType,
-          'X-HTML-Detected': 'body-inspection'
+      try {
+        // Get the real index.html (contains React app)
+        const indexRequest = new Request(new URL('/index.html', request.url).toString());
+        const assetResponse = await env.ASSETS.fetch(indexRequest);
+        
+        if (assetResponse.ok) {
+          let indexHtml = await assetResponse.text();
+          
+          // Extract <head> content from edge function HTML
+          const headMatch = responseBody.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+          const seoHead = headMatch ? headMatch[1] : '';
+          
+          // Extract language attribute from edge function HTML
+          const langMatch = responseBody.match(/<html[^>]*lang="([^"]+)"/i);
+          const langAttr = langMatch ? langMatch[1] : lang;
+          
+          // Update html lang attribute in real index.html
+          indexHtml = indexHtml.replace(/<html[^>]*>/, `<html lang="${langAttr}">`);
+          
+          // Remove default title from index.html (will be replaced by SEO title)
+          indexHtml = indexHtml.replace(/<title>.*?<\/title>/, '');
+          
+          // Remove any existing meta description
+          indexHtml = indexHtml.replace(/<meta\s+name=["']description["'][^>]*>/gi, '');
+          
+          // Inject SEO head content before </head>
+          indexHtml = indexHtml.replace('</head>', `${seoHead}\n</head>`);
+          
+          console.log(`[SEO Middleware] Injected SEO into real index.html for: ${path}`);
+          
+          return new Response(indexHtml, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': `public, max-age=${CONFIG.CACHE_TTL}`,
+              'X-Middleware-Active': 'true',
+              'X-Middleware-Version': '2025-12-28',
+              'X-SEO-Source': 'edge-function-injected',
+              'X-SEO-Matched-Path': path,
+              'X-Content-Language': langAttr
+            }
+          });
+        } else {
+          console.error(`[SEO Middleware] Failed to fetch index.html: ${assetResponse.status}`);
         }
-      });
+      } catch (injectionError) {
+        console.error(`[SEO Middleware] Error injecting SEO:`, injectionError);
+      }
+      
+      // Fallback: if injection fails, continue to JSON handling or default
     }
     
     // If edge function returned JSON metadata, inject into React app HTML
