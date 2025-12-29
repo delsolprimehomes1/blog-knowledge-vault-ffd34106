@@ -21,6 +21,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 const ALL_SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 const TRANSLATION_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+const ALL_QA_TYPES = ['core', 'decision', 'practical', 'problem'];
 
 /**
  * Translate a Q&A page from English to target language
@@ -165,8 +166,7 @@ async function generateEnglishQAPages(
 ): Promise<any[]> {
   console.log(`[Generate] Creating English Q&A pages for: ${article.headline}`);
 
-  // If specific types requested, only generate those
-  const typesToGenerate = specificTypes || ['core', 'decision', 'practical', 'problem'];
+  const typesToGenerate = specificTypes || ALL_QA_TYPES;
   const typeCount = typesToGenerate.length;
 
   const prompt = `You are generating ${typeCount} standalone Q&A pages derived from this blog article:
@@ -242,7 +242,6 @@ Return a JSON array with exactly ${typeCount} objects. No markdown, no explanati
       const aiData = await aiResponse.json();
       let content = aiData.choices?.[0]?.message?.content || '';
       
-      // Robust JSON cleanup
       content = content
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
@@ -269,7 +268,6 @@ Return a JSON array with exactly ${typeCount} objects. No markdown, no explanati
         throw new Error('AI response is not a valid array of QA pages');
       }
 
-      // Add language and source info
       return qaPagesData.map((qa: any) => ({
         ...qa,
         language: 'en',
@@ -291,272 +289,326 @@ Return a JSON array with exactly ${typeCount} objects. No markdown, no explanati
 }
 
 /**
- * Process ONE article with English-first + translation workflow
- * 1. Generate 2 English Q&A pages
- * 2. Translate to 9 other languages
- * 3. Save all 20 pages to database
+ * Background processing for completeMissing mode
+ * Processes all articles and updates job progress in database
  */
-async function processOneArticle(
+async function processAllMissingQAs(
   supabase: any,
-  article: any,
+  jobId: string,
+  articleIds: string[],
   targetLanguages: string[],
-  lovableApiKey: string,
-  jobId: string
-): Promise<{ success: boolean; generatedPages: number; error?: string }> {
-  console.log(`[Process] Processing article: ${article.headline}`);
-  let generatedPages = 0;
-
+  openaiApiKey: string,
+  clusterId?: string
+) {
+  console.log(`[Background] Starting background processing for job ${jobId}, ${articleIds.length} articles`);
+  
+  let totalGenerated = 0;
+  let processedArticles = 0;
+  
   try {
-    // Check if this article already has tracking
-    const { data: existingTracking } = await supabase
-      .from('qa_article_tracking')
-      .select('*')
-      .eq('source_article_id', article.id)
-      .single();
-
-    let hreflangGroupCore: string;
-    let hreflangGroupDecision: string;
-    let existingLanguages: string[] = [];
-    let trackingId: string;
-
-    if (existingTracking) {
-      hreflangGroupCore = existingTracking.hreflang_group_core;
-      hreflangGroupDecision = existingTracking.hreflang_group_decision;
-      existingLanguages = existingTracking.languages_generated || [];
-      trackingId = existingTracking.id;
+    for (const articleId of articleIds) {
+      // Get article data
+      const { data: article, error: articleError } = await supabase
+        .from('blog_articles')
+        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+        .eq('id', articleId)
+        .in('status', ['draft', 'published'])
+        .single();
       
-      console.log(`[Process] Using existing hreflang groups for article ${article.id}`);
-      
+      if (articleError || !article) {
+        console.log(`[Background] Article ${articleId} not found, skipping`);
+        processedArticles++;
+        continue;
+      }
+
+      // Update job with current article
       await supabase
-        .from('qa_article_tracking')
-        .update({ status: 'in_progress' })
-        .eq('id', trackingId);
-    } else {
-      hreflangGroupCore = crypto.randomUUID();
-      hreflangGroupDecision = crypto.randomUUID();
-      
-      console.log(`[Process] Creating new hreflang groups for article ${article.id}`);
-      
-      const { data: newTracking, error: trackingError } = await supabase
-        .from('qa_article_tracking')
-        .insert({
-          source_article_id: article.id,
-          source_article_headline: article.headline,
-          source_article_slug: article.slug,
-          hreflang_group_core: hreflangGroupCore,
-          hreflang_group_decision: hreflangGroupDecision,
-          languages_generated: [],
-          total_qa_pages: 0,
-          status: 'in_progress',
+        .from('qa_generation_jobs')
+        .update({
+          current_article_headline: article.headline,
+          processed_articles: processedArticles,
+          updated_at: new Date().toISOString(),
         })
-        .select()
+        .eq('id', jobId);
+
+      // Get existing Q&A pages for this article
+      const { data: existingPages } = await supabase
+        .from('qa_pages')
+        .select('language, qa_type, hreflang_group_id')
+        .eq('source_article_id', articleId);
+
+      const existingCombos = new Set((existingPages || []).map((p: any) => `${p.language}_${p.qa_type}`));
+      
+      // Get or create hreflang groups
+      let hreflangGroupCore = existingPages?.find((p: any) => p.qa_type === 'core')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupDecision = existingPages?.find((p: any) => p.qa_type === 'decision')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupPractical = existingPages?.find((p: any) => p.qa_type === 'practical')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupProblem = existingPages?.find((p: any) => p.qa_type === 'problem')?.hreflang_group_id || crypto.randomUUID();
+      
+      const getHreflangGroup = (qaType: string) => {
+        switch (qaType) {
+          case 'core': return hreflangGroupCore;
+          case 'decision': return hreflangGroupDecision;
+          case 'practical': return hreflangGroupPractical;
+          case 'problem': return hreflangGroupProblem;
+          default: return crypto.randomUUID();
+        }
+      };
+      
+      // Find missing combinations
+      const missingCombos: { language: string; qaType: string }[] = [];
+      for (const lang of targetLanguages) {
+        for (const qaType of ALL_QA_TYPES) {
+          if (!existingCombos.has(`${lang}_${qaType}`)) {
+            missingCombos.push({ language: lang, qaType });
+          }
+        }
+      }
+
+      if (missingCombos.length === 0) {
+        console.log(`[Background] All QAs exist for article ${articleId}`);
+        processedArticles++;
+        continue;
+      }
+
+      console.log(`[Background] ${missingCombos.length} missing QAs for article: ${article.headline}`);
+      
+      // Get or create tracking
+      const { data: tracking } = await supabase
+        .from('qa_article_tracking')
+        .select('id, languages_generated')
+        .eq('source_article_id', articleId)
         .single();
 
-      if (trackingError) {
-        console.error('[Process] Failed to create tracking record:', trackingError);
-        throw trackingError;
-      }
-      
-      trackingId = newTracking.id;
-    }
+      let trackingId = tracking?.id;
+      let languagesGenerated = tracking?.languages_generated || [];
 
-    // Filter out already generated languages
-    const languagesToGenerate = targetLanguages.filter((lang: string) => !existingLanguages.includes(lang));
-    
-    if (languagesToGenerate.length === 0) {
-      console.log(`[Process] All languages already generated for article ${article.id}`);
-      return { success: true, generatedPages: 0 };
-    }
-
-    console.log(`[Process] Generating Q&As for languages: ${languagesToGenerate.join(', ')}`);
-
-    // STEP 1: Generate English Q&A pages first (if needed)
-    let englishQAPages: any[] = [];
-    
-    if (languagesToGenerate.includes('en')) {
-      console.log(`[Process] Step 1: Generating English Q&A pages...`);
-      englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
-      console.log(`[Process] ✅ Generated ${englishQAPages.length} English Q&A pages`);
-    } else {
-      // Fetch existing English Q&A pages for translation base
-      const { data: existingEnglish } = await supabase
-        .from('qa_pages')
-        .select('*')
-        .eq('source_article_id', article.id)
-        .eq('language', 'en');
-      
-      if (existingEnglish && existingEnglish.length > 0) {
-        englishQAPages = existingEnglish;
-        console.log(`[Process] Using ${englishQAPages.length} existing English Q&A pages for translation`);
-      } else {
-        // Need to generate English first even if not in target list
-        console.log(`[Process] No English pages found, generating for translation base...`);
-        englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
-      }
-    }
-
-    // Prepare all Q&A pages to save
-    const allQAPages: any[] = [];
-
-    // Add English pages if they need to be saved
-    if (languagesToGenerate.includes('en')) {
-      for (const englishQA of englishQAPages) {
-        allQAPages.push({
-          ...englishQA,
-          hreflang_group_id: englishQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
-          tracking_id: trackingId,
-        });
-      }
-      existingLanguages.push('en');
-    }
-
-    // STEP 2: Translate to other languages
-    const translationLanguages = languagesToGenerate.filter(lang => lang !== 'en');
-    
-    for (const targetLang of translationLanguages) {
-      console.log(`[Process] Step 2: Translating to ${targetLang}...`);
-      
-      for (const englishQA of englishQAPages) {
-        try {
-          const translatedQA = await translateQAPage(englishQA, targetLang, lovableApiKey);
-          
-          allQAPages.push({
-            ...translatedQA,
-            hreflang_group_id: translatedQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
-            tracking_id: trackingId,
+      if (!trackingId) {
+        const { data: newTracking } = await supabase
+          .from('qa_article_tracking')
+          .insert({
             source_article_id: article.id,
+            source_article_headline: article.headline,
             source_article_slug: article.slug,
-          });
-        } catch (error) {
-          console.error(`[Process] Failed to translate ${englishQA.qa_type} to ${targetLang}:`, error);
-          // Continue with other translations
+            hreflang_group_core: hreflangGroupCore,
+            hreflang_group_decision: hreflangGroupDecision,
+            languages_generated: [],
+            total_qa_pages: 0,
+            status: 'in_progress',
+          })
+          .select()
+          .single();
+        trackingId = newTracking?.id;
+      }
+
+      // Get English QA pages (generate if missing)
+      let englishQAPages: any[] = [];
+      const missingEnglishTypes = ALL_QA_TYPES.filter(t => !existingCombos.has(`en_${t}`));
+      
+      if (missingEnglishTypes.length > 0) {
+        const newEnglishPages = await generateEnglishQAPages(article, openaiApiKey, missingEnglishTypes);
+        const { data: existingEnglish } = await supabase
+          .from('qa_pages')
+          .select('*')
+          .eq('source_article_id', articleId)
+          .eq('language', 'en');
+        englishQAPages = [...(existingEnglish || []), ...newEnglishPages];
+      } else {
+        const { data: existingEnglish } = await supabase
+          .from('qa_pages')
+          .select('*')
+          .eq('source_article_id', articleId)
+          .eq('language', 'en');
+        englishQAPages = existingEnglish || [];
+      }
+
+      // Group missing by language
+      const missingByLang: Record<string, string[]> = {};
+      for (const combo of missingCombos) {
+        if (!missingByLang[combo.language]) missingByLang[combo.language] = [];
+        missingByLang[combo.language].push(combo.qaType);
+      }
+
+      // Generate/translate missing pages
+      for (const [lang, qaTypes] of Object.entries(missingByLang)) {
+        // Update current language in job
+        await supabase
+          .from('qa_generation_jobs')
+          .update({
+            current_language: lang,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+
+        if (lang === 'en') {
+          // Save English pages directly
+          for (const englishQA of englishQAPages) {
+            if (!qaTypes.includes(englishQA.qa_type)) continue;
+            
+            const { error: insertError } = await supabase
+              .from('qa_pages')
+              .insert({
+                source_article_id: article.id,
+                cluster_id: article.cluster_id || clusterId || null,
+                language: 'en',
+                source_language: 'en',
+                hreflang_group_id: getHreflangGroup(englishQA.qa_type),
+                tracking_id: trackingId,
+                qa_type: englishQA.qa_type,
+                title: englishQA.title,
+                slug: englishQA.slug,
+                canonical_url: `https://www.delsolprimehomes.com/en/qa/${englishQA.slug}`,
+                question_main: englishQA.question_main,
+                answer_main: englishQA.answer_main,
+                related_qas: englishQA.related_qas || [],
+                speakable_answer: englishQA.speakable_answer,
+                meta_title: englishQA.meta_title?.substring(0, 60),
+                meta_description: englishQA.meta_description?.substring(0, 160),
+                featured_image_url: article.featured_image_url,
+                featured_image_alt: article.featured_image_alt,
+                source_article_slug: article.slug,
+                author_id: article.author_id,
+                category: article.category,
+                status: 'draft',
+              });
+
+            if (!insertError) {
+              totalGenerated++;
+              // Update progress
+              await supabase
+                .from('qa_generation_jobs')
+                .update({
+                  generated_faq_pages: totalGenerated,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', jobId);
+            }
+          }
+        } else {
+          // Translate from English
+          for (const englishQA of englishQAPages) {
+            if (!qaTypes.includes(englishQA.qa_type)) continue;
+            
+            try {
+              const translatedQA = await translateQAPage(englishQA, lang, openaiApiKey);
+              
+              const { error: insertError } = await supabase
+                .from('qa_pages')
+                .insert({
+                  source_article_id: article.id,
+                  cluster_id: article.cluster_id || clusterId || null,
+                  language: lang,
+                  source_language: 'en',
+                  hreflang_group_id: getHreflangGroup(translatedQA.qa_type),
+                  tracking_id: trackingId,
+                  qa_type: translatedQA.qa_type,
+                  title: translatedQA.title,
+                  slug: translatedQA.slug,
+                  canonical_url: `https://www.delsolprimehomes.com/${lang}/qa/${translatedQA.slug}`,
+                  question_main: translatedQA.question_main,
+                  answer_main: translatedQA.answer_main,
+                  related_qas: translatedQA.related_qas || [],
+                  speakable_answer: translatedQA.speakable_answer,
+                  meta_title: translatedQA.meta_title?.substring(0, 60),
+                  meta_description: translatedQA.meta_description?.substring(0, 160),
+                  featured_image_url: article.featured_image_url,
+                  featured_image_alt: article.featured_image_alt,
+                  source_article_slug: article.slug,
+                  author_id: article.author_id,
+                  category: article.category,
+                  status: 'draft',
+                });
+
+              if (!insertError) {
+                totalGenerated++;
+                // Update progress
+                await supabase
+                  .from('qa_generation_jobs')
+                  .update({
+                    generated_faq_pages: totalGenerated,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', jobId);
+              }
+            } catch (error) {
+              console.error(`[Background] Failed to translate to ${lang}:`, error);
+            }
+          }
+        }
+
+        if (!languagesGenerated.includes(lang)) {
+          languagesGenerated.push(lang);
         }
       }
-      
-      existingLanguages.push(targetLang);
-      console.log(`[Process] ✅ Translated to ${targetLang}`);
-    }
 
-    console.log(`[Process] 🎉 Total Q&A pages prepared: ${allQAPages.length}`);
+      // Update tracking
+      if (trackingId) {
+        await supabase
+          .from('qa_article_tracking')
+          .update({
+            languages_generated: languagesGenerated,
+            total_qa_pages: languagesGenerated.length * 4,
+            status: 'completed',
+          })
+          .eq('id', trackingId);
+      }
 
-    // STEP 3: Save all Q&A pages to database
-    for (const qaData of allQAPages) {
-      const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
-      
-      // Check for existing slug
-      const { data: existing } = await supabase
+      // Update source blog article with all QA page IDs
+      const { data: allQAPages } = await supabase
         .from('qa_pages')
         .select('id')
-        .eq('slug', baseSlug)
-        .eq('language', qaData.language)
-        .single();
-
-      if (existing) {
-        console.log(`[Process] Q&A page already exists: ${baseSlug} (${qaData.language})`);
-        continue;
-      }
-
-      const { error: insertError } = await supabase
-        .from('qa_pages')
-        .insert({
-          source_article_id: article.id,
-          cluster_id: article.cluster_id || null,
-          language: qaData.language,
-          source_language: 'en',
-          hreflang_group_id: qaData.hreflang_group_id,
-          tracking_id: trackingId,
-          qa_type: qaData.qa_type,
-          title: qaData.title,
-          slug: baseSlug,
-          canonical_url: `https://www.delsolprimehomes.com/${qaData.language}/qa/${baseSlug}`,
-          question_main: qaData.question_main,
-          answer_main: qaData.answer_main,
-          related_qas: qaData.related_qas || [],
-          speakable_answer: qaData.speakable_answer,
-          meta_title: qaData.meta_title?.substring(0, 60) || qaData.title.substring(0, 60),
-          meta_description: qaData.meta_description?.substring(0, 160) || '',
-          featured_image_url: article.featured_image_url,
-          featured_image_alt: article.featured_image_alt || qaData.title,
-          featured_image_caption: article.featured_image_caption,
-          source_article_slug: article.slug,
-          author_id: article.author_id,
-          category: article.category,
-          status: 'draft',
-        });
-
-      if (insertError) {
-        console.error('[Process] Insert error:', insertError);
-        continue;
-      }
-
-      generatedPages++;
-    }
-
-    // Update tracking record
-    const totalQaPages = existingLanguages.length * 2;
-    await supabase
-      .from('qa_article_tracking')
-      .update({
-        languages_generated: existingLanguages,
-        total_qa_pages: totalQaPages,
-        status: 'completed',
-      })
-      .eq('id', trackingId);
-
-    // Link translations between Q&A pages from same hreflang group
-    for (const groupId of [hreflangGroupCore, hreflangGroupDecision]) {
-      const { data: pagesInGroup } = await supabase
-        .from('qa_pages')
-        .select('id, language, slug')
-        .eq('hreflang_group_id', groupId);
+        .eq('source_article_id', articleId);
       
-      if (pagesInGroup && pagesInGroup.length > 0) {
-        const translations: Record<string, string> = {};
-        for (const p of pagesInGroup) {
-          translations[p.language] = p.slug;
-        }
-        
-        for (const p of pagesInGroup) {
-          await supabase
-            .from('qa_pages')
-            .update({ translations })
-            .eq('id', p.id);
-        }
-      }
-    }
-
-    // Update source blog article with generated QA page IDs
-    if (generatedPages > 0) {
-      const { data: generatedQAPages } = await supabase
-        .from('qa_pages')
-        .select('id')
-        .eq('source_article_id', article.id);
-      
-      if (generatedQAPages && generatedQAPages.length > 0) {
-        const qaPageIds = generatedQAPages.map((qa: { id: string }) => qa.id);
-        
+      if (allQAPages && allQAPages.length > 0) {
         await supabase
           .from('blog_articles')
           .update({ 
-            generated_qa_page_ids: qaPageIds,
+            generated_qa_page_ids: allQAPages.map((qa: { id: string }) => qa.id),
             updated_at: new Date().toISOString()
           })
-          .eq('id', article.id);
-        
-        console.log(`[Process] ✅ Updated blog article ${article.id} with ${qaPageIds.length} QA page IDs`);
+          .eq('id', articleId);
       }
+
+      processedArticles++;
+      
+      // Update processed count
+      await supabase
+        .from('qa_generation_jobs')
+        .update({
+          processed_articles: processedArticles,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
     }
 
-    console.log(`[Process] Completed article ${article.id}: ${generatedPages} pages generated`);
-    return { success: true, generatedPages };
+    // Mark job as completed
+    await supabase
+      .from('qa_generation_jobs')
+      .update({
+        status: 'completed',
+        processed_articles: processedArticles,
+        generated_faq_pages: totalGenerated,
+        current_article_headline: null,
+        current_language: null,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    console.log(`[Background] Job ${jobId} completed. Generated ${totalGenerated} QA pages.`);
 
   } catch (error) {
-    console.error(`[Process] Error processing article ${article.id}:`, error);
-    return { 
-      success: false, 
-      generatedPages, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
+    console.error(`[Background] Job ${jobId} failed:`, error);
+    
+    await supabase
+      .from('qa_generation_jobs')
+      .update({
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
   }
 }
 
@@ -566,7 +618,16 @@ serve(async (req) => {
   }
 
   try {
-    const { articleIds, mode = 'single', languages = ['en'], jobId: existingJobId, resumeFromIndex = 0, completeMissing = false } = await req.json();
+    const { 
+      articleIds, 
+      mode = 'single', 
+      languages = ['en'], 
+      jobId: existingJobId, 
+      resumeFromIndex = 0, 
+      completeMissing = false,
+      clusterId,
+      backgroundMode = false 
+    } = await req.json();
 
     if (!articleIds || !Array.isArray(articleIds) || articleIds.length === 0) {
       return new Response(JSON.stringify({ 
@@ -589,15 +650,67 @@ serve(async (req) => {
     const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
     const effectiveLanguageCount = targetLanguages.length;
 
-    // All 4 QA types
-    const ALL_QA_TYPES = ['core', 'decision', 'practical', 'problem'];
+    // BACKGROUND MODE: Return immediately and process in background
+    if (completeMissing && backgroundMode) {
+      console.log(`[Main] Starting BACKGROUND processing for ${articleIds.length} articles`);
+      
+      // Calculate expected total (articles × 4 QA types × languages)
+      const maxPossible = articleIds.length * ALL_QA_TYPES.length * targetLanguages.length;
+      
+      // Create job record
+      const { data: job, error: jobError } = await supabase
+        .from('qa_generation_jobs')
+        .insert({
+          user_id: null,
+          status: 'running',
+          mode: 'background',
+          languages: targetLanguages,
+          article_ids: articleIds,
+          cluster_id: clusterId || null,
+          total_articles: articleIds.length,
+          total_faq_pages: maxPossible,
+          processed_articles: 0,
+          generated_faq_pages: 0,
+          current_article_headline: 'Starting...',
+          current_language: null,
+          results: [],
+          started_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (jobError) {
+        console.error('[Main] Failed to create job:', jobError);
+        throw jobError;
+      }
 
-    // COMPLETE MISSING MODE: Find and generate only missing language/qa_type combinations
+      const jobId = job.id;
+      console.log(`[Main] Created background job ${jobId}`);
+
+      // Start background processing without awaiting
+      // @ts-ignore - EdgeRuntime.waitUntil is a Deno Deploy feature
+      EdgeRuntime.waitUntil(
+        processAllMissingQAs(supabase, jobId, articleIds, targetLanguages, openaiApiKey, clusterId)
+      );
+
+      // Return immediately with job ID
+      return new Response(JSON.stringify({
+        success: true,
+        jobId,
+        status: 'running',
+        message: `Background processing started for ${articleIds.length} articles`,
+        totalArticles: articleIds.length,
+        totalExpected: maxPossible,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // COMPLETE MISSING MODE (synchronous, single article)
     if (completeMissing && articleIds.length === 1) {
       const articleId = articleIds[0];
       console.log(`[CompleteMissing] Finding missing pages for article ${articleId}`);
       
-      // Get article data (include both draft and published)
       const { data: article, error: articleError } = await supabase
         .from('blog_articles')
         .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
@@ -611,20 +724,17 @@ serve(async (req) => {
         });
       }
 
-      // Get existing Q&A pages for this article
       const { data: existingPages } = await supabase
         .from('qa_pages')
         .select('language, qa_type, hreflang_group_id')
         .eq('source_article_id', articleId);
 
-      // Build set of existing combinations
-      const existingCombos = new Set((existingPages || []).map(p => `${p.language}_${p.qa_type}`));
+      const existingCombos = new Set((existingPages || []).map((p: any) => `${p.language}_${p.qa_type}`));
       
-      // Get hreflang groups from existing pages (now 4 types)
-      let hreflangGroupCore = existingPages?.find(p => p.qa_type === 'core')?.hreflang_group_id || crypto.randomUUID();
-      let hreflangGroupDecision = existingPages?.find(p => p.qa_type === 'decision')?.hreflang_group_id || crypto.randomUUID();
-      let hreflangGroupPractical = existingPages?.find(p => p.qa_type === 'practical')?.hreflang_group_id || crypto.randomUUID();
-      let hreflangGroupProblem = existingPages?.find(p => p.qa_type === 'problem')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupCore = existingPages?.find((p: any) => p.qa_type === 'core')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupDecision = existingPages?.find((p: any) => p.qa_type === 'decision')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupPractical = existingPages?.find((p: any) => p.qa_type === 'practical')?.hreflang_group_id || crypto.randomUUID();
+      let hreflangGroupProblem = existingPages?.find((p: any) => p.qa_type === 'problem')?.hreflang_group_id || crypto.randomUUID();
       
       const getHreflangGroup = (qaType: string) => {
         switch (qaType) {
@@ -636,7 +746,6 @@ serve(async (req) => {
         }
       };
       
-      // Find missing combinations for all 4 QA types
       const missingCombos: { language: string; qaType: string }[] = [];
       for (const lang of targetLanguages) {
         for (const qaType of ALL_QA_TYPES) {
@@ -657,27 +766,18 @@ serve(async (req) => {
 
       console.log(`[CompleteMissing] Found ${missingCombos.length} missing combinations`);
       
-      // Use English-first workflow for missing pages too
       let englishQAPages: any[] = [];
-      
-      // Find which English QA types are missing
       const missingEnglishTypes = ALL_QA_TYPES.filter(t => !existingCombos.has(`en_${t}`));
       
-      // Check if we have all English pages, if not generate missing ones
       if (missingEnglishTypes.length > 0) {
-        // Generate only the missing English types
         const newEnglishPages = await generateEnglishQAPages(article, openaiApiKey, missingEnglishTypes);
-        
-        // Also fetch existing English pages
         const { data: existingEnglish } = await supabase
           .from('qa_pages')
           .select('*')
           .eq('source_article_id', articleId)
           .eq('language', 'en');
-        
         englishQAPages = [...(existingEnglish || []), ...newEnglishPages];
       } else {
-        // Fetch all existing English pages
         const { data: existingEnglish } = await supabase
           .from('qa_pages')
           .select('*')
@@ -714,17 +814,14 @@ serve(async (req) => {
         trackingId = newTracking?.id;
       }
 
-      // Group missing by language
       const missingByLang: Record<string, string[]> = {};
       for (const combo of missingCombos) {
         if (!missingByLang[combo.language]) missingByLang[combo.language] = [];
         missingByLang[combo.language].push(combo.qaType);
       }
 
-      // Generate/translate missing pages
       for (const [lang, qaTypes] of Object.entries(missingByLang)) {
         if (lang === 'en') {
-          // Save English pages directly
           for (const englishQA of englishQAPages) {
             if (!qaTypes.includes(englishQA.qa_type)) continue;
             
@@ -760,7 +857,6 @@ serve(async (req) => {
             }
           }
         } else {
-          // Translate from English
           for (const englishQA of englishQAPages) {
             if (!qaTypes.includes(englishQA.qa_type)) continue;
             
@@ -808,19 +904,17 @@ serve(async (req) => {
         }
       }
 
-      // Update tracking
       if (trackingId) {
         await supabase
           .from('qa_article_tracking')
           .update({
             languages_generated: languagesGenerated,
-            total_qa_pages: languagesGenerated.length * 4, // Now 4 QAs per language
+            total_qa_pages: languagesGenerated.length * 4,
             status: 'completed',
           })
           .eq('id', trackingId);
       }
 
-      // Update source blog article with all QA page IDs
       if (generatedPages > 0) {
         const { data: allQAPages } = await supabase
           .from('qa_pages')
@@ -870,7 +964,6 @@ serve(async (req) => {
     let jobId = existingJobId;
     let currentIndex = resumeFromIndex;
 
-    // Create new job or use existing one
     if (!jobId) {
       const { data: job, error: jobError } = await supabase
         .from('qa_generation_jobs')
@@ -894,7 +987,6 @@ serve(async (req) => {
       jobId = job.id;
       console.log(`[Main] Created new job ${jobId}`);
     } else {
-      // Resume existing job
       const { data: existingJob } = await supabase
         .from('qa_generation_jobs')
         .select('*')
@@ -915,7 +1007,6 @@ serve(async (req) => {
       }
     }
 
-    // If we've already processed all articles, mark as complete
     if (currentIndex >= articleIds.length) {
       await supabase
         .from('qa_generation_jobs')
@@ -938,14 +1029,14 @@ serve(async (req) => {
       });
     }
 
-    // Process ONE article (the next one)
+    // Process one article at a time (non-background mode)
     const articleIdToProcess = articleIds[currentIndex];
     
     const { data: articles, error: articlesError } = await supabase
       .from('blog_articles')
       .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
       .eq('id', articleIdToProcess)
-      .eq('status', 'published');
+      .in('status', ['draft', 'published']);
 
     if (articlesError) throw articlesError;
     
@@ -973,10 +1064,9 @@ serve(async (req) => {
       });
     }
 
-    // Process this one article with English-first workflow
-    const result = await processOneArticle(supabase, article, targetLanguages, openaiApiKey, jobId);
+    // Legacy processOneArticle function for non-background mode
+    const result = await processOneArticleLegacy(supabase, article, targetLanguages, openaiApiKey, jobId);
     
-    // Update job progress
     currentIndex++;
     const { data: jobData } = await supabase
       .from('qa_generation_jobs')
@@ -1041,3 +1131,235 @@ serve(async (req) => {
     });
   }
 });
+
+/**
+ * Legacy process one article function (kept for backwards compatibility with non-background mode)
+ */
+async function processOneArticleLegacy(
+  supabase: any,
+  article: any,
+  targetLanguages: string[],
+  lovableApiKey: string,
+  jobId: string
+): Promise<{ success: boolean; generatedPages: number; error?: string }> {
+  console.log(`[Process] Processing article: ${article.headline}`);
+  let generatedPages = 0;
+
+  try {
+    const { data: existingTracking } = await supabase
+      .from('qa_article_tracking')
+      .select('*')
+      .eq('source_article_id', article.id)
+      .single();
+
+    let hreflangGroupCore: string;
+    let hreflangGroupDecision: string;
+    let existingLanguages: string[] = [];
+    let trackingId: string;
+
+    if (existingTracking) {
+      hreflangGroupCore = existingTracking.hreflang_group_core;
+      hreflangGroupDecision = existingTracking.hreflang_group_decision;
+      existingLanguages = existingTracking.languages_generated || [];
+      trackingId = existingTracking.id;
+      
+      await supabase
+        .from('qa_article_tracking')
+        .update({ status: 'in_progress' })
+        .eq('id', trackingId);
+    } else {
+      hreflangGroupCore = crypto.randomUUID();
+      hreflangGroupDecision = crypto.randomUUID();
+      
+      const { data: newTracking, error: trackingError } = await supabase
+        .from('qa_article_tracking')
+        .insert({
+          source_article_id: article.id,
+          source_article_headline: article.headline,
+          source_article_slug: article.slug,
+          hreflang_group_core: hreflangGroupCore,
+          hreflang_group_decision: hreflangGroupDecision,
+          languages_generated: [],
+          total_qa_pages: 0,
+          status: 'in_progress',
+        })
+        .select()
+        .single();
+
+      if (trackingError) {
+        throw trackingError;
+      }
+      
+      trackingId = newTracking.id;
+    }
+
+    const languagesToGenerate = targetLanguages.filter((lang: string) => !existingLanguages.includes(lang));
+    
+    if (languagesToGenerate.length === 0) {
+      return { success: true, generatedPages: 0 };
+    }
+
+    let englishQAPages: any[] = [];
+    
+    if (languagesToGenerate.includes('en')) {
+      englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+    } else {
+      const { data: existingEnglish } = await supabase
+        .from('qa_pages')
+        .select('*')
+        .eq('source_article_id', article.id)
+        .eq('language', 'en');
+      
+      if (existingEnglish && existingEnglish.length > 0) {
+        englishQAPages = existingEnglish;
+      } else {
+        englishQAPages = await generateEnglishQAPages(article, lovableApiKey);
+      }
+    }
+
+    const allQAPages: any[] = [];
+
+    if (languagesToGenerate.includes('en')) {
+      for (const englishQA of englishQAPages) {
+        allQAPages.push({
+          ...englishQA,
+          hreflang_group_id: englishQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
+          tracking_id: trackingId,
+        });
+      }
+      existingLanguages.push('en');
+    }
+
+    const translationLanguages = languagesToGenerate.filter((lang: string) => lang !== 'en');
+    
+    for (const targetLang of translationLanguages) {
+      for (const englishQA of englishQAPages) {
+        try {
+          const translatedQA = await translateQAPage(englishQA, targetLang, lovableApiKey);
+          
+          allQAPages.push({
+            ...translatedQA,
+            hreflang_group_id: translatedQA.qa_type === 'core' ? hreflangGroupCore : hreflangGroupDecision,
+            tracking_id: trackingId,
+            source_article_id: article.id,
+            source_article_slug: article.slug,
+          });
+        } catch (error) {
+          console.error(`[Process] Failed to translate ${englishQA.qa_type} to ${targetLang}:`, error);
+        }
+      }
+      
+      existingLanguages.push(targetLang);
+    }
+
+    for (const qaData of allQAPages) {
+      const baseSlug = qaData.slug || `qa-${article.slug}-${qaData.qa_type}`;
+      
+      const { data: existing } = await supabase
+        .from('qa_pages')
+        .select('id')
+        .eq('slug', baseSlug)
+        .eq('language', qaData.language)
+        .single();
+
+      if (existing) {
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from('qa_pages')
+        .insert({
+          source_article_id: article.id,
+          cluster_id: article.cluster_id || null,
+          language: qaData.language,
+          source_language: 'en',
+          hreflang_group_id: qaData.hreflang_group_id,
+          tracking_id: trackingId,
+          qa_type: qaData.qa_type,
+          title: qaData.title,
+          slug: baseSlug,
+          canonical_url: `https://www.delsolprimehomes.com/${qaData.language}/qa/${baseSlug}`,
+          question_main: qaData.question_main,
+          answer_main: qaData.answer_main,
+          related_qas: qaData.related_qas || [],
+          speakable_answer: qaData.speakable_answer,
+          meta_title: qaData.meta_title?.substring(0, 60) || qaData.title.substring(0, 60),
+          meta_description: qaData.meta_description?.substring(0, 160) || '',
+          featured_image_url: article.featured_image_url,
+          featured_image_alt: article.featured_image_alt || qaData.title,
+          featured_image_caption: article.featured_image_caption,
+          source_article_slug: article.slug,
+          author_id: article.author_id,
+          category: article.category,
+          status: 'draft',
+        });
+
+      if (insertError) {
+        console.error('[Process] Insert error:', insertError);
+        continue;
+      }
+
+      generatedPages++;
+    }
+
+    const totalQaPages = existingLanguages.length * 2;
+    await supabase
+      .from('qa_article_tracking')
+      .update({
+        languages_generated: existingLanguages,
+        total_qa_pages: totalQaPages,
+        status: 'completed',
+      })
+      .eq('id', trackingId);
+
+    for (const groupId of [hreflangGroupCore, hreflangGroupDecision]) {
+      const { data: pagesInGroup } = await supabase
+        .from('qa_pages')
+        .select('id, language, slug')
+        .eq('hreflang_group_id', groupId);
+      
+      if (pagesInGroup && pagesInGroup.length > 0) {
+        const translations: Record<string, string> = {};
+        for (const p of pagesInGroup) {
+          translations[p.language] = p.slug;
+        }
+        
+        for (const p of pagesInGroup) {
+          await supabase
+            .from('qa_pages')
+            .update({ translations })
+            .eq('id', p.id);
+        }
+      }
+    }
+
+    if (generatedPages > 0) {
+      const { data: generatedQAPages } = await supabase
+        .from('qa_pages')
+        .select('id')
+        .eq('source_article_id', article.id);
+      
+      if (generatedQAPages && generatedQAPages.length > 0) {
+        const qaPageIds = generatedQAPages.map((qa: { id: string }) => qa.id);
+        
+        await supabase
+          .from('blog_articles')
+          .update({ 
+            generated_qa_page_ids: qaPageIds,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', article.id);
+      }
+    }
+
+    return { success: true, generatedPages };
+
+  } catch (error) {
+    console.error(`[Process] Error processing article ${article.id}:`, error);
+    return { 
+      success: false, 
+      generatedPages, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2 } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -40,6 +40,18 @@ interface ClusterData {
   qa_completion_percent: number;
 }
 
+interface QAJobProgress {
+  jobId: string;
+  clusterId: string;
+  status: string;
+  processedArticles: number;
+  totalArticles: number;
+  generatedPages: number;
+  totalExpected: number;
+  currentArticle?: string;
+  currentLanguage?: string;
+}
+
 // Backend default translation languages (English + these = 10 languages total)
 const DEFAULT_TRANSLATION_LANGUAGES = ["de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"];
 
@@ -56,7 +68,7 @@ const ClusterManager = () => {
   const [regeneratingLinks, setRegeneratingLinks] = useState<string | null>(null);
   const [regeneratingAllLinks, setRegeneratingAllLinks] = useState(false);
   const [generatingQALanguage, setGeneratingQALanguage] = useState<{ clusterId: string; lang: string } | null>(null);
-  const [generatingAllQAs, setGeneratingAllQAs] = useState<string | null>(null);
+  const [qaJobProgress, setQaJobProgress] = useState<QAJobProgress | null>(null);
 
   const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
     const queue =
@@ -355,11 +367,48 @@ const ClusterManager = () => {
     },
   });
 
-  // Generate ALL missing QAs for entire cluster
+  // Poll QA job status
+  const pollQAJobStatus = useCallback(async (jobId: string, clusterId: string) => {
+    const maxAttempts = 600; // 50 minutes max
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
+      
+      const { data: job } = await supabase
+        .from('qa_generation_jobs')
+        .select('status, processed_articles, total_articles, generated_faq_pages, total_faq_pages, current_article_headline, current_language, error')
+        .eq('id', jobId)
+        .single();
+      
+      if (!job) continue;
+      
+      setQaJobProgress({
+        jobId,
+        clusterId,
+        status: job.status,
+        processedArticles: job.processed_articles || 0,
+        totalArticles: job.total_articles || 0,
+        generatedPages: job.generated_faq_pages || 0,
+        totalExpected: job.total_faq_pages || 0,
+        currentArticle: job.current_article_headline || undefined,
+        currentLanguage: job.current_language || undefined,
+      });
+      
+      if (job.status === 'completed' || job.status === 'failed') {
+        queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
+        if (job.status === 'completed') {
+          toast.success(`Generated ${job.generated_faq_pages} QA pages!`);
+        } else {
+          toast.error(`QA generation failed: ${job.error || 'Unknown error'}`);
+        }
+        setTimeout(() => setQaJobProgress(null), 3000);
+        return;
+      }
+    }
+  }, [queryClient]);
+
+  // Generate ALL missing QAs for entire cluster (background mode)
   const generateAllMissingQAsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
-      setGeneratingAllQAs(clusterId);
-      
       // Get all English articles in cluster
       const { data: englishArticles, error: fetchError } = await supabase
         .from("blog_articles")
@@ -373,39 +422,39 @@ const ClusterManager = () => {
         throw new Error("No English articles found in this cluster");
       }
       
-      let totalGenerated = 0;
+      const articleIds = englishArticles.map((a) => a.id);
       
-      // For each English article, generate all missing QAs across all languages
-      for (const article of englishArticles) {
-        try {
-          const { data, error } = await supabase.functions.invoke("generate-qa-pages", {
-            body: { 
-              articleIds: [article.id],
-              languages: ['all'],
-              completeMissing: true
-            },
-          });
-          
-          if (error) {
-            console.error(`Failed to generate QAs for article ${article.id}:`, error);
-          } else {
-            totalGenerated += data?.generatedPages || 0;
-          }
-        } catch (err) {
-          console.error(`Error generating QAs for article ${article.id}:`, err);
-        }
-      }
+      // Call with backgroundMode for immediate return
+      const { data, error } = await supabase.functions.invoke("generate-qa-pages", {
+        body: { 
+          articleIds,
+          languages: ['all'],
+          completeMissing: true,
+          backgroundMode: true,
+          clusterId
+        },
+      });
       
-      return { totalGenerated, articleCount: englishArticles.length };
+      if (error) throw error;
+      return { ...data, clusterId, articleCount: englishArticles.length };
     },
-    onSuccess: ({ totalGenerated, articleCount }) => {
-      toast.success(`Generated ${totalGenerated} QA pages for ${articleCount} articles`);
-      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
-      setGeneratingAllQAs(null);
+    onSuccess: ({ jobId, clusterId, totalExpected, articleCount }) => {
+      toast.success(`Background QA generation started for ${articleCount} articles`);
+      setQaJobProgress({
+        jobId,
+        clusterId,
+        status: 'running',
+        processedArticles: 0,
+        totalArticles: articleCount,
+        generatedPages: 0,
+        totalExpected: totalExpected || articleCount * 40,
+        currentArticle: 'Starting...',
+      });
+      // Start polling in background
+      pollQAJobStatus(jobId, clusterId);
     },
     onError: (error) => {
-      toast.error(`Failed to generate QAs: ${error.message}`);
-      setGeneratingAllQAs(null);
+      toast.error(`Failed to start QA generation: ${error.message}`);
     },
   });
 
@@ -880,7 +929,7 @@ const ClusterManager = () => {
                               variant="ghost"
                               className="h-6 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950"
                               onClick={() => generateQAsForLanguageMutation.mutate({ clusterId: cluster.cluster_id, language: lang })}
-                              disabled={isGenerating || generatingAllQAs === cluster.cluster_id}
+                              disabled={isGenerating || qaJobProgress?.clusterId === cluster.cluster_id}
                             >
                               {isGenerating ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -974,30 +1023,41 @@ const ClusterManager = () => {
                     {/* Generate All Missing QAs Button */}
                     {(() => {
                       const missingQAs = cluster.expected_qa_pages - cluster.total_qa_pages;
-                      const isGenerating = generatingAllQAs === cluster.cluster_id;
+                      const isGenerating = qaJobProgress?.clusterId === cluster.cluster_id;
                       
-                      if (missingQAs <= 0) return null;
+                      if (missingQAs <= 0 && !isGenerating) return null;
                       
                       return (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-950"
-                          onClick={() => generateAllMissingQAsMutation.mutate(cluster.cluster_id)}
-                          disabled={isGenerating || generateAllMissingQAsMutation.isPending}
-                        >
-                          {isGenerating ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Generating QAs...
-                            </>
-                          ) : (
-                            <>
-                              <HelpCircle className="mr-2 h-4 w-4" />
-                              Generate All QAs ({missingQAs} needed)
-                            </>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-950"
+                            onClick={() => generateAllMissingQAsMutation.mutate(cluster.cluster_id)}
+                            disabled={isGenerating || generateAllMissingQAsMutation.isPending}
+                          >
+                            {isGenerating ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {qaJobProgress?.generatedPages || 0}/{qaJobProgress?.totalExpected || '?'} QAs
+                              </>
+                            ) : (
+                              <>
+                                <HelpCircle className="mr-2 h-4 w-4" />
+                                Generate All QAs ({missingQAs} needed)
+                              </>
+                            )}
+                          </Button>
+                          {isGenerating && qaJobProgress && (
+                            <div className="text-xs text-muted-foreground space-y-1 px-1">
+                              <Progress value={(qaJobProgress.generatedPages / (qaJobProgress.totalExpected || 1)) * 100} className="h-1" />
+                              <p className="truncate max-w-[200px]">
+                                📝 {qaJobProgress.currentArticle || 'Processing...'}
+                                {qaJobProgress.currentLanguage && ` (${qaJobProgress.currentLanguage.toUpperCase()})`}
+                              </p>
+                            </div>
                           )}
-                        </Button>
+                        </div>
                       );
                     })()}
                     <Button
