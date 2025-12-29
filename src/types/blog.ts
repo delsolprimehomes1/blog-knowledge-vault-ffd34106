@@ -135,6 +135,7 @@ export interface QAPage {
   source_article_slug?: string;
   internal_links: InternalLink[];
   author_id?: string;
+  funnel_stage?: FunnelStage;
   status: ArticleStatus;
   created_at: string;
   updated_at: string;

@@ -335,7 +335,7 @@ async function processAllMissingQAs(
       // Get article data
       const { data: article, error: articleError } = await supabase
         .from('blog_articles')
-        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category, funnel_stage')
         .eq('id', articleId)
         .in('status', ['draft', 'published'])
         .single();
@@ -495,6 +495,7 @@ async function processAllMissingQAs(
                 source_article_slug: article.slug,
                 author_id: article.author_id,
                 category: article.category,
+                funnel_stage: article.funnel_stage, // Hans' funnel-based linking
                 status: 'draft',
               });
 
@@ -542,6 +543,7 @@ async function processAllMissingQAs(
                   source_article_slug: article.slug,
                   author_id: article.author_id,
                   category: article.category,
+                  funnel_stage: article.funnel_stage, // Hans' funnel-based linking
                   status: 'draft',
                 });
 
@@ -748,7 +750,7 @@ serve(async (req) => {
       // Fetch all articles for this cluster in the target language
       const { data: langArticles, error: langError } = await supabase
         .from('blog_articles')
-        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category, funnel_stage')
         .in('id', articleIds)
         .eq('language', targetLanguage)
         .in('status', ['draft', 'published']);
@@ -842,6 +844,7 @@ serve(async (req) => {
                   featured_image_url: article.featured_image_url,
                   featured_image_alt: article.featured_image_alt,
                   featured_image_caption: article.featured_image_caption,
+                  funnel_stage: article.funnel_stage, // Hans' funnel-based linking
                   status: 'published',
                 });
 
@@ -987,7 +990,7 @@ serve(async (req) => {
       
       const { data: article, error: articleError } = await supabase
         .from('blog_articles')
-        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category, funnel_stage')
         .eq('id', articleId)
         .in('status', ['draft', 'published'])
         .single();
@@ -1123,6 +1126,7 @@ serve(async (req) => {
                 source_article_slug: article.slug,
                 author_id: article.author_id,
                 category: article.category,
+                funnel_stage: article.funnel_stage, // Hans' funnel-based linking
                 status: 'draft',
               });
 
@@ -1161,6 +1165,7 @@ serve(async (req) => {
                   source_article_slug: article.slug,
                   author_id: article.author_id,
                   category: article.category,
+                  funnel_stage: article.funnel_stage, // Hans' funnel-based linking
                   status: 'draft',
                 });
 
@@ -1316,7 +1321,7 @@ serve(async (req) => {
     
     const { data: articles, error: articlesError } = await supabase
       .from('blog_articles')
-      .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+      .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category, funnel_stage')
       .eq('id', articleIdToProcess)
       .in('status', ['draft', 'published']);
 
@@ -1573,6 +1578,7 @@ async function processOneArticleLegacy(
           source_article_slug: article.slug,
           author_id: article.author_id,
           category: article.category,
+          funnel_stage: article.funnel_stage, // Hans' funnel-based linking
           status: 'draft',
         });
 

@@ -3,41 +3,122 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, HelpCircle, Sparkles, BookOpen, Lightbulb } from 'lucide-react';
+import { ArrowRight, HelpCircle, Sparkles, BookOpen, Lightbulb, TrendingUp, Target } from 'lucide-react';
 
 interface QAPage {
   id: string;
   slug: string;
   language: string;
-  qa_type: 'core' | 'decision';
+  qa_type: 'core' | 'decision' | 'practical' | 'problem';
   title: string;
   question_main: string;
   meta_description: string;
   source_article_id: string;
+  funnel_stage?: 'TOFU' | 'MOFU' | 'BOFU';
 }
 
 interface RelatedQAPagesProps {
   articleId: string;
   language: string;
   qaPageIds: string[];
-  clusterId?: string; // NEW: for cluster-wide Q&As
+  clusterId?: string;
+  articleFunnelStage?: string; // NEW: for Hans' funnel-based linking
 }
 
-export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: RelatedQAPagesProps) {
+// Hans' funnel-based Q&A selection pattern
+const getQAPattern = (articleFunnelStage: string) => {
+  switch (articleFunnelStage) {
+    case 'TOFU':
+      return [
+        { source: 'THIS_ARTICLE', count: 2 },
+        { source: 'SAME_CLUSTER', stage: 'MOFU', count: 2 }
+      ];
+    case 'MOFU':
+      return [
+        { source: 'THIS_ARTICLE', count: 2 },
+        { source: 'SAME_CLUSTER', stage: 'MOFU', count: 1 },
+        { source: 'SAME_CLUSTER', stage: 'BOFU', count: 1 }
+      ];
+    case 'BOFU':
+      return [
+        { source: 'THIS_ARTICLE', count: 2 },
+        { source: 'SAME_CLUSTER', stage: 'MOFU', count: 2 }
+      ];
+    default:
+      return [];
+  }
+};
+
+export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, articleFunnelStage }: RelatedQAPagesProps) {
   const [qaPages, setQAPages] = useState<QAPage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchQAPages = async () => {
-      // If we have a clusterId, fetch Q&As directly by cluster_id (single query)
+      // NEW: If we have funnel stage and cluster, use Hans' funnel-based pattern
+      if (articleFunnelStage && clusterId) {
+        const pattern = getQAPattern(articleFunnelStage);
+        const collectedQAs: QAPage[] = [];
+
+        for (const rule of pattern) {
+          if (collectedQAs.length >= 4) break;
+          
+          let query = supabase
+            .from('qa_pages')
+            .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id, funnel_stage')
+            .eq('cluster_id', clusterId)
+            .eq('language', language)
+            .eq('status', 'published');
+
+          if (rule.source === 'THIS_ARTICLE') {
+            query = query.eq('source_article_id', articleId);
+          } else {
+            query = query.neq('source_article_id', articleId);
+            if (rule.stage) {
+              query = query.eq('funnel_stage', rule.stage);
+            }
+          }
+
+          const { data, error } = await query.limit(rule.count);
+          
+          if (!error && data) {
+            // Avoid duplicates
+            const newQAs = data.filter((qa: any) => !collectedQAs.some(existing => existing.id === qa.id));
+            collectedQAs.push(...(newQAs as QAPage[]));
+          }
+        }
+
+        // If we don't have 4 Q&As, fill with any cluster Q&As
+        if (collectedQAs.length < 4) {
+          const existingIds = collectedQAs.map(qa => qa.id);
+          const { data: fillerQAs } = await supabase
+            .from('qa_pages')
+            .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id, funnel_stage')
+            .eq('cluster_id', clusterId)
+            .eq('language', language)
+            .eq('status', 'published')
+            .not('id', 'in', `(${existingIds.join(',')})`)
+            .limit(4 - collectedQAs.length);
+
+          if (fillerQAs) {
+            collectedQAs.push(...(fillerQAs as QAPage[]));
+          }
+        }
+
+        setQAPages(collectedQAs.slice(0, 4));
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: Original cluster-based logic (no funnel stage)
       if (clusterId) {
         const { data: clusterQAs, error: qaError } = await supabase
           .from('qa_pages')
-          .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id')
+          .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id, funnel_stage')
           .eq('cluster_id', clusterId)
           .eq('language', language)
           .eq('status', 'published')
-          .limit(10); // Get more than 4 for sorting
+          .limit(10);
 
         if (qaError) {
           console.error('Error fetching cluster QA pages:', qaError);
@@ -52,7 +133,6 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
           return 0;
         });
 
-        // Take top 4
         setQAPages((sorted.slice(0, 4) as QAPage[]) || []);
         setLoading(false);
         return;
@@ -66,7 +146,7 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
 
       const { data, error } = await supabase
         .from('qa_pages')
-        .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id')
+        .select('id, slug, language, qa_type, title, question_main, meta_description, source_article_id, funnel_stage')
         .in('id', qaPageIds)
         .eq('language', language)
         .eq('status', 'published')
@@ -82,7 +162,7 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
     };
 
     fetchQAPages();
-  }, [articleId, language, qaPageIds, clusterId]);
+  }, [articleId, language, qaPageIds, clusterId, articleFunnelStage]);
 
   if (loading) {
     return (
@@ -101,6 +181,32 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
   if (qaPages.length === 0) {
     return null;
   }
+
+  // Funnel stage badge colors
+  const getFunnelBadge = (funnelStage?: string) => {
+    switch (funnelStage) {
+      case 'TOFU':
+        return (
+          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+            <TrendingUp className="h-3 w-3 mr-1" /> Awareness
+          </Badge>
+        );
+      case 'MOFU':
+        return (
+          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+            <Lightbulb className="h-3 w-3 mr-1" /> Consideration
+          </Badge>
+        );
+      case 'BOFU':
+        return (
+          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+            <Target className="h-3 w-3 mr-1" /> Decision
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <section className="py-8 space-y-6">
@@ -129,24 +235,38 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId }: Re
           >
             <Card className="h-full border border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden">
               <CardContent className="p-6 space-y-4">
-                {/* Badge and Icon */}
-                <div className="flex items-center justify-between">
-                  <Badge 
-                    variant={qa.qa_type === 'core' ? 'default' : 'secondary'}
-                    className={`${
-                      qa.qa_type === 'core' 
-                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' 
-                        : 'bg-purple-500/10 text-purple-600 border-purple-500/20 hover:bg-purple-500/20'
-                    } font-medium`}
-                  >
-                    {qa.qa_type === 'core' ? (
-                      <><BookOpen className="h-3 w-3 mr-1" /> Essential Guide</>
-                    ) : (
-                      <><Lightbulb className="h-3 w-3 mr-1" /> Expert Tips</>
-                    )}
-                  </Badge>
+                {/* Badges Row */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={qa.qa_type === 'core' ? 'default' : 'secondary'}
+                      className={`${
+                        qa.qa_type === 'core' 
+                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' 
+                          : qa.qa_type === 'decision'
+                          ? 'bg-purple-500/10 text-purple-600 border-purple-500/20 hover:bg-purple-500/20'
+                          : qa.qa_type === 'practical'
+                          ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20'
+                          : 'bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20'
+                      } font-medium`}
+                    >
+                      {qa.qa_type === 'core' ? (
+                        <><BookOpen className="h-3 w-3 mr-1" /> Essential Guide</>
+                      ) : qa.qa_type === 'decision' ? (
+                        <><Lightbulb className="h-3 w-3 mr-1" /> Expert Tips</>
+                      ) : qa.qa_type === 'practical' ? (
+                        <><Target className="h-3 w-3 mr-1" /> How-To</>
+                      ) : (
+                        <><HelpCircle className="h-3 w-3 mr-1" /> Avoid Mistakes</>
+                      )}
+                    </Badge>
+                    {qa.funnel_stage && getFunnelBadge(qa.funnel_stage)}
+                  </div>
                   <Sparkles className={`h-5 w-5 ${
-                    qa.qa_type === 'core' ? 'text-blue-400' : 'text-purple-400'
+                    qa.qa_type === 'core' ? 'text-blue-400' : 
+                    qa.qa_type === 'decision' ? 'text-purple-400' :
+                    qa.qa_type === 'practical' ? 'text-green-400' :
+                    'text-orange-400'
                   } opacity-60`} />
                 </div>
 

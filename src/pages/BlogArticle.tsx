@@ -436,13 +436,14 @@ const BlogArticle = () => {
               />
             )}
 
-            {/* Related Q&A Pages - Cluster-wide display (up to 4) */}
+            {/* Related Q&A Pages - Hans' funnel-based linking (up to 4) */}
             {(article.cluster_id || (article.generated_qa_page_ids && article.generated_qa_page_ids.length > 0)) && (
               <RelatedQAPages
                 articleId={article.id}
                 language={article.language}
                 qaPageIds={article.generated_qa_page_ids as string[] || []}
                 clusterId={article.cluster_id || undefined}
+                articleFunnelStage={article.funnel_stage}
               />
             )}
 

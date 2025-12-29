@@ -2513,6 +2513,7 @@ export type Database = {
           featured_image_alt: string
           featured_image_caption: string | null
           featured_image_url: string
+          funnel_stage: string | null
           hreflang_group_id: string | null
           id: string
           internal_links: Json | null
@@ -2544,6 +2545,7 @@ export type Database = {
           featured_image_alt: string
           featured_image_caption?: string | null
           featured_image_url: string
+          funnel_stage?: string | null
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
@@ -2575,6 +2577,7 @@ export type Database = {
           featured_image_alt?: string
           featured_image_caption?: string | null
           featured_image_url?: string
+          funnel_stage?: string | null
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
