@@ -92,6 +92,7 @@ const ClusterAudit = lazy(() => import("./pages/admin/ClusterAudit"));
 const ClusterPriorities = lazy(() => import("./pages/admin/ClusterPriorities"));
 const CompleteIncompleteClusters = lazy(() => import("./pages/admin/CompleteIncompleteClusters"));
 const TranslationQueue = lazy(() => import("./pages/admin/TranslationQueue"));
+const DuplicateImageFixer = lazy(() => import("./pages/admin/DuplicateImageFixer"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -170,6 +171,7 @@ const App = () => (
               <Route path="/admin/cluster-priorities" element={<ProtectedRoute><ClusterPriorities /></ProtectedRoute>} />
               <Route path="/admin/complete-incomplete-clusters" element={<ProtectedRoute><CompleteIncompleteClusters /></ProtectedRoute>} />
               <Route path="/admin/translation-queue" element={<ProtectedRoute><TranslationQueue /></ProtectedRoute>} />
+              <Route path="/admin/duplicate-images" element={<ProtectedRoute><DuplicateImageFixer /></ProtectedRoute>} />
               
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}

@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.translate-cluster-to-language]
 verify_jwt = false
+
+[functions.sync-translations-jsonb]
+verify_jwt = false

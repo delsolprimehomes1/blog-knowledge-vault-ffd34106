@@ -251,7 +251,7 @@ serve(async (req) => {
               // Save translated article
               const translatedSlug = translatedArticle.slug || article.slug;
               const langPrefix = targetLang === 'en' ? '' : `/${targetLang}`;
-              const { error: insertError } = await supabase
+              const { data: insertedArticle, error: insertError } = await supabase
                 .from('blog_articles')
                 .insert({
                   ...translatedArticle,
@@ -263,7 +263,9 @@ serve(async (req) => {
                   hreflang_group_id: groupId,
                   source_language: sourceLanguage,
                   canonical_url: `https://www.delsolprimehomes.com${langPrefix}/blog/${translatedSlug}`
-                });
+                })
+                .select('id, slug')
+                .single();
 
               if (insertError) {
                 if (insertError.message.includes('duplicate') || insertError.code === '23505') {
@@ -276,6 +278,23 @@ serve(async (req) => {
               } else {
                 successCount++;
                 existingTranslationMap.add(translationKey); // Prevent duplicates in same run
+                
+                // Update translations JSONB on source article to include this translation
+                const { data: sourceArticleData } = await supabase
+                  .from('blog_articles')
+                  .select('translations')
+                  .eq('id', article.id)
+                  .single();
+                
+                const currentTranslations = (sourceArticleData?.translations as Record<string, { id: string; slug: string }>) || {};
+                currentTranslations[targetLang] = { id: insertedArticle.id, slug: insertedArticle.slug };
+                
+                await supabase
+                  .from('blog_articles')
+                  .update({ translations: currentTranslations })
+                  .eq('id', article.id);
+                
+                console.log(`[complete-incomplete-cluster] Updated translations JSONB on source article ${article.id} with ${targetLang}`);
               }
             } else {
               const errText = await translateResponse.text();
