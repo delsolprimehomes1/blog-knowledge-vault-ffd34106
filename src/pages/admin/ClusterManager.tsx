@@ -34,6 +34,8 @@ interface ClusterData {
   languages_queue?: string[] | null;
   job_error?: string | null;
   job_progress?: any;
+  qa_pages: Record<string, number>;
+  total_qa_pages: number;
 }
 
 // Backend default translation languages (English + these = 10 languages total)
@@ -89,6 +91,20 @@ const ClusterManager = () => {
     },
   });
 
+  // Fetch QA pages grouped by cluster and language
+  const { data: qaPages } = useQuery({
+    queryKey: ["cluster-qa-pages"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("qa_pages")
+        .select("cluster_id, language")
+        .not("cluster_id", "is", null);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Process articles into cluster groups
   const clusters = useMemo(() => {
     if (!articles) return [];
@@ -107,6 +123,8 @@ const ClusterManager = () => {
           all_draft: true,
           all_published: true,
           created_at: article.created_at,
+          qa_pages: {},
+          total_qa_pages: 0,
         });
       }
 
@@ -147,11 +165,21 @@ const ClusterManager = () => {
       }
     });
 
+    // Add QA page counts per cluster per language
+    qaPages?.forEach((qa) => {
+      if (!qa.cluster_id) return;
+      const cluster = clusterMap.get(qa.cluster_id);
+      if (cluster) {
+        cluster.qa_pages[qa.language] = (cluster.qa_pages[qa.language] || 0) + 1;
+        cluster.total_qa_pages++;
+      }
+    });
+
     // Sort by created_at descending
     return clustersArray.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [articles, clusterJobs]);
+  }, [articles, clusterJobs, qaPages]);
 
   // Filter clusters
   const filteredClusters = useMemo(() => {
@@ -652,6 +680,11 @@ const ClusterManager = () => {
                         <span className="text-muted-foreground">
                           • {cluster.total_articles} articles
                         </span>
+                        {cluster.total_qa_pages > 0 && (
+                          <span className="text-purple-600 dark:text-purple-400">
+                            • {cluster.total_qa_pages} QA pages
+                          </span>
+                        )}
                         <span className="text-muted-foreground">
                           • Created {new Date(cluster.created_at).toLocaleDateString()}
                         </span>
@@ -688,6 +721,11 @@ const ClusterManager = () => {
                     {Object.entries(cluster.languages).map(([lang, stats]) => (
                       <Badge key={lang} variant="outline" className="text-sm">
                         {getLanguageFlag(lang)} {stats.total}
+                        {cluster.qa_pages[lang] > 0 && (
+                          <span className="text-purple-600 dark:text-purple-400 ml-1">
+                            +{cluster.qa_pages[lang]}Q
+                          </span>
+                        )}
                         {stats.draft > 0 && stats.published > 0 && (
                           <span className="text-muted-foreground ml-1">
                             ({stats.published}✓ {stats.draft}○)
