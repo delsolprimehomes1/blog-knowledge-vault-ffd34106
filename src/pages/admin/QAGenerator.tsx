@@ -77,10 +77,9 @@ interface JobState {
 }
 
 export default function FAQGenerator() {
-  const queryClient = useQueryClient();
+const queryClient = useQueryClient();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sourceLanguageFilter, setSourceLanguageFilter] = useState<string>('all'); // NEW: Source language filter
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['all']);
   const [activeTab, setActiveTab] = useState('available');
@@ -171,35 +170,22 @@ export default function FAQGenerator() {
 
   const usedArticleIds = new Set(trackingData.map(t => t.source_article_id));
 
-  // Fetch ALL published articles (not just English) - supports multilingual Q&A generation
+  // Fetch ENGLISH published articles only - Q&As are generated from English, then translated
   const { data: allArticles = [], isLoading: articlesLoading } = useQuery({
-    queryKey: ['published-articles-for-faq-all-languages'],
+    queryKey: ['published-english-articles-for-faq'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
         .select('id, headline, language, category, funnel_stage, date_published, slug, cluster_id')
         .eq('status', 'published')
-        // ✅ NO LANGUAGE FILTER - Fetch ALL languages for multilingual Q&A generation
+        .eq('language', 'en') // ✅ ENGLISH ONLY - Q&As are generated from English then translated
         .order('date_published', { ascending: false });
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Filter by source language if selected
-  const languageFilteredArticles = sourceLanguageFilter === 'all' 
-    ? allArticles 
-    : allArticles.filter(a => a.language === sourceLanguageFilter);
-
-  const availableArticles = languageFilteredArticles.filter(a => !usedArticleIds.has(a.id));
-  
-  // Calculate language statistics
-  const languageStats = LANGUAGES.reduce((acc, lang) => {
-    const total = allArticles.filter(a => a.language === lang.code).length;
-    const available = allArticles.filter(a => a.language === lang.code && !usedArticleIds.has(a.id)).length;
-    acc[lang.code] = { total, available };
-    return acc;
-  }, {} as Record<string, { total: number; available: number }>);
+  const availableArticles = allArticles.filter(a => !usedArticleIds.has(a.id));
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -280,26 +266,11 @@ export default function FAQGenerator() {
     }
   }, [refetchQaPages, refetchTracking, refetchStuckJobs]);
 
-  // Start generation
+  // Start generation - uses English articles and translates to all selected languages
   const startGeneration = useCallback(async () => {
     if (selectedArticles.length === 0) return;
     
-    // NEW: For non-English articles, generate only in article's native language
-    // For "all" selection with mixed languages, use native mode
-    const hasMultipleLanguages = new Set(
-      selectedArticles
-        .map(id => allArticles.find(a => a.id === id)?.language)
-        .filter(Boolean)
-    ).size > 1;
-    
-    // Use native language mode when processing non-English articles
-    const useNativeMode = sourceLanguageFilter !== 'en' || hasMultipleLanguages;
-    
-    const langs = useNativeMode ? ['native'] : (selectedLanguages.includes('all') ? ['all'] : selectedLanguages);
-    
-    if (useNativeMode) {
-      toast.info('Generating Q&As in each article\'s native language');
-    }
+    const langs = selectedLanguages.includes('all') ? ['all'] : selectedLanguages;
     
     try {
       // Create initial job
@@ -307,7 +278,6 @@ export default function FAQGenerator() {
         body: {
           articleIds: selectedArticles,
           languages: langs,
-          nativeLanguageMode: useNativeMode, // NEW: tells edge function to use article's language
         },
       });
 
@@ -577,7 +547,7 @@ export default function FAQGenerator() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sourceLanguageFilter, categoryFilter]);
+  }, [searchTerm, categoryFilter]);
 
   const toggleArticle = (id: string) => {
     setSelectedArticles((prev) =>
@@ -769,45 +739,12 @@ export default function FAQGenerator() {
 
           {/* Available Articles Tab */}
           <TabsContent value="available" className="space-y-4">
-            {/* Language Coverage Statistics */}
-            <div className="grid grid-cols-5 gap-2 mb-4">
-              {LANGUAGES.map(lang => (
-                <Card 
-                  key={lang.code} 
-                  className={`cursor-pointer transition-colors ${sourceLanguageFilter === lang.code ? 'ring-2 ring-primary' : ''}`}
-                  onClick={() => setSourceLanguageFilter(prev => prev === lang.code ? 'all' : lang.code)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{LANGUAGE_FLAGS[lang.code]}</span>
-                      <span className="font-medium text-sm">{lang.name}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <div>Total: {languageStats[lang.code]?.total || 0}</div>
-                      <div className="text-primary font-medium">
-                        Available: {languageStats[lang.code]?.available || 0}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Select Articles for Q&A Generation
-                  {sourceLanguageFilter !== 'all' && (
-                    <Badge variant="secondary">
-                      {LANGUAGE_FLAGS[sourceLanguageFilter]} {LANGUAGES.find(l => l.code === sourceLanguageFilter)?.name} only
-                    </Badge>
-                  )}
-                </CardTitle>
+                <CardTitle>Select English Articles for Q&A Generation</CardTitle>
                 <CardDescription>
-                  {sourceLanguageFilter === 'all' 
-                    ? `All ${allArticles.length} articles across 10 languages. Click a language card above to filter.`
-                    : `Showing ${languageStats[sourceLanguageFilter]?.available || 0} ${LANGUAGES.find(l => l.code === sourceLanguageFilter)?.name} articles without Q&A pages.`
-                  }
+                  These English articles don't have Q&A pages yet. Select articles and languages to generate.
+                  Q&As are generated from English content and translated to all 10 languages.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -822,19 +759,6 @@ export default function FAQGenerator() {
                       className="pl-9"
                     />
                   </div>
-                  <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Source Language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Languages ({allArticles.length})</SelectItem>
-                      {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code}>
-                          {LANGUAGE_FLAGS[lang.code]} {lang.name} ({languageStats[lang.code]?.available || 0})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Category" />
@@ -850,23 +774,20 @@ export default function FAQGenerator() {
                   </Select>
                 </div>
 
-                {/* Q&A Generation Mode Info */}
+                {/* Q&A Generation Info */}
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <p className="text-sm font-medium mb-2">
-                    {sourceLanguageFilter === 'all' 
-                      ? 'Q&A pages will be generated in each article\'s native language'
-                      : `Q&A pages will be generated in ${LANGUAGES.find(l => l.code === sourceLanguageFilter)?.name}`
-                    }
+                    Generate Q&As from English articles → Translate to all 10 languages
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Each article generates 4 Q&As (core, decision, practical, problem) in its native language for maximum AI citation potential.
+                    Each article generates 4 Q&As (core, decision, practical, problem) in English, then translates to 9 other languages for complete multilingual coverage.
                   </p>
                 </div>
 
                 {/* Results count */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Showing {filteredArticles.length > 0 ? startIndex + 1 : 0}-{endIndex} of {filteredArticles.length} articles
+                    Showing {filteredArticles.length > 0 ? startIndex + 1 : 0}-{endIndex} of {filteredArticles.length} English articles
                     {searchTerm && ` matching "${searchTerm}"`}
                   </span>
                   {filteredArticles.length > ITEMS_PER_PAGE && (
@@ -893,7 +814,6 @@ export default function FAQGenerator() {
                           />
                         </TableHead>
                         <TableHead>Title</TableHead>
-                        <TableHead className="w-20">Lang</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Funnel</TableHead>
                         <TableHead>Published</TableHead>
@@ -902,17 +822,15 @@ export default function FAQGenerator() {
                     <TableBody>
                       {articlesLoading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={5} className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                           </TableCell>
                         </TableRow>
                       ) : filteredArticles.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             {availableArticles.length === 0 
-                              ? sourceLanguageFilter === 'all'
-                                ? 'All articles already have Q&A pages generated!'
-                                : `All ${LANGUAGES.find(l => l.code === sourceLanguageFilter)?.name} articles already have Q&A pages!`
+                              ? 'All English articles already have Q&A pages generated!'
                               : 'No articles found matching your filters'}
                           </TableCell>
                         </TableRow>
@@ -925,13 +843,8 @@ export default function FAQGenerator() {
                                 onCheckedChange={() => toggleArticle(article.id)}
                               />
                             </TableCell>
-                            <TableCell className="font-medium max-w-[300px] truncate">
+                            <TableCell className="font-medium max-w-[400px] truncate">
                               {article.headline}
-                            </TableCell>
-                            <TableCell>
-                              <span title={LANGUAGES.find(l => l.code === article.language)?.name}>
-                                {LANGUAGE_FLAGS[article.language]} {article.language.toUpperCase()}
-                              </span>
                             </TableCell>
                             <TableCell>{article.category}</TableCell>
                             <TableCell>

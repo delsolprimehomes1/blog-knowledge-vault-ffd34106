@@ -922,7 +922,6 @@ serve(async (req) => {
       resumeJobId, // Resume a stalled job
       singleLanguageMode = false, // Process one language at a time to prevent timeouts
       targetLanguage, // Which language to process in singleLanguageMode
-      nativeLanguageMode = false // NEW: Generate Q&As in each article's native language
     } = body;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -1234,10 +1233,8 @@ serve(async (req) => {
 
     // Determine target languages
     const isAllLanguages = languages.includes('all') || languages[0] === 'all';
-    const isNativeMode = languages.includes('native') || nativeLanguageMode;
-    // In native mode, we'll determine target language per article (later)
-    const targetLanguages = isNativeMode ? ['native'] : (isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages);
-    const effectiveLanguageCount = isNativeMode ? 1 : targetLanguages.length; // 1 per article in native mode
+    const targetLanguages = isAllLanguages ? ALL_SUPPORTED_LANGUAGES : languages;
+    const effectiveLanguageCount = targetLanguages.length;
 
     // BACKGROUND MODE: Return immediately and process in background
     if (completeMissing && backgroundMode) {
@@ -1547,22 +1544,18 @@ serve(async (req) => {
 
     if (checkError) throw checkError;
 
-    // NATIVE LANGUAGE MODE: Skip non-English check when generating in article's native language
-    if (!nativeLanguageMode) {
-      const nonEnglishArticles = (articlesToCheck || []).filter((a: any) => a.language !== 'en');
-      if (nonEnglishArticles.length > 0) {
-        const nonEnglishHeadlines = nonEnglishArticles.map((a: any) => `${a.headline} (${a.language})`);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Q&A generation requires English source articles only. Non-English articles detected. Use nativeLanguageMode for non-English articles.',
-          nonEnglishArticles: nonEnglishHeadlines,
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } else {
-      console.log(`[Main] Native language mode: Processing ${articlesToCheck?.length || 0} articles in their native languages`);
+    // Validate: Only English articles allowed
+    const nonEnglishArticles = (articlesToCheck || []).filter((a: any) => a.language !== 'en');
+    if (nonEnglishArticles.length > 0) {
+      const nonEnglishHeadlines = nonEnglishArticles.map((a: any) => `${a.headline} (${a.language})`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Q&A generation requires English source articles only. Non-English articles detected.',
+        nonEnglishArticles: nonEnglishHeadlines,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     let jobId = existingJobId;
@@ -1676,10 +1669,8 @@ serve(async (req) => {
       });
     }
 
-    // Legacy processOneArticle function for non-background mode
-    // In native mode, use the article's own language
-    const articleTargetLanguages = isNativeMode ? [article.language] : targetLanguages;
-    const result = await processOneArticleLegacy(supabase, article, articleTargetLanguages, openaiApiKey, jobId);
+    // Legacy processOneArticle function for non-background mode - always English source, translate to target languages
+    const result = await processOneArticleLegacy(supabase, article, targetLanguages, openaiApiKey, jobId);
     
     currentIndex++;
     const { data: jobData } = await supabase
