@@ -2364,8 +2364,11 @@ export type Database = {
         Row: {
           article_ids: string[] | null
           article_status: Json | null
+          cluster_id: string | null
           completed_at: string | null
           created_at: string | null
+          current_article_headline: string | null
+          current_language: string | null
           error: string | null
           generated_faq_pages: number | null
           id: string
@@ -2383,8 +2386,11 @@ export type Database = {
         Insert: {
           article_ids?: string[] | null
           article_status?: Json | null
+          cluster_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          current_article_headline?: string | null
+          current_language?: string | null
           error?: string | null
           generated_faq_pages?: number | null
           id?: string
@@ -2402,8 +2408,11 @@ export type Database = {
         Update: {
           article_ids?: string[] | null
           article_status?: Json | null
+          cluster_id?: string | null
           completed_at?: string | null
           created_at?: string | null
+          current_article_headline?: string | null
+          current_language?: string | null
           error?: string | null
           generated_faq_pages?: number | null
           id?: string
