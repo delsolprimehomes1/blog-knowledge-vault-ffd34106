@@ -654,7 +654,9 @@ serve(async (req) => {
       completeMissing = false,
       clusterId,
       backgroundMode = false,
-      resumeJobId // New: Resume a stalled job
+      resumeJobId, // Resume a stalled job
+      singleLanguageMode = false, // NEW: Process one language at a time to prevent timeouts
+      targetLanguage // NEW: Which language to process in singleLanguageMode
     } = body;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -724,6 +726,152 @@ serve(async (req) => {
         message: `Resumed job from article ${stalledJob.resume_from_article_index || 0}`,
         actualPages: actualCount,
         totalExpected: stalledJob.total_faq_pages,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // SINGLE LANGUAGE MODE: Process QAs for one language only (prevents timeouts)
+    if (singleLanguageMode && targetLanguage) {
+      console.log(`[SingleLang] Processing QAs for language: ${targetLanguage}`);
+      
+      if (!articleIds || !Array.isArray(articleIds) || articleIds.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'articleIds is required for single language mode' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Fetch all articles for this cluster in the target language
+      const { data: langArticles, error: langError } = await supabase
+        .from('blog_articles')
+        .select('id, headline, detailed_content, meta_description, language, featured_image_url, featured_image_alt, featured_image_caption, slug, author_id, cluster_id, category')
+        .in('id', articleIds)
+        .eq('language', targetLanguage)
+        .in('status', ['draft', 'published']);
+      
+      if (langError) {
+        console.error('[SingleLang] Error fetching articles:', langError);
+        return new Response(JSON.stringify({ success: false, error: langError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!langArticles || langArticles.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: `No ${targetLanguage} articles found`,
+          generatedPages: 0,
+          skippedPages: 0,
+          language: targetLanguage,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`[SingleLang] Found ${langArticles.length} articles for ${targetLanguage}`);
+
+      let totalGenerated = 0;
+      let totalSkipped = 0;
+      const results: any[] = [];
+
+      for (const article of langArticles) {
+        try {
+          // Check which QA types already exist for this article
+          const { data: existingQAs } = await supabase
+            .from('qa_pages')
+            .select('qa_type, hreflang_group_id')
+            .eq('source_article_id', article.id)
+            .eq('language', targetLanguage);
+
+          const existingTypes = new Set((existingQAs || []).map((qa: any) => qa.qa_type));
+          const missingTypes = ALL_QA_TYPES.filter(t => !existingTypes.has(t));
+
+          if (missingTypes.length === 0) {
+            console.log(`[SingleLang] Article ${article.id} already has all QA types, skipping`);
+            totalSkipped += 4;
+            continue;
+          }
+
+          // Get or create hreflang group IDs
+          const getHreflangGroup = (qaType: string) => {
+            const existing = existingQAs?.find((q: any) => q.qa_type === qaType);
+            return existing?.hreflang_group_id || crypto.randomUUID();
+          };
+
+          // Generate QAs for missing types
+          console.log(`[SingleLang] Generating ${missingTypes.length} QA types for article ${article.headline}`);
+          const qaPages = await generateEnglishQAPages(article, openaiApiKey, missingTypes);
+
+          // Insert generated QAs
+          for (const qa of qaPages) {
+            const qaType = qa.qa_type || 'core';
+            const hreflangGroupId = getHreflangGroup(qaType);
+            
+            // Generate unique slug
+            const baseSlug = qa.slug || `${article.slug}-${qaType}`;
+            const uniqueSlug = `${baseSlug}-${targetLanguage}-${Date.now().toString(36)}`;
+
+            const { error: insertError } = await supabase
+              .from('qa_pages')
+              .insert({
+                source_article_id: article.id,
+                cluster_id: article.cluster_id || clusterId,
+                language: targetLanguage,
+                qa_type: qaType,
+                hreflang_group_id: hreflangGroupId,
+                title: qa.title,
+                slug: uniqueSlug,
+                question_main: qa.question_main,
+                answer_main: qa.answer_main,
+                related_qas: qa.related_qas || [],
+                meta_title: qa.meta_title?.substring(0, 60),
+                meta_description: qa.meta_description?.substring(0, 160),
+                speakable_answer: qa.speakable_answer,
+                author_id: article.author_id,
+                featured_image_url: article.featured_image_url,
+                featured_image_alt: article.featured_image_alt,
+                featured_image_caption: article.featured_image_caption,
+                status: 'published',
+                date_published: new Date().toISOString(),
+              });
+
+            if (insertError) {
+              console.error(`[SingleLang] Failed to insert QA:`, insertError);
+            } else {
+              totalGenerated++;
+            }
+          }
+
+          results.push({
+            articleId: article.id,
+            headline: article.headline,
+            generated: qaPages.length,
+          });
+
+        } catch (err) {
+          console.error(`[SingleLang] Error processing article ${article.id}:`, err);
+          results.push({
+            articleId: article.id,
+            headline: article.headline,
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+
+      console.log(`[SingleLang] Completed: ${totalGenerated} generated, ${totalSkipped} skipped`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        language: targetLanguage,
+        articlesProcessed: langArticles.length,
+        generatedPages: totalGenerated,
+        skippedPages: totalSkipped,
+        results,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

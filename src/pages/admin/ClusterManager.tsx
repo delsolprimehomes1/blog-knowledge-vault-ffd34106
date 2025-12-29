@@ -415,57 +415,86 @@ const ClusterManager = () => {
     }
   }, [queryClient]);
 
-  // Generate ALL missing QAs for entire cluster (background mode)
-  const generateAllMissingQAsMutation = useMutation({
-    mutationFn: async (clusterId: string) => {
-      // Get all English articles in cluster
-      const { data: englishArticles, error: fetchError } = await supabase
-        .from("blog_articles")
-        .select("id")
-        .eq("cluster_id", clusterId)
-        .eq("language", "en")
-        .in("status", ["draft", "published"]);
+  // Generate QAs for next pending language in cluster (one at a time)
+  const generateNextLanguageQAMutation = useMutation({
+    mutationFn: async ({ clusterId, language, articleIds }: { clusterId: string; language: string; articleIds: string[] }) => {
+      setGeneratingQALanguage({ clusterId, lang: language });
       
-      if (fetchError) throw fetchError;
-      if (!englishArticles || englishArticles.length === 0) {
-        throw new Error("No English articles found in this cluster");
-      }
-      
-      const articleIds = englishArticles.map((a) => a.id);
-      
-      // Call with backgroundMode for immediate return
       const { data, error } = await supabase.functions.invoke("generate-qa-pages", {
         body: { 
           articleIds,
-          languages: ['all'],
-          completeMissing: true,
-          backgroundMode: true,
-          clusterId
+          singleLanguageMode: true,
+          targetLanguage: language,
+          clusterId,
         },
       });
       
       if (error) throw error;
-      return { ...data, clusterId, articleCount: englishArticles.length };
+      return { ...data, clusterId, language };
     },
-    onSuccess: ({ jobId, clusterId, totalExpected, articleCount }) => {
-      toast.success(`Background QA generation started for ${articleCount} articles`);
-      setQaJobProgress({
-        jobId,
-        clusterId,
-        status: 'running',
-        processedArticles: 0,
-        totalArticles: articleCount,
-        generatedPages: 0,
-        totalExpected: totalExpected || articleCount * 40,
-        currentArticle: 'Starting...',
-      });
-      // Start polling in background
-      pollQAJobStatus(jobId, clusterId);
+    onSuccess: ({ language, generatedPages, skippedPages, clusterId }) => {
+      const total = (generatedPages || 0) + (skippedPages || 0);
+      if (generatedPages > 0) {
+        toast.success(`Generated ${generatedPages} QA pages for ${language.toUpperCase()}`);
+      } else if (skippedPages > 0) {
+        toast.info(`${language.toUpperCase()} already complete (${skippedPages} pages exist)`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
+      setGeneratingQALanguage(null);
     },
     onError: (error) => {
-      toast.error(`Failed to start QA generation: ${error.message}`);
+      toast.error(`Failed to generate QAs: ${error.message}`);
+      setGeneratingQALanguage(null);
     },
   });
+
+  // Get next language that needs QA generation for a cluster
+  const getNextPendingQALanguage = useCallback((cluster: ClusterData) => {
+    const expectedLanguages = getAllExpectedLanguages(cluster);
+    
+    for (const lang of expectedLanguages) {
+      const langStats = cluster.languages[lang];
+      if (!langStats) continue; // No articles in this language
+      
+      const expectedQAs = langStats.total * 4;
+      const actualQAs = cluster.qa_pages[lang] || 0;
+      
+      if (actualQAs < expectedQAs) {
+        return {
+          language: lang,
+          missing: expectedQAs - actualQAs,
+          expected: expectedQAs,
+          actual: actualQAs,
+        };
+      }
+    }
+    return null; // All languages complete
+  }, [getAllExpectedLanguages]);
+
+  // Get QA language status for a cluster
+  const getQALanguageStatus = useCallback((cluster: ClusterData) => {
+    const expectedLanguages = getAllExpectedLanguages(cluster);
+    const statuses: { lang: string; status: 'complete' | 'partial' | 'none'; count: number; expected: number }[] = [];
+    
+    for (const lang of expectedLanguages) {
+      const langStats = cluster.languages[lang];
+      if (!langStats) continue;
+      
+      const expectedQAs = langStats.total * 4;
+      const actualQAs = cluster.qa_pages[lang] || 0;
+      
+      let status: 'complete' | 'partial' | 'none' = 'none';
+      if (actualQAs >= expectedQAs) {
+        status = 'complete';
+      } else if (actualQAs > 0) {
+        status = 'partial';
+      }
+      
+      statuses.push({ lang, status, count: actualQAs, expected: expectedQAs });
+    }
+    
+    return statuses;
+  }, [getAllExpectedLanguages]);
 
   // Query for stalled QA jobs
   const { data: stalledQAJobs } = useQuery({
@@ -1117,43 +1146,91 @@ const ClusterManager = () => {
                         </Button>
                       );
                     })()}
-                    {/* Generate All Missing QAs Button */}
+                    {/* Generate Next Language QAs Button */}
                     {(() => {
-                      const missingQAs = cluster.expected_qa_pages - cluster.total_qa_pages;
-                      const isGenerating = qaJobProgress?.clusterId === cluster.cluster_id;
+                      const nextPending = getNextPendingQALanguage(cluster);
+                      const qaStatuses = getQALanguageStatus(cluster);
+                      const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
+                      const completedCount = qaStatuses.filter(s => s.status === 'complete').length;
+                      const totalLangs = qaStatuses.length;
                       
-                      if (missingQAs <= 0 && !isGenerating) return null;
+                      if (!nextPending && !isGenerating) return null;
+                      
+                      // Get article IDs for the next pending language
+                      const getArticleIdsForLanguage = async () => {
+                        const { data } = await supabase
+                          .from("blog_articles")
+                          .select("id")
+                          .eq("cluster_id", cluster.cluster_id)
+                          .eq("language", nextPending!.language)
+                          .in("status", ["draft", "published"]);
+                        return data?.map(a => a.id) || [];
+                      };
                       
                       return (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
+                          {/* Language progress bar */}
+                          <div className="flex items-center gap-1 text-xs">
+                            {qaStatuses.map(({ lang, status, count, expected }) => (
+                              <Badge
+                                key={lang}
+                                variant="outline"
+                                className={`text-[10px] px-1 py-0 h-5 ${
+                                  status === 'complete'
+                                    ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-700'
+                                    : status === 'partial'
+                                      ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700'
+                                      : 'bg-muted text-muted-foreground'
+                                } ${isGenerating && generatingQALanguage?.lang === lang ? 'ring-2 ring-purple-400' : ''}`}
+                              >
+                                {getLanguageFlag(lang)}
+                                {status === 'complete' ? '✓' : status === 'partial' ? `${count}/${expected}` : '○'}
+                              </Badge>
+                            ))}
+                          </div>
+                          
+                          {/* Generate next language button */}
                           <Button
                             variant="outline"
                             size="sm"
                             className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-950"
-                            onClick={() => generateAllMissingQAsMutation.mutate(cluster.cluster_id)}
-                            disabled={isGenerating || generateAllMissingQAsMutation.isPending}
+                            onClick={async () => {
+                              if (!nextPending) return;
+                              const articleIds = await getArticleIdsForLanguage();
+                              if (articleIds.length === 0) {
+                                toast.error(`No articles found for ${nextPending.language.toUpperCase()}`);
+                                return;
+                              }
+                              generateNextLanguageQAMutation.mutate({
+                                clusterId: cluster.cluster_id,
+                                language: nextPending.language,
+                                articleIds,
+                              });
+                            }}
+                            disabled={isGenerating || generateNextLanguageQAMutation.isPending || !nextPending}
                           >
                             {isGenerating ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                {qaJobProgress?.generatedPages || 0}/{qaJobProgress?.totalExpected || '?'} QAs
+                                Generating {getLanguageFlag(generatingQALanguage?.lang || '')} QAs...
+                              </>
+                            ) : nextPending ? (
+                              <>
+                                <HelpCircle className="mr-2 h-4 w-4" />
+                                Generate {getLanguageFlag(nextPending.language)} QAs ({nextPending.missing} needed)
                               </>
                             ) : (
                               <>
-                                <HelpCircle className="mr-2 h-4 w-4" />
-                                Generate All QAs ({missingQAs} needed)
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                All QAs Complete
                               </>
                             )}
                           </Button>
-                          {isGenerating && qaJobProgress && (
-                            <div className="text-xs text-muted-foreground space-y-1 px-1">
-                              <Progress value={(qaJobProgress.generatedPages / (qaJobProgress.totalExpected || 1)) * 100} className="h-1" />
-                              <p className="truncate max-w-[200px]">
-                                📝 {qaJobProgress.currentArticle || 'Processing...'}
-                                {qaJobProgress.currentLanguage && ` (${qaJobProgress.currentLanguage.toUpperCase()})`}
-                              </p>
-                            </div>
-                          )}
+                          
+                          {/* Progress indicator */}
+                          <p className="text-xs text-muted-foreground">
+                            {completedCount}/{totalLangs} languages complete
+                          </p>
                         </div>
                       );
                     })()}
