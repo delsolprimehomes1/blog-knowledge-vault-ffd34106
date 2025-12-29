@@ -156,136 +156,299 @@ Respond in JSON format ONLY:
   throw new Error('Translation failed after all retries');
 }
 
+// Intro styles to prevent repetitive patterns
+const VARIED_INTRO_STYLES = [
+  'direct_answer',      // Start with the answer immediately
+  'context_first',      // Provide brief context then answer
+  'statistic_lead',     // Lead with a relevant statistic
+  'common_misconception', // Address misconception then correct
+] as const;
+
 /**
- * Generate English Q&A pages for an article - NOW 4 TYPES
+ * Validate Q&A content meets AI-citation specifications
+ * - Word count: 450-700 words
+ * - No CTAs or marketing language
+ * - No links
+ */
+function validateQAContent(qaData: any): { valid: boolean; reason?: string; wordCount?: number } {
+  if (!qaData.answer_main || !qaData.question_main) {
+    return { valid: false, reason: 'missing_required_fields' };
+  }
+
+  const wordCount = qaData.answer_main.split(/\s+/).filter((w: string) => w.length > 0).length;
+  
+  if (wordCount < 350) {
+    console.warn(`[Validation] Q&A too short: ${wordCount} words (min 350 for lenient mode)`);
+    return { valid: false, reason: 'too_short', wordCount };
+  }
+  
+  if (wordCount > 800) {
+    console.warn(`[Validation] Q&A too long: ${wordCount} words (max 800 for lenient mode)`);
+    return { valid: false, reason: 'too_long', wordCount };
+  }
+  
+  const lowerContent = qaData.answer_main.toLowerCase();
+  
+  // Check for prohibited CTA content
+  const ctaPatterns = ['contact us', 'get in touch', 'call us today', 'reach out to', 'book a consultation'];
+  for (const pattern of ctaPatterns) {
+    if (lowerContent.includes(pattern)) {
+      console.warn(`[Validation] Q&A contains CTA: "${pattern}"`);
+      return { valid: false, reason: 'contains_cta' };
+    }
+  }
+  
+  // Check for markdown links - should be 0
+  const linkMatches = qaData.answer_main.match(/\[.*?\]\(.*?\)/g) || [];
+  if (linkMatches.length > 0) {
+    console.warn(`[Validation] Q&A contains ${linkMatches.length} links`);
+    return { valid: false, reason: 'contains_links' };
+  }
+  
+  return { valid: true, wordCount };
+}
+
+/**
+ * Generate AI-optimized Q&A prompt following the definitive content specification
+ */
+function generateAIOptimizedPrompt(
+  article: any, 
+  qaType: string, 
+  language: string, 
+  introStyle: string
+): string {
+  const languageName = LANGUAGE_NAMES[language] || language;
+  
+  const styleInstructions: Record<string, string> = {
+    'direct_answer': 'Start with the direct answer immediately. No preamble.',
+    'context_first': 'Begin with 1-2 sentences of context, then provide the answer.',
+    'statistic_lead': 'If relevant, lead with a statistic or fact, then answer.',
+    'common_misconception': 'Address a common misconception first, then provide the correct answer.',
+  };
+
+  const qaTypeInstructions: Record<string, string> = {
+    'core': 'CORE question - fundamental information. Use "What is...", "How does..." format.',
+    'decision': 'DECISION question - helps users choose. Use "Should I...", "Best way to...", "Which is better..." format.',
+    'practical': 'PRACTICAL question - actionable guidance. Use "When should I...", "How do I...", "What steps..." format.',
+    'problem': 'PROBLEM question - addresses challenges. Use "What mistakes...", "What risks...", "How to avoid..." format.',
+  };
+
+  return `You are generating a Q&A page optimized for AI citation by ChatGPT, Perplexity, Claude, and other AI systems.
+
+LANGUAGE: Generate ALL content in ${languageName.toUpperCase()} language.
+
+Q&A TYPE: ${qaType.toUpperCase()}
+${qaTypeInstructions[qaType] || qaTypeInstructions['core']}
+
+INTRO STYLE: ${styleInstructions[introStyle] || styleInstructions['direct_answer']}
+
+=== STRICT REQUIREMENTS ===
+
+1. WORD COUNT (CRITICAL):
+   Total: 450-700 words
+   - Short Answer: 80-120 words (direct, no subsections)
+   - In-Depth Explanation: 300-500 words (3-5 H3 sections)
+   - Practical Nuance: 40-70 words (closing paragraph)
+
+2. EXACT STRUCTURE:
+   The answer_main must follow this EXACT format:
+   
+   [Short Answer - 80-120 words, NO heading]
+   Direct, complete answer that stands alone. 1-2 short paragraphs. Calm, factual, neutral tone.
+   
+   ### [Descriptive H3 Heading 1]
+   [80-150 words explaining this aspect]
+   
+   ### [Descriptive H3 Heading 2]
+   [80-150 words explaining this aspect]
+   
+   ### [Descriptive H3 Heading 3]
+   [80-150 words explaining this aspect]
+   
+   [Practical Nuance - 40-70 words, NO heading]
+   One closing paragraph adding real-world nuance or addressing common misunderstandings.
+
+3. TONE (NON-NEGOTIABLE):
+   ✅ Neutral, advisory, factual
+   ✅ Third-person perspective only
+   ✅ Clear, descriptive H3 headings
+   
+   ❌ NO "we", "our", "I" language
+   ❌ NO marketing language or promises
+   ❌ NO superlatives (amazing, perfect, best, incredible)
+   ❌ NO CTAs (contact us, get in touch, call today)
+
+4. PROHIBITED CONTENT:
+   ❌ NO internal links
+   ❌ NO external links
+   ❌ NO bullet points in Short Answer
+   ❌ NO references to other Q&As or articles
+   ❌ NO social proof or testimonials
+
+5. H3 SECTION THEMES (choose 3-5 relevant ones):
+   - Legal aspects / regulations
+   - Financial considerations / costs
+   - Practical timeline / process
+   - Common risks / pitfalls
+   - How buyers mitigate issues
+   - Regional variations
+   - Professional requirements
+   - Documentation needed
+   - Market considerations
+
+=== SOURCE CONTEXT ===
+Article Title: ${article.headline}
+Article Summary: ${article.meta_description || 'Real estate in Costa del Sol, Spain'}
+Cluster Theme: ${article.cluster_theme || 'Spanish property'}
+Funnel Stage: ${article.funnel_stage || 'TOFU'}
+Language: ${language}
+
+ARTICLE CONTENT:
+${(article.detailed_content || '').substring(0, 4000)}
+
+=== OUTPUT FORMAT ===
+Return ONLY valid JSON:
+{
+  "qa_type": "${qaType}",
+  "question_main": "Question in ${languageName} ending with ?",
+  "answer_main": "Complete markdown answer following the exact structure above",
+  "title": "SEO page title (50-60 chars)",
+  "slug": "url-friendly-slug",
+  "meta_title": "Meta title ≤60 chars",
+  "meta_description": "Meta description ≤160 chars",
+  "speakable_answer": "Citation-ready voice answer (50-80 words)"
+}
+
+CRITICAL: Generate unique, valuable content that AI systems will cite as authoritative. This is a KNOWLEDGE OBJECT, not a sales page.`;
+}
+
+/**
+ * Generate English Q&A pages for an article - AI-OPTIMIZED VERSION
+ * Now generates content optimized for AI citation (450-700 words, structured, no marketing)
  */
 async function generateEnglishQAPages(
   article: any,
   lovableApiKey: string,
   specificTypes?: string[]
 ): Promise<any[]> {
-  console.log(`[Generate] Creating English Q&A pages for: ${article.headline}`);
+  console.log(`[Generate] Creating AI-optimized Q&A pages for: ${article.headline}`);
 
   const typesToGenerate = specificTypes || ALL_QA_TYPES;
-  const typeCount = typesToGenerate.length;
-
-  const prompt = `You are generating ${typeCount} standalone Q&A pages derived from this blog article:
-
-ARTICLE TITLE: ${article.headline}
-ARTICLE CONTENT: ${article.detailed_content?.substring(0, 4000)}
-LANGUAGE: English
-
-Generate exactly ${typeCount} Q&A pages with DIFFERENT angles:
-
-${typesToGenerate.includes('core') ? `Q&A PAGE (TYPE: "core"):
-- Focus: Core explanation, how-to, educational
-- Main question should be "What is..." or "How to..." style
-- Answer should be comprehensive, helpful, structured
-
-` : ''}${typesToGenerate.includes('decision') ? `Q&A PAGE (TYPE: "decision"):  
-- Focus: Decision-making, comparison, best approaches
-- Main question should be "Should I...", "Best way to...", "Which is better..." style
-- Answer should help readers make informed decisions
-
-` : ''}${typesToGenerate.includes('practical') ? `Q&A PAGE (TYPE: "practical"):
-- Focus: Step-by-step guides, practical tips, timing
-- Main question should be "When should I...", "How do I...", "What steps..." style
-- Answer should provide actionable, practical guidance
-
-` : ''}${typesToGenerate.includes('problem') ? `Q&A PAGE (TYPE: "problem"):
-- Focus: Common mistakes, problems to avoid, troubleshooting
-- Main question should be "What mistakes...", "What problems...", "How to avoid..." style
-- Answer should help readers avoid common pitfalls
-
-` : ''}For EACH Q&A page, return a JSON object with these exact fields:
-{
-  "qa_type": "${typesToGenerate.join('" or "')}",
-  "title": "Full page title (50-60 chars)",
-  "slug": "url-friendly-slug",
-  "question_main": "The primary question",
-  "answer_main": "Complete, citeable, helpful answer in HTML format (300-500 words)",
-  "related_qas": [
-    {"question": "Related Q1", "answer": "Answer"},
-    {"question": "Related Q2", "answer": "Answer"}
-  ],
-  "speakable_answer": "Short, citation-ready voice answer (50-80 words)",
-  "meta_title": "SEO title ≤60 chars",
-  "meta_description": "SEO description ≤160 chars"
-}
-
-Return a JSON array with exactly ${typeCount} objects. No markdown, no explanation, just valid JSON.`;
-
-  const MAX_RETRIES = 2;
+  const qaPagesData: any[] = [];
   
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: 'You are an expert SEO content generator. Return only valid JSON, no markdown or explanation.' },
-            { role: 'user', content: prompt }
-          ],
-          max_tokens: 4096,
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        throw new Error(`AI API error: ${aiResponse.status}`);
-      }
-
-      const aiData = await aiResponse.json();
-      let content = aiData.choices?.[0]?.message?.content || '';
-      
-      content = content
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .replace(/^\s+|\s+$/g, '')
-        .replace(/,\s*]/g, ']')
-        .replace(/,\s*}/g, '}')
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .replace(/[\x00-\x1F\x7F]/g, '');
-
-      let qaPagesData;
+  let styleIndex = 0;
+  
+  for (const qaType of typesToGenerate) {
+    const introStyle = VARIED_INTRO_STYLES[styleIndex % VARIED_INTRO_STYLES.length];
+    styleIndex++;
+    
+    console.log(`[Generate] Generating ${qaType} Q&A with ${introStyle} style`);
+    
+    const prompt = generateAIOptimizedPrompt(article, qaType, article.language || 'en', introStyle);
+    
+    const MAX_RETRIES = 2;
+    let qaData = null;
+    
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        qaPagesData = JSON.parse(content);
-      } catch {
-        const start = content.indexOf('[');
-        const end = content.lastIndexOf(']');
-        if (start !== -1 && end !== -1 && end > start) {
-          qaPagesData = JSON.parse(content.slice(start, end + 1));
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lovableApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              { 
+                role: 'system', 
+                content: 'You are an expert knowledge content generator creating AI-citable Q&A pages. Return only valid JSON. Never include marketing language, CTAs, or links.' 
+              },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 2500,
+            temperature: 0.7,
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          throw new Error(`AI API error: ${aiResponse.status}`);
+        }
+
+        const aiData = await aiResponse.json();
+        let content = aiData.choices?.[0]?.message?.content || '';
+        
+        // Clean up response
+        content = content
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .replace(/^\s+|\s+$/g, '')
+          .replace(/,\s*]/g, ']')
+          .replace(/,\s*}/g, '}')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/[\x00-\x1F\x7F]/g, '');
+
+        // Parse JSON
+        try {
+          qaData = JSON.parse(content);
+        } catch {
+          const start = content.indexOf('{');
+          const end = content.lastIndexOf('}');
+          if (start !== -1 && end !== -1 && end > start) {
+            qaData = JSON.parse(content.slice(start, end + 1));
+          } else {
+            throw new Error('Failed to parse AI response as JSON');
+          }
+        }
+        
+        // Validate content
+        const validation = validateQAContent(qaData);
+        if (!validation.valid) {
+          console.warn(`[Generate] Validation failed for ${qaType} (attempt ${attempt + 1}): ${validation.reason}`);
+          if (attempt < MAX_RETRIES) {
+            qaData = null;
+            continue;
+          }
+          // On final attempt, use anyway but log warning
+          console.warn(`[Generate] Using ${qaType} despite validation failure after ${MAX_RETRIES + 1} attempts`);
         } else {
-          throw new Error('Failed to parse AI response as JSON');
+          console.log(`[Generate] Valid ${qaType} Q&A: ${validation.wordCount} words`);
+        }
+        
+        break; // Success, exit retry loop
+        
+      } catch (error) {
+        console.error(`[Generate] Attempt ${attempt + 1} failed for ${qaType}:`, error);
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         }
       }
-
-      if (!Array.isArray(qaPagesData) || qaPagesData.length === 0) {
-        throw new Error('AI response is not a valid array of QA pages');
+    }
+    
+    if (qaData) {
+      // Ensure qa_type is set correctly
+      qaData.qa_type = qaType;
+      qaData.language = article.language || 'en';
+      qaData.source_article_id = article.id;
+      qaData.source_article_slug = article.slug;
+      
+      // Remove any links that might have slipped through
+      if (qaData.answer_main) {
+        qaData.answer_main = qaData.answer_main.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
       }
-
-      return qaPagesData.map((qa: any) => ({
-        ...qa,
-        language: 'en',
-        source_article_id: article.id,
-        source_article_slug: article.slug,
-      }));
-
-    } catch (error) {
-      console.error(`[Generate] Attempt ${attempt + 1} failed:`, error);
-      if (attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-      } else {
-        throw error;
-      }
+      
+      qaPagesData.push(qaData);
+    } else {
+      console.error(`[Generate] Failed to generate ${qaType} Q&A after all retries`);
     }
   }
   
-  throw new Error('English QA generation failed after all retries');
+  if (qaPagesData.length === 0) {
+    throw new Error('Failed to generate any Q&A pages');
+  }
+
+  console.log(`[Generate] Successfully generated ${qaPagesData.length}/${typesToGenerate.length} Q&A pages`);
+  return qaPagesData;
 }
 
 /**
