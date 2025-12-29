@@ -30,6 +30,14 @@ export interface InternalLink {
   text: string;
   url: string;
   title: string;
+  // Enhanced fields for AI-optimized linking
+  question?: string;
+  snippet?: string;
+  funnel_stage?: FunnelStage;
+  purpose?: string;
+  relevance_score?: number;
+  type?: 'internal_blog' | 'external_authority';
+  rel?: string;
 }
 
 export interface ExternalCitation {
