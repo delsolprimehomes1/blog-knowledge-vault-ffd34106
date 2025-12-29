@@ -837,7 +837,6 @@ serve(async (req) => {
                 featured_image_alt: article.featured_image_alt,
                 featured_image_caption: article.featured_image_caption,
                 status: 'published',
-                date_published: new Date().toISOString(),
               });
 
             if (insertError) {
