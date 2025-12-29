@@ -209,7 +209,56 @@ function validateQAContent(qaData: any): { valid: boolean; reason?: string; word
 }
 
 /**
+ * Validate Q&A was generated in the correct language
+ * Detects if content was accidentally generated in English instead of target language
+ */
+function validateQALanguage(qaData: any, expectedLanguage: string): boolean {
+  // English is default, always valid
+  if (expectedLanguage === 'en') return true;
+  
+  const content = `${qaData.question_main} ${qaData.answer_main}`.toLowerCase();
+  
+  // Common English patterns that shouldn't dominate in non-English content
+  const englishPatterns = [' the ', ' is ', ' are ', ' and ', ' for ', ' to ', ' of ', ' in ', ' that ', ' with '];
+  const englishMatches = englishPatterns.filter(p => content.includes(p)).length;
+  
+  // Language-specific patterns that SHOULD appear
+  const langPatterns: Record<string, string[]> = {
+    'de': [' der ', ' die ', ' das ', ' und ', ' ist ', ' sind ', ' für ', ' mit ', ' von ', ' auf '],
+    'nl': [' de ', ' het ', ' een ', ' en ', ' is ', ' zijn ', ' voor ', ' van ', ' met ', ' op '],
+    'fr': [' le ', ' la ', ' les ', ' et ', ' est ', ' sont ', ' pour ', ' de ', ' avec ', ' dans '],
+    'pl': [' jest ', ' są ', ' i ', ' dla ', ' że ', ' w ', ' z ', ' na ', ' do ', ' nie '],
+    'sv': [' är ', ' och ', ' för ', ' att ', ' en ', ' ett ', ' med ', ' på ', ' som ', ' det '],
+    'da': [' er ', ' og ', ' for ', ' at ', ' en ', ' et ', ' med ', ' på ', ' som ', ' det '],
+    'hu': [' van ', ' és ', ' a ', ' az ', ' egy ', ' hogy ', ' nem ', ' meg ', ' el ', ' ki '],
+    'fi': [' on ', ' ja ', ' että ', ' ei ', ' se ', ' tämä ', ' ovat ', ' tai ', ' kun ', ' voi '],
+    'no': [' er ', ' og ', ' for ', ' at ', ' en ', ' et ', ' med ', ' på ', ' som ', ' det ']
+  };
+  
+  const targetPatterns = langPatterns[expectedLanguage] || [];
+  const targetMatches = targetPatterns.filter(p => content.includes(p)).length;
+  
+  // Log detection results
+  console.log(`[Language] Checking ${expectedLanguage}: English patterns=${englishMatches}/10, ${expectedLanguage} patterns=${targetMatches}/${targetPatterns.length}`);
+  
+  // If we have many English matches AND few target language matches, content is probably in English
+  if (englishMatches >= 6 && targetMatches < 3) {
+    console.warn(`[Language] Content appears to be in English, not ${expectedLanguage}`);
+    return false;
+  }
+  
+  // If we have very few target patterns, also suspicious
+  if (targetPatterns.length > 0 && targetMatches < 2) {
+    console.warn(`[Language] Very few ${expectedLanguage} patterns detected (${targetMatches})`);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Generate AI-optimized Q&A prompt following the definitive content specification
+ * Includes STRONG language enforcement for non-English content
  */
 function generateAIOptimizedPrompt(
   article: any, 
@@ -218,6 +267,7 @@ function generateAIOptimizedPrompt(
   introStyle: string
 ): string {
   const languageName = LANGUAGE_NAMES[language] || language;
+  const isNonEnglish = language !== 'en';
   
   const styleInstructions: Record<string, string> = {
     'direct_answer': 'Start with the direct answer immediately. No preamble.',
@@ -233,9 +283,35 @@ function generateAIOptimizedPrompt(
     'problem': 'PROBLEM question - addresses challenges. Use "What mistakes...", "What risks...", "How to avoid..." format.',
   };
 
-  return `You are generating a Q&A page optimized for AI citation by ChatGPT, Perplexity, Claude, and other AI systems.
+  // Strong language enforcement header for non-English
+  const languageEnforcement = isNonEnglish ? `
+⚠️ CRITICAL LANGUAGE REQUIREMENT - READ CAREFULLY ⚠️
+You MUST write ALL content in ${languageName.toUpperCase()} language.
+- The question_main MUST be written in ${languageName}
+- The answer_main MUST be written ENTIRELY in ${languageName}
+- ALL H3 headings MUST be in ${languageName}
+- The meta_title, meta_description, and speakable_answer MUST be in ${languageName}
 
-LANGUAGE: Generate ALL content in ${languageName.toUpperCase()} language.
+DO NOT write in English. DO NOT translate from English. Write NATIVELY in ${languageName}.
+If you output ANY English text in question_main or answer_main, this response will be REJECTED.
+
+Example question formats in ${languageName}:
+${language === 'de' ? '- "Was sind die Risiken beim Immobilienkauf in Spanien?"\n- "Wie hoch sind die Nebenkosten beim Hauskauf?"' : ''}
+${language === 'nl' ? '- "Wat zijn de risicos bij het kopen van vastgoed in Spanje?"\n- "Hoeveel kosten de bijkomende kosten bij aankoop?"' : ''}
+${language === 'fr' ? '- "Quels sont les risques liés à lachat immobilier en Espagne?"\n- "Quels sont les frais annexes lors de lachat?"' : ''}
+${language === 'pl' ? '- "Jakie są ryzyka przy zakupie nieruchomości w Hiszpanii?"\n- "Ile wynoszą dodatkowe koszty zakupu?"' : ''}
+${language === 'sv' ? '- "Vilka risker finns vid fastighetsköp i Spanien?"\n- "Hur höga är de extra kostnaderna vid köp?"' : ''}
+${language === 'da' ? '- "Hvad er risiciene ved ejendomskøb i Spanien?"\n- "Hvor høje er de ekstra omkostninger ved køb?"' : ''}
+${language === 'hu' ? '- "Milyen kockázatai vannak a spanyolországi ingatlanvásárlásnak?"\n- "Mennyibe kerülnek a járulékos költségek?"' : ''}
+${language === 'fi' ? '- "Mitä riskejä kiinteistön ostamiseen Espanjassa liittyy?"\n- "Paljonko ovat lisäkulut ostettaessa?"' : ''}
+${language === 'no' ? '- "Hva er risikoene ved eiendomskjøp i Spania?"\n- "Hvor høye er tilleggskostnadene ved kjøp?"' : ''}
+
+` : '';
+
+  return `${languageEnforcement}You are generating a Q&A page optimized for AI citation by ChatGPT, Perplexity, Claude, and other AI systems.
+
+TARGET LANGUAGE: ${languageName.toUpperCase()} (ISO code: ${language})
+${isNonEnglish ? `⚠️ REMINDER: Write ALL content natively in ${languageName}. NO ENGLISH TEXT ALLOWED!` : ''}
 
 Q&A TYPE: ${qaType.toUpperCase()}
 ${qaTypeInstructions[qaType] || qaTypeInstructions['core']}
@@ -362,7 +438,7 @@ async function generateEnglishQAPages(
             messages: [
               { 
                 role: 'system', 
-                content: 'You are an expert knowledge content generator creating AI-citable Q&A pages. Return only valid JSON. Never include marketing language, CTAs, or links.' 
+                content: `You are an expert knowledge content generator creating AI-citable Q&A pages. ${article.language !== 'en' ? `CRITICAL: Generate ALL content in ${LANGUAGE_NAMES[article.language] || article.language}. Do NOT write in English.` : ''} Return only valid JSON. Never include marketing language, CTAs, or links.`
               },
               { role: 'user', content: prompt }
             ],
@@ -413,6 +489,17 @@ async function generateEnglishQAPages(
           console.warn(`[Generate] Using ${qaType} despite validation failure after ${MAX_RETRIES + 1} attempts`);
         } else {
           console.log(`[Generate] Valid ${qaType} Q&A: ${validation.wordCount} words`);
+        }
+        
+        // Language validation for non-English content
+        const articleLanguage = article.language || 'en';
+        if (articleLanguage !== 'en' && !validateQALanguage(qaData, articleLanguage)) {
+          console.warn(`[Generate] Language validation failed for ${qaType} in ${articleLanguage} (attempt ${attempt + 1})`);
+          if (attempt < MAX_RETRIES) {
+            qaData = null;
+            continue; // Retry with hopefully correct language
+          }
+          console.error(`[Generate] Failed to generate ${qaType} in ${articleLanguage} after ${MAX_RETRIES + 1} attempts - content may be in wrong language`);
         }
         
         break; // Success, exit retry loop
