@@ -657,11 +657,19 @@ serve(async (req) => {
       // Calculate expected total (articles × 4 QA types × languages)
       const maxPossible = articleIds.length * ALL_QA_TYPES.length * targetLanguages.length;
       
+      // Extract user ID from authorization header if available
+      const authHeader = req.headers.get('authorization');
+      let userId = null;
+      if (authHeader) {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        userId = user?.id || null;
+      }
+      
       // Create job record
       const { data: job, error: jobError } = await supabase
         .from('qa_generation_jobs')
         .insert({
-          user_id: null,
+          user_id: userId,
           status: 'running',
           mode: 'background',
           languages: targetLanguages,
@@ -965,10 +973,18 @@ serve(async (req) => {
     let currentIndex = resumeFromIndex;
 
     if (!jobId) {
+      // Extract user ID from authorization header if available
+      const authHeader = req.headers.get('authorization');
+      let userId = null;
+      if (authHeader) {
+        const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        userId = user?.id || null;
+      }
+      
       const { data: job, error: jobError } = await supabase
         .from('qa_generation_jobs')
         .insert({
-          user_id: null,
+          user_id: userId,
           status: 'running',
           mode,
           languages,

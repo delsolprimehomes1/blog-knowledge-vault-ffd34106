@@ -377,7 +377,7 @@ const ClusterManager = () => {
         .from('qa_generation_jobs')
         .select('status, processed_articles, total_articles, generated_faq_pages, total_faq_pages, current_article_headline, current_language, error')
         .eq('id', jobId)
-        .single();
+        .maybeSingle();
       
       if (!job) continue;
       
