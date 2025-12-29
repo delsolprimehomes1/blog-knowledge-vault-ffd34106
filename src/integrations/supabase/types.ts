@@ -1925,6 +1925,72 @@ export type Database = {
         }
         Relationships: []
       }
+      image_regeneration_queue: {
+        Row: {
+          article_id: string
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          image_prompt: string | null
+          max_retries: number | null
+          new_image_url: string | null
+          original_image_url: string | null
+          priority: number | null
+          reason: string | null
+          retry_count: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          article_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          image_prompt?: string | null
+          max_retries?: number | null
+          new_image_url?: string | null
+          original_image_url?: string | null
+          priority?: number | null
+          reason?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          article_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          image_prompt?: string | null
+          max_retries?: number | null
+          new_image_url?: string | null
+          original_image_url?: string | null
+          priority?: number | null
+          reason?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_regeneration_queue_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: true
+            referencedRelation: "blog_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_regeneration_queue_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: true
+            referencedRelation: "content_freshness_report"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_link_suggestions: {
         Row: {
           applied_at: string | null
@@ -2998,6 +3064,16 @@ export type Database = {
           total_uses: number | null
           trust_score: number | null
           usage_status: string | null
+        }
+        Relationships: []
+      }
+      duplicate_image_articles: {
+        Row: {
+          article_ids: string[] | null
+          cluster_ids: string[] | null
+          featured_image_url: string | null
+          headlines: string[] | null
+          usage_count: number | null
         }
         Relationships: []
       }
