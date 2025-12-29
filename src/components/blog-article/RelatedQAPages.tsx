@@ -53,6 +53,12 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, arti
   const [qaPages, setQAPages] = useState<QAPage[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Validate language is provided
+  if (!language) {
+    console.error('[RelatedQAPages] language prop is required but missing');
+    return null;
+  }
+
   useEffect(() => {
     const fetchQAPages = async () => {
       // NEW: If we have funnel stage and cluster, use Hans' funnel-based pattern
@@ -82,8 +88,11 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, arti
           const { data, error } = await query.limit(rule.count);
           
           if (!error && data) {
-            // Avoid duplicates
-            const newQAs = data.filter((qa: any) => !collectedQAs.some(existing => existing.id === qa.id));
+            // Avoid duplicates AND filter by language as safety check
+            const newQAs = data.filter((qa: any) => 
+              !collectedQAs.some(existing => existing.id === qa.id) &&
+              qa.language === language // Safety: ensure language match
+            );
             collectedQAs.push(...(newQAs as QAPage[]));
           }
         }
@@ -101,11 +110,18 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, arti
             .limit(4 - collectedQAs.length);
 
           if (fillerQAs) {
-            collectedQAs.push(...(fillerQAs as QAPage[]));
+            // Filter by language as safety check
+            const validFillers = fillerQAs.filter((qa: any) => qa.language === language);
+            collectedQAs.push(...(validFillers as QAPage[]));
           }
         }
 
-        setQAPages(collectedQAs.slice(0, 4));
+        // Final language validation before setting
+        const validatedQAs = collectedQAs.filter(qa => qa.language === language);
+        if (validatedQAs.length !== collectedQAs.length) {
+          console.warn(`[RelatedQAPages] Filtered out ${collectedQAs.length - validatedQAs.length} Q&As with wrong language`);
+        }
+        setQAPages(validatedQAs.slice(0, 4));
         setLoading(false);
         return;
       }
@@ -126,12 +142,14 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, arti
           return;
         }
 
-        // Sort to prioritize current article's Q&As first
-        const sorted = (clusterQAs || []).sort((a, b) => {
-          if (a.source_article_id === articleId && b.source_article_id !== articleId) return -1;
-          if (b.source_article_id === articleId && a.source_article_id !== articleId) return 1;
-          return 0;
-        });
+        // Sort to prioritize current article's Q&As first, and filter by language as safety
+        const sorted = (clusterQAs || [])
+          .filter(qa => qa.language === language) // Safety: ensure language match
+          .sort((a, b) => {
+            if (a.source_article_id === articleId && b.source_article_id !== articleId) return -1;
+            if (b.source_article_id === articleId && a.source_article_id !== articleId) return 1;
+            return 0;
+          });
 
         setQAPages((sorted.slice(0, 4) as QAPage[]) || []);
         setLoading(false);
@@ -155,7 +173,9 @@ export function RelatedQAPages({ articleId, language, qaPageIds, clusterId, arti
       if (error) {
         console.error('Error fetching QA pages:', error);
       } else {
-        setQAPages((data as QAPage[]) || []);
+        // Filter by language as safety check
+        const validQAs = (data || []).filter((qa: any) => qa.language === language);
+        setQAPages((validQAs as QAPage[]) || []);
       }
       
       setLoading(false);
