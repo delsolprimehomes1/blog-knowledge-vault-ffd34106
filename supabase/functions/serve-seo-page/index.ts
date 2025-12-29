@@ -23,6 +23,26 @@ const LOCALE_MAP: Record<string, string> = {
 const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da']
 const BASE_URL = 'https://www.delsolprimehomes.com'
 
+/**
+ * Normalize a slug by removing hidden characters, URL-encoded garbage, 
+ * and accidentally appended domains from copy-paste errors.
+ */
+function normalizeSlug(rawSlug: string): string {
+  if (!rawSlug) return ''
+  
+  let clean = decodeURIComponent(rawSlug)
+  // Remove newlines, carriage returns, tabs, null bytes
+  clean = clean.replace(/[\r\n\t\x00]/g, '')
+  // Remove accidentally appended domain (common copy-paste error)
+  clean = clean.replace(/delsolprimehomes\.com.*$/i, '')
+  // Trim whitespace
+  clean = clean.trim()
+  // Remove trailing slashes
+  clean = clean.replace(/\/+$/, '')
+  
+  return clean
+}
+
 interface PageMetadata {
   language: string
   meta_title: string
@@ -400,8 +420,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    const [, lang, contentType, slug] = pathMatch
-    console.log(`Parsed: lang=${lang}, type=${contentType}, slug=${slug}`)
+    const [, lang, contentType, rawSlug] = pathMatch
+    
+    // Normalize the slug to handle malformed URLs from copy-paste errors
+    const slug = normalizeSlug(rawSlug)
+    console.log(`Parsed: lang=${lang}, type=${contentType}, slug=${slug}${slug !== rawSlug ? ` (normalized from "${rawSlug}")` : ''}`)
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!

@@ -30,8 +30,37 @@ const LANGUAGE_CODE_MAP: Record<string, string> = {
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
+/**
+ * Normalize a slug by removing hidden characters, URL-encoded garbage, 
+ * and accidentally appended domains from copy-paste errors.
+ */
+function normalizeSlug(rawSlug: string): string {
+  if (!rawSlug) return '';
+  
+  let clean = decodeURIComponent(rawSlug);
+  // Remove newlines, carriage returns, tabs
+  clean = clean.replace(/[\r\n\t]/g, '');
+  // Remove accidentally appended domain (common copy-paste error)
+  clean = clean.replace(/delsolprimehomes\.com.*$/i, '');
+  // Trim whitespace
+  clean = clean.trim();
+  // Remove trailing slashes
+  clean = clean.replace(/\/+$/, '');
+  
+  return clean;
+}
+
 export default function QAPage() {
-  const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
+  const { slug: rawSlug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
+  
+  // Normalize slug to handle malformed URLs from copy-paste errors
+  const slug = normalizeSlug(rawSlug || '');
+  
+  // If slug was normalized (cleaned up), redirect to clean URL
+  if (rawSlug && slug !== rawSlug) {
+    console.warn(`[QAPage] Normalized malformed slug: "${rawSlug}" → "${slug}"`);
+    return <Navigate to={`/${lang}/qa/${slug}`} replace />;
+  }
 
   // Fetch Q&A by slug AND language to ensure correct content for the URL
   const { data: qaPage, isLoading, error } = useQuery({
@@ -54,14 +83,15 @@ export default function QAPage() {
         .select('*, authors!author_id(*)')
         .eq('slug', slug)
         .eq('status', 'published')
-        .single();
+        .maybeSingle();
       
       if (anyMatch) {
         // Mark that we need to redirect (language mismatch)
         return { ...anyMatch, _needsRedirect: true };
       }
       
-      if (exactError || anyError) throw exactError || anyError;
+      // Log diagnostic info for debugging
+      console.warn(`[QAPage] Q&A not found: slug="${slug}", lang="${lang}"`);
       return null;
     },
     enabled: !!slug,

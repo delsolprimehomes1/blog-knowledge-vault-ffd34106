@@ -38,6 +38,26 @@ const STATIC_FILES = {
 };
 
 /**
+ * Normalize a slug by removing hidden characters, URL-encoded garbage, 
+ * and accidentally appended domains from copy-paste errors.
+ */
+function normalizeSlug(rawSlug) {
+  if (!rawSlug) return '';
+  
+  let clean = decodeURIComponent(rawSlug);
+  // Remove newlines, carriage returns, tabs, null bytes
+  clean = clean.replace(/[\r\n\t\x00]/g, '');
+  // Remove accidentally appended domain (common copy-paste error)
+  clean = clean.replace(/delsolprimehomes\.com.*$/i, '');
+  // Trim whitespace
+  clean = clean.trim();
+  // Remove trailing slashes
+  clean = clean.replace(/\/+$/, '');
+  
+  return clean;
+}
+
+/**
  * Check if the path matches an SEO-relevant content page
  */
 function matchSEOPath(path) {
@@ -46,12 +66,18 @@ function matchSEOPath(path) {
   
   if (!match) return null;
   
-  const [, lang, type, slug] = match;
+  const [, lang, type, rawSlug] = match;
   
   // Validate language
   if (!CONFIG.SUPPORTED_LANGUAGES.includes(lang)) return null;
   
-  return { lang, type, slug };
+  // Normalize the slug to handle malformed URLs
+  const slug = normalizeSlug(rawSlug);
+  
+  // If slug was normalized, mark for redirect
+  const needsRedirect = slug !== rawSlug;
+  
+  return { lang, type, slug, rawSlug, needsRedirect };
 }
 
 /**
@@ -256,7 +282,14 @@ export async function onRequest(context) {
     return newResponse;
   }
   
-  const { lang, type, slug } = seoMatch;
+  const { lang, type, slug, rawSlug, needsRedirect } = seoMatch;
+  
+  // If slug was normalized (cleaned up from malformed URL), 301 redirect to clean URL
+  if (needsRedirect) {
+    const cleanUrl = `${url.origin}/${lang}/${type}/${slug}`;
+    console.log(`[SEO Middleware] Redirecting malformed URL: "${rawSlug}" → "${slug}"`);
+    return Response.redirect(cleanUrl, 301);
+  }
   
   if (CONFIG.DEBUG) {
     console.log(`[SEO Middleware] Processing: ${path} (lang=${lang}, type=${type})`);
