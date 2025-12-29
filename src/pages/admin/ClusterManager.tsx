@@ -432,13 +432,22 @@ const ClusterManager = () => {
       if (error) throw error;
       return { ...data, clusterId, language };
     },
-    onSuccess: ({ language, generatedPages, skippedPages, clusterId }) => {
+    onSuccess: ({ language, generatedPages, skippedPages, failedPages, warnings, clusterId }) => {
       const total = (generatedPages || 0) + (skippedPages || 0);
-      if (generatedPages > 0) {
+      
+      // Check for failures first
+      if (failedPages && failedPages > 0) {
+        if (generatedPages > 0) {
+          toast.warning(`Generated ${generatedPages} QA pages for ${language.toUpperCase()}, but ${failedPages} failed`);
+        } else {
+          toast.error(`Failed to generate QAs for ${language.toUpperCase()} (${failedPages} failed) - check constraint or logs`);
+        }
+      } else if (generatedPages > 0) {
         toast.success(`Generated ${generatedPages} QA pages for ${language.toUpperCase()}`);
       } else if (skippedPages > 0) {
         toast.info(`${language.toUpperCase()} already complete (${skippedPages} pages exist)`);
       }
+      
       queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
       setGeneratingQALanguage(null);
     },

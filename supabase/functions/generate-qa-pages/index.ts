@@ -777,6 +777,7 @@ serve(async (req) => {
 
       let totalGenerated = 0;
       let totalSkipped = 0;
+      let totalFailed = 0;
       const results: any[] = [];
 
       for (const article of langArticles) {
@@ -807,7 +808,11 @@ serve(async (req) => {
           console.log(`[SingleLang] Generating ${missingTypes.length} QA types for article ${article.headline}`);
           const qaPages = await generateEnglishQAPages(article, openaiApiKey, missingTypes);
 
-          // Insert generated QAs
+          let articleSuccessCount = 0;
+          let articleFailedCount = 0;
+          const insertErrors: string[] = [];
+
+          // Insert generated QAs with proper error tracking
           for (const qa of qaPages) {
             const qaType = qa.qa_type || 'core';
             const hreflangGroupId = getHreflangGroup(qaType);
@@ -816,61 +821,81 @@ serve(async (req) => {
             const baseSlug = qa.slug || `${article.slug}-${qaType}`;
             const uniqueSlug = `${baseSlug}-${targetLanguage}-${Date.now().toString(36)}`;
 
-            const { error: insertError } = await supabase
-              .from('qa_pages')
-              .insert({
-                source_article_id: article.id,
-                cluster_id: article.cluster_id || clusterId,
-                language: targetLanguage,
-                qa_type: qaType,
-                hreflang_group_id: hreflangGroupId,
-                title: qa.title,
-                slug: uniqueSlug,
-                question_main: qa.question_main,
-                answer_main: qa.answer_main,
-                related_qas: qa.related_qas || [],
-                meta_title: qa.meta_title?.substring(0, 60),
-                meta_description: qa.meta_description?.substring(0, 160),
-                speakable_answer: qa.speakable_answer,
-                author_id: article.author_id,
-                featured_image_url: article.featured_image_url,
-                featured_image_alt: article.featured_image_alt,
-                featured_image_caption: article.featured_image_caption,
-                status: 'published',
-              });
+            try {
+              const { error: insertError } = await supabase
+                .from('qa_pages')
+                .insert({
+                  source_article_id: article.id,
+                  cluster_id: article.cluster_id || clusterId,
+                  language: targetLanguage,
+                  qa_type: qaType,
+                  hreflang_group_id: hreflangGroupId,
+                  title: qa.title,
+                  slug: uniqueSlug,
+                  question_main: qa.question_main,
+                  answer_main: qa.answer_main,
+                  related_qas: qa.related_qas || [],
+                  meta_title: qa.meta_title?.substring(0, 60),
+                  meta_description: qa.meta_description?.substring(0, 160),
+                  speakable_answer: qa.speakable_answer,
+                  author_id: article.author_id,
+                  featured_image_url: article.featured_image_url,
+                  featured_image_alt: article.featured_image_alt,
+                  featured_image_caption: article.featured_image_caption,
+                  status: 'published',
+                });
 
-            if (insertError) {
-              console.error(`[SingleLang] Failed to insert QA:`, insertError);
-            } else {
-              totalGenerated++;
+              if (insertError) {
+                console.error(`[SingleLang] Failed to insert QA (${qaType}):`, insertError);
+                articleFailedCount++;
+                totalFailed++;
+                insertErrors.push(`${qaType}: ${insertError.message}`);
+              } else {
+                articleSuccessCount++;
+                totalGenerated++;
+              }
+            } catch (err) {
+              console.error(`[SingleLang] Exception inserting QA (${qaType}):`, err);
+              articleFailedCount++;
+              totalFailed++;
+              insertErrors.push(`${qaType}: ${err instanceof Error ? err.message : 'Unknown error'}`);
             }
           }
 
           results.push({
             articleId: article.id,
             headline: article.headline,
-            generated: qaPages.length,
+            generated: articleSuccessCount,
+            failed: articleFailedCount,
+            errors: insertErrors.length > 0 ? insertErrors : undefined,
           });
 
         } catch (err) {
           console.error(`[SingleLang] Error processing article ${article.id}:`, err);
+          // Estimate 4 failed QAs when we can't determine exact missing types
+          totalFailed += ALL_QA_TYPES.length;
           results.push({
             articleId: article.id,
             headline: article.headline,
             error: err instanceof Error ? err.message : 'Unknown error',
+            failed: ALL_QA_TYPES.length,
           });
         }
       }
 
-      console.log(`[SingleLang] Completed: ${totalGenerated} generated, ${totalSkipped} skipped`);
+      console.log(`[SingleLang] Completed: ${totalGenerated} generated, ${totalFailed} failed, ${totalSkipped} skipped`);
 
+      // Return with accurate success status
+      const hasFailures = totalFailed > 0;
       return new Response(JSON.stringify({
-        success: true,
+        success: !hasFailures || totalGenerated > 0, // Partial success if some worked
         language: targetLanguage,
         articlesProcessed: langArticles.length,
         generatedPages: totalGenerated,
+        failedPages: totalFailed,
         skippedPages: totalSkipped,
         results,
+        warnings: hasFailures ? [`${totalFailed} QA pages failed to insert - check logs for details`] : undefined,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
