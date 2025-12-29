@@ -222,18 +222,18 @@ const ClusterManager = () => {
   // Generate QA for cluster
   const generateQAMutation = useMutation({
     mutationFn: async (clusterId: string) => {
-      // Get only English published article IDs in the cluster
+      // Get English article IDs in the cluster (both draft and published)
       const { data: clusterArticles, error: fetchError } = await supabase
         .from("blog_articles")
         .select("id")
         .eq("cluster_id", clusterId)
         .eq("language", "en")
-        .eq("status", "published");
+        .in("status", ["draft", "published"]);
       
       if (fetchError) throw fetchError;
       
       if (!clusterArticles || clusterArticles.length === 0) {
-        throw new Error("No published English articles found in this cluster");
+        throw new Error("No English articles found in this cluster");
       }
       
       const articleIds = clusterArticles.map((a) => a.id);
