@@ -259,22 +259,22 @@ const ClusterManager = () => {
   });
 
   // Poll job status after network disconnect
-  const pollJobStatus = async (clusterId: string, maxAttempts = 15): Promise<{ status: string; error?: string; progress?: any }> => {
+  const pollJobStatus = async (clusterId: string, maxAttempts = 15): Promise<{ status: string; error?: string; progress?: any; languages_queue?: string[]; completed_languages?: string[] }> => {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const { data: job } = await supabase
         .from("cluster_generations")
-        .select("status, error, progress")
+        .select("status, error, progress, languages_queue, completed_languages")
         .eq("id", clusterId)
         .single();
       
       if (job) {
         if (job.status === "completed") {
-          return { status: "completed", progress: job.progress };
+          return { status: "completed", progress: job.progress, languages_queue: job.languages_queue, completed_languages: job.completed_languages };
         }
-        if (job.status === "partial" || job.status === "failed") {
-          return { status: job.status, error: job.error, progress: job.progress };
+        if (job.status === "partial" || job.status === "generating" || job.status === "failed") {
+          return { status: job.status, error: job.error, progress: job.progress, languages_queue: job.languages_queue, completed_languages: job.completed_languages };
         }
         // Still in progress, continue polling
       }
@@ -314,8 +314,16 @@ const ClusterManager = () => {
             
             if (polledResult.status === "completed") {
               return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
-            } else if (polledResult.status === "partial" || polledResult.status === "failed") {
-              throw new Error(polledResult.error || `Job ${polledResult.status}`);
+            } else if (polledResult.status === "partial" || polledResult.status === "generating") {
+              // Partial/generating means translations are in progress - this is success, not error
+              return { 
+                status: "partial", 
+                language: polledResult.progress?.current_language,
+                remainingLanguages: polledResult.languages_queue?.filter((l: string) => !polledResult.completed_languages?.includes(l)),
+                totalArticles: polledResult.progress?.generated_articles 
+              };
+            } else if (polledResult.status === "failed") {
+              throw new Error(polledResult.error || "Translation job failed");
             } else {
               throw new Error("Connection lost and job status unclear. Try again.");
             }
@@ -344,8 +352,16 @@ const ClusterManager = () => {
           
           if (polledResult.status === "completed") {
             return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
-          } else if (polledResult.status === "partial" || polledResult.status === "failed") {
-            throw new Error(polledResult.error || `Job ${polledResult.status}`);
+          } else if (polledResult.status === "partial" || polledResult.status === "generating") {
+            // Partial/generating means translations are in progress - this is success, not error
+            return { 
+              status: "partial", 
+              language: polledResult.progress?.current_language,
+              remainingLanguages: polledResult.languages_queue?.filter((l: string) => !polledResult.completed_languages?.includes(l)),
+              totalArticles: polledResult.progress?.generated_articles 
+            };
+          } else if (polledResult.status === "failed") {
+            throw new Error(polledResult.error || "Translation job failed");
           }
         }
         throw err;
