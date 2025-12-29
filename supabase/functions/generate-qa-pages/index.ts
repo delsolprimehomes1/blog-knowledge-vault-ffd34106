@@ -346,6 +346,19 @@ async function processAllMissingQAs(
         continue;
       }
 
+      // CRITICAL SAFEGUARD: Only generate Q&As for the article's own language
+      // Q&As should be created in the same language as the source article
+      const articleLanguage = article.language;
+      if (!targetLanguages.includes(articleLanguage)) {
+        console.log(`[Background] Article ${articleId} language (${articleLanguage}) not in target languages, skipping`);
+        processedArticles++;
+        continue;
+      }
+      
+      // Filter target languages to ONLY the article's language to prevent mismatches
+      const validLanguagesForArticle = [articleLanguage];
+      console.log(`[Background] Article ${articleId} will only generate Q&As for its own language: ${articleLanguage}`);
+
       // Update job with current article and store resume point
       await supabase
         .from('qa_generation_jobs')
@@ -381,9 +394,9 @@ async function processAllMissingQAs(
         }
       };
       
-      // Find missing combinations
+      // Find missing combinations - ONLY for the article's own language
       const missingCombos: { language: string; qaType: string }[] = [];
-      for (const lang of targetLanguages) {
+      for (const lang of validLanguagesForArticle) {
         for (const qaType of ALL_QA_TYPES) {
           if (!existingCombos.has(`${lang}_${qaType}`)) {
             missingCombos.push({ language: lang, qaType });
