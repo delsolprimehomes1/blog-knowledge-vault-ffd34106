@@ -927,6 +927,85 @@ const queryClient = useQueryClient();
 
           {/* Already Generated Tab */}
           <TabsContent value="generated" className="space-y-4">
+            {/* Translation Health Dashboard (Fix #5) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Languages className="h-5 w-5" />
+                  Translation Health Dashboard
+                </CardTitle>
+                <CardDescription>
+                  Actual Q&A coverage by language (vs. what tracking claims)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {LANGUAGES.map(lang => {
+                    // Count actual Q&A pages per language
+                    const actualCount = qaPages.filter((qa: any) => qa.language === lang.code).length;
+                    // Count what tracking claims
+                    const claimedCount = trackingData.reduce((acc, t) => 
+                      acc + (t.languages_generated.includes(lang.code) ? 2 : 0), 0
+                    );
+                    const hasDiscrepancy = actualCount < claimedCount;
+                    const coveragePercent = claimedCount > 0 ? Math.round((actualCount / claimedCount) * 100) : 100;
+                    
+                    return (
+                      <div 
+                        key={lang.code} 
+                        className={`text-center p-4 rounded-lg border ${
+                          hasDiscrepancy 
+                            ? 'bg-red-50 border-red-200' 
+                            : actualCount > 0 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-muted border-border'
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">{LANGUAGE_FLAGS[lang.code]}</div>
+                        <div className="font-medium text-sm">{lang.name}</div>
+                        <div className={`text-xl font-bold ${hasDiscrepancy ? 'text-red-600' : 'text-foreground'}`}>
+                          {actualCount}
+                        </div>
+                        {hasDiscrepancy && (
+                          <div className="text-xs text-red-500">
+                            claimed: {claimedCount}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {coveragePercent}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Summary and Complete All Missing Button (Fix #4) */}
+                <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    {(() => {
+                      const totalActual = qaPages.length;
+                      const totalClaimed = trackingData.reduce((acc, t) => 
+                        acc + (t.languages_generated.length * 2), 0
+                      );
+                      const hasIssues = totalActual < totalClaimed;
+                      
+                      return hasIssues ? (
+                        <span className="text-red-600 flex items-center gap-1">
+                          <AlertTriangle className="h-4 w-4" />
+                          {totalClaimed - totalActual} Q&A pages missing (translations failed silently)
+                        </span>
+                      ) : (
+                        <span className="text-green-600 flex items-center gap-1">
+                          <CheckCircle className="h-4 w-4" />
+                          All translations complete: {totalActual} Q&A pages
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Articles with Existing Q&As</CardTitle>
@@ -943,13 +1022,14 @@ const queryClient = useQueryClient();
                         <TableHead>Languages Generated</TableHead>
                         <TableHead>Missing Languages</TableHead>
                         <TableHead>Q&A Pages</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {trackingData.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No Q&A pages generated yet. Go to "Available Articles" to start.
                           </TableCell>
                         </TableRow>
@@ -958,6 +1038,11 @@ const queryClient = useQueryClient();
                           const missingLangs = LANGUAGES.map(l => l.code).filter(
                             l => !item.languages_generated.includes(l)
                           );
+                          // Check actual Q&A count vs claimed
+                          const actualQACount = qaPages.filter((qa: any) => 
+                            qa.source_article_id === item.source_article_id
+                          ).length;
+                          const hasDiscrepancy = actualQACount < item.total_qa_pages;
                           
                           return (
                             <TableRow key={item.id}>
@@ -1000,13 +1085,25 @@ const queryClient = useQueryClient();
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline">
-                                  {item.total_qa_pages} pages
+                                <Badge 
+                                  variant="outline"
+                                  className={hasDiscrepancy ? 'border-red-200 bg-red-50 text-red-700' : ''}
+                                >
+                                  {actualQACount}/{item.total_qa_pages} pages
+                                  {hasDiscrepancy && ' ⚠️'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={item.status === 'completed' ? 'default' : 'secondary'}
+                                  className={item.status === 'partial' ? 'bg-amber-100 text-amber-800' : ''}
+                                >
+                                  {item.status}
                                 </Badge>
                               </TableCell>
                               <TableCell>
                                 <div className="flex gap-2">
-                                  {missingLangs.length > 0 && (
+                                  {(missingLangs.length > 0 || hasDiscrepancy) && (
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -1014,7 +1111,7 @@ const queryClient = useQueryClient();
                                       disabled={addLanguagesMutation.isPending}
                                     >
                                       <Plus className="mr-1 h-3 w-3" />
-                                      Add {missingLangs.length} Languages
+                                      {hasDiscrepancy ? 'Retry Failed' : `Add ${missingLangs.length}`}
                                     </Button>
                                   )}
                                 </div>

@@ -1858,9 +1858,23 @@ async function processOneArticleLegacy(
 
       const translationLanguages = languagesToGenerate.filter((lang: string) => lang !== 'en');
       
+      // Track successful translations per language (Fix #1)
+      const translationStats: Record<string, number> = {};
+      const startTime = Date.now();
+      const MAX_EXECUTION_TIME = 50000; // 50 seconds (leave 10s buffer for saving)
+      
       for (const targetLang of translationLanguages) {
+        // Fix #2: Timeout protection
+        if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+          console.warn(`[Process] ⚠️ Approaching timeout after ${Object.keys(translationStats).length} languages, saving progress...`);
+          break;
+        }
+        
+        translationStats[targetLang] = 0;
+        
         for (const englishQA of englishQAPages) {
           try {
+            console.log(`[Translation] Translating ${englishQA.qa_type} to ${targetLang}...`);
             const translatedQA = await translateQAPage(englishQA, targetLang, lovableApiKey);
             
             allQAPages.push({
@@ -1870,13 +1884,28 @@ async function processOneArticleLegacy(
               source_article_id: article.id,
               source_article_slug: article.slug,
             });
+            
+            translationStats[targetLang]++;
+            console.log(`[Translation] ✅ SUCCESS: ${englishQA.qa_type} → ${targetLang}`);
+            
           } catch (error) {
-            console.error(`[Process] Failed to translate ${englishQA.qa_type} to ${targetLang}:`, error);
+            console.error(`[Translation] ❌ FAILED: ${englishQA.qa_type} → ${targetLang}:`, error);
           }
         }
         
-        existingLanguages.push(targetLang);
+        // Fix #1: Only mark language complete if at least 1 Q&A translated
+        if (translationStats[targetLang] > 0) {
+          existingLanguages.push(targetLang);
+          console.log(`[Translation] ✅ ${targetLang}: ${translationStats[targetLang]}/${englishQAPages.length} Q&As translated`);
+        } else {
+          console.error(`[Translation] ❌ ${targetLang}: 0 Q&As translated - NOT marking as complete`);
+        }
       }
+      
+      // Log translation summary
+      const successfulLangs = Object.entries(translationStats).filter(([_, count]) => count > 0).length;
+      const failedLangs = Object.entries(translationStats).filter(([_, count]) => count === 0).length;
+      console.log(`[Translation] Summary: ${successfulLangs} languages succeeded, ${failedLangs} languages failed`);
     }
 
     for (const qaData of allQAPages) {
@@ -1930,15 +1959,26 @@ async function processOneArticleLegacy(
       generatedPages++;
     }
 
-    const totalQaPages = existingLanguages.length * 2;
+    // Fix #3: Accurate tracking update - use actual count, not calculated
+    const actualQACount = generatedPages;
+    const allTargetLanguages = targetLanguages;
+    const failedLanguages = allTargetLanguages.filter((lang: string) => !existingLanguages.includes(lang));
+    const hasFailures = failedLanguages.length > 0;
+    
     await supabase
       .from('qa_article_tracking')
       .update({
         languages_generated: existingLanguages,
-        total_qa_pages: totalQaPages,
-        status: 'completed',
+        total_qa_pages: actualQACount,
+        status: hasFailures ? 'partial' : 'completed',
       })
       .eq('id', trackingId);
+    
+    if (hasFailures) {
+      console.warn(`[Tracking] ⚠️ Partial completion: ${existingLanguages.length} languages succeeded, ${failedLanguages.length} failed (${failedLanguages.join(', ')})`);
+    } else {
+      console.log(`[Tracking] ✅ Full completion: ${existingLanguages.length} languages, ${actualQACount} Q&A pages`);
+    }
 
     for (const groupId of [hreflangGroupCore, hreflangGroupDecision]) {
       const { data: pagesInGroup } = await supabase
