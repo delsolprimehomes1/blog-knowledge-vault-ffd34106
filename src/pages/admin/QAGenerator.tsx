@@ -95,6 +95,10 @@ const queryClient = useQueryClient();
   // Job state for chunked processing
   const [jobState, setJobState] = useState<JobState | null>(null);
   const isProcessingRef = useRef(false);
+  
+  // Bulk language generation state
+  const [selectedBulkLanguage, setSelectedBulkLanguage] = useState<string>('fi');
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false);
 
   // Fetch tracking data
   const { data: trackingData = [], refetch: refetchTracking } = useQuery({
@@ -187,6 +191,7 @@ const queryClient = useQueryClient();
 
   const availableArticles = allArticles.filter(a => !usedArticleIds.has(a.id));
 
+
   // Fetch categories
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -208,6 +213,74 @@ const queryClient = useQueryClient();
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Fetch articles per language with Q&A coverage stats
+  const { data: languageStats = [], refetch: refetchLanguageStats } = useQuery({
+    queryKey: ['language-qa-stats', qaPages.length],
+    queryFn: async () => {
+      const stats = await Promise.all(LANGUAGES.map(async (lang) => {
+        // Get total published articles for this language
+        const { count: totalArticles } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'published')
+          .eq('language', lang.code);
+        
+        // Get articles that already have Q&As
+        const { data: articlesWithQAs } = await supabase
+          .from('qa_pages')
+          .select('source_article_id')
+          .eq('language', lang.code);
+        
+        const uniqueArticlesWithQAs = new Set(articlesWithQAs?.map(q => q.source_article_id) || []);
+        
+        // Get actual Q&A count for this language
+        const { count: qaCount } = await supabase
+          .from('qa_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('language', lang.code);
+        
+        return {
+          code: lang.code,
+          name: lang.name,
+          totalArticles: totalArticles || 0,
+          articlesWithQAs: uniqueArticlesWithQAs.size,
+          articlesWithoutQAs: (totalArticles || 0) - uniqueArticlesWithQAs.size,
+          qaCount: qaCount || 0,
+        };
+      }));
+      
+      return stats;
+    },
+  });
+
+  // Fetch articles without Q&As for selected language
+  const { data: articlesWithoutQAs = [], isLoading: loadingArticlesWithoutQAs, refetch: refetchArticlesWithoutQAs } = useQuery({
+    queryKey: ['articles-without-qa', selectedBulkLanguage],
+    queryFn: async () => {
+      // Get all published articles for this language
+      const { data: articles } = await supabase
+        .from('blog_articles')
+        .select('id, headline, slug, cluster_id, cluster_theme, category')
+        .eq('status', 'published')
+        .eq('language', selectedBulkLanguage)
+        .order('headline');
+      
+      if (!articles) return [];
+      
+      // Get articles that already have Q&As in this language
+      const { data: existingQAs } = await supabase
+        .from('qa_pages')
+        .select('source_article_id')
+        .eq('language', selectedBulkLanguage);
+      
+      const articlesWithExistingQAs = new Set(existingQAs?.map(q => q.source_article_id) || []);
+      
+      // Filter to only articles without Q&As
+      return articles.filter(a => !articlesWithExistingQAs.has(a.id));
+    },
+    enabled: !!selectedBulkLanguage,
   });
 
   // Process next article in the queue
@@ -257,6 +330,8 @@ const queryClient = useQueryClient();
         refetchQaPages();
         refetchTracking();
         refetchStuckJobs();
+        refetchLanguageStats();
+        refetchArticlesWithoutQAs();
       }
     } catch (error) {
       console.error('[Frontend] Error processing article:', error);
@@ -264,7 +339,61 @@ const queryClient = useQueryClient();
       setJobState(prev => prev ? { ...prev, status: 'failed' } : null);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [refetchQaPages, refetchTracking, refetchStuckJobs]);
+  }, [refetchQaPages, refetchTracking, refetchStuckJobs, refetchLanguageStats, refetchArticlesWithoutQAs]);
+
+  // Bulk generate Q&As for a language (native generation, not translation)
+  const bulkGenerateForLanguage = useCallback(async (languageCode: string, articleIds: string[]) => {
+    if (articleIds.length === 0) {
+      toast.info('No articles to generate Q&As for');
+      return;
+    }
+    
+    setIsBulkGenerating(true);
+    
+    try {
+      // Generate Q&As only for this specific language (native mode)
+      const response = await supabase.functions.invoke('generate-qa-pages', {
+        body: {
+          articleIds,
+          languages: [languageCode], // Only this language
+          nativeMode: true, // Generate natively, don't translate
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to start generation');
+      }
+
+      const data = response.data;
+      
+      const newJobState: JobState = {
+        jobId: data.jobId,
+        articleIds,
+        languages: [languageCode],
+        processedArticles: data.processedArticles || 0,
+        totalArticles: articleIds.length,
+        generatedPages: data.generatedPages || 0,
+        status: data.status === 'completed' ? 'completed' : 'running',
+        lastArticle: data.lastArticle,
+      };
+
+      setJobState(newJobState);
+      setActiveTab('progress');
+      toast.info(`Started generating ${LANGUAGE_FLAGS[languageCode]} ${languageCode.toUpperCase()} Q&As for ${articleIds.length} articles...`);
+
+      if (data.continueProcessing) {
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          processNextArticle(newJobState);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('[Frontend] Error starting bulk generation:', error);
+      toast.error(`Failed to start: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsBulkGenerating(false);
+    }
+  }, [processNextArticle]);
 
   // Start generation - uses English articles and translates to all selected languages
   const startGeneration = useCallback(async () => {
@@ -724,6 +853,10 @@ const queryClient = useQueryClient();
             <TabsTrigger value="available">
               Available Articles ({availableArticles.length})
             </TabsTrigger>
+            <TabsTrigger value="bulk-language">
+              <Languages className="mr-1 h-4 w-4" />
+              Bulk by Language
+            </TabsTrigger>
             <TabsTrigger value="generated">
               Already Generated ({trackingData.length})
             </TabsTrigger>
@@ -921,6 +1054,155 @@ const queryClient = useQueryClient();
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bulk by Language Tab */}
+          <TabsContent value="bulk-language" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Languages className="h-5 w-5" />
+                  Bulk Generate Q&As by Language
+                </CardTitle>
+                <CardDescription>
+                  Generate native Q&As for all articles in a specific language. Perfect for Finnish, Swedish, and other non-English languages.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Language Stats Grid */}
+                <div>
+                  <h3 className="font-medium mb-3">Q&A Coverage by Language</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {languageStats.map(stat => (
+                      <button
+                        key={stat.code}
+                        onClick={() => setSelectedBulkLanguage(stat.code)}
+                        className={`text-center p-4 rounded-lg border transition-all hover:shadow-md ${
+                          selectedBulkLanguage === stat.code
+                            ? 'ring-2 ring-primary border-primary bg-primary/5'
+                            : stat.articlesWithoutQAs > 0
+                              ? 'bg-amber-50 border-amber-200 hover:border-amber-300'
+                              : 'bg-green-50 border-green-200'
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">{LANGUAGE_FLAGS[stat.code]}</div>
+                        <div className="font-medium text-sm">{stat.name}</div>
+                        <div className="text-lg font-bold">
+                          {stat.articlesWithQAs}/{stat.totalArticles}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          articles with Q&As
+                        </div>
+                        {stat.articlesWithoutQAs > 0 && (
+                          <Badge variant="outline" className="mt-2 text-amber-700 border-amber-300 bg-amber-50">
+                            +{stat.articlesWithoutQAs} missing
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Selected Language Details */}
+                {selectedBulkLanguage && (
+                  <div className="border-t pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium flex items-center gap-2">
+                        {LANGUAGE_FLAGS[selectedBulkLanguage]} {LANGUAGES.find(l => l.code === selectedBulkLanguage)?.name} Articles Without Q&As
+                      </h3>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refetchArticlesWithoutQAs()}
+                          disabled={loadingArticlesWithoutQAs}
+                        >
+                          <RefreshCw className={`mr-2 h-4 w-4 ${loadingArticlesWithoutQAs ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
+                        <Button
+                          onClick={() => bulkGenerateForLanguage(selectedBulkLanguage, articlesWithoutQAs.map(a => a.id))}
+                          disabled={isBulkGenerating || articlesWithoutQAs.length === 0 || jobState?.status === 'running'}
+                        >
+                          {isBulkGenerating || jobState?.status === 'running' ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileQuestion className="mr-2 h-4 w-4" />
+                          )}
+                          Generate All {articlesWithoutQAs.length} {LANGUAGE_FLAGS[selectedBulkLanguage]} Q&As
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>Native Generation:</strong> Q&As will be generated directly from {LANGUAGES.find(l => l.code === selectedBulkLanguage)?.name} article content (not translated from English).
+                        Each article generates 4 Q&As (core, decision, practical, problem).
+                      </p>
+                    </div>
+
+                    {/* Articles Table */}
+                    <div className="border rounded-lg max-h-[400px] overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Article</TableHead>
+                            <TableHead>Cluster</TableHead>
+                            <TableHead>Category</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {loadingArticlesWithoutQAs ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                              </TableCell>
+                            </TableRow>
+                          ) : articlesWithoutQAs.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                                All {LANGUAGES.find(l => l.code === selectedBulkLanguage)?.name} articles have Q&As!
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            articlesWithoutQAs.slice(0, 50).map((article) => (
+                              <TableRow key={article.id}>
+                                <TableCell className="font-medium max-w-[400px]">
+                                  <div className="truncate" title={article.headline}>
+                                    {article.headline}
+                                  </div>
+                                  <a 
+                                    href={`/${selectedBulkLanguage}/blog/${article.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                                  >
+                                    View article <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                                  {article.cluster_theme || '-'}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{article.category}</Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {articlesWithoutQAs.length > 50 && (
+                      <p className="text-sm text-muted-foreground mt-2 text-center">
+                        Showing 50 of {articlesWithoutQAs.length} articles
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
