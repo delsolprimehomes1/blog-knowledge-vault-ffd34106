@@ -171,7 +171,7 @@ const LANGUAGE_WORD_COUNTS: Record<string, { min: number; max: number }> = {
   'de': { min: 300, max: 750 },
   'nl': { min: 300, max: 750 },
   'fr': { min: 320, max: 780 },
-  'pl': { min: 250, max: 700 },  // Polish is highly inflected
+  'pl': { min: 220, max: 700 },  // Polish is highly inflected - reduced to prevent retry loops
   'sv': { min: 280, max: 750 },
   'da': { min: 280, max: 750 },
   'hu': { min: 220, max: 650 },  // Hungarian is agglutinative
@@ -438,7 +438,7 @@ async function generateEnglishQAPages(
     
     const prompt = generateAIOptimizedPrompt(article, qaType, article.language || 'en', introStyle);
     
-    const MAX_RETRIES = 2;
+    const MAX_RETRIES = 1; // Reduced to prevent timeout (2 total attempts)
     let qaData = null;
     
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -778,7 +778,14 @@ async function processAllMissingQAs(
                 status: 'draft',
               });
 
-            if (!insertError) {
+            if (insertError) {
+              // Skip duplicate key errors (23505) - Q&A already exists
+              if (insertError.code === '23505') {
+                console.log(`[Background] Skipping duplicate English ${englishQA.qa_type} Q&A`);
+              } else {
+                console.error(`[Background] Insert failed for English ${englishQA.qa_type}:`, insertError);
+              }
+            } else {
               totalGenerated++;
               // Update progress
               await supabase
@@ -826,7 +833,14 @@ async function processAllMissingQAs(
                   status: 'draft',
                 });
 
-              if (!insertError) {
+              if (insertError) {
+                // Skip duplicate key errors (23505) - Q&A already exists
+                if (insertError.code === '23505') {
+                  console.log(`[Background] Skipping duplicate ${lang} ${englishQA.qa_type} Q&A`);
+                } else {
+                  console.error(`[Background] Insert failed for ${lang} ${englishQA.qa_type}:`, insertError);
+                }
+              } else {
                 totalGenerated++;
                 // Update progress
                 await supabase
