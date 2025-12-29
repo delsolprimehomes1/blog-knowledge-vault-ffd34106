@@ -291,6 +291,7 @@ Return a JSON array with exactly ${typeCount} objects. No markdown, no explanati
 /**
  * Background processing for completeMissing mode
  * Processes all articles and updates job progress in database
+ * Supports resuming from a specific article/language if provided
  */
 async function processAllMissingQAs(
   supabase: any,
@@ -298,15 +299,39 @@ async function processAllMissingQAs(
   articleIds: string[],
   targetLanguages: string[],
   openaiApiKey: string,
-  clusterId?: string
+  clusterId?: string,
+  resumeFromArticleIndex: number = 0,
+  resumeFromLanguage?: string
 ) {
-  console.log(`[Background] Starting background processing for job ${jobId}, ${articleIds.length} articles`);
+  console.log(`[Background] Starting background processing for job ${jobId}, ${articleIds.length} articles, resumeFrom: article ${resumeFromArticleIndex}, lang ${resumeFromLanguage || 'start'}`);
   
-  let totalGenerated = 0;
-  let processedArticles = 0;
+  // Sync counter with actual pages at start
+  const { data: existingPages } = await supabase
+    .from('qa_pages')
+    .select('id')
+    .in('source_article_id', articleIds);
+  
+  let totalGenerated = existingPages?.length || 0;
+  let processedArticles = resumeFromArticleIndex;
+  
+  // Update initial progress with synced counter
+  await supabase
+    .from('qa_generation_jobs')
+    .update({
+      generated_faq_pages: totalGenerated,
+      processed_articles: processedArticles,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
   
   try {
-    for (const articleId of articleIds) {
+    // Skip articles we've already processed when resuming
+    const articlesToProcess = articleIds.slice(resumeFromArticleIndex);
+    
+    for (let articleIndex = 0; articleIndex < articlesToProcess.length; articleIndex++) {
+      const articleId = articlesToProcess[articleIndex];
+      const actualArticleIndex = resumeFromArticleIndex + articleIndex;
+      
       // Get article data
       const { data: article, error: articleError } = await supabase
         .from('blog_articles')
@@ -321,12 +346,13 @@ async function processAllMissingQAs(
         continue;
       }
 
-      // Update job with current article
+      // Update job with current article and store resume point
       await supabase
         .from('qa_generation_jobs')
         .update({
           current_article_headline: article.headline,
           processed_articles: processedArticles,
+          resume_from_article_index: actualArticleIndex,
           updated_at: new Date().toISOString(),
         })
         .eq('id', jobId);
