@@ -1033,10 +1033,10 @@ serve(async (req) => {
     if (singleLanguageMode && targetLanguage) {
       console.log(`[SingleLang] Processing QAs for language: ${targetLanguage}, offset: ${offset}`);
       
-      // Start timeout guard - must return before 55 seconds to avoid connection close
+      // Start timeout guard - must return before 45 seconds to avoid connection close
       const startTime = Date.now();
-      const TIMEOUT_MS = 55000; // 55 seconds - leave 5s buffer before edge function timeout
-      const MAX_ARTICLES_PER_BATCH = 3; // Process max 3 articles per call to stay safe
+      const TIMEOUT_MS = 45000; // 45 seconds - leave 15s buffer before edge function timeout (safer)
+      const MAX_ARTICLES_PER_BATCH = 1; // Process 1 article per call to prevent timeouts
       
       const checkTimeout = () => {
         const elapsed = Date.now() - startTime;
@@ -1225,8 +1225,64 @@ serve(async (req) => {
       
       console.log(`[SingleLang] Completed: ${totalGenerated} generated, ${totalFailed} failed, ${totalSkipped} skipped, ${articlesProcessed} articles in batch, offset: ${offset} -> ${nextOffset}, remaining: ${remainingArticles}, timedOut: ${timedOut}, batchLimit: ${reachedBatchLimit}`);
 
+      // Log errors to the new table
+      if (totalFailed > 0) {
+        try {
+          const errorRecords = results
+            .filter((r: any) => r.errors && r.errors.length > 0)
+            .flatMap((r: any) => r.errors.map((errMsg: string) => ({
+              article_id: r.articleId,
+              language: targetLanguage,
+              error_type: errMsg.includes('duplicate') ? 'duplicate' : 'api_error',
+              error_message: errMsg,
+              cluster_id: clusterId,
+            })));
+          
+          if (errorRecords.length > 0) {
+            await supabase.from('qa_generation_errors').insert(errorRecords);
+          }
+        } catch (logErr) {
+          console.error('[SingleLang] Failed to log errors:', logErr);
+        }
+      }
+
       // Return with accurate success status and continuation info
       const hasFailures = totalFailed > 0;
+      const needsContinuation = !isComplete && (timedOut || reachedBatchLimit || remainingArticles > 0);
+      
+      // AUTO-CONTINUE: If there are more articles, fire off next batch automatically
+      if (needsContinuation && articleIds && clusterId) {
+        console.log(`[SingleLang] Auto-continuing to offset ${nextOffset}...`);
+        
+        // @ts-ignore - EdgeRuntime.waitUntil is a Deno Deploy feature
+        EdgeRuntime.waitUntil(
+          (async () => {
+            // Small delay to prevent overwhelming the system
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            try {
+              const { error: continueError } = await supabase.functions.invoke('generate-qa-pages', {
+                body: {
+                  singleLanguageMode: true,
+                  targetLanguage,
+                  articleIds,
+                  clusterId,
+                  offset: nextOffset,
+                }
+              });
+              
+              if (continueError) {
+                console.error(`[SingleLang] Auto-continue failed:`, continueError);
+              } else {
+                console.log(`[SingleLang] Auto-continue triggered for offset ${nextOffset}`);
+              }
+            } catch (err) {
+              console.error(`[SingleLang] Auto-continue exception:`, err);
+            }
+          })()
+        );
+      }
+      
       return new Response(JSON.stringify({
         success: !hasFailures || totalGenerated > 0, // Partial success if some worked
         language: targetLanguage,
@@ -1240,12 +1296,13 @@ serve(async (req) => {
         complete: isComplete,
         timedOut,
         reachedBatchLimit,
-        needsContinuation: !isComplete && (timedOut || reachedBatchLimit || remainingArticles > 0),
+        needsContinuation,
+        autoContinueTriggered: needsContinuation && !!articleIds && !!clusterId,
         results,
         warnings: hasFailures ? [`${totalFailed} QA pages failed to insert - check logs for details`] : undefined,
         message: isComplete 
           ? `Completed all ${totalArticlesInLanguage} articles for ${targetLanguage}`
-          : `Processed ${articlesProcessed} articles (${nextOffset}/${totalArticlesInLanguage}). ${remainingArticles} remaining.`,
+          : `Processed ${articlesProcessed} articles (${nextOffset}/${totalArticlesInLanguage}). ${remainingArticles} remaining.${needsContinuation ? ' Auto-continuing...' : ''}`,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

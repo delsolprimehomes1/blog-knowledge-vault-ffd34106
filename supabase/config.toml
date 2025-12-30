@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.check-qa-job-status]
 verify_jwt = false
+
+[functions.auto-resume-qa-jobs]
+verify_jwt = false

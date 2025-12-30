@@ -2426,6 +2426,50 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_generation_errors: {
+        Row: {
+          article_id: string | null
+          cluster_id: string | null
+          created_at: string | null
+          error_message: string | null
+          error_type: string | null
+          id: string
+          job_id: string | null
+          language: string | null
+          qa_type: string | null
+        }
+        Insert: {
+          article_id?: string | null
+          cluster_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          job_id?: string | null
+          language?: string | null
+          qa_type?: string | null
+        }
+        Update: {
+          article_id?: string | null
+          cluster_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          id?: string
+          job_id?: string | null
+          language?: string | null
+          qa_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_generation_errors_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "qa_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qa_generation_jobs: {
         Row: {
           article_ids: string[] | null

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -570,6 +570,70 @@ const ClusterManager = () => {
     },
   });
 
+  // Resume ALL stalled jobs at once
+  const resumeAllStalledJobsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("auto-resume-qa-jobs", {
+        body: { 
+          stalledThresholdMinutes: 1, // Use short threshold since we're manually triggering
+          autoResume: true,
+          dryRun: false,
+        },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.resumedJobs > 0) {
+        toast.success(`Resumed ${data.resumedJobs} stalled job(s)`);
+      } else if (data.stalledJobsFound === 0) {
+        toast.info("No stalled jobs found");
+      } else {
+        toast.warning(`Found ${data.stalledJobsFound} stalled jobs but couldn't resume any`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["stalled-qa-jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to resume jobs: ${error.message}`);
+    },
+  });
+
+  // Check for stalled jobs and auto-mark them
+  const checkForStalledJobsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("auto-resume-qa-jobs", {
+        body: { 
+          stalledThresholdMinutes: 10,
+          autoResume: false, // Just detect and mark, don't auto-resume
+          dryRun: false,
+        },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.stalledJobsFound > 0) {
+        toast.info(`Found ${data.stalledJobsFound} stalled job(s). Click "Resume All" to continue.`);
+        queryClient.invalidateQueries({ queryKey: ["stalled-qa-jobs"] });
+      }
+    },
+  });
+
+  // Periodically check for stalled jobs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkForStalledJobsMutation.mutate();
+    }, 60000); // Check every minute
+    
+    // Initial check on mount
+    checkForStalledJobsMutation.mutate();
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Poll job status after network disconnect
   const pollJobStatus = async (clusterId: string, maxAttempts = 15): Promise<{ status: string; error?: string; progress?: any; languages_queue?: string[]; completed_languages?: string[] }> => {
     for (let i = 0; i < maxAttempts; i++) {
@@ -919,37 +983,62 @@ const ClusterManager = () => {
         {stalledQAJobs && stalledQAJobs.length > 0 && (
           <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
             <CardContent className="py-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <StopCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   <div>
                     <p className="font-medium text-amber-800 dark:text-amber-300">
                       {stalledQAJobs.length} stalled QA generation job{stalledQAJobs.length > 1 ? 's' : ''}
                     </p>
                     <p className="text-sm text-amber-600 dark:text-amber-400">
-                      {stalledQAJobs[0].generated_faq_pages}/{stalledQAJobs[0].total_faq_pages} pages generated before timeout
+                      Total progress: {stalledQAJobs.reduce((sum, j) => sum + (j.generated_faq_pages || 0), 0)}/
+                      {stalledQAJobs.reduce((sum, j) => sum + (j.total_faq_pages || 0), 0)} pages
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={() => resumeQAJobMutation.mutate(stalledQAJobs[0].id)}
-                  disabled={resumeQAJobMutation.isPending}
-                >
-                  {resumeQAJobMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Resuming...
-                    </>
+                <div className="flex gap-2">
+                  {stalledQAJobs.length === 1 ? (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={() => resumeQAJobMutation.mutate(stalledQAJobs[0].id)}
+                      disabled={resumeQAJobMutation.isPending}
+                    >
+                      {resumeQAJobMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Resuming...
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className="mr-2 h-4 w-4" />
+                          Resume Job
+                        </>
+                      )}
+                    </Button>
                   ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Resume Job
-                    </>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={() => resumeAllStalledJobsMutation.mutate()}
+                      disabled={resumeAllStalledJobsMutation.isPending}
+                    >
+                      {resumeAllStalledJobsMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Resuming All...
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className="mr-2 h-4 w-4" />
+                          Resume All ({stalledQAJobs.length} jobs)
+                        </>
+                      )}
+                    </Button>
                   )}
-                </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
