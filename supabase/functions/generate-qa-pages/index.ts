@@ -24,6 +24,20 @@ const TRANSLATION_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', '
 const ALL_QA_TYPES = ['core', 'decision', 'practical', 'problem'];
 
 /**
+ * Exponential backoff helper for rate limiting
+ */
+async function exponentialBackoff(
+  attempt: number,
+  baseDelay: number = 2000,
+  maxDelay: number = 30000
+): Promise<void> {
+  const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+  const jitter = Math.random() * 1000;
+  console.log(`[Backoff] Waiting ${Math.round(delay + jitter)}ms before retry (attempt ${attempt + 1})...`);
+  await new Promise(resolve => setTimeout(resolve, delay + jitter));
+}
+
+/**
  * Translate a Q&A page from English to target language
  */
 async function translateQAPage(
@@ -438,11 +452,16 @@ async function generateEnglishQAPages(
     
     const prompt = generateAIOptimizedPrompt(article, qaType, article.language || 'en', introStyle);
     
-    const MAX_RETRIES = 1; // Reduced to prevent timeout (2 total attempts)
+    const MAX_RETRIES = 4; // Increased for rate limit handling
     let qaData = null;
     
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
+        // Apply exponential backoff for retries (especially for rate limits)
+        if (attempt > 0) {
+          await exponentialBackoff(attempt);
+        }
+        
         const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -464,7 +483,17 @@ async function generateEnglishQAPages(
         });
 
         if (!aiResponse.ok) {
-          throw new Error(`AI API error: ${aiResponse.status}`);
+          const errorStatus = aiResponse.status;
+          
+          // Special handling for rate limits - always retry with backoff
+          if (errorStatus === 429) {
+            console.log(`[Generate] Rate limited (429) for ${qaType}, attempt ${attempt + 1}/${MAX_RETRIES + 1}`);
+            if (attempt < MAX_RETRIES) {
+              continue; // Will trigger exponential backoff on next iteration
+            }
+          }
+          
+          throw new Error(`AI API error: ${errorStatus}`);
         }
 
         const aiData = await aiResponse.json();
@@ -522,10 +551,18 @@ async function generateEnglishQAPages(
         
       } catch (error) {
         console.error(`[Generate] Attempt ${attempt + 1} failed for ${qaType}:`, error);
-        if (attempt < MAX_RETRIES) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        // Don't retry on non-retryable errors (400, 401, 403)
+        const errorMsg = String(error);
+        if (errorMsg.includes('400') || errorMsg.includes('401') || errorMsg.includes('403')) {
+          console.error(`[Generate] Non-retryable error, stopping attempts for ${qaType}`);
+          break;
         }
       }
+    }
+    
+    // Add delay between Q&A types to avoid rate limiting
+    if (qaData) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
     
     if (qaData) {
