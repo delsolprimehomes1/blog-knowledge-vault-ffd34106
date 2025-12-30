@@ -537,14 +537,17 @@ async function generateEnglishQAPages(
           console.log(`[Generate] Valid ${qaType} Q&A: ${validation.wordCount} words`);
         }
         
-        // Language validation for non-English content
+        // Language validation for non-English content - STRICT REJECTION
         if (articleLanguage !== 'en' && !validateQALanguage(qaData, articleLanguage)) {
           console.warn(`[Generate] Language validation failed for ${qaType} in ${articleLanguage} (attempt ${attempt + 1})`);
           if (attempt < MAX_RETRIES) {
             qaData = null;
             continue; // Retry with hopefully correct language
           }
-          console.error(`[Generate] Failed to generate ${qaType} in ${articleLanguage} after ${MAX_RETRIES + 1} attempts - content may be in wrong language`);
+          // STRICT REJECTION: Do NOT save English content for non-English articles
+          console.error(`[REJECTED] ${qaType} Q&A for ${articleLanguage} contains English content - NOT SAVING`);
+          console.error(`[REJECTED] Question: ${qaData?.question_main?.substring(0, 100)}...`);
+          qaData = null; // Reject completely - do not save wrong-language content
         }
         
         break; // Success, exit retry loop
