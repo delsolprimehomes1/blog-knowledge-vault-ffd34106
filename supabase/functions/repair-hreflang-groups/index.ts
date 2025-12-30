@@ -14,16 +14,19 @@ interface QAPage {
   hreflang_group_id: string | null
   source_article_id: string | null
   created_at: string
+  question_main: string | null
 }
 
 /**
  * Repairs hreflang_group_id assignments for QA pages.
  * 
- * Strategy:
- * 1. Group Q&As by cluster_id and qa_type
- * 2. Within each group, use English Q&As as anchors
- * 3. Match other languages to English by position (creation order within cluster+qa_type)
- * 4. Assign the English Q&A's hreflang_group_id to all matching translations
+ * FIXED STRATEGY (v2):
+ * 1. Group Q&As by source_article_id + qa_type (NOT cluster_id)
+ *    - This ensures only translations of THE SAME QUESTION are grouped
+ *    - Each source_article generates specific Q&As that should link together
+ * 2. Fallback to slug-based grouping for Q&As without source_article_id
+ * 3. Within each group, use English Q&A as anchor
+ * 4. Validate: Max 10 pages per group (one per language), no duplicate languages
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,17 +38,16 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    const { dryRun = true, clusterId } = await req.json().catch(() => ({ dryRun: true }))
+    const { dryRun = true, clusterId, contentType } = await req.json().catch(() => ({ dryRun: true }))
 
-    console.log(`Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'})`)
+    console.log(`[Repair v2] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
 
-    // Fetch all published Q&A pages with cluster_id
+    // Fetch all published Q&A pages
     let query = supabase
       .from('qa_pages')
-      .select('id, cluster_id, language, qa_type, slug, hreflang_group_id, source_article_id, created_at')
+      .select('id, cluster_id, language, qa_type, slug, hreflang_group_id, source_article_id, created_at, question_main')
       .eq('status', 'published')
-      .not('cluster_id', 'is', null)
-      .order('cluster_id')
+      .order('source_article_id')
       .order('qa_type')
       .order('created_at')
 
@@ -56,7 +58,7 @@ Deno.serve(async (req) => {
     const { data: qaPages, error: fetchError } = await query
 
     if (fetchError) {
-      console.error('Error fetching Q&A pages:', fetchError)
+      console.error('[Repair v2] Error fetching Q&A pages:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch Q&A pages', details: fetchError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -70,31 +72,127 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`Found ${qaPages.length} Q&A pages to process`)
+    console.log(`[Repair v2] Found ${qaPages.length} Q&A pages to process`)
 
-    // Group Q&As by cluster_id and qa_type
+    // ========== FIXED GROUPING LOGIC ==========
+    // Group by source_article_id + qa_type (NOT cluster_id)
+    // This ensures translations of THE SAME question are grouped together
     const groupedQAs = new Map<string, QAPage[]>()
+    
     for (const qa of qaPages) {
-      const key = `${qa.cluster_id}::${qa.qa_type || 'unknown'}`
-      if (!groupedQAs.has(key)) {
-        groupedQAs.set(key, [])
+      let groupKey: string
+      
+      if (qa.source_article_id) {
+        // Primary grouping: source_article_id + qa_type
+        // All Q&As generated from the same article with the same type are translations of each other
+        groupKey = `article::${qa.source_article_id}::${qa.qa_type || 'default'}`
+      } else {
+        // Fallback for Q&As without source_article_id
+        // Extract base slug by removing language suffix patterns like "-en-abc123", "-de-xyz789"
+        const baseSlug = qa.slug.replace(/-[a-z]{2}-[a-z0-9]+$/i, '')
+        groupKey = `slug::${baseSlug}::${qa.qa_type || 'default'}`
       }
-      groupedQAs.get(key)!.push(qa)
+      
+      if (!groupedQAs.has(groupKey)) {
+        groupedQAs.set(groupKey, [])
+      }
+      groupedQAs.get(groupKey)!.push(qa)
     }
 
-    console.log(`Grouped into ${groupedQAs.size} cluster+qa_type combinations`)
+    console.log(`[Repair v2] Created ${groupedQAs.size} potential hreflang groups`)
+    
+    // Log group size distribution
+    const groupSizes = Array.from(groupedQAs.values()).map(g => g.length)
+    console.log(`[Repair v2] Group sizes: min=${Math.min(...groupSizes)}, max=${Math.max(...groupSizes)}, avg=${(groupSizes.reduce((a,b) => a+b, 0) / groupSizes.length).toFixed(1)}`)
 
     const updates: { id: string; hreflang_group_id: string; translations: Record<string, string> }[] = []
     const stats = {
       groupsProcessed: 0,
+      validGroups: 0,
+      groupsWithDuplicateLanguages: 0,
+      groupsOver10Pages: 0,
       englishAnchors: 0,
       translationsLinked: 0,
       noEnglishAnchor: 0,
     }
 
+    const warnings: string[] = []
+
     for (const [groupKey, qas] of groupedQAs) {
       stats.groupsProcessed++
       
+      // ========== VALIDATION ==========
+      // Check for duplicate languages within this group
+      const languages = qas.map(q => q.language)
+      const uniqueLanguages = new Set(languages)
+      
+      if (languages.length !== uniqueLanguages.size) {
+        stats.groupsWithDuplicateLanguages++
+        const duplicateLangs = languages.filter((l, i) => languages.indexOf(l) !== i)
+        warnings.push(`Group ${groupKey} has duplicate languages: ${duplicateLangs.join(', ')} (${qas.length} total pages)`)
+        console.warn(`[Repair v2] ⚠️ Group has ${qas.length} pages but only ${uniqueLanguages.size} unique languages`)
+        
+        // For groups with duplicates, we need to split them further
+        // Strategy: Group by (language + position-in-creation-order)
+        // This handles cases where the same source article has multiple Q&As of the same type+language
+        // We'll process each unique language's first Q&A together, then second, etc.
+        
+        // Sort all Q&As by creation time
+        const sortedQAs = [...qas].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+        
+        // Group by language first to determine max number of Q&As per language
+        const byLang = new Map<string, QAPage[]>()
+        for (const qa of sortedQAs) {
+          if (!byLang.has(qa.language)) {
+            byLang.set(qa.language, [])
+          }
+          byLang.get(qa.language)!.push(qa)
+        }
+        
+        // Find max count per language
+        const maxPerLang = Math.max(...Array.from(byLang.values()).map(arr => arr.length))
+        
+        // Create sub-groups by position
+        for (let pos = 0; pos < maxPerLang; pos++) {
+          const subGroup: QAPage[] = []
+          for (const [lang, langQAs] of byLang) {
+            if (pos < langQAs.length) {
+              subGroup.push(langQAs[pos])
+            }
+          }
+          
+          if (subGroup.length > 0) {
+            // Process this sub-group with a unique hreflang_group_id
+            const anchor = subGroup.find(q => q.language === 'en') || subGroup[0]
+            const hreflangGroupId = crypto.randomUUID()
+            
+            const translations: Record<string, string> = {}
+            for (const qa of subGroup) {
+              translations[qa.language] = qa.slug
+            }
+            
+            for (const qa of subGroup) {
+              updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
+            }
+            
+            stats.translationsLinked += subGroup.length
+          }
+        }
+        
+        continue // Skip normal processing for this group
+      }
+      
+      if (qas.length > 10) {
+        stats.groupsOver10Pages++
+        warnings.push(`Group ${groupKey} has ${qas.length} pages (expected max 10)`)
+        console.warn(`[Repair v2] ⚠️ Group ${groupKey} has ${qas.length} pages (expected max 10)`)
+      }
+      
+      stats.validGroups++
+      
+      // ========== NORMAL PROCESSING ==========
       // Separate English Q&As from other languages
       const englishQAs = qas.filter(q => q.language === 'en').sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -111,77 +209,49 @@ Deno.serve(async (req) => {
         
         if (sortedQAs.length > 0) {
           const anchor = sortedQAs[0]
-          const hreflangGroupId = anchor.hreflang_group_id || anchor.id
+          // Generate new UUID for clean groups
+          const hreflangGroupId = crypto.randomUUID()
           
-          // Group all Q&As in this group under the anchor's hreflang_group_id
+          // Build translations map
           const translations: Record<string, string> = {}
           for (const qa of sortedQAs) {
             translations[qa.language] = qa.slug
           }
           
           for (const qa of sortedQAs) {
-            if (qa.hreflang_group_id !== hreflangGroupId) {
-              updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
-            }
+            updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
           }
+          
+          stats.translationsLinked += sortedQAs.length
         }
         continue
       }
 
       stats.englishAnchors += englishQAs.length
 
-      // Group other language Q&As by language
-      const otherByLang = new Map<string, QAPage[]>()
-      for (const qa of otherLangQAs) {
-        if (!otherByLang.has(qa.language)) {
-          otherByLang.set(qa.language, [])
-        }
-        otherByLang.get(qa.language)!.push(qa)
+      // For valid groups with English anchor
+      // Generate new hreflang_group_id to ensure clean state
+      const hreflangGroupId = crypto.randomUUID()
+      
+      // Build translations map
+      const translations: Record<string, string> = {}
+      for (const qa of qas) {
+        translations[qa.language] = qa.slug
       }
 
-      // Sort each language's Q&As by creation time
-      for (const [lang, langQAs] of otherByLang) {
-        langQAs.sort((a, b) => 
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        )
+      // Queue updates for all Q&As in this group
+      for (const qa of qas) {
+        updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
       }
-
-      // Match translations by position
-      for (let i = 0; i < englishQAs.length; i++) {
-        const englishQA = englishQAs[i]
-        const hreflangGroupId = englishQA.hreflang_group_id || englishQA.id
-        
-        // Build translations map
-        const translations: Record<string, string> = {
-          en: englishQA.slug
-        }
-        
-        const toUpdate: QAPage[] = [englishQA]
-
-        // Match each language's i-th Q&A to this English anchor
-        for (const [lang, langQAs] of otherByLang) {
-          if (i < langQAs.length) {
-            const matchedQA = langQAs[i]
-            translations[lang] = matchedQA.slug
-            toUpdate.push(matchedQA)
-            stats.translationsLinked++
-          }
-        }
-
-        // Queue updates for all matched Q&As
-        for (const qa of toUpdate) {
-          if (qa.hreflang_group_id !== hreflangGroupId) {
-            updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
-          } else {
-            // Even if group ID matches, update translations JSONB
-            updates.push({ id: qa.id, hreflang_group_id: hreflangGroupId, translations })
-          }
-        }
-      }
+      
+      stats.translationsLinked += qas.length
     }
 
-    console.log(`Stats:`, stats)
-    console.log(`Total updates queued: ${updates.length}`)
+    console.log(`[Repair v2] Stats:`, stats)
+    console.log(`[Repair v2] Total updates queued: ${updates.length}`)
+    if (warnings.length > 0) {
+      console.log(`[Repair v2] Warnings (${warnings.length}):`, warnings.slice(0, 5))
+    }
 
     if (dryRun) {
       // Return preview of changes without applying
@@ -191,11 +261,21 @@ Deno.serve(async (req) => {
         languages_linked: Object.keys(u.translations),
       }))
 
+      // Calculate expected group distribution after fix
+      const newGroupIds = new Set(updates.map(u => u.hreflang_group_id))
+      const groupDistribution = new Map<number, number>()
+      for (const groupId of newGroupIds) {
+        const count = updates.filter(u => u.hreflang_group_id === groupId).length
+        groupDistribution.set(count, (groupDistribution.get(count) || 0) + 1)
+      }
+
       return new Response(
         JSON.stringify({
           dryRun: true,
-          message: `Would update ${updates.length} Q&A pages`,
+          message: `Would update ${updates.length} Q&A pages across ${newGroupIds.size} hreflang groups`,
           stats,
+          warnings: warnings.slice(0, 10),
+          expectedGroupSizes: Object.fromEntries(groupDistribution),
           preview,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -220,31 +300,36 @@ Deno.serve(async (req) => {
           .eq('id', update.id)
 
         if (updateError) {
-          console.error(`Error updating Q&A ${update.id}:`, updateError)
+          console.error(`[Repair v2] Error updating Q&A ${update.id}:`, updateError)
           errorCount++
         } else {
           successCount++
         }
       }
 
-      console.log(`Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
+      console.log(`[Repair v2] Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
     }
+
+    // Calculate final group distribution
+    const newGroupIds = new Set(updates.map(u => u.hreflang_group_id))
 
     return new Response(
       JSON.stringify({
         dryRun: false,
-        message: `Updated ${successCount} Q&A pages (${errorCount} errors)`,
+        message: `Updated ${successCount} Q&A pages across ${newGroupIds.size} hreflang groups (${errorCount} errors)`,
         stats: {
           ...stats,
           successCount,
           errorCount,
+          totalHreflangGroups: newGroupIds.size,
         },
+        warnings: warnings.slice(0, 10),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('Error in repair-hreflang-groups:', error)
+    console.error('[Repair v2] Error in repair-hreflang-groups:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
