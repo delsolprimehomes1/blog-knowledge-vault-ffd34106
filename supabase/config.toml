@@ -176,3 +176,9 @@ verify_jwt = false
 
 [functions.auto-resume-qa-jobs]
 verify_jwt = false
+
+[functions.audit-qa-languages]
+verify_jwt = false
+
+[functions.fix-qa-language-mismatches]
+verify_jwt = false

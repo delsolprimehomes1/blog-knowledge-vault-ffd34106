@@ -31,6 +31,7 @@ const navigation = [
   { name: "System Check", href: "/admin/system-check", icon: CheckCircle },
   { name: "System Health", href: "/admin/system-health", icon: HeartPulse },
   { name: "Schema Health", href: "/admin/schema-health", icon: Database },
+  { name: "Q&A Language Audit", href: "/admin/qa-language-audit", icon: Languages },
   { name: "Export", href: "/admin/export", icon: Download },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
