@@ -207,18 +207,19 @@ const VARIED_INTRO_STYLES = [
 ] as const;
 
 // Language-specific minimum word counts
-// Inflected/agglutinative languages express meaning in fewer words
+// Nordic and inflected/agglutinative languages express meaning in fewer words
+// Reduced thresholds to prevent retry loops and timeouts
 const LANGUAGE_WORD_COUNTS: Record<string, { min: number; max: number }> = {
-  'en': { min: 350, max: 800 },
-  'de': { min: 300, max: 750 },
-  'nl': { min: 300, max: 750 },
-  'fr': { min: 320, max: 780 },
-  'pl': { min: 220, max: 700 },  // Polish is highly inflected - reduced to prevent retry loops
-  'sv': { min: 280, max: 750 },
-  'da': { min: 280, max: 750 },
-  'hu': { min: 220, max: 650 },  // Hungarian is agglutinative
-  'fi': { min: 200, max: 600 },  // Finnish is highly agglutinative
-  'no': { min: 280, max: 750 },
+  'en': { min: 300, max: 800 },   // English needs more words
+  'de': { min: 250, max: 750 },   // German - slightly reduced
+  'nl': { min: 250, max: 750 },   // Dutch - slightly reduced
+  'fr': { min: 260, max: 780 },   // French - slightly reduced
+  'pl': { min: 220, max: 700 },   // Polish is highly inflected
+  'sv': { min: 220, max: 750 },   // Swedish - Nordic languages are concise
+  'da': { min: 220, max: 750 },   // Danish - Nordic languages are concise
+  'hu': { min: 220, max: 650 },   // Hungarian is agglutinative
+  'fi': { min: 200, max: 600 },   // Finnish is highly agglutinative
+  'no': { min: 220, max: 750 },   // Norwegian - Nordic languages are concise
 };
 
 /**
