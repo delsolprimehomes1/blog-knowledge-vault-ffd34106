@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface QAPage {
+interface QAPageWithArticle {
   id: string
   cluster_id: string | null
   language: string
@@ -15,18 +15,22 @@ interface QAPage {
   source_article_id: string | null
   created_at: string
   question_main: string | null
+  source_article?: {
+    id: string
+    hreflang_group_id: string | null
+  } | null
 }
 
 /**
  * Repairs hreflang_group_id assignments for QA pages.
  * 
- * FIXED STRATEGY (v2):
- * 1. Group Q&As by source_article_id + qa_type (NOT cluster_id)
- *    - This ensures only translations of THE SAME QUESTION are grouped
- *    - Each source_article generates specific Q&As that should link together
- * 2. Fallback to slug-based grouping for Q&As without source_article_id
- * 3. Within each group, use English Q&A as anchor
- * 4. Validate: Max 10 pages per group (one per language), no duplicate languages
+ * FIXED STRATEGY (v3):
+ * 1. Join Q&As with their source blog_articles
+ * 2. Group Q&As by the BLOG ARTICLE'S hreflang_group_id + qa_type
+ *    - This ensures Q&As from translated articles (EN/DE/FR/NL/PL) are grouped together
+ *    - Because translated blog articles share the same hreflang_group_id
+ * 3. Fallback to source_article_id for articles without hreflang_group
+ * 4. Fallback to slug-based grouping for Q&As without source_article_id
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -40,12 +44,26 @@ Deno.serve(async (req) => {
 
     const { dryRun = true, clusterId, contentType } = await req.json().catch(() => ({ dryRun: true }))
 
-    console.log(`[Repair v2] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
+    console.log(`[Repair v3] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
 
-    // Fetch all published Q&A pages
+    // Fetch all published Q&A pages with their source article's hreflang_group_id
     let query = supabase
       .from('qa_pages')
-      .select('id, cluster_id, language, qa_type, slug, hreflang_group_id, source_article_id, created_at, question_main')
+      .select(`
+        id, 
+        cluster_id, 
+        language, 
+        qa_type, 
+        slug, 
+        hreflang_group_id, 
+        source_article_id, 
+        created_at, 
+        question_main,
+        source_article:blog_articles!source_article_id(
+          id,
+          hreflang_group_id
+        )
+      `)
       .eq('status', 'published')
       .order('source_article_id')
       .order('qa_type')
@@ -55,10 +73,13 @@ Deno.serve(async (req) => {
       query = query.eq('cluster_id', clusterId)
     }
 
-    const { data: qaPages, error: fetchError } = await query
+    const { data: qaPages, error: fetchError } = await query as { 
+      data: QAPageWithArticle[] | null
+      error: any 
+    }
 
     if (fetchError) {
-      console.error('[Repair v2] Error fetching Q&A pages:', fetchError)
+      console.error('[Repair v3] Error fetching Q&A pages:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch Q&A pages', details: fetchError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -72,23 +93,32 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`[Repair v2] Found ${qaPages.length} Q&A pages to process`)
+    console.log(`[Repair v3] Found ${qaPages.length} Q&A pages to process`)
 
-    // ========== FIXED GROUPING LOGIC ==========
-    // Group by source_article_id + qa_type (NOT cluster_id)
-    // This ensures translations of THE SAME question are grouped together
-    const groupedQAs = new Map<string, QAPage[]>()
+    // Log how many have source_article with hreflang_group_id
+    const withArticleHreflang = qaPages.filter(q => q.source_article?.hreflang_group_id).length
+    const withArticle = qaPages.filter(q => q.source_article_id).length
+    console.log(`[Repair v3] ${withArticleHreflang}/${withArticle} Q&As have source article with hreflang_group_id`)
+
+    // ========== FIXED GROUPING LOGIC (v3) ==========
+    // Group by blog article's hreflang_group_id + qa_type
+    // This links Q&As from translated articles together!
+    const groupedQAs = new Map<string, QAPageWithArticle[]>()
     
     for (const qa of qaPages) {
       let groupKey: string
       
-      if (qa.source_article_id) {
-        // Primary grouping: source_article_id + qa_type
-        // All Q&As generated from the same article with the same type are translations of each other
+      // PRIMARY: Use the blog article's hreflang_group_id
+      // This links Q&As from translated articles together
+      if (qa.source_article?.hreflang_group_id) {
+        groupKey = `article-hreflang::${qa.source_article.hreflang_group_id}::${qa.qa_type || 'default'}`
+      } 
+      // FALLBACK 1: Article exists but no hreflang_group
+      else if (qa.source_article_id) {
         groupKey = `article::${qa.source_article_id}::${qa.qa_type || 'default'}`
-      } else {
-        // Fallback for Q&As without source_article_id
-        // Extract base slug by removing language suffix patterns like "-en-abc123", "-de-xyz789"
+      } 
+      // FALLBACK 2: No source article (standalone Q&A)
+      else {
         const baseSlug = qa.slug.replace(/-[a-z]{2}-[a-z0-9]+$/i, '')
         groupKey = `slug::${baseSlug}::${qa.qa_type || 'default'}`
       }
@@ -99,11 +129,20 @@ Deno.serve(async (req) => {
       groupedQAs.get(groupKey)!.push(qa)
     }
 
-    console.log(`[Repair v2] Created ${groupedQAs.size} potential hreflang groups`)
+    console.log(`[Repair v3] Created ${groupedQAs.size} potential hreflang groups`)
+    
+    // Log sample group to verify correct linking
+    const sampleGroup = Array.from(groupedQAs.entries())[0]
+    if (sampleGroup) {
+      const [key, qas] = sampleGroup
+      console.log(`[Repair v3] Sample group key: ${key}`)
+      console.log(`[Repair v3] Sample languages: ${qas.map(q => q.language).sort().join(', ')}`)
+      console.log(`[Repair v3] Sample slugs: ${qas.map(q => q.slug.substring(0, 40)).join(', ')}`)
+    }
     
     // Log group size distribution
     const groupSizes = Array.from(groupedQAs.values()).map(g => g.length)
-    console.log(`[Repair v2] Group sizes: min=${Math.min(...groupSizes)}, max=${Math.max(...groupSizes)}, avg=${(groupSizes.reduce((a,b) => a+b, 0) / groupSizes.length).toFixed(1)}`)
+    console.log(`[Repair v3] Group sizes: min=${Math.min(...groupSizes)}, max=${Math.max(...groupSizes)}, avg=${(groupSizes.reduce((a,b) => a+b, 0) / groupSizes.length).toFixed(1)}`)
 
     const updates: { id: string; hreflang_group_id: string; translations: Record<string, string> }[] = []
     const stats = {
@@ -114,12 +153,24 @@ Deno.serve(async (req) => {
       englishAnchors: 0,
       translationsLinked: 0,
       noEnglishAnchor: 0,
+      groupedByArticleHreflang: 0,
+      groupedByArticleId: 0,
+      groupedBySlug: 0,
     }
 
     const warnings: string[] = []
 
     for (const [groupKey, qas] of groupedQAs) {
       stats.groupsProcessed++
+      
+      // Track grouping method
+      if (groupKey.startsWith('article-hreflang::')) {
+        stats.groupedByArticleHreflang++
+      } else if (groupKey.startsWith('article::')) {
+        stats.groupedByArticleId++
+      } else {
+        stats.groupedBySlug++
+      }
       
       // ========== VALIDATION ==========
       // Check for duplicate languages within this group
@@ -129,13 +180,11 @@ Deno.serve(async (req) => {
       if (languages.length !== uniqueLanguages.size) {
         stats.groupsWithDuplicateLanguages++
         const duplicateLangs = languages.filter((l, i) => languages.indexOf(l) !== i)
-        warnings.push(`Group ${groupKey} has duplicate languages: ${duplicateLangs.join(', ')} (${qas.length} total pages)`)
-        console.warn(`[Repair v2] ⚠️ Group has ${qas.length} pages but only ${uniqueLanguages.size} unique languages`)
+        warnings.push(`Group ${groupKey.substring(0, 60)} has duplicate languages: ${duplicateLangs.join(', ')} (${qas.length} total pages)`)
+        console.warn(`[Repair v3] ⚠️ Group has ${qas.length} pages but only ${uniqueLanguages.size} unique languages`)
         
         // For groups with duplicates, we need to split them further
         // Strategy: Group by (language + position-in-creation-order)
-        // This handles cases where the same source article has multiple Q&As of the same type+language
-        // We'll process each unique language's first Q&A together, then second, etc.
         
         // Sort all Q&As by creation time
         const sortedQAs = [...qas].sort((a, b) => 
@@ -143,7 +192,7 @@ Deno.serve(async (req) => {
         )
         
         // Group by language first to determine max number of Q&As per language
-        const byLang = new Map<string, QAPage[]>()
+        const byLang = new Map<string, QAPageWithArticle[]>()
         for (const qa of sortedQAs) {
           if (!byLang.has(qa.language)) {
             byLang.set(qa.language, [])
@@ -156,7 +205,7 @@ Deno.serve(async (req) => {
         
         // Create sub-groups by position
         for (let pos = 0; pos < maxPerLang; pos++) {
-          const subGroup: QAPage[] = []
+          const subGroup: QAPageWithArticle[] = []
           for (const [lang, langQAs] of byLang) {
             if (pos < langQAs.length) {
               subGroup.push(langQAs[pos])
@@ -165,7 +214,6 @@ Deno.serve(async (req) => {
           
           if (subGroup.length > 0) {
             // Process this sub-group with a unique hreflang_group_id
-            const anchor = subGroup.find(q => q.language === 'en') || subGroup[0]
             const hreflangGroupId = crypto.randomUUID()
             
             const translations: Record<string, string> = {}
@@ -186,8 +234,8 @@ Deno.serve(async (req) => {
       
       if (qas.length > 10) {
         stats.groupsOver10Pages++
-        warnings.push(`Group ${groupKey} has ${qas.length} pages (expected max 10)`)
-        console.warn(`[Repair v2] ⚠️ Group ${groupKey} has ${qas.length} pages (expected max 10)`)
+        warnings.push(`Group ${groupKey.substring(0, 60)} has ${qas.length} pages (expected max 10)`)
+        console.warn(`[Repair v3] ⚠️ Group ${groupKey} has ${qas.length} pages (expected max 10)`)
       }
       
       stats.validGroups++
@@ -198,8 +246,6 @@ Deno.serve(async (req) => {
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
       
-      const otherLangQAs = qas.filter(q => q.language !== 'en')
-      
       if (englishQAs.length === 0) {
         // No English anchor - use the first Q&A of any language as anchor
         stats.noEnglishAnchor++
@@ -208,7 +254,6 @@ Deno.serve(async (req) => {
         )
         
         if (sortedQAs.length > 0) {
-          const anchor = sortedQAs[0]
           // Generate new UUID for clean groups
           const hreflangGroupId = crypto.randomUUID()
           
@@ -247,10 +292,10 @@ Deno.serve(async (req) => {
       stats.translationsLinked += qas.length
     }
 
-    console.log(`[Repair v2] Stats:`, stats)
-    console.log(`[Repair v2] Total updates queued: ${updates.length}`)
+    console.log(`[Repair v3] Stats:`, stats)
+    console.log(`[Repair v3] Total updates queued: ${updates.length}`)
     if (warnings.length > 0) {
-      console.log(`[Repair v2] Warnings (${warnings.length}):`, warnings.slice(0, 5))
+      console.log(`[Repair v3] Warnings (${warnings.length}):`, warnings.slice(0, 5))
     }
 
     if (dryRun) {
@@ -300,14 +345,14 @@ Deno.serve(async (req) => {
           .eq('id', update.id)
 
         if (updateError) {
-          console.error(`[Repair v2] Error updating Q&A ${update.id}:`, updateError)
+          console.error(`[Repair v3] Error updating Q&A ${update.id}:`, updateError)
           errorCount++
         } else {
           successCount++
         }
       }
 
-      console.log(`[Repair v2] Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
+      console.log(`[Repair v3] Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
     }
 
     // Calculate final group distribution
@@ -329,7 +374,7 @@ Deno.serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('[Repair v2] Error in repair-hreflang-groups:', error)
+    console.error('[Repair v3] Error in repair-hreflang-groups:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
