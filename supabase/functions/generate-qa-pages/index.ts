@@ -23,6 +23,34 @@ const ALL_SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu',
 const TRANSLATION_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 const ALL_QA_TYPES = ['core', 'decision', 'practical', 'problem'];
 
+// HARD CAP: Maximum 24 Q&As per cluster per language (6 articles × 4 types)
+const MAX_QA_PER_LANGUAGE = 24;
+
+/**
+ * Check if language has reached Q&A cap for a cluster
+ */
+async function hasReachedQACap(
+  supabase: any,
+  clusterId: string | null,
+  language: string
+): Promise<{ atCap: boolean; currentCount: number }> {
+  if (!clusterId) {
+    return { atCap: false, currentCount: 0 };
+  }
+  
+  const { count } = await supabase
+    .from('qa_pages')
+    .select('*', { count: 'exact', head: true })
+    .eq('cluster_id', clusterId)
+    .eq('language', language);
+  
+  const currentCount = count || 0;
+  return { 
+    atCap: currentCount >= MAX_QA_PER_LANGUAGE, 
+    currentCount 
+  };
+}
+
 /**
  * Exponential backoff helper for rate limiting
  */
@@ -776,6 +804,14 @@ async function processAllMissingQAs(
 
       // Generate/translate missing pages
       for (const [lang, qaTypes] of Object.entries(missingByLang)) {
+        // CHECK CAP: Skip if language has already reached 24 Q&As for this cluster
+        const effectiveClusterId = article.cluster_id || clusterId;
+        const capCheck = await hasReachedQACap(supabase, effectiveClusterId, lang);
+        if (capCheck.atCap) {
+          console.log(`[CAP] Skipping ${lang} - already at ${capCheck.currentCount}/${MAX_QA_PER_LANGUAGE} Q&As for cluster`);
+          continue;
+        }
+        
         // Update current language in job
         await supabase
           .from('qa_generation_jobs')

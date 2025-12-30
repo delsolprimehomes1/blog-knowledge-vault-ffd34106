@@ -1140,23 +1140,27 @@ const ClusterManager = () => {
                     {Object.entries(cluster.languages).map(([lang, stats]) => {
                       const expectedQAs = stats.total * 4;
                       const actualQAs = cluster.qa_pages[lang] || 0;
-                      const missingQAs = expectedQAs - actualQAs;
-                      const langPercent = expectedQAs > 0 ? Math.round((actualQAs / expectedQAs) * 100) : 0;
+                      const maxQAs = 24; // Hard cap: 6 articles × 4 types
+                      const isOverCap = actualQAs > maxQAs;
+                      const missingQAs = Math.max(0, expectedQAs - actualQAs);
+                      const langPercent = expectedQAs > 0 ? Math.round((Math.min(actualQAs, expectedQAs) / expectedQAs) * 100) : 0;
                       const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id && generatingQALanguage?.lang === lang;
                       
                       return (
                         <div key={lang} className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-sm">
+                          <Badge variant="outline" className={`text-sm ${isOverCap ? 'border-red-300 bg-red-50 dark:bg-red-950/30' : ''}`}>
                             {getLanguageFlag(lang)} {stats.total}
                             <span className={`ml-1 ${
-                              langPercent === 100 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : langPercent > 0 
-                                  ? 'text-amber-600 dark:text-amber-400' 
-                                  : 'text-muted-foreground'
+                              isOverCap
+                                ? 'text-red-600 dark:text-red-400'
+                                : langPercent === 100 
+                                  ? 'text-green-600 dark:text-green-400' 
+                                  : langPercent > 0 
+                                    ? 'text-amber-600 dark:text-amber-400' 
+                                    : 'text-muted-foreground'
                             }`}>
-                              | {actualQAs}/{expectedQAs}Q
-                              {langPercent === 100 ? ' ✅' : langPercent > 0 ? ' ⚠️' : ''}
+                              | {actualQAs}/{maxQAs}Q
+                              {isOverCap ? ' ⚠️' : langPercent === 100 ? ' ✅' : langPercent > 0 ? '' : ''}
                             </span>
                             {stats.draft > 0 && stats.published > 0 && (
                               <span className="text-muted-foreground ml-1">
@@ -1164,7 +1168,7 @@ const ClusterManager = () => {
                               </span>
                             )}
                           </Badge>
-                          {missingQAs > 0 && (
+                          {missingQAs > 0 && !isOverCap && (
                             <Button
                               size="sm"
                               variant="ghost"
