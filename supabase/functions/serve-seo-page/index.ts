@@ -215,39 +215,27 @@ async function fetchHreflangSiblings(supabase: any, hreflangGroupId: string, con
 function generateHreflangTags(siblings: HreflangSibling[], currentLang: string, contentType: string): string {
   const pathPrefix = contentType === 'blog' ? 'blog' : contentType === 'qa' ? 'qa' : contentType === 'compare' ? 'compare' : 'locations'
   
-  // Create a map of available languages
+  // Create a map of available languages from siblings
   const availableLanguages = new Map<string, HreflangSibling>()
   siblings.forEach(sibling => {
     availableLanguages.set(sibling.language, sibling)
   })
 
-  // Find English version for fallback (required for missing languages)
-  const englishVersion = availableLanguages.get('en')
-  const currentVersion = siblings.find(s => s.language === currentLang)
-  const fallbackVersion = englishVersion || currentVersion || siblings[0]
-  
-  // Generate tags for ALL 10 supported languages (with fallback to English if missing)
+  // Generate tags ONLY for languages that EXIST (no fallbacks!)
   const tags: string[] = []
   
-  SUPPORTED_LANGUAGES.forEach(lang => {
-    const sibling = availableLanguages.get(lang)
-    if (sibling) {
-      // Language version exists - use it
-      const url = sibling.canonical_url || `${BASE_URL}/${lang}/${pathPrefix}/${sibling.slug}`
-      tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
-    } else if (fallbackVersion) {
-      // Language version missing - fallback to English/source version
-      const fallbackLang = englishVersion ? 'en' : (fallbackVersion.language || 'en')
-      const url = fallbackVersion.canonical_url || `${BASE_URL}/${fallbackLang}/${pathPrefix}/${fallbackVersion.slug}`
-      tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
-    }
-  })
+  for (const [lang, sibling] of availableLanguages) {
+    const url = sibling.canonical_url || `${BASE_URL}/${lang}/${pathPrefix}/${sibling.slug}`
+    tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
+  }
 
-  // Add x-default (points to English or fallback)
-  const xDefaultLang = englishVersion ? 'en' : (fallbackVersion?.language || 'en')
-  const xDefaultUrl = fallbackVersion 
-    ? (fallbackVersion.canonical_url || `${BASE_URL}/${xDefaultLang}/${pathPrefix}/${fallbackVersion.slug}`)
-    : `${BASE_URL}/en/${pathPrefix}/${siblings[0]?.slug || ''}`
+  // Add x-default (points to English if it exists, otherwise first available)
+  const englishVersion = availableLanguages.get('en')
+  const xDefaultVersion = englishVersion || availableLanguages.get(currentLang) || siblings[0]
+  const xDefaultLang = englishVersion ? 'en' : (xDefaultVersion?.language || currentLang)
+  const xDefaultUrl = xDefaultVersion 
+    ? (xDefaultVersion.canonical_url || `${BASE_URL}/${xDefaultLang}/${pathPrefix}/${xDefaultVersion.slug}`)
+    : `${BASE_URL}/${currentLang}/${pathPrefix}/${siblings[0]?.slug || ''}`
   tags.push(`  <link rel="alternate" hreflang="x-default" href="${xDefaultUrl}" />`)
 
   return tags.join('\n')
@@ -340,12 +328,9 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml
   const articleSchema = generateArticleSchema(metadata)
   const speakableSchema = generateSpeakableSchema(metadata)
 
-  // Build the complete head section
+  // Build the complete head section (no charset/viewport - those are in index.html)
   const headContent = `
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Primary Meta Tags -->
+  <!-- Primary Meta Tags (dynamic, not in index.html) -->
   <title>${escapedTitle}</title>
   <meta name="title" content="${escapedTitle}" />
   <meta name="description" content="${escapedDescription}" />
@@ -373,9 +358,6 @@ ${hreflangTags}
   <!-- Article Meta -->
   ${metadata.date_published ? `<meta property="article:published_time" content="${metadata.date_published}" />` : ''}
   ${metadata.date_modified ? `<meta property="article:modified_time" content="${metadata.date_modified}" />` : ''}
-  
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/favicon.png" />
   
   <!-- Schema.org JSON-LD (no duplicates) -->
   ${qaSchema}

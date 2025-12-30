@@ -183,63 +183,58 @@ export function buildContentUrl(content: HreflangContent, lang: SupportedLanguag
 // =============================================================================
 
 /**
- * Generates hreflang tags for ALL 10 supported languages plus x-default.
- * Languages without existing content fall back to English version.
- * This ensures complete hreflang coverage for proper SEO signals.
+ * Generates hreflang tags ONLY for languages that actually exist in the database.
+ * NO fallbacks to English for missing languages - this prevents invalid hreflang URLs.
  * 
  * @param currentContent - The content item being displayed
  * @param siblings - Array of all language versions of this content
- * @returns Array of 11 HreflangTag objects (10 languages + x-default)
+ * @returns Array of HreflangTag objects for existing languages + x-default
  * 
  * @example
  * const tags = generateHreflangTags(article, siblings);
- * // Returns 11 tags - one for each language with fallback to EN for missing
+ * // Returns tags ONLY for existing language versions (e.g., en, de, fr if those exist)
  */
 export function generateHreflangTags(
   currentContent: HreflangContent,
   siblings: HreflangContent[]
 ): HreflangTag[] {
-  // Combine current content with siblings for complete set
-  const allVersions = [currentContent, ...siblings.filter(s => s.id !== currentContent.id)];
+  // Create a map of available language versions (current + siblings)
+  const availableLanguages = new Map<SupportedLanguage, HreflangContent>();
   
-  // Create a map of language -> content for quick lookup (only published content)
-  const languageMap = new Map<SupportedLanguage, HreflangContent>();
-  for (const content of allVersions) {
-    if (content.status === 'published' && isSupportedLanguage(content.language)) {
-      languageMap.set(content.language, content);
+  // Add current page
+  if (isSupportedLanguage(currentContent.language)) {
+    availableLanguages.set(currentContent.language, currentContent);
+  }
+  
+  // Add all published siblings (deduplicate by language)
+  for (const sibling of siblings) {
+    if (sibling.status === 'published' && 
+        isSupportedLanguage(sibling.language) && 
+        sibling.id !== currentContent.id) {
+      availableLanguages.set(sibling.language, sibling);
     }
   }
   
-  // Find English version for fallback
-  const englishVersion = languageMap.get('en');
-  const sourceLanguageVersion = languageMap.get(currentContent.source_language);
-  const fallbackVersion = englishVersion || sourceLanguageVersion || currentContent;
-  const fallbackLang: SupportedLanguage = englishVersion ? 'en' : (sourceLanguageVersion ? currentContent.source_language : currentContent.language);
-  
-  // Generate tags for ALL 10 supported languages (with fallback to English if missing)
+  // Generate hreflang tags ONLY for languages that EXIST (no fallbacks!)
   const tags: HreflangTag[] = [];
   
-  for (const lang of SUPPORTED_LANGUAGES) {
-    const version = languageMap.get(lang);
-    if (version) {
-      // Language version exists - use it
-      tags.push({
-        hreflang: lang,
-        href: buildContentUrl(version, lang),
-      });
-    } else {
-      // Language version missing - fallback to English
-      tags.push({
-        hreflang: lang,
-        href: buildContentUrl(fallbackVersion, fallbackLang),
-      });
-    }
+  for (const [lang, content] of availableLanguages) {
+    const url = content.canonical_url || buildContentUrl(content, lang);
+    tags.push({
+      hreflang: lang,
+      href: url,
+    });
   }
   
-  // Add x-default pointing to English or source language
+  // Add x-default (points to English if it exists, otherwise current page)
+  const englishVersion = availableLanguages.get('en');
+  const defaultContent = englishVersion || currentContent;
+  const defaultLang = englishVersion ? 'en' : currentContent.language;
+  const defaultUrl = defaultContent.canonical_url || buildContentUrl(defaultContent, defaultLang as SupportedLanguage);
+  
   tags.push({
     hreflang: 'x-default',
-    href: buildContentUrl(fallbackVersion, fallbackLang),
+    href: defaultUrl,
   });
   
   return tags;
