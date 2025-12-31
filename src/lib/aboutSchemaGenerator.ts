@@ -43,6 +43,59 @@ interface AboutPageContent {
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
+// Hardcoded founder data with LinkedIn URLs for entity disambiguation
+export const FOUNDERS_DATA: Founder[] = [
+  {
+    name: "Steven Roberts",
+    role: "Co-Founder & Director",
+    bio: "British real estate professional with 20+ years experience in Costa del Sol. Specializes in luxury villa sales and new developments.",
+    photo_url: "https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/steven-roberts.jpg",
+    linkedin_url: "https://www.linkedin.com/in/stevenrobertsrealestate/",
+    credentials: ["API Licensed Agent", "RICS Affiliate"],
+    years_experience: 20,
+    languages: ["English", "Spanish"],
+    specialization: "Luxury Villas & New Developments"
+  },
+  {
+    name: "Hans Beeckman",
+    role: "Co-Founder & Sales Director",
+    bio: "Belgian real estate expert with deep knowledge of the Dutch and Belgian buyer market. 15+ years guiding international clients through Spanish property purchases.",
+    photo_url: "https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/hans-beeckman.jpg",
+    linkedin_url: "https://www.linkedin.com/in/hansbeeckman/",
+    credentials: ["API Licensed Agent", "Property Investment Specialist"],
+    years_experience: 15,
+    languages: ["Dutch", "French", "English", "Spanish"],
+    specialization: "International Buyers & Investment Properties"
+  },
+  {
+    name: "Cédric Van Hecke",
+    role: "Co-Founder & Client Relations",
+    bio: "Belgian real estate consultant specializing in client relations and after-sales support. Expert in helping buyers navigate Spanish bureaucracy.",
+    photo_url: "https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/cedric-vanhecke.jpg",
+    linkedin_url: "https://www.linkedin.com/in/cedricvanhecke/",
+    credentials: ["API Licensed Agent", "NIE & Residency Specialist"],
+    years_experience: 12,
+    languages: ["Dutch", "French", "English", "Spanish"],
+    specialization: "Client Relations & Legal Coordination"
+  }
+];
+
+// API Credential Schema (company-level)
+export function generateAPICredentialSchema() {
+  return {
+    "@type": "EducationalOccupationalCredential",
+    "@id": `${BASE_URL}/#api-credential`,
+    "credentialCategory": "license",
+    "name": "Agente de la Propiedad Inmobiliaria (API)",
+    "description": "Official Spanish real estate agent license issued by the professional college",
+    "recognizedBy": {
+      "@type": "Organization",
+      "name": "Colegio Oficial de Agentes de la Propiedad Inmobiliaria",
+      "url": "https://www.consejocoapis.org/"
+    }
+  };
+}
+
 // Organization Schema (RealEstateAgent type)
 export function generateOrganizationSchema(content: AboutPageContent) {
   return {
@@ -88,16 +141,16 @@ export function generateOrganizationSchema(content: AboutPageContent) {
     ],
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Avenida Ricardo Soriano",
-      "addressLocality": "Marbella",
-      "postalCode": "29601",
+      "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
+      "addressLocality": "Fuengirola",
+      "postalCode": "29640",
       "addressRegion": "Málaga",
       "addressCountry": "ES"
     },
     "contactPoint": [
       {
         "@type": "ContactPoint",
-        "telephone": "+34-952-000-000",
+        "telephone": "+34-613-578-416",
         "contactType": "sales",
         "availableLanguage": ["English", "Spanish", "Dutch", "French", "German"]
       },
@@ -119,17 +172,9 @@ export function generateOrganizationSchema(content: AboutPageContent) {
       "bestRating": "5",
       "worstRating": "1"
     },
-    "hasCredential": [
-      {
-        "@type": "EducationalOccupationalCredential",
-        "credentialCategory": "Professional License",
-        "name": "API Licensed Real Estate Agency",
-        "recognizedBy": {
-          "@type": "Organization",
-          "name": "Agentes de la Propiedad Inmobiliaria"
-        }
-      }
-    ]
+    "founder": FOUNDERS_DATA.map((f, i) => ({ "@id": `${BASE_URL}/about#founder-${i + 1}` })),
+    "employee": FOUNDERS_DATA.map((f, i) => ({ "@id": `${BASE_URL}/about#founder-${i + 1}` })),
+    "hasCredential": { "@id": `${BASE_URL}/#api-credential` }
   };
 }
 
@@ -326,11 +371,16 @@ export function generateAboutPageSchema(content: AboutPageContent) {
 
 // Generate complete schema graph
 export function generateAllAboutSchemas(content: AboutPageContent): string {
+  // Use hardcoded founders if none provided from database
+  const founders = content.founders && content.founders.length > 0 
+    ? content.founders 
+    : FOUNDERS_DATA;
+
   const schemas = [
-    { "@context": "https://schema.org" },
-    generateOrganizationSchema(content),
+    generateOrganizationSchema({ ...content, founders }),
     generateLocalBusinessSchema(content),
-    ...generatePersonSchemas(content.founders || []),
+    generateAPICredentialSchema(), // API license credential
+    ...generatePersonSchemas(founders), // Person schemas with LinkedIn sameAs
     generateFAQPageSchema(content.faq_entities || []),
     generateBreadcrumbSchema(),
     generateWebPageSchema(content),
@@ -339,7 +389,7 @@ export function generateAllAboutSchemas(content: AboutPageContent): string {
 
   return JSON.stringify({
     "@context": "https://schema.org",
-    "@graph": schemas.slice(1) // Remove the first @context object
+    "@graph": schemas
   });
 }
 
