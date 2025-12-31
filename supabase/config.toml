@@ -182,3 +182,9 @@ verify_jwt = false
 
 [functions.fix-qa-language-mismatches]
 verify_jwt = false
+
+[functions.audit-system-health]
+verify_jwt = false
+
+[functions.fix-duplicate-hreflang]
+verify_jwt = false
