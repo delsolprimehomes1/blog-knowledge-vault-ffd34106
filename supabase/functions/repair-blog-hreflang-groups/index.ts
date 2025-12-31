@@ -151,16 +151,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Handle orphan articles (no cluster_id)
+    // Handle orphan articles - always include self-reference in translations
     for (const article of orphanArticles) {
-      // Each orphan gets its own group ID (it's the only translation)
-      if (!article.hreflang_group_id) {
-        updates.push({
-          id: article.id,
-          hreflang_group_id: crypto.randomUUID(),
-          translations: {},
-        });
-      }
+      // Each orphan gets its own group ID with SELF-REFERENCE in translations
+      const selfTranslations: Record<string, string> = {
+        [article.language]: article.slug
+      };
+      
+      updates.push({
+        id: article.id,
+        hreflang_group_id: article.hreflang_group_id || crypto.randomUUID(),
+        translations: selfTranslations, // Always include self
+      });
     }
 
     console.log(`📝 ${updates.length} articles need updates`);
