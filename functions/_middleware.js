@@ -88,7 +88,37 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
   
-  // PRIORITY 0: Serve SPA shell directly for admin, auth, and login routes
+  // PRIORITY 0: Serve SSG homepage for root path
+  // The static index.html contains fully rendered H1, body text, and JSON-LD for bots
+  if (path === '/' || path === '') {
+    try {
+      const indexRequest = new Request(new URL('/index.html', request.url).toString(), {
+        method: 'GET',
+        headers: request.headers
+      });
+      const assetResponse = await env.ASSETS.fetch(indexRequest);
+      
+      if (assetResponse.ok) {
+        const html = await assetResponse.text();
+        return new Response(html, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600',
+            'X-Middleware-Active': 'true',
+            'X-Middleware-Version': '2025-12-31',
+            'X-SSG-Page': 'homepage',
+            'X-Rendering-Method': 'SSG'
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`[Middleware] Error serving SSG homepage:`, error);
+    }
+    return next();
+  }
+  
+  // PRIORITY 1: Serve SPA shell directly for admin, auth, and login routes
   // These are SPA routes that should always return index.html, never redirect or modify
   const isSPAOnlyRoute = 
     path === '/admin' || path.startsWith('/admin/') || 
@@ -113,7 +143,7 @@ export async function onRequest(context) {
             'Cache-Control': 'no-store, no-cache, must-revalidate',
             'X-Middleware-SPA-Route': path,
             'X-Middleware-Active': 'true',
-            'X-Middleware-Version': '2025-12-25'
+            'X-Middleware-Version': '2025-12-31'
           }
         });
       }

@@ -5,6 +5,11 @@ export VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc
 # Build the React app
 npm run build
 
+# IMPORTANT: Generate static HOMEPAGE FIRST (replaces index.html with full SSG content)
+# This must run before other static page generators to ensure bots see full content
+echo "🏠 Generating static homepage (SSG)..."
+npx tsx scripts/generateStaticHomePage.ts
+
 # Generate static blog article pages
 echo "📄 Generating static blog pages..."
 npx tsx scripts/generateStaticPages.ts
@@ -39,4 +44,12 @@ else
   echo "   ⚠️ No functions/ directory found"
 fi
 
-echo "✅ Build complete!"
+echo "✅ Build complete with SSG!"
+echo ""
+echo "📋 SSG Summary:"
+echo "   - Homepage: Static index.html with full H1, body, JSON-LD"
+echo "   - Blog: Pre-rendered article pages"
+echo "   - QA: Pre-rendered Q&A pages"
+echo "   - Comparisons: Pre-rendered comparison pages"
+echo "   - Locations: Pre-rendered location pages"
+echo "   - About: Pre-rendered about page"
