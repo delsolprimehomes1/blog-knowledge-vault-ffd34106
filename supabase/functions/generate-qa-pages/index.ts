@@ -827,6 +827,13 @@ async function processAllMissingQAs(
           for (const englishQA of englishQAPages) {
             if (!qaTypes.includes(englishQA.qa_type)) continue;
             
+            // RE-CHECK CAP before each insert to prevent race conditions
+            const capRecheck = await hasReachedQACap(supabase, effectiveClusterId, lang);
+            if (capRecheck.atCap) {
+              console.log(`[CAP] Stopping en inserts - reached ${capRecheck.currentCount}/${MAX_QA_PER_LANGUAGE}`);
+              break;
+            }
+            
             const { error: insertError } = await supabase
               .from('qa_pages')
               .insert({
@@ -878,6 +885,13 @@ async function processAllMissingQAs(
           // Translate from English
           for (const englishQA of englishQAPages) {
             if (!qaTypes.includes(englishQA.qa_type)) continue;
+            
+            // RE-CHECK CAP before each translation insert
+            const capRecheck = await hasReachedQACap(supabase, effectiveClusterId, lang);
+            if (capRecheck.atCap) {
+              console.log(`[CAP] Stopping ${lang} translation inserts - reached ${capRecheck.currentCount}/${MAX_QA_PER_LANGUAGE}`);
+              break;
+            }
             
             try {
               const translatedQA = await translateQAPage(englishQA, lang, openaiApiKey);
