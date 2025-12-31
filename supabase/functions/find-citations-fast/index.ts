@@ -1,31 +1,296 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Blocked domains - competitors and low-quality sources
+// ============================================================================
+// COMPREHENSIVE COMPETITOR BLOCKING - 3 LAYERS
+// ============================================================================
+
+// Layer 1: Hardcoded competitor domains
 const BLOCKED_DOMAINS = [
-  'idealista.com', 'fotocasa.com', 'kyero.com', 'rightmove.co.uk',
-  'properstar.com', 'thinkspain.com', 'aplaceinthesun.com', 'spainhouses.net',
-  'spanishpropertyinsight.com', 'eyeonspain.com', 'spanishpropertychoice.com',
+  // Major Spanish portals
+  'idealista.com', 'fotocasa.com', 'kyero.com', 'pisos.com', 'habitaclia.com',
+  'milanuncios.com', 'yaencontre.com', 'tucasa.com', 'enalquiler.com',
+  
+  // International portals
+  'rightmove.co.uk', 'zoopla.co.uk', 'onthemarket.com', 'primelocation.com',
+  'properstar.com', 'immowelt.de', 'immobilienscout24.de', 'funda.nl',
+  'jaap.nl', 'pararius.nl', 'seloger.com', 'leboncoin.fr', 'hemnet.se',
+  'boligsiden.dk', 'finn.no', 'etuovi.com', 'oikotie.fi', 'ingatlan.com',
+  
+  // UK-focused Spain portals
+  'thinkspain.com', 'aplaceinthesun.com', 'spainhouses.net', 'eyeonspain.com',
+  'spanishpropertyinsight.com', 'spanishpropertychoice.com', 'vitaloca.com',
+  'costablancapropertyguide.com', 'costadelsol4u.com', 'absolutelyspain.com',
+  
+  // Luxury/international agencies
   'lucasfox.com', 'engel-voelkers.com', 'sothebysrealty.com', 'christiesrealestate.com',
-  'inmobiliaria', 'realestate', 'property-for-sale', 'properties-for-sale',
+  'savills.com', 'knightfrank.com', 'jll.com', 'cbre.com', 'cushmanwakefield.com',
+  
+  // Costa del Sol specific
+  'drumelia.com', 'mpdunne.com', 'panorama.com', 'kristinadeck.com',
+  'startgroup.es', 'pure-living-properties.com', 'lifepropertymarbella.com',
+  'nvoga.com', 'housing-marbella.com', 'inmobiliaria-marbella.com',
+  
+  // Developer sites
+  'taylor-wimpey.es', 'aedas.com', 'kronos-homes.com', 'metrovacesa.com',
+  
+  // Aggregators
+  'spotahome.com', 'nestpick.com', 'housinganyhere.com', 'badi.com',
 ];
 
-function isBlockedDomain(url: string): boolean {
+// Layer 2: Blocked keywords in domains/URLs
+const BLOCKED_KEYWORDS = [
+  // English
+  'realestate', 'real-estate', 'realtor', 'property', 'properties', 'homes',
+  'villas', 'apartments', 'condos', 'listing', 'listings', 'forsale', 'for-sale',
+  'broker', 'brokerage', 'estate-agent', 'estateagent', 'lettings', 'rentals',
+  
+  // Spanish
+  'inmobiliaria', 'inmueble', 'inmuebles', 'pisos', 'casas', 'viviendas',
+  'alquiler', 'venta', 'comprar', 'alquilar', 'chalet', 'atico',
+  
+  // Dutch
+  'makelaar', 'makelaars', 'vastgoed', 'woningen', 'huizen', 'woning',
+  'huurwoning', 'koopwoning', 'appartementen',
+  
+  // German
+  'immobilien', 'makler', 'wohnung', 'wohnungen', 'haus', 'hauser',
+  'mietwohnung', 'eigentumswohnung',
+  
+  // French
+  'immobilier', 'agence-immobiliere', 'appartement', 'maison', 'location',
+  
+  // General patterns
+  'mls', 'propertyfor', 'housesfor', 'homesfor', 'villasfor',
+];
+
+// Layer 3: Blocked path patterns
+const BLOCKED_PATH_PATTERNS = [
+  '/property/', '/properties/', '/listing/', '/listings/',
+  '/for-sale/', '/for-rent/', '/buy/', '/rent/',
+  '/inmueble/', '/inmuebles/', '/vivienda/', '/viviendas/',
+  '/woningen/', '/huizen/', '/wohnung/', '/wohnungen/',
+];
+
+// ============================================================================
+// AUTHORITY DOMAINS - Always acceptable regardless of TLD
+// ============================================================================
+const AUTHORITY_DOMAINS = [
+  // International organizations
+  'who.int', 'un.org', 'oecd.org', 'imf.org', 'worldbank.org',
+  'europa.eu', 'eurostat.ec.europa.eu', 'ec.europa.eu', 'eea.europa.eu',
+  'weforum.org', 'wto.org', 'unesco.org', 'unicef.org',
+  
+  // Research & data
+  'statista.com', 'ourworldindata.org', 'data.worldbank.org',
+  
+  // Major news (always acceptable)
+  'reuters.com', 'bbc.com', 'bbc.co.uk', 'theguardian.com', 'nytimes.com',
+  'washingtonpost.com', 'ft.com', 'economist.com', 'bloomberg.com',
+  'forbes.com', 'cnn.com', 'politico.eu', 'euronews.com',
+  
+  // Spanish news
+  'elpais.com', 'elmundo.es', 'abc.es', 'lavanguardia.com', 'expansion.com',
+  
+  // Tourism authorities
+  'spain.info', 'andalucia.org', 'visitcostadelsol.com',
+];
+
+// Government TLD patterns
+const GOVERNMENT_PATTERNS = [
+  '.gov', '.gob', '.gouv', '.gov.uk', '.gov.es',
+  'ine.es', 'insee.fr', 'destatis.de', 'scb.se', 'ssb.no', 'dst.dk',
+  'ksh.hu', 'cbs.nl', 'stat.fi', 'boe.es', 'seg-social.es',
+  'juntadeandalucia.es', 'malagaturismo.com',
+];
+
+// ============================================================================
+// LANGUAGE-TLD MAPPING
+// ============================================================================
+const LANG_TO_ACCEPTABLE_TLDS: Record<string, string[]> = {
+  'en': ['com', 'org', 'net', 'gov', 'edu', 'int', 'eu', 'uk', 'us', 'ie', 'au', 'nz', 'ca'],
+  'de': ['de', 'at', 'ch', 'com', 'org', 'net', 'eu', 'int'],
+  'nl': ['nl', 'be', 'com', 'org', 'net', 'eu', 'int'],
+  'fr': ['fr', 'be', 'ch', 'ca', 'com', 'org', 'net', 'eu', 'int'],
+  'sv': ['se', 'com', 'org', 'net', 'eu', 'int'],
+  'da': ['dk', 'com', 'org', 'net', 'eu', 'int'],
+  'no': ['no', 'com', 'org', 'net', 'eu', 'int'],
+  'fi': ['fi', 'com', 'org', 'net', 'eu', 'int'],
+  'hu': ['hu', 'com', 'org', 'net', 'eu', 'int'],
+  'pl': ['pl', 'com', 'org', 'net', 'eu', 'int'],
+  'es': ['es', 'com', 'org', 'net', 'eu', 'int'], // Spanish content can use .es
+};
+
+const UNIVERSAL_TLDS = ['com', 'org', 'net', 'int', 'eu', 'gov', 'edu'];
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function extractTLD(url: string): string {
+  const domain = extractDomain(url);
+  const parts = domain.split('.');
+  return parts[parts.length - 1] || '';
+}
+
+function isAuthorityDomain(domain: string): boolean {
+  return AUTHORITY_DOMAINS.some(auth => 
+    domain.includes(auth) || domain.endsWith(auth)
+  );
+}
+
+function isGovernmentSite(domain: string): boolean {
+  return GOVERNMENT_PATTERNS.some(pattern => 
+    domain.includes(pattern) || domain.startsWith(pattern.replace('.', ''))
+  );
+}
+
+function isBlockedByHardcodedList(url: string): boolean {
   const lowerUrl = url.toLowerCase();
   return BLOCKED_DOMAINS.some(blocked => lowerUrl.includes(blocked));
 }
 
+function isBlockedByKeyword(url: string): { blocked: boolean; keyword?: string } {
+  const lowerUrl = url.toLowerCase();
+  for (const keyword of BLOCKED_KEYWORDS) {
+    if (lowerUrl.includes(keyword)) {
+      return { blocked: true, keyword };
+    }
+  }
+  return { blocked: false };
+}
+
+function isBlockedByPath(url: string): { blocked: boolean; pattern?: string } {
+  const lowerUrl = url.toLowerCase();
+  for (const pattern of BLOCKED_PATH_PATTERNS) {
+    if (lowerUrl.includes(pattern)) {
+      return { blocked: true, pattern };
+    }
+  }
+  return { blocked: false };
+}
+
+function isLanguageCompatible(url: string, articleLanguage: string): { compatible: boolean; reason?: string } {
+  const domain = extractDomain(url);
+  const tld = extractTLD(url);
+  
+  // Authority domains and government sites are always compatible
+  if (isAuthorityDomain(domain) || isGovernmentSite(domain)) {
+    return { compatible: true };
+  }
+  
+  // Universal TLDs are always OK
+  if (UNIVERSAL_TLDS.includes(tld)) {
+    return { compatible: true };
+  }
+  
+  // Check if TLD matches article language
+  const acceptableTLDs = LANG_TO_ACCEPTABLE_TLDS[articleLanguage] || UNIVERSAL_TLDS;
+  if (acceptableTLDs.includes(tld)) {
+    return { compatible: true };
+  }
+  
+  // Spanish TLD (.es) is acceptable for all articles about Spain
+  if (tld === 'es') {
+    return { compatible: true };
+  }
+  
+  return { compatible: false, reason: `TLD .${tld} not compatible with language ${articleLanguage}` };
+}
+
+async function checkDatabaseBlacklist(supabase: any, domain: string): Promise<{ blocked: boolean; reason?: string }> {
+  try {
+    const { data } = await supabase
+      .from('blocked_domains')
+      .select('domain, reason, category')
+      .eq('domain', domain)
+      .eq('is_blocked', true)
+      .maybeSingle();
+    
+    if (data) {
+      return { blocked: true, reason: `Database blacklist: ${data.reason} (${data.category})` };
+    }
+    return { blocked: false };
+  } catch (e) {
+    console.error('[find-citations-fast] Database check error:', e);
+    return { blocked: false }; // Don't block on error
+  }
+}
+
+async function verifyUrlAccessibility(url: string): Promise<{ accessible: boolean; status?: number; reason?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CitationValidator/1.0; +https://delsolprimehomes.com)',
+      },
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // 2xx and 3xx are OK, 403 often means paywall (acceptable), 405 means HEAD not allowed (try GET)
+    if (response.ok || response.status === 403) {
+      return { accessible: true, status: response.status };
+    }
+    
+    // Try GET if HEAD returns 405
+    if (response.status === 405) {
+      const getResponse = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; CitationValidator/1.0)',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (getResponse.ok || getResponse.status === 403) {
+        return { accessible: true, status: getResponse.status };
+      }
+      return { accessible: false, status: getResponse.status, reason: `HTTP ${getResponse.status}` };
+    }
+    
+    return { accessible: false, status: response.status, reason: `HTTP ${response.status}` };
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return { accessible: false, reason: 'Timeout (10s)' };
+    }
+    return { accessible: false, reason: error.message || 'Network error' };
+  }
+}
+
+interface RejectionRecord {
+  url: string;
+  reason: string;
+  layer: string;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   const startTime = Date.now();
+  const rejections: RejectionRecord[] = [];
+  const rejectionStats: Record<string, number> = {};
   
   try {
     const { articleContent, articleTopic, articleLanguage } = await req.json();
@@ -43,9 +308,13 @@ serve(async (req) => {
       throw new Error('PERPLEXITY_API_KEY not configured');
     }
 
+    // Initialize Supabase client for database blacklist check
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     console.log(`[find-citations-fast] Processing: "${articleTopic}" (${articleLanguage})`);
 
-    // Get language name for better prompting
     const languageNames: Record<string, string> = {
       en: 'English', de: 'German', nl: 'Dutch', fr: 'French', es: 'Spanish',
       pl: 'Polish', sv: 'Swedish', da: 'Danish', hu: 'Hungarian', fi: 'Finnish', no: 'Norwegian'
@@ -53,7 +322,6 @@ serve(async (req) => {
     const langName = languageNames[articleLanguage] || articleLanguage;
     const isNonEnglish = articleLanguage !== 'en';
 
-    // Truncate content to avoid token limits (keep first ~4000 chars)
     const truncatedContent = articleContent.substring(0, 4000);
 
     // Helper function to make Perplexity API call
@@ -69,7 +337,7 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: 'You are a citation research assistant. Return ONLY valid JSON arrays of citations. Never include real estate or property websites.'
+              content: 'You are a citation research assistant. Return ONLY valid JSON arrays of citations. NEVER include real estate, property, or inmobiliaria websites under ANY circumstances.'
             },
             { role: 'user', content: prompt }
           ],
@@ -127,21 +395,11 @@ Return a JSON array with 3-5 citations:
 Only return the JSON array, no other text.`;
 
     console.log(`[find-citations-fast] Attempt 1: Strict search...`);
-    let citations = await callPerplexity(strictPrompt);
-    
-    // Filter blocked domains
-    citations = citations.filter((c: any) => {
-      if (!c.url || typeof c.url !== 'string') return false;
-      if (isBlockedDomain(c.url)) {
-        console.log(`[find-citations-fast] Blocked: ${c.url}`);
-        return false;
-      }
-      return true;
-    });
+    let rawCitations = await callPerplexity(strictPrompt);
 
     // ATTEMPT 2: Broader search if strict returned empty/few results
-    if (citations.length < 2) {
-      console.log(`[find-citations-fast] Attempt 2: Broader search (only ${citations.length} found)...`);
+    if (rawCitations.length < 2) {
+      console.log(`[find-citations-fast] Attempt 2: Broader search (only ${rawCitations.length} found)...`);
       
       const broadPrompt = `Find 3-5 credible citations for this article about "${articleTopic}" related to Spain/Costa del Sol.
 
@@ -165,18 +423,11 @@ Return JSON array:
 Only return the JSON array.`;
 
       const broadCitations = await callPerplexity(broadPrompt);
-      const filteredBroad = broadCitations.filter((c: any) => {
-        if (!c.url || typeof c.url !== 'string') return false;
-        if (isBlockedDomain(c.url)) return false;
-        return true;
-      });
-      
-      // Merge with any existing citations
-      citations = [...citations, ...filteredBroad].slice(0, 5);
+      rawCitations = [...rawCitations, ...broadCitations];
     }
 
     // ATTEMPT 3: Generic topic search if still empty
-    if (citations.length === 0) {
+    if (rawCitations.length === 0) {
       console.log(`[find-citations-fast] Attempt 3: Generic topic search...`);
       
       const genericPrompt = `Find 2-3 credible English-language sources with statistics or facts about:
@@ -190,43 +441,142 @@ Return JSON array:
 
 Only return the JSON array.`;
 
-      const genericCitations = await callPerplexity(genericPrompt);
-      citations = genericCitations.filter((c: any) => {
-        if (!c.url || typeof c.url !== 'string') return false;
-        if (isBlockedDomain(c.url)) return false;
-        return true;
-      });
+      rawCitations = await callPerplexity(genericPrompt);
     }
 
+    const rawCount = rawCitations.length;
+    console.log(`[find-citations-fast] Raw citations from Perplexity: ${rawCount}`);
+
+    // ========================================================================
+    // TRIPLE-LAYER VALIDATION PIPELINE
+    // ========================================================================
+    const validatedCitations: any[] = [];
+    
+    for (const citation of rawCitations) {
+      const url = citation?.url;
+      
+      // Layer 0: Basic URL validation
+      if (!url || typeof url !== 'string') {
+        const reason = 'Invalid or missing URL';
+        rejections.push({ url: url || 'undefined', reason, layer: 'basic' });
+        rejectionStats['invalid_url'] = (rejectionStats['invalid_url'] || 0) + 1;
+        continue;
+      }
+
+      try {
+        new URL(url); // Validate URL format
+      } catch {
+        rejections.push({ url, reason: 'Malformed URL', layer: 'basic' });
+        rejectionStats['malformed_url'] = (rejectionStats['malformed_url'] || 0) + 1;
+        continue;
+      }
+
+      const domain = extractDomain(url);
+      
+      // Layer 1A: Hardcoded blocklist
+      if (isBlockedByHardcodedList(url)) {
+        rejections.push({ url, reason: 'Hardcoded blocklist', layer: 'blocklist' });
+        rejectionStats['hardcoded_blocklist'] = (rejectionStats['hardcoded_blocklist'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Blocked (hardcoded): ${url}`);
+        continue;
+      }
+
+      // Layer 1B: Keyword blocking
+      const keywordCheck = isBlockedByKeyword(url);
+      if (keywordCheck.blocked) {
+        rejections.push({ url, reason: `Competitor keyword: ${keywordCheck.keyword}`, layer: 'keyword' });
+        rejectionStats['keyword_blocked'] = (rejectionStats['keyword_blocked'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Blocked (keyword "${keywordCheck.keyword}"): ${url}`);
+        continue;
+      }
+
+      // Layer 1C: Path pattern blocking
+      const pathCheck = isBlockedByPath(url);
+      if (pathCheck.blocked) {
+        rejections.push({ url, reason: `Blocked path pattern: ${pathCheck.pattern}`, layer: 'path' });
+        rejectionStats['path_blocked'] = (rejectionStats['path_blocked'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Blocked (path "${pathCheck.pattern}"): ${url}`);
+        continue;
+      }
+
+      // Layer 2: Database blacklist check
+      const dbCheck = await checkDatabaseBlacklist(supabase, domain);
+      if (dbCheck.blocked) {
+        rejections.push({ url, reason: dbCheck.reason!, layer: 'database' });
+        rejectionStats['database_blocklist'] = (rejectionStats['database_blocklist'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Blocked (database): ${url}`);
+        continue;
+      }
+
+      // Layer 3: Language compatibility
+      const langCheck = isLanguageCompatible(url, articleLanguage);
+      if (!langCheck.compatible) {
+        rejections.push({ url, reason: langCheck.reason!, layer: 'language' });
+        rejectionStats['language_mismatch'] = (rejectionStats['language_mismatch'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Language mismatch: ${url} (${langCheck.reason})`);
+        continue;
+      }
+
+      // Layer 4: URL accessibility check
+      const accessCheck = await verifyUrlAccessibility(url);
+      if (!accessCheck.accessible) {
+        rejections.push({ url, reason: `Not accessible: ${accessCheck.reason}`, layer: 'accessibility' });
+        rejectionStats['not_accessible'] = (rejectionStats['not_accessible'] || 0) + 1;
+        console.log(`[find-citations-fast] ❌ Not accessible: ${url} (${accessCheck.reason})`);
+        continue;
+      }
+
+      // All checks passed!
+      console.log(`[find-citations-fast] ✅ Accepted: ${url}`);
+      validatedCitations.push(citation);
+    }
+
+    // Deduplicate by URL
+    const seenUrls = new Set<string>();
+    const uniqueCitations = validatedCitations.filter(c => {
+      if (seenUrls.has(c.url)) return false;
+      seenUrls.add(c.url);
+      return true;
+    }).slice(0, 5);
+
     // Format citations for storage
-    const formattedCitations = citations.map((c: any) => ({
+    const formattedCitations = uniqueCitations.map((c: any) => ({
       url: c.url,
-      source: c.source || new URL(c.url).hostname,
+      source: c.source || extractDomain(c.url),
       text: c.quote || c.text || `Source: ${c.source}`,
     }));
 
     const elapsed = Date.now() - startTime;
-    console.log(`[find-citations-fast] Found ${formattedCitations.length} citations in ${elapsed}ms`);
+    console.log(`[find-citations-fast] Validation complete: ${formattedCitations.length} accepted, ${rejections.length} rejected in ${elapsed}ms`);
+
+    // Build detailed diagnostics
+    const diagnostics = {
+      rawCitationsFound: rawCount,
+      accepted: formattedCitations.length,
+      rejected: rejections.length,
+      rejectionReasons: rejectionStats,
+      rejectedExamples: rejections.slice(0, 5).map(r => ({
+        url: r.url.substring(0, 60) + (r.url.length > 60 ? '...' : ''),
+        reason: r.reason,
+        layer: r.layer
+      })),
+      timeElapsed: `${elapsed}ms`,
+      language: articleLanguage,
+    };
 
     if (formattedCitations.length === 0) {
       return new Response(JSON.stringify({
         success: false,
-        message: 'No valid citations found for this article',
+        message: 'No valid citations passed all validation checks',
         citations: [],
-        diagnostics: {
-          rawCitationsFound: citations.length,
-          timeElapsed: `${elapsed}ms`
-        }
+        diagnostics
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({
       success: true,
       citations: formattedCitations,
-      diagnostics: {
-        citationsFound: formattedCitations.length,
-        timeElapsed: `${elapsed}ms`
-      }
+      diagnostics
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
