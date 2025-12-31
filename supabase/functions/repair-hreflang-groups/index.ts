@@ -55,62 +55,42 @@ Deno.serve(async (req) => {
 
     console.log(`[Repair v5] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
 
-    // Step 1: Fetch ALL published Q&A pages WITH their source blog's hreflang_group_id
-    // Use pagination to bypass the 1000-row default limit
-    const allQAPages: QAPageWithBlog[] = []
-    let offset = 0
-    const pageSize = 1000
-    let hasMore = true
-
-    while (hasMore) {
-      let query = supabase
-        .from('qa_pages')
-        .select(`
-          id, 
-          cluster_id, 
-          language, 
-          qa_type, 
-          slug, 
-          hreflang_group_id, 
-          source_article_id, 
-          created_at, 
-          question_main,
-          source_article:blog_articles!source_article_id(
-            hreflang_group_id
-          )
-        `)
-        .eq('status', 'published')
-        .order('created_at')
-        .range(offset, offset + pageSize - 1)
-
-      if (clusterId) {
-        query = query.eq('cluster_id', clusterId)
-      }
-
-      const { data: qaPages, error: fetchError } = await query as { 
-        data: QAPageWithBlog[] | null
-        error: unknown 
-      }
-
-      if (fetchError) {
-        console.error('[Repair v5] Error fetching Q&A pages:', fetchError)
-        return new Response(
-          JSON.stringify({ error: 'Failed to fetch Q&A pages', details: fetchError }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Step 1: Fetch all published Q&A pages WITH their source blog's hreflang_group_id
+    let query = supabase
+      .from('qa_pages')
+      .select(`
+        id, 
+        cluster_id, 
+        language, 
+        qa_type, 
+        slug, 
+        hreflang_group_id, 
+        source_article_id, 
+        created_at, 
+        question_main,
+        source_article:blog_articles!source_article_id(
+          hreflang_group_id
         )
-      }
+      `)
+      .eq('status', 'published')
+      .order('created_at')
 
-      if (qaPages && qaPages.length > 0) {
-        allQAPages.push(...qaPages)
-        offset += pageSize
-        hasMore = qaPages.length === pageSize
-        console.log(`[Repair v5] Fetched ${allQAPages.length} Q&A pages so far...`)
-      } else {
-        hasMore = false
-      }
+    if (clusterId) {
+      query = query.eq('cluster_id', clusterId)
     }
 
-    const qaPages = allQAPages
+    const { data: qaPages, error: fetchError } = await query as { 
+      data: QAPageWithBlog[] | null
+      error: unknown 
+    }
+
+    if (fetchError) {
+      console.error('[Repair v5] Error fetching Q&A pages:', fetchError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch Q&A pages', details: fetchError }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!qaPages || qaPages.length === 0) {
       return new Response(
@@ -155,13 +135,6 @@ Deno.serve(async (req) => {
 
     // Step 3: Build updates - same hreflang_group_id for all Q&As in each group
     const updates: { id: string; hreflang_group_id: string; translations: Record<string, string> }[] = []
-    
-    // Track language distribution for stats
-    const languageDistribution: Record<string, number> = {}
-    for (const qa of qaPages) {
-      languageDistribution[qa.language] = (languageDistribution[qa.language] || 0) + 1
-    }
-    
     const stats = {
       totalQAs: qaPages.length,
       linkedGroups: 0,
@@ -169,7 +142,6 @@ Deno.serve(async (req) => {
       multiLanguageGroups: 0,
       singleLanguageGroups: 0,
       groupSizeDistribution: {} as Record<number, number>,
-      languageDistribution,
     }
 
     for (const [groupKey, qas] of groups) {
