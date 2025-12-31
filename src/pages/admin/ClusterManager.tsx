@@ -63,6 +63,7 @@ const ClusterManager = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [clusterToDelete, setClusterToDelete] = useState<string | null>(null);
   const [clusterToPublish, setClusterToPublish] = useState<string | null>(null);
+  const [clusterToPublishQAs, setClusterToPublishQAs] = useState<string | null>(null);
   const [clusterToTranslate, setClusterToTranslate] = useState<string | null>(null);
   const [translatingCluster, setTranslatingCluster] = useState<string | null>(null);
   const [translationProgress, setTranslationProgress] = useState<{ current: string; remaining: number } | null>(null);
@@ -70,6 +71,7 @@ const ClusterManager = () => {
   const [regeneratingAllLinks, setRegeneratingAllLinks] = useState(false);
   const [generatingQALanguage, setGeneratingQALanguage] = useState<{ clusterId: string; lang: string } | null>(null);
   const [qaJobProgress, setQaJobProgress] = useState<QAJobProgress | null>(null);
+  const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
 
   const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
     const queue =
@@ -285,7 +287,34 @@ const ClusterManager = () => {
     },
   });
 
-  // Generate QA for cluster
+  // Publish all Q&A pages in cluster
+  const publishQAsMutation = useMutation({
+    mutationFn: async (clusterId: string) => {
+      setPublishingQAs(clusterId);
+      const { data, error } = await supabase
+        .from("qa_pages")
+        .update({ 
+          status: "published", 
+          date_published: new Date().toISOString() 
+        })
+        .eq("cluster_id", clusterId)
+        .eq("status", "draft")
+        .select("id");
+      
+      if (error) throw error;
+      return data?.length || 0;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
+      toast.success(`Published ${count} Q&A pages successfully`);
+      setClusterToPublishQAs(null);
+      setPublishingQAs(null);
+    },
+    onError: (error) => {
+      toast.error(`Failed to publish Q&As: ${error.message}`);
+      setPublishingQAs(null);
+    },
+  });
   const generateQAMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       // Get English article IDs in the cluster (both draft and published)
@@ -1239,6 +1268,28 @@ const ClusterManager = () => {
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Publish All
                     </Button>
+                    {/* Publish All Q&As Button */}
+                    {cluster.total_qa_pages > cluster.total_qa_published && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-950"
+                        onClick={() => setClusterToPublishQAs(cluster.cluster_id)}
+                        disabled={publishingQAs === cluster.cluster_id || publishQAsMutation.isPending}
+                      >
+                        {publishingQAs === cluster.cluster_id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            <HelpCircle className="mr-2 h-4 w-4" />
+                            Publish {cluster.total_qa_pages - cluster.total_qa_published} QAs
+                          </>
+                        )}
+                      </Button>
+                    )}
                     {/* Complete Cluster / Translations Button */}
                     {(() => {
                       const sourceInfo = getSourceLanguageInfo(cluster);
@@ -1453,6 +1504,47 @@ const ClusterManager = () => {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Publish Q&As Confirmation Dialog */}
+        <AlertDialog open={!!clusterToPublishQAs} onOpenChange={() => setClusterToPublishQAs(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-amber-600" />
+                Publish all Q&A pages?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {clusterToPublishQAs && (() => {
+                  const cluster = clusters.find(c => c.cluster_id === clusterToPublishQAs);
+                  const draftCount = cluster ? (cluster.total_qa_pages - cluster.total_qa_published) : 0;
+                  return (
+                    <>
+                      This will publish <strong>{draftCount} draft Q&A pages</strong> in this cluster.
+                      They will become publicly visible on the website.
+                    </>
+                  );
+                })()}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => clusterToPublishQAs && publishQAsMutation.mutate(clusterToPublishQAs)}
+                disabled={publishQAsMutation.isPending}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {publishQAsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  "Publish All QAs"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

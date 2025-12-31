@@ -25,25 +25,15 @@ interface GenerationStep {
   status: StepStatus;
 }
 
-const languageOptions = [
-  { value: 'en', label: '🇬🇧 English', name: 'English' },
-  { value: 'de', label: '🇩🇪 German', name: 'German' },
-  { value: 'nl', label: '🇳🇱 Dutch', name: 'Dutch' },
-  { value: 'fr', label: '🇫🇷 French', name: 'French' },
-  { value: 'pl', label: '🇵🇱 Polish', name: 'Polish' },
-  { value: 'sv', label: '🇸🇪 Swedish', name: 'Swedish' },
-  { value: 'da', label: '🇩🇰 Danish', name: 'Danish' },
-  { value: 'hu', label: '🇭🇺 Hungarian', name: 'Hungarian' },
-  { value: 'fi', label: '🇫🇮 Finnish', name: 'Finnish' },
-  { value: 'no', label: '🇳🇴 Norwegian', name: 'Norwegian' },
-];
+// Language is now locked to English - translations happen via Cluster Manager
+const LOCKED_LANGUAGE = 'en' as const;
 
 const STORAGE_KEY = 'cluster_generator_backup';
 
 const ClusterGenerator = () => {
   const navigate = useNavigate();
   const [topic, setTopic] = useState("");
-  const [language, setLanguage] = useState<Language>("en");
+  const language: Language = LOCKED_LANGUAGE; // Always English - translations via Cluster Manager
   const [targetAudience, setTargetAudience] = useState("");
   const [primaryKeyword, setPrimaryKeyword] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -111,7 +101,7 @@ const ClusterGenerator = () => {
         console.log('✅ Found completed cluster:', data.id);
         setGeneratedArticles(data.articles as Partial<BlogArticle>[]);
         setTopic(data.topic);
-        setLanguage(data.language as Language);
+        // Language is now locked to 'en', no need to set
         setTargetAudience(data.target_audience);
         setPrimaryKeyword(data.primary_keyword);
         setShowReview(true);
@@ -146,7 +136,7 @@ const ClusterGenerator = () => {
         const parsed = JSON.parse(backup);
         setGeneratedArticles(parsed.articles);
         setTopic(parsed.topic);
-        setLanguage(parsed.language);
+        // Language is locked to 'en', no need to set
         setShowReview(true);
         console.log('✅ Loaded backup:', parsed.articles.length, 'articles');
         toast.success(`Restored ${parsed.articles.length} articles from last generation`);
@@ -850,7 +840,7 @@ const ClusterGenerator = () => {
     setGeneratedArticles([]);
     setShowReview(false);
     setTopic('');
-    setLanguage('en');
+    // Language is locked to 'en', no setter needed
     setTargetAudience('');
     setPrimaryKeyword('');
     setJobId(null);
@@ -985,38 +975,19 @@ const ClusterGenerator = () => {
                 />
               </div>
 
-              {!isMultilingualEnabled ? (
-                <div className="space-y-2">
-                  <Label htmlFor="language" className="text-base">
-                    Language <span className="text-destructive">*</span>
-                  </Label>
-                  <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-                    <SelectTrigger id="language" className="text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languageOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label className="text-base">Languages</Label>
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/50 dark:to-green-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <span className="text-3xl">🌍</span>
-                    <div className="flex-1">
-                      <p className="font-semibold text-blue-900 dark:text-blue-100">All 10 Languages</p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        EN · DE · NL · FR · PL · SV · DA · HU · FI · NO
-                      </p>
-                    </div>
+              {/* English-First Banner */}
+              <div className="space-y-2">
+                <Label className="text-base">Source Language</Label>
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <span className="text-3xl">🇬🇧</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-blue-900 dark:text-blue-100">English First</p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                      Master articles are created in English. After generation, use <strong>Cluster Manager</strong> to translate to the other 9 languages (DE, NL, FR, PL, SV, DA, HU, FI, NO).
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="targetAudience" className="text-base">
@@ -1079,7 +1050,18 @@ const ClusterGenerator = () => {
                 {/* Multilingual Progress Indicator */}
                 {steps.length > 0 && steps[0].message?.includes('language') && (
                   <div className="flex gap-1 flex-wrap mt-3">
-                    {languageOptions.map((lang) => {
+                    {[
+                      { value: 'en', label: '🇬🇧', name: 'English' },
+                      { value: 'de', label: '🇩🇪', name: 'German' },
+                      { value: 'nl', label: '🇳🇱', name: 'Dutch' },
+                      { value: 'fr', label: '🇫🇷', name: 'French' },
+                      { value: 'pl', label: '🇵🇱', name: 'Polish' },
+                      { value: 'sv', label: '🇸🇪', name: 'Swedish' },
+                      { value: 'da', label: '🇩🇰', name: 'Danish' },
+                      { value: 'hu', label: '🇭🇺', name: 'Hungarian' },
+                      { value: 'fi', label: '🇫🇮', name: 'Finnish' },
+                      { value: 'no', label: '🇳🇴', name: 'Norwegian' },
+                    ].map((lang) => {
                       const isComplete = steps[0].message?.toLowerCase().includes(lang.name.toLowerCase()) && 
                                         steps[0].message?.includes('complete');
                       const isCurrent = steps[0].message?.toLowerCase().includes(lang.name.toLowerCase()) && 
@@ -1096,7 +1078,7 @@ const ClusterGenerator = () => {
                               : 'bg-muted text-muted-foreground'
                           }`}
                         >
-                          {lang.label.split(' ')[0]}
+                          {lang.label}
                         </div>
                       );
                     })}

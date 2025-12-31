@@ -2809,6 +2809,19 @@ serve(async (req) => {
   try {
     const { topic, language, targetAudience, primaryKeyword, _resumeMultilingualJob } = await req.json();
 
+    // ENFORCE ENGLISH-FIRST STRATEGY
+    // Master clusters must be created in English. Translations happen via Cluster Manager.
+    if (!_resumeMultilingualJob && language && language !== 'en') {
+      console.warn(`[generate-cluster] ⚠️ Rejected non-English language request: ${language}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'English-first strategy enforced. Master clusters must be created in English. Use Cluster Manager to translate to other languages.'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

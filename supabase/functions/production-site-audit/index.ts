@@ -831,6 +831,148 @@ async function auditExternalCitations(pages: { url: string; html: string; type: 
   };
 }
 
+// Language-specific TLD mappings for citation validation
+const LANGUAGE_TLDS: Record<string, string[]> = {
+  en: ['.com', '.org', '.net', '.gov', '.edu', '.co.uk', '.uk', '.ie', '.au', '.nz', '.ca', '.us'],
+  de: ['.de', '.at', '.ch'],
+  nl: ['.nl', '.be'],
+  fr: ['.fr', '.be', '.ch', '.ca', '.mc'],
+  pl: ['.pl'],
+  sv: ['.se'],
+  da: ['.dk'],
+  hu: ['.hu'],
+  fi: ['.fi'],
+  no: ['.no'],
+};
+
+// Known real estate competitors to block
+const COMPETITOR_DOMAINS = [
+  'idealista.com', 'idealista.es', 'idealista.pt', 'idealista.it',
+  'fotocasa.es', 'fotocasa.com',
+  'rightmove.co.uk', 'rightmove.com',
+  'zoopla.co.uk', 'zoopla.com',
+  'redfin.com', 'zillow.com', 'realtor.com',
+  'immobilienscout24.de', 'immoscout24.de',
+  'immowelt.de', 'immonet.de',
+  'funda.nl', 'pararius.nl',
+  'seloger.com', 'leboncoin.fr',
+  'kyero.com', 'thinkspain.com', 'spanishpropertyinsight.com',
+  'propertylistings.com', 'propertyfinder.com',
+  'costa-blanca-property-guide.com', 'costablancapropertysales.com',
+];
+
+async function auditCitationLanguageMatch(supabase: any): Promise<CheckResult> {
+  const issues: Issue[] = [];
+  let totalChecked = 0;
+  let languageMismatches = 0;
+  let competitorLinks = 0;
+
+  // Sample blog articles with their external_citations
+  const { data: articles } = await supabase
+    .from('blog_articles')
+    .select('id, slug, language, external_citations, headline')
+    .eq('status', 'published')
+    .not('external_citations', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (!articles || articles.length === 0) {
+    return {
+      status: 'pass',
+      severity: 'warning',
+      pages_tested: 0,
+      issues_found: 0,
+      issues: [],
+      details: { message: 'No articles with citations found' }
+    };
+  }
+
+  for (const article of articles) {
+    const citations = article.external_citations as any[];
+    if (!citations || citations.length === 0) continue;
+
+    const articleLang = article.language;
+    const allowedTLDs = LANGUAGE_TLDS[articleLang] || LANGUAGE_TLDS['en'];
+    // For non-English articles, also allow English-domain citations (commonly authoritative)
+    const expandedTLDs = articleLang === 'en' 
+      ? allowedTLDs 
+      : [...allowedTLDs, ...LANGUAGE_TLDS['en']];
+
+    for (const citation of citations) {
+      const url = citation.url || citation.link || '';
+      if (!url) continue;
+
+      totalChecked++;
+
+      // Check for competitor domains
+      const isCompetitor = COMPETITOR_DOMAINS.some(comp => url.toLowerCase().includes(comp));
+      if (isCompetitor) {
+        competitorLinks++;
+        issues.push({
+          page: `/${articleLang}/blog/${article.slug}`,
+          problem: 'competitor_citation',
+          details: `CRITICAL: Competitor link found: ${url}`,
+          severity: 'critical'
+        });
+        continue;
+      }
+
+      // Check TLD language match
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase();
+        
+        // Extract TLD (handle .co.uk, .com.au, etc.)
+        const tldMatch = hostname.match(/\.[a-z]{2,}(?:\.[a-z]{2})?$/);
+        const tld = tldMatch ? tldMatch[0] : '';
+
+        // For some domains, language is in subdomain or path (e.g., es.wikipedia.org)
+        const hasLanguageSubdomain = hostname.startsWith(`${articleLang}.`);
+        
+        // Check if TLD matches article language OR if it's a universal domain with language subdomain
+        const isLanguageMatch = expandedTLDs.some(allowed => hostname.endsWith(allowed)) ||
+                               hasLanguageSubdomain ||
+                               hostname.includes('wikipedia.org') || // Wikipedia has language subdomains
+                               hostname.includes('europa.eu'); // EU sites are multilingual
+
+        if (!isLanguageMatch && articleLang !== 'en') {
+          // Only flag if the domain is clearly wrong language
+          // e.g., German article with .es domain
+          const wrongLangTLDs = ['.es', '.it', '.ru', '.cn', '.jp', '.kr', '.br', '.pt'];
+          const isWrongLanguage = wrongLangTLDs.some(tld => hostname.endsWith(tld));
+          
+          if (isWrongLanguage) {
+            languageMismatches++;
+            issues.push({
+              page: `/${articleLang}/blog/${article.slug}`,
+              problem: 'citation_language_mismatch',
+              details: `${articleLang.toUpperCase()} article cites ${tld} domain: ${url}`,
+              severity: 'warning'
+            });
+          }
+        }
+      } catch {
+        // Invalid URL, skip
+      }
+    }
+  }
+
+  const criticalCount = issues.filter(i => i.severity === 'critical').length;
+
+  return {
+    status: criticalCount > 0 ? 'fail' : issues.length > 0 ? 'warning' : 'pass',
+    severity: 'critical',
+    pages_tested: articles.length,
+    issues_found: issues.length,
+    issues,
+    details: {
+      total_citations_checked: totalChecked,
+      language_mismatches: languageMismatches,
+      competitor_links_found: competitorLinks
+    }
+  };
+}
+
 async function auditPerformance(pages: { url: string; html: string; type: string; ttfb?: number }[]): Promise<CheckResult> {
   const issues: Issue[] = [];
   const ttfbValues: number[] = [];
@@ -1107,6 +1249,9 @@ serve(async (req) => {
     console.log('Running AI readiness audit...');
     results.ai_readiness = await auditAIReadiness(fetchedPages);
 
+    console.log('Running citation language match audit...');
+    results.citation_language_match = await auditCitationLanguageMatch(supabase);
+
     // Calculate overall health
     const checksArray = Object.values(results);
     const passedChecks = checksArray.filter(c => c.status === 'pass').length;
@@ -1177,7 +1322,9 @@ serve(async (req) => {
         no_blocking_robots: results.robots.status !== 'fail',
         internal_links_ok: results.internal_links.status !== 'fail',
         performance_ok: results.performance.status !== 'fail',
-        ai_ready: results.ai_readiness.status !== 'fail'
+        ai_ready: results.ai_readiness.status !== 'fail',
+        citations_language_ok: results.citation_language_match.status !== 'fail',
+        no_competitor_links: !results.citation_language_match.issues.some(i => i.problem === 'competitor_citation')
       }
     };
 
