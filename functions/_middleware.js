@@ -118,6 +118,78 @@ export async function onRequest(context) {
     return next();
   }
   
+  // PRIORITY 0.5: Handle About page - serve with SEO metadata
+  const aboutPageMatch = path.match(/^\/([a-z]{2})\/about\/?$/);
+  if (aboutPageMatch) {
+    const [, aboutLang] = aboutPageMatch;
+    
+    if (CONFIG.SUPPORTED_LANGUAGES.includes(aboutLang)) {
+      try {
+        const indexRequest = new Request(new URL('/index.html', request.url).toString());
+        const assetResponse = await env.ASSETS.fetch(indexRequest);
+        
+        if (assetResponse.ok) {
+          let html = await assetResponse.text();
+          
+          const baseUrl = 'https://www.delsolprimehomes.com';
+          const canonicalUrl = `${baseUrl}/${aboutLang}/about`;
+          
+          const ABOUT_PAGE_META = {
+            en: { title: 'About Us | Del Sol Prime Homes', description: 'Meet the team behind Del Sol Prime Homes - licensed API agents with 15+ years experience in Costa del Sol real estate.' },
+            de: { title: 'Über Uns | Del Sol Prime Homes', description: 'Lernen Sie das Team von Del Sol Prime Homes kennen - lizenzierte API-Makler mit über 15 Jahren Erfahrung.' },
+            nl: { title: 'Over Ons | Del Sol Prime Homes', description: 'Maak kennis met het team van Del Sol Prime Homes - erkende API-makelaars met 15+ jaar ervaring.' },
+            fr: { title: 'À Propos | Del Sol Prime Homes', description: 'Découvrez l\'équipe Del Sol Prime Homes - agents API agréés avec plus de 15 ans d\'expérience.' },
+            pl: { title: 'O Nas | Del Sol Prime Homes', description: 'Poznaj zespół Del Sol Prime Homes - licencjonowani agenci API z ponad 15-letnim doświadczeniem.' },
+            sv: { title: 'Om Oss | Del Sol Prime Homes', description: 'Möt teamet bakom Del Sol Prime Homes - licensierade API-mäklare med 15+ års erfarenhet.' },
+            da: { title: 'Om Os | Del Sol Prime Homes', description: 'Mød holdet bag Del Sol Prime Homes - licenserede API-mæglere med 15+ års erfaring.' },
+            hu: { title: 'Rólunk | Del Sol Prime Homes', description: 'Ismerje meg a Del Sol Prime Homes csapatát - engedéllyel rendelkező API ügynökök 15+ év tapasztalattal.' },
+            fi: { title: 'Meistä | Del Sol Prime Homes', description: 'Tutustu Del Sol Prime Homes -tiimiin - lisensoituja API-välittäjiä yli 15 vuoden kokemuksella.' },
+            no: { title: 'Om Oss | Del Sol Prime Homes', description: 'Møt teamet bak Del Sol Prime Homes - lisensierte API-meglere med 15+ års erfaring.' }
+          };
+          
+          const meta = ABOUT_PAGE_META[aboutLang] || ABOUT_PAGE_META.en;
+          
+          const hreflangTags = CONFIG.SUPPORTED_LANGUAGES
+            .filter(l => ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'].includes(l))
+            .map(l => `    <link rel="alternate" hreflang="${l}" href="${baseUrl}/${l}/about" />`)
+            .join('\n');
+          
+          const seoBlock = `
+    <title>${meta.title}</title>
+    <meta name="description" content="${meta.description}" />
+    <link rel="canonical" href="${canonicalUrl}" />
+    ${hreflangTags}
+    <link rel="alternate" hreflang="x-default" href="${baseUrl}/en/about" />
+    <meta property="og:title" content="${meta.title}" />
+    <meta property="og:description" content="${meta.description}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Del Sol Prime Homes" />
+`;
+          
+          html = html.replace(/<title>.*?<\/title>/, '');
+          html = html.replace('</head>', `${seoBlock}</head>`);
+          html = html.replace(/<html[^>]*>/, `<html lang="${aboutLang}">`);
+          
+          return new Response(html, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600',
+              'X-Middleware-Active': 'true',
+              'X-Middleware-Version': '2025-12-31',
+              'X-SEO-Source': 'about-page-injection',
+              'X-Content-Language': aboutLang,
+              'X-Page-Type': 'about'
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[Middleware] Error processing about page ${path}:`, error);
+      }
+    }
+  }
+  
   // PRIORITY 1: Serve SPA shell directly for admin, auth, and login routes
   // These are SPA routes that should always return index.html, never redirect or modify
   const isSPAOnlyRoute = 

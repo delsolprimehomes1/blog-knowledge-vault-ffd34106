@@ -290,7 +290,55 @@ const ORGANIZATION_SCHEMA = {
     "addressLocality": "Marbella",
     "addressRegion": "Málaga",
     "addressCountry": "ES"
+  },
+  "hasCredential": {
+    "@type": "EducationalOccupationalCredential",
+    "credentialCategory": "license",
+    "name": "Agente de la Propiedad Inmobiliaria (API)",
+    "recognizedBy": {
+      "@type": "Organization",
+      "name": "Colegio Oficial de Agentes de la Propiedad Inmobiliaria"
+    }
   }
+}
+
+// Founder Person schemas with LinkedIn sameAs
+const FOUNDERS_SCHEMAS = [
+  {
+    "@type": "Person",
+    "@id": `${BASE_URL}/#steven-roberts`,
+    "name": "Steven Roberts",
+    "jobTitle": "Managing Director",
+    "sameAs": "https://www.linkedin.com/in/steven-roberts-delsolprimehomes/",
+    "worksFor": { "@id": `${BASE_URL}/#organization` }
+  },
+  {
+    "@type": "Person",
+    "@id": `${BASE_URL}/#hans-beeckman`,
+    "name": "Hans Beeckman",
+    "jobTitle": "Sales Director",
+    "sameAs": "https://www.linkedin.com/in/hans-beeckman-delsolprimehomes/",
+    "worksFor": { "@id": `${BASE_URL}/#organization` }
+  },
+  {
+    "@type": "Person",
+    "@id": `${BASE_URL}/#cedric-van-hecke`,
+    "name": "Cédric Van Hecke",
+    "jobTitle": "Marketing Director",
+    "sameAs": "https://www.linkedin.com/in/cedric-van-hecke-delsolprimehomes/",
+    "worksFor": { "@id": `${BASE_URL}/#organization` }
+  }
+]
+
+function generateOrganizationSchema(): string {
+  const schema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      ORGANIZATION_SCHEMA,
+      ...FOUNDERS_SCHEMAS
+    ]
+  }
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
 }
 
 function generateBlogPostingSchema(metadata: PageMetadata): string {
@@ -425,6 +473,7 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml
   const blogPostingSchema = generateBlogPostingSchema(metadata)
   const articleSchema = generateArticleSchema(metadata)
   const breadcrumbSchema = generateBreadcrumbSchema(metadata)
+  const orgSchema = generateOrganizationSchema()
 
   // Build the complete head section (no charset/viewport - those are in index.html)
   const headContent = `
@@ -462,6 +511,7 @@ ${hreflangTags}
   ${blogPostingSchema}
   ${articleSchema}
   ${breadcrumbSchema}
+  ${orgSchema}
 `
 
   // Replace the entire head section and html lang attribute
