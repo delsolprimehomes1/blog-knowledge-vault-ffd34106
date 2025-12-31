@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.repair-comparison-hreflang-groups]
 verify_jwt = false
+
+[functions.backfill-qa-languages]
+verify_jwt = false

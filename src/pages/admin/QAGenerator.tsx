@@ -14,7 +14,8 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building, ExternalLink, Languages, Plus, Play, AlertTriangle } from 'lucide-react';
+import { Search, FileQuestion, Loader2, CheckCircle, XCircle, RefreshCw, Eye, Edit, Trash2, Upload, ChevronLeft, ChevronRight, MapPin, Building, ExternalLink, Languages, Plus, Play, AlertTriangle, BarChart3 } from 'lucide-react';
+import { ClusterQACompleteness } from '@/components/admin/ClusterQACompleteness';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -849,7 +850,11 @@ const queryClient = useQueryClient();
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="cluster-completeness">
+              <BarChart3 className="mr-1 h-4 w-4" />
+              Cluster Completeness
+            </TabsTrigger>
             <TabsTrigger value="available">
               Available Articles ({availableArticles.length})
             </TabsTrigger>
@@ -869,6 +874,11 @@ const queryClient = useQueryClient();
             </TabsTrigger>
             <TabsTrigger value="results">Generated QAs ({qaPages.length})</TabsTrigger>
           </TabsList>
+
+          {/* Cluster Completeness Tab */}
+          <TabsContent value="cluster-completeness">
+            <ClusterQACompleteness />
+          </TabsContent>
 
           {/* Available Articles Tab */}
           <TabsContent value="available" className="space-y-4">
