@@ -53,10 +53,11 @@ Deno.serve(async (req) => {
       errors: [] as string[],
     };
 
-    // Group articles by cluster_id
-    const clusterMap = new Map<string, BlogArticle[]>();
+    // Group articles by their hreflang group (matching by translations overlap OR existing hreflang_group_id)
+    const groupMap = new Map<string, BlogArticle[]>();
     const orphanArticles: BlogArticle[] = [];
 
+    // First pass: group articles that already have hreflang_group_id
     for (const article of (articles || [])) {
       if (!article.hreflang_group_id) {
         stats.articlesWithNullGroupId++;
@@ -71,53 +72,70 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (article.cluster_id) {
-        const existing = clusterMap.get(article.cluster_id) || [];
+      if (article.hreflang_group_id) {
+        const existing = groupMap.get(article.hreflang_group_id) || [];
         existing.push(article);
-        clusterMap.set(article.cluster_id, existing);
-      } else {
+        groupMap.set(article.hreflang_group_id, existing);
+      }
+    }
+
+    // Second pass: match articles without hreflang_group_id to existing groups via translations
+    for (const article of (articles || [])) {
+      if (article.hreflang_group_id) continue; // Already processed
+      
+      let matched = false;
+      
+      // Try to find matching group via translations JSONB
+      if (article.translations && Object.keys(article.translations).length > 0) {
+        for (const [groupId, groupArticles] of groupMap) {
+          // Check if any article in this group has a slug that matches our translations
+          for (const groupArticle of groupArticles) {
+            // Check if translations point to each other
+            const articleTranslations = article.translations as Record<string, string>;
+            const groupTranslations = groupArticle.translations as Record<string, string>;
+            
+            // If our translations contain the group article's slug, or vice versa
+            if (articleTranslations[groupArticle.language] === groupArticle.slug ||
+                (groupTranslations && groupTranslations[article.language] === article.slug)) {
+              groupArticles.push(article);
+              matched = true;
+              console.log(`✓ Matched ${article.slug} (${article.language}) to group ${groupId} via translations`);
+              break;
+            }
+          }
+          if (matched) break;
+        }
+      }
+      
+      if (!matched) {
         orphanArticles.push(article);
       }
     }
 
     stats.orphanArticles = orphanArticles.length;
-    console.log(`📁 Found ${clusterMap.size} clusters, ${orphanArticles.length} orphan articles`);
+    console.log(`📁 Found ${groupMap.size} hreflang groups, ${orphanArticles.length} orphan articles`);
 
     const updates: { id: string; hreflang_group_id: string; translations: Record<string, string> }[] = [];
 
-    // Process each cluster
-    for (const [clusterId, clusterArticles] of clusterMap) {
+    // Process each hreflang group
+    for (const [groupId, groupArticles] of groupMap) {
       stats.clustersProcessed++;
 
-      // Find English article (source of truth)
-      const englishArticle = clusterArticles.find(a => a.language === 'en');
-      
-      // Determine hreflang_group_id
-      let groupId: string;
-      if (englishArticle?.hreflang_group_id) {
-        groupId = englishArticle.hreflang_group_id;
-      } else {
-        // Use any existing group ID from cluster, or generate new one
-        const existingGroupId = clusterArticles.find(a => a.hreflang_group_id)?.hreflang_group_id;
-        groupId = existingGroupId || crypto.randomUUID();
-      }
-
-      // Build correct translations JSONB (language -> slug mapping)
+      // Build correct translations JSONB (language -> slug mapping) INCLUDING self
       const correctTranslations: Record<string, string> = {};
-      for (const article of clusterArticles) {
+      for (const article of groupArticles) {
         correctTranslations[article.language] = article.slug;
       }
 
-      // Update each article in the cluster
-      for (const article of clusterArticles) {
+      // Update each article in the group
+      for (const article of groupArticles) {
         const needsGroupIdUpdate = article.hreflang_group_id !== groupId;
         
-        // Build translations without self
+        // Build translations WITH self-reference (critical for hreflang self-link)
         const articleTranslations: Record<string, string> = {};
         for (const [lang, slug] of Object.entries(correctTranslations)) {
-          if (lang !== article.language) {
-            articleTranslations[lang] = slug;
-          }
+          // Include ALL languages including self for proper hreflang generation
+          articleTranslations[lang] = slug;
         }
 
         const existingTranslations = article.translations || {};
