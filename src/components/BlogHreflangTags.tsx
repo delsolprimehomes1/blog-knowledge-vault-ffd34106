@@ -110,11 +110,34 @@ export const BlogHreflangTags = ({
     status: 'published' as const,
   }), [id, hreflang_group_id, language, slug, canonical_url, content_type, validSourceLang]);
 
-  // Generate hreflang tags
-  const hreflangTags = useMemo(
-    () => generateHreflangTags(currentArticle, siblings),
-    [currentArticle, siblings]
-  );
+  // Generate hreflang tags with self-reference and correct x-default
+  const hreflangTags = useMemo(() => {
+    const tags = generateHreflangTags(currentArticle, siblings);
+    
+    // Ensure self-reference exists
+    const selfUrl = canonical_url || `${BASE_URL}/${language}/blog/${slug}`;
+    const validLang = (isSupportedLanguage(language) ? language : 'en') as SupportedLanguage;
+    const hasSelfReference = tags.some(t => t.hreflang === validLang);
+    if (!hasSelfReference) {
+      tags.unshift({ hreflang: validLang, href: selfUrl });
+    }
+    
+    // Fix x-default to point to English version (not self if not English)
+    const xDefaultIndex = tags.findIndex(t => t.hreflang === 'x-default');
+    if (xDefaultIndex !== -1) {
+      // Find English sibling
+      const englishSibling = siblings.find(s => s.language === 'en');
+      const englishUrl = englishSibling?.canonical_url 
+        || (translations?.en ? `${BASE_URL}/en/blog/${translations.en}` : null)
+        || (language === 'en' ? selfUrl : null);
+      
+      if (englishUrl && tags[xDefaultIndex].href !== englishUrl) {
+        tags[xDefaultIndex] = { hreflang: 'x-default', href: englishUrl };
+      }
+    }
+    
+    return tags;
+  }, [currentArticle, siblings, language, canonical_url, slug, translations]);
 
   return (
     <Helmet>
