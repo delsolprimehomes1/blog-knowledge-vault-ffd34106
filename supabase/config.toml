@@ -188,3 +188,6 @@ verify_jwt = false
 
 [functions.fix-duplicate-hreflang]
 verify_jwt = false
+
+[functions.production-site-audit]
+verify_jwt = false

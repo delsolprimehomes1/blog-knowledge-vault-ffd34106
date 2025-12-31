@@ -95,6 +95,7 @@ const TranslationQueue = lazy(() => import("./pages/admin/TranslationQueue"));
 const DuplicateImageFixer = lazy(() => import("./pages/admin/DuplicateImageFixer"));
 const QALanguageAudit = lazy(() => import("./pages/admin/QALanguageAudit"));
 const SystemAudit = lazy(() => import("./pages/admin/SystemAudit"));
+const ProductionAudit = lazy(() => import("./pages/admin/ProductionAudit"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -176,6 +177,7 @@ const App = () => (
               <Route path="/admin/duplicate-images" element={<ProtectedRoute><DuplicateImageFixer /></ProtectedRoute>} />
               <Route path="/admin/qa-language-audit" element={<ProtectedRoute><QALanguageAudit /></ProtectedRoute>} />
               <Route path="/admin/system-audit" element={<ProtectedRoute><SystemAudit /></ProtectedRoute>} />
+              <Route path="/admin/production-audit" element={<ProtectedRoute><ProductionAudit /></ProtectedRoute>} />
               
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
