@@ -270,29 +270,132 @@ function generateQAPageSchema(metadata: PageMetadata): string {
   return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
 }
 
+// Organization schema for publisher
+const ORGANIZATION_SCHEMA = {
+  "@type": "Organization",
+  "@id": `${BASE_URL}/#organization`,
+  "name": "Del Sol Prime Homes",
+  "url": BASE_URL,
+  "logo": {
+    "@type": "ImageObject",
+    "url": `${BASE_URL}/assets/logo-new.png`,
+    "width": 512,
+    "height": 512
+  },
+  "sameAs": [
+    "https://www.linkedin.com/company/del-sol-prime-homes"
+  ],
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Marbella",
+    "addressRegion": "Málaga",
+    "addressCountry": "ES"
+  }
+}
+
+function generateBlogPostingSchema(metadata: PageMetadata): string {
+  // Only generate BlogPosting schema for blog content
+  if (metadata.content_type !== 'blog') {
+    return ''
+  }
+  
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${metadata.canonical_url}#blogposting`,
+    "headline": metadata.headline,
+    "description": metadata.meta_description,
+    "image": {
+      "@type": "ImageObject",
+      "url": metadata.featured_image_url || `${BASE_URL}/assets/logo-new.png`,
+      "caption": metadata.featured_image_alt || metadata.headline
+    },
+    "datePublished": metadata.date_published || new Date().toISOString(),
+    "dateModified": metadata.date_modified || metadata.date_published || new Date().toISOString(),
+    "inLanguage": LOCALE_MAP[metadata.language] || metadata.language,
+    "author": {
+      "@type": "Organization",
+      "@id": `${BASE_URL}/#organization`,
+      "name": "Del Sol Prime Homes"
+    },
+    "publisher": ORGANIZATION_SCHEMA,
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": metadata.canonical_url
+    },
+    "isPartOf": {
+      "@type": "Blog",
+      "@id": `${BASE_URL}/${metadata.language}/blog#blog`,
+      "name": "Del Sol Prime Homes Blog",
+      "publisher": {
+        "@id": `${BASE_URL}/#organization`
+      }
+    }
+  }
+
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
+}
+
+function generateBreadcrumbSchema(metadata: PageMetadata): string {
+  const pathMap: Record<string, { name: string; path: string }> = {
+    blog: { name: 'Blog', path: 'blog' },
+    qa: { name: 'Q&A', path: 'qa' },
+    compare: { name: 'Comparisons', path: 'compare' },
+    locations: { name: 'Locations', path: 'locations' }
+  }
+  
+  const section = pathMap[metadata.content_type] || { name: 'Content', path: '' }
+  
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": `${BASE_URL}/${metadata.language}`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": section.name,
+        "item": `${BASE_URL}/${metadata.language}/${section.path}`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": metadata.headline,
+        "item": metadata.canonical_url
+      }
+    ]
+  }
+
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
+}
+
 function generateArticleSchema(metadata: PageMetadata): string {
-  // Only generate Article schema for blog content, not QA pages (which use QAPage)
-  if (metadata.content_type === 'qa') {
-    return '' // QA pages use QAPage schema instead
+  // Only generate Article schema for comparison/location content
+  if (metadata.content_type === 'qa' || metadata.content_type === 'blog') {
+    return '' // QA pages use QAPage, blog uses BlogPosting
   }
   
   const schema = {
     "@context": "https://schema.org",
     "@type": "Article",
+    "@id": `${metadata.canonical_url}#article`,
     "headline": metadata.headline,
     "description": metadata.meta_description,
     "image": metadata.featured_image_url || `${BASE_URL}/assets/logo-new.png`,
     "datePublished": metadata.date_published || new Date().toISOString(),
     "dateModified": metadata.date_modified || new Date().toISOString(),
     "inLanguage": LOCALE_MAP[metadata.language] || metadata.language,
-    "publisher": {
+    "author": {
       "@type": "Organization",
-      "name": "Del Sol Prime Homes",
-      "logo": {
-        "@type": "ImageObject",
-        "url": `${BASE_URL}/assets/logo-new.png`
-      }
+      "@id": `${BASE_URL}/#organization`,
+      "name": "Del Sol Prime Homes"
     },
+    "publisher": ORGANIZATION_SCHEMA,
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": metadata.canonical_url
@@ -300,12 +403,6 @@ function generateArticleSchema(metadata: PageMetadata): string {
   }
 
   return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
-}
-
-// Speakable schema removed - limited practical impact and selectors may not exist
-// Keeping function stub for backwards compatibility
-function generateSpeakableSchema(_metadata: PageMetadata): string {
-  return ''
 }
 
 function escapeHtml(text: string | null | undefined): string {
@@ -323,10 +420,11 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml
   const escapedTitle = escapeHtml(metadata.meta_title || metadata.headline || 'Del Sol Prime Homes')
   const escapedDescription = escapeHtml(metadata.meta_description || '')
   
-  // Generate schemas - QA pages use QAPage, others use Article
+  // Generate schemas based on content type
   const qaSchema = metadata.content_type === 'qa' ? generateQAPageSchema(metadata) : ''
+  const blogPostingSchema = generateBlogPostingSchema(metadata)
   const articleSchema = generateArticleSchema(metadata)
-  const speakableSchema = generateSpeakableSchema(metadata)
+  const breadcrumbSchema = generateBreadcrumbSchema(metadata)
 
   // Build the complete head section (no charset/viewport - those are in index.html)
   const headContent = `
@@ -340,7 +438,7 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml
 ${hreflangTags}
   
   <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="article" />
+  <meta property="og:type" content="${metadata.content_type === 'blog' ? 'article' : 'website'}" />
   <meta property="og:url" content="${metadata.canonical_url}" />
   <meta property="og:title" content="${escapedTitle}" />
   <meta property="og:description" content="${escapedDescription}" />
@@ -359,10 +457,11 @@ ${hreflangTags}
   ${metadata.date_published ? `<meta property="article:published_time" content="${metadata.date_published}" />` : ''}
   ${metadata.date_modified ? `<meta property="article:modified_time" content="${metadata.date_modified}" />` : ''}
   
-  <!-- Schema.org JSON-LD (no duplicates) -->
+  <!-- Schema.org JSON-LD -->
   ${qaSchema}
+  ${blogPostingSchema}
   ${articleSchema}
-  ${speakableSchema}
+  ${breadcrumbSchema}
 `
 
   // Replace the entire head section and html lang attribute
