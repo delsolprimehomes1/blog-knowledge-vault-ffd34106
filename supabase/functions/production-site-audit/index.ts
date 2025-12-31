@@ -377,6 +377,14 @@ async function auditCanonical(pages: { url: string; html: string; type: string }
   };
 }
 
+// Normalize language code to base 2-letter code (e.g., fr_FR, fr-FR, fr_fr -> fr)
+function normalizeLanguageCode(lang: string | null | undefined): string | null {
+  if (!lang) return null;
+  // Split by either underscore or dash, take first part, lowercase
+  const base = lang.split(/[-_]/)[0].toLowerCase();
+  return base.length === 2 ? base : null;
+}
+
 async function auditLanguageConsistency(pages: { url: string; html: string; type: string }[]): Promise<CheckResult> {
   const issues: Issue[] = [];
   
@@ -387,12 +395,14 @@ async function auditLanguageConsistency(pages: { url: string; html: string; type
     const canonicalLang = canonical ? getLanguageFromUrl(canonical) : null;
     const ogLocale = extractOgLocale(page.html);
     
-    // Extract inLanguage from JSON-LD
+    // Extract inLanguage from JSON-LD (normalize fr_fr, en-GB, etc. to base code)
     const schemas = extractSchemas(page.html);
+    let schemaLangRaw: string | null = null;
     let schemaLang: string | null = null;
     for (const schema of schemas) {
       if (schema.inLanguage) {
-        schemaLang = schema.inLanguage.split('-')[0].toLowerCase();
+        schemaLangRaw = schema.inLanguage;
+        schemaLang = normalizeLanguageCode(schema.inLanguage);
         break;
       }
     }
@@ -404,31 +414,46 @@ async function auditLanguageConsistency(pages: { url: string; html: string; type
       return tagUrlLang === urlLang;
     });
     
-    const indicators = {
+    // Store both raw and normalized values for detailed reporting
+    const rawIndicators = {
       url: urlLang,
       html_lang: htmlLang,
       canonical: canonicalLang,
       og_locale: ogLocale,
-      schema_inLanguage: schemaLang,
+      schema_inLanguage: schemaLangRaw,
       hreflang_self: selfHreflang?.lang
     };
     
-    // Check consistency
-    const nonNullIndicators = Object.entries(indicators)
+    // Normalize all indicators for comparison
+    const normalizedIndicators = {
+      url: urlLang,
+      html_lang: normalizeLanguageCode(htmlLang),
+      canonical: canonicalLang,
+      og_locale: normalizeLanguageCode(ogLocale),
+      schema_inLanguage: schemaLang,
+      hreflang_self: normalizeLanguageCode(selfHreflang?.lang)
+    };
+    
+    // Check consistency using normalized values
+    const nonNullIndicators = Object.entries(normalizedIndicators)
       .filter(([_, v]) => v !== null && v !== undefined)
-      .map(([k, v]) => ({ key: k, value: v }));
+      .map(([k, v]) => ({ key: k, value: v as string, raw: (rawIndicators as any)[k] }));
     
     const uniqueValues = [...new Set(nonNullIndicators.map(i => i.value))];
     
     if (uniqueValues.length > 1) {
-      const mismatchDetails = nonNullIndicators
-        .map(i => `${i.key}=${i.value}`)
+      // There's a real mismatch - report which indicators don't match
+      const mismatchingIndicators = nonNullIndicators
+        .filter(i => i.value !== uniqueValues[0])
+        .map(i => `${i.key}=${i.raw || i.value}`)
         .join(', ');
+      
+      const expectedLang = urlLang || uniqueValues[0];
       
       issues.push({
         page: page.url,
         problem: 'language_indicators_mismatch',
-        details: `Inconsistent language indicators: ${mismatchDetails}`,
+        details: `Expected language "${expectedLang}" but found mismatches: ${mismatchingIndicators}`,
         severity: 'critical'
       });
     }
