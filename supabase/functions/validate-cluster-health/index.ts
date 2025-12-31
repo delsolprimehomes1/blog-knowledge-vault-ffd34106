@@ -19,6 +19,24 @@ interface HealthCheckResult {
   sample_url: string;
 }
 
+interface QAHreflangStatus {
+  total_qa_pages: number;
+  unique_hreflang_groups: number;
+  expected_groups_estimate: number;
+  is_broken: boolean;
+  severity: 'critical' | 'warning' | 'ok';
+  multi_language_groups: number;
+  single_language_groups: number;
+}
+
+interface MissingCanonicals {
+  blog_articles: number;
+  qa_pages: number;
+  location_pages: number;
+  comparison_pages: number;
+  total: number;
+}
+
 interface HealthReport {
   timestamp: string;
   total_groups_checked: number;
@@ -31,6 +49,8 @@ interface HealthReport {
     location_pages: number;
     comparison_pages: number;
   };
+  qa_hreflang_status: QAHreflangStatus;
+  missing_canonicals: MissingCanonicals;
 }
 
 Deno.serve(async (req) => {
@@ -53,6 +73,8 @@ Deno.serve(async (req) => {
       no_english: 0,
       bidirectional_mismatch: 0,
       orphaned: 0,
+      broken_qa_hreflang: 0,
+      missing_canonicals: 0,
     };
 
     // Check blog articles by cluster_id
@@ -107,7 +129,7 @@ Deno.serve(async (req) => {
               languages_found: languages,
               missing_languages: missing,
               has_english: hasEnglish,
-              bidirectional_ok: true, // Cluster-based linking is inherently bidirectional
+              bidirectional_ok: true,
               sample_url: `${BASE_URL}/${group[0]?.language}/blog/${group[0]?.slug}`,
             });
           }
@@ -117,13 +139,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check QA pages by hreflang_group_id
+    // Check QA pages by hreflang_group_id - with DETAILED analysis
+    let qaHreflangStatus: QAHreflangStatus = {
+      total_qa_pages: 0,
+      unique_hreflang_groups: 0,
+      expected_groups_estimate: 0,
+      is_broken: false,
+      severity: 'ok',
+      multi_language_groups: 0,
+      single_language_groups: 0,
+    };
+
     if (!content_type || content_type === 'qa') {
       console.log('🔍 Checking Q&A pages...');
       
       const { data: qaPages, error } = await supabase
         .from('qa_pages')
-        .select('id, slug, language, hreflang_group_id, status')
+        .select('id, slug, language, hreflang_group_id, status, source_article_id, qa_type')
         .eq('status', 'published');
       
       if (error) {
@@ -137,7 +169,45 @@ Deno.serve(async (req) => {
             hreflangGroups.set(page.hreflang_group_id, existing);
           }
         });
+
+        // Count multi-language vs single-language groups
+        let multiLangCount = 0;
+        let singleLangCount = 0;
+        hreflangGroups.forEach((group) => {
+          if (group.length > 1) {
+            multiLangCount++;
+          } else {
+            singleLangCount++;
+          }
+        });
+
+        // Estimate expected groups: count unique source_article + qa_type combinations
+        const expectedGroupKeys = new Set<string>();
+        qaPages.forEach(page => {
+          if (page.source_article_id && page.qa_type) {
+            expectedGroupKeys.add(`${page.source_article_id}::${page.qa_type}`);
+          }
+        });
+
+        // Determine if Q&A hreflang is broken
+        // Broken = almost all groups are single-language when they shouldn't be
+        const isBroken = singleLangCount > multiLangCount * 3 && qaPages.length > 10;
         
+        qaHreflangStatus = {
+          total_qa_pages: qaPages.length,
+          unique_hreflang_groups: hreflangGroups.size,
+          expected_groups_estimate: expectedGroupKeys.size || Math.ceil(qaPages.length / SUPPORTED_LANGUAGES.length),
+          is_broken: isBroken,
+          severity: isBroken ? 'critical' : (singleLangCount > multiLangCount ? 'warning' : 'ok'),
+          multi_language_groups: multiLangCount,
+          single_language_groups: singleLangCount,
+        };
+
+        if (isBroken) {
+          issuesCounts.broken_qa_hreflang = singleLangCount;
+        }
+        
+        // Still check for missing languages in groups
         hreflangGroups.forEach((group, groupId) => {
           const languages = group.map(p => p.language);
           const missing = SUPPORTED_LANGUAGES.filter(l => !languages.includes(l));
@@ -168,7 +238,7 @@ Deno.serve(async (req) => {
           }
         });
         
-        console.log(`   ✅ Checked ${hreflangGroups.size} Q&A hreflang groups`);
+        console.log(`   ✅ Checked ${hreflangGroups.size} Q&A hreflang groups (${multiLangCount} multi-lang, ${singleLangCount} single-lang)`);
       }
     }
 
@@ -314,6 +384,42 @@ Deno.serve(async (req) => {
       issuesCounts.orphaned = totalOrphaned;
     }
 
+    // Check for missing canonical URLs
+    console.log('🔗 Checking for missing canonical URLs...');
+
+    const { count: missingBlogCanonicals } = await supabase
+      .from('blog_articles')
+      .select('id', { count: 'exact', head: true })
+      .is('canonical_url', null);
+
+    const { count: missingQACanonicals } = await supabase
+      .from('qa_pages')
+      .select('id', { count: 'exact', head: true })
+      .is('canonical_url', null);
+
+    const { count: missingLocationCanonicals } = await supabase
+      .from('location_pages')
+      .select('id', { count: 'exact', head: true })
+      .is('canonical_url', null);
+
+    const { count: missingComparisonCanonicals } = await supabase
+      .from('comparison_pages')
+      .select('id', { count: 'exact', head: true })
+      .is('canonical_url', null);
+
+    const missingCanonicals: MissingCanonicals = {
+      blog_articles: missingBlogCanonicals || 0,
+      qa_pages: missingQACanonicals || 0,
+      location_pages: missingLocationCanonicals || 0,
+      comparison_pages: missingComparisonCanonicals || 0,
+      total: (missingBlogCanonicals || 0) + (missingQACanonicals || 0) + 
+             (missingLocationCanonicals || 0) + (missingComparisonCanonicals || 0),
+    };
+
+    if (missingCanonicals.total > 0) {
+      issuesCounts.missing_canonicals = missingCanonicals.total;
+    }
+
     const report: HealthReport = {
       timestamp: new Date().toISOString(),
       total_groups_checked: results.length + (issuesCounts.orphaned > 0 ? 1 : 0),
@@ -326,6 +432,8 @@ Deno.serve(async (req) => {
         location_pages: orphanedLocations || 0,
         comparison_pages: orphanedComparisons || 0,
       },
+      qa_hreflang_status: qaHreflangStatus,
+      missing_canonicals: missingCanonicals,
     };
 
     console.log(`\n📊 Health Check Complete:`);
@@ -333,6 +441,8 @@ Deno.serve(async (req) => {
     console.log(`   • Missing languages: ${issuesCounts.missing_languages}`);
     console.log(`   • No English: ${issuesCounts.no_english}`);
     console.log(`   • Orphaned content: ${totalOrphaned}`);
+    console.log(`   • Q&A hreflang broken: ${qaHreflangStatus.is_broken}`);
+    console.log(`   • Missing canonicals: ${missingCanonicals.total}`);
 
     return new Response(JSON.stringify(report), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
