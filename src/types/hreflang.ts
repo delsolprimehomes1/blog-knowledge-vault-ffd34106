@@ -226,16 +226,26 @@ export function generateHreflangTags(
     });
   }
   
-  // Add x-default (points to English if it exists, otherwise current page)
+  // Add x-default ONLY if English version exists, OR current page is English
   const englishVersion = availableLanguages.get('en');
-  const defaultContent = englishVersion || currentContent;
-  const defaultLang = englishVersion ? 'en' : currentContent.language;
-  const defaultUrl = defaultContent.canonical_url || buildContentUrl(defaultContent, defaultLang as SupportedLanguage);
   
-  tags.push({
-    hreflang: 'x-default',
-    href: defaultUrl,
-  });
+  if (englishVersion) {
+    // English exists - use it for x-default
+    const englishUrl = englishVersion.canonical_url || buildContentUrl(englishVersion, 'en');
+    tags.push({
+      hreflang: 'x-default',
+      href: englishUrl,
+    });
+  } else if (currentContent.language === 'en') {
+    // Current page IS English - use it for x-default
+    const currentUrl = currentContent.canonical_url || buildContentUrl(currentContent, 'en');
+    tags.push({
+      hreflang: 'x-default',
+      href: currentUrl,
+    });
+  }
+  // If no English version exists and current is not English, omit x-default entirely
+  // This prevents x-default from incorrectly pointing to non-English content
   
   return tags;
 }

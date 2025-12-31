@@ -101,11 +101,44 @@ export const ComparisonHreflangTags = ({
     status: 'published' as const,
   }), [id, hreflang_group_id, language, slug, canonical_url, validSourceLang]);
 
-  // Generate hreflang tags
-  const hreflangTags = useMemo(
-    () => generateHreflangTags(currentPage, siblings),
-    [currentPage, siblings]
-  );
+  // Generate hreflang tags with guaranteed self-reference and correct x-default
+  const hreflangTags = useMemo(() => {
+    const baseTags = generateHreflangTags(currentPage, siblings);
+    
+    // Ensure self-reference exists
+    const currentLang = currentPage.language;
+    const currentUrl = currentPage.canonical_url || `${BASE_URL}/${currentPage.language}/compare/${currentPage.slug}`;
+    const hasSelfReference = baseTags.some(tag => tag.hreflang === currentLang);
+    
+    if (!hasSelfReference) {
+      baseTags.unshift({ hreflang: currentLang, href: currentUrl });
+    }
+    
+    // Fix x-default: must point to English version if it exists
+    const englishSibling = siblings.find(s => s.language === 'en' && s.status === 'published');
+    const xDefaultIndex = baseTags.findIndex(tag => tag.hreflang === 'x-default');
+    
+    if (xDefaultIndex !== -1) {
+      if (englishSibling) {
+        // Point to English sibling
+        baseTags[xDefaultIndex] = {
+          hreflang: 'x-default',
+          href: englishSibling.canonical_url || `${BASE_URL}/en/compare/${englishSibling.slug}`,
+        };
+      } else if (currentPage.language === 'en') {
+        // Current page IS English, use it
+        baseTags[xDefaultIndex] = {
+          hreflang: 'x-default',
+          href: currentUrl,
+        };
+      } else {
+        // No English version exists - remove x-default to avoid pointing to wrong language
+        baseTags.splice(xDefaultIndex, 1);
+      }
+    }
+    
+    return baseTags;
+  }, [currentPage, siblings]);
 
   return (
     <Helmet>
