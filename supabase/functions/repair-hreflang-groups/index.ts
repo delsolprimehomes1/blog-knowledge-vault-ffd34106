@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface QAPageWithArticle {
+interface QAPageWithBlog {
   id: string
   cluster_id: string | null
   language: string
@@ -15,8 +15,7 @@ interface QAPageWithArticle {
   source_article_id: string | null
   created_at: string
   question_main: string | null
-  source_article?: {
-    id: string
+  source_article: {
     hreflang_group_id: string | null
   } | null
 }
@@ -24,19 +23,23 @@ interface QAPageWithArticle {
 /**
  * Repairs hreflang_group_id assignments for QA pages.
  * 
- * FIXED STRATEGY (v4):
- * Each Q&A gets its OWN unique hreflang_group_id.
+ * v5 STRATEGY - Proper Cross-Language Grouping:
+ * Group Q&As by their source blog's hreflang_group_id + qa_type
  * 
- * WHY: We cannot reliably match Q&As across languages because:
- * - Different language articles generate DIFFERENT questions
- * - Same qa_type does NOT mean same question
- * - Example: Polish "Main challenges..." ≠ German "Luxury living..."
+ * WHY THIS WORKS:
+ * - Blog articles already have proper hreflang_group_id linking translations
+ * - EN blog (hreflang: abc-123), DE blog (hreflang: abc-123), FR blog (hreflang: abc-123)
+ * - Q&As generated from these blogs with same qa_type should share a group
+ * - EN "core" Q&A + DE "core" Q&A + FR "core" Q&A → same hreflang_group
  * 
  * This means:
- * - Each Q&A has a single-language hreflang group
- * - Hreflang tags only include that one language (self-referencing)
- * - No incorrect cross-language linking
- * - Safe and predictable behavior
+ * - Each Q&A topic (blog_hreflang + qa_type) gets ONE shared hreflang_group_id
+ * - All 10 language versions of the same question link to each other
+ * - Google/AI can discover Q&A translations properly
+ * 
+ * Expected result:
+ * - Cluster with 240 Q&As → ~24 hreflang groups (24 topics × 10 languages each)
+ * - Instead of 240 groups (v4 broken behavior)
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -50,9 +53,9 @@ Deno.serve(async (req) => {
 
     const { dryRun = true, clusterId, contentType } = await req.json().catch(() => ({ dryRun: true }))
 
-    console.log(`[Repair v4] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
+    console.log(`[Repair v5] Starting hreflang group repair (dryRun: ${dryRun}, clusterId: ${clusterId || 'all'}, contentType: ${contentType || 'qa'})`)
 
-    // Fetch all published Q&A pages
+    // Step 1: Fetch all published Q&A pages WITH their source blog's hreflang_group_id
     let query = supabase
       .from('qa_pages')
       .select(`
@@ -64,7 +67,10 @@ Deno.serve(async (req) => {
         hreflang_group_id, 
         source_article_id, 
         created_at, 
-        question_main
+        question_main,
+        source_article:blog_articles!source_article_id(
+          hreflang_group_id
+        )
       `)
       .eq('status', 'published')
       .order('created_at')
@@ -74,12 +80,12 @@ Deno.serve(async (req) => {
     }
 
     const { data: qaPages, error: fetchError } = await query as { 
-      data: QAPageWithArticle[] | null
-      error: any 
+      data: QAPageWithBlog[] | null
+      error: unknown 
     }
 
     if (fetchError) {
-      console.error('[Repair v4] Error fetching Q&A pages:', fetchError)
+      console.error('[Repair v5] Error fetching Q&A pages:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch Q&A pages', details: fetchError }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,55 +99,120 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log(`[Repair v4] Found ${qaPages.length} Q&A pages to process`)
+    console.log(`[Repair v5] Found ${qaPages.length} Q&A pages to process`)
 
-    // ========== NEW STRATEGY (v4): Each Q&A gets its own unique hreflang_group_id ==========
-    // This prevents incorrect cross-language linking since we cannot reliably match Q&As
+    // ========== v5 STRATEGY: Group Q&As by blog's hreflang_group + qa_type ==========
     
+    // Map: groupKey → array of Q&As in that group
+    const groups = new Map<string, QAPageWithBlog[]>()
+    let standaloneCount = 0
+    let linkedCount = 0
+
+    for (const qa of qaPages) {
+      const blogHreflang = qa.source_article?.hreflang_group_id
+
+      if (!blogHreflang) {
+        // Q&A without linked blog or blog without hreflang → standalone group
+        const groupKey = `standalone::${qa.id}`
+        groups.set(groupKey, [qa])
+        standaloneCount++
+        continue
+      }
+
+      // Group by blog's hreflang_group_id + qa_type
+      const qaType = qa.qa_type || 'unknown'
+      const groupKey = `${blogHreflang}::${qaType}`
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, [])
+      }
+      groups.get(groupKey)!.push(qa)
+      linkedCount++
+    }
+
+    console.log(`[Repair v5] Grouped Q&As: ${linkedCount} linked, ${standaloneCount} standalone`)
+    console.log(`[Repair v5] Total unique groups: ${groups.size}`)
+
+    // Step 3: Build updates - same hreflang_group_id for all Q&As in each group
     const updates: { id: string; hreflang_group_id: string; translations: Record<string, string> }[] = []
     const stats = {
       totalQAs: qaPages.length,
-      groupsCreated: 0,
+      linkedGroups: 0,
+      standaloneGroups: 0,
+      multiLanguageGroups: 0,
       singleLanguageGroups: 0,
+      groupSizeDistribution: {} as Record<number, number>,
     }
 
-    for (const qa of qaPages) {
-      // Each Q&A gets its own unique hreflang_group_id
-      const hreflangGroupId = crypto.randomUUID()
-      
-      // Translations only contains self (single language)
-      const translations: Record<string, string> = {
-        [qa.language]: qa.slug
+    for (const [groupKey, qas] of groups) {
+      const isStandalone = groupKey.startsWith('standalone::')
+      const newHreflangGroupId = crypto.randomUUID()
+
+      // Build translations map from all Q&As in this group
+      const translations: Record<string, string> = {}
+      for (const qa of qas) {
+        translations[qa.language] = qa.slug
       }
-      
-      updates.push({
-        id: qa.id,
-        hreflang_group_id: hreflangGroupId,
-        translations
-      })
-      
-      stats.groupsCreated++
-      stats.singleLanguageGroups++
+
+      // Track stats
+      const groupSize = qas.length
+      stats.groupSizeDistribution[groupSize] = (stats.groupSizeDistribution[groupSize] || 0) + 1
+
+      if (isStandalone) {
+        stats.standaloneGroups++
+        stats.singleLanguageGroups++
+      } else {
+        stats.linkedGroups++
+        if (groupSize > 1) {
+          stats.multiLanguageGroups++
+        } else {
+          stats.singleLanguageGroups++
+        }
+      }
+
+      // All Q&As in this group get the SAME hreflang_group_id and translations
+      for (const qa of qas) {
+        updates.push({
+          id: qa.id,
+          hreflang_group_id: newHreflangGroupId,
+          translations
+        })
+      }
     }
 
-    console.log(`[Repair v4] Stats:`, stats)
-    console.log(`[Repair v4] Total updates queued: ${updates.length}`)
+    console.log(`[Repair v5] Stats:`, stats)
+    console.log(`[Repair v5] Total updates queued: ${updates.length}`)
 
     if (dryRun) {
       // Return preview of changes without applying
-      const preview = updates.slice(0, 20).map(u => ({
+      const preview = updates.slice(0, 30).map(u => ({
         id: u.id,
-        new_hreflang_group_id: u.hreflang_group_id,
+        new_hreflang_group_id: u.hreflang_group_id.slice(0, 8) + '...',
         languages_linked: Object.keys(u.translations),
+        language_count: Object.keys(u.translations).length,
       }))
+
+      // Show example of multi-language groups
+      const multiLangExamples: { group_key: string; languages: string[]; qa_count: number }[] = []
+      for (const [groupKey, qas] of groups) {
+        if (qas.length > 1 && !groupKey.startsWith('standalone::')) {
+          multiLangExamples.push({
+            group_key: groupKey.slice(0, 50) + (groupKey.length > 50 ? '...' : ''),
+            languages: qas.map(q => q.language).sort(),
+            qa_count: qas.length
+          })
+          if (multiLangExamples.length >= 5) break
+        }
+      }
 
       return new Response(
         JSON.stringify({
           dryRun: true,
-          message: `Would update ${updates.length} Q&A pages, each with its own unique hreflang_group_id`,
+          message: `Would update ${updates.length} Q&A pages across ${groups.size} hreflang groups`,
           stats,
-          strategy: 'v4 - Each Q&A gets its own hreflang group (no cross-language linking)',
-          reason: 'Cannot reliably match Q&As across languages - different articles generate different questions',
+          strategy: 'v5 - Group by blog hreflang_group + qa_type',
+          expected_improvement: `${stats.linkedGroups} properly linked groups vs ${stats.standaloneGroups} standalone`,
+          multiLanguageExamples: multiLangExamples,
           preview,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -166,32 +237,32 @@ Deno.serve(async (req) => {
           .eq('id', update.id)
 
         if (updateError) {
-          console.error(`[Repair v4] Error updating Q&A ${update.id}:`, updateError)
+          console.error(`[Repair v5] Error updating Q&A ${update.id}:`, updateError)
           errorCount++
         } else {
           successCount++
         }
       }
 
-      console.log(`[Repair v4] Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
+      console.log(`[Repair v5] Processed batch ${Math.floor(i / batchSize) + 1}, success: ${successCount}, errors: ${errorCount}`)
     }
 
     return new Response(
       JSON.stringify({
         dryRun: false,
-        message: `Updated ${successCount} Q&A pages with unique hreflang_group_ids (${errorCount} errors)`,
+        message: `Updated ${successCount} Q&A pages across ${groups.size} hreflang groups (${errorCount} errors)`,
         stats: {
           ...stats,
           successCount,
           errorCount,
         },
-        strategy: 'v4 - Each Q&A gets its own hreflang group (no cross-language linking)',
+        strategy: 'v5 - Group by blog hreflang_group + qa_type',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('[Repair v4] Error in repair-hreflang-groups:', error)
+    console.error('[Repair v5] Error in repair-hreflang-groups:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
