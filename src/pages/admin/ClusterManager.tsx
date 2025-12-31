@@ -34,8 +34,9 @@ interface ClusterData {
   languages_queue?: string[] | null;
   job_error?: string | null;
   job_progress?: any;
-  qa_pages: Record<string, number>;
+  qa_pages: Record<string, { total: number; published: number; draft: number }>;
   total_qa_pages: number;
+  total_qa_published: number;
   expected_qa_pages: number; // articles × 4 QAs per article
   qa_completion_percent: number;
 }
@@ -107,13 +108,13 @@ const ClusterManager = () => {
     },
   });
 
-  // Fetch QA pages grouped by cluster and language
+  // Fetch QA pages grouped by cluster and language with status
   const { data: qaPages } = useQuery({
     queryKey: ["cluster-qa-pages"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("qa_pages")
-        .select("cluster_id, language")
+        .select("cluster_id, language, status")
         .not("cluster_id", "is", null);
       
       if (error) throw error;
@@ -141,6 +142,7 @@ const ClusterManager = () => {
           created_at: article.created_at,
           qa_pages: {},
           total_qa_pages: 0,
+          total_qa_published: 0,
           expected_qa_pages: 0,
           qa_completion_percent: 0,
         });
@@ -183,13 +185,23 @@ const ClusterManager = () => {
       }
     });
 
-    // Add QA page counts per cluster per language
+    // Add QA page counts per cluster per language with status breakdown
     qaPages?.forEach((qa) => {
       if (!qa.cluster_id) return;
       const cluster = clusterMap.get(qa.cluster_id);
       if (cluster) {
-        cluster.qa_pages[qa.language] = (cluster.qa_pages[qa.language] || 0) + 1;
+        if (!cluster.qa_pages[qa.language]) {
+          cluster.qa_pages[qa.language] = { total: 0, published: 0, draft: 0 };
+        }
+        cluster.qa_pages[qa.language].total++;
         cluster.total_qa_pages++;
+        
+        if (qa.status === 'published') {
+          cluster.qa_pages[qa.language].published++;
+          cluster.total_qa_published++;
+        } else {
+          cluster.qa_pages[qa.language].draft++;
+        }
       }
     });
 
@@ -483,7 +495,8 @@ const ClusterManager = () => {
       if (!langStats) continue; // No articles in this language
       
       const expectedQAs = langStats.total * 4;
-      const actualQAs = cluster.qa_pages[lang] || 0;
+      const qaStats = cluster.qa_pages[lang];
+      const actualQAs = qaStats?.total || 0;
       
       if (actualQAs < expectedQAs) {
         return {
@@ -500,14 +513,16 @@ const ClusterManager = () => {
   // Get QA language status for a cluster
   const getQALanguageStatus = useCallback((cluster: ClusterData) => {
     const expectedLanguages = getAllExpectedLanguages(cluster);
-    const statuses: { lang: string; status: 'complete' | 'partial' | 'none'; count: number; expected: number }[] = [];
+    const statuses: { lang: string; status: 'complete' | 'partial' | 'none'; count: number; published: number; expected: number }[] = [];
     
     for (const lang of expectedLanguages) {
       const langStats = cluster.languages[lang];
       if (!langStats) continue;
       
       const expectedQAs = langStats.total * 4;
-      const actualQAs = cluster.qa_pages[lang] || 0;
+      const qaStats = cluster.qa_pages[lang];
+      const actualQAs = qaStats?.total || 0;
+      const publishedQAs = qaStats?.published || 0;
       
       let status: 'complete' | 'partial' | 'none' = 'none';
       if (actualQAs >= expectedQAs) {
@@ -516,7 +531,7 @@ const ClusterManager = () => {
         status = 'partial';
       }
       
-      statuses.push({ lang, status, count: actualQAs, expected: expectedQAs });
+      statuses.push({ lang, status, count: actualQAs, published: publishedQAs, expected: expectedQAs });
     }
     
     return statuses;
@@ -1093,16 +1108,20 @@ const ClusterManager = () => {
                         <span className="text-muted-foreground">
                           • {cluster.total_articles} articles
                         </span>
-                        {/* QA Progress: show expected vs actual */}
+                        {/* QA Progress: show published/total with status indicator */}
                         <span className={`font-medium ${
-                          cluster.qa_completion_percent === 100 
+                          cluster.total_qa_published === cluster.total_qa_pages && cluster.qa_completion_percent === 100 
                             ? 'text-green-600 dark:text-green-400' 
-                            : cluster.qa_completion_percent > 0 
-                              ? 'text-amber-600 dark:text-amber-400' 
-                              : 'text-muted-foreground'
+                            : cluster.total_qa_published < cluster.total_qa_pages
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : cluster.qa_completion_percent > 0 
+                                ? 'text-amber-600 dark:text-amber-400' 
+                                : 'text-muted-foreground'
                         }`}>
-                          • QAs: {cluster.total_qa_pages}/{cluster.expected_qa_pages} ({cluster.qa_completion_percent}%)
-                          {cluster.qa_completion_percent === 100 ? ' ✅' : cluster.qa_completion_percent > 0 ? ' ⚠️' : ' ❌'}
+                          • QAs: {cluster.total_qa_published}P/{cluster.total_qa_pages}T ({cluster.qa_completion_percent}%)
+                          {cluster.total_qa_published === cluster.total_qa_pages && cluster.qa_completion_percent === 100 ? ' ✅' : 
+                           cluster.total_qa_published < cluster.total_qa_pages ? ` (${cluster.total_qa_pages - cluster.total_qa_published}D)` :
+                           cluster.qa_completion_percent > 0 ? ' ⚠️' : ' ❌'}
                         </span>
                         <span className="text-muted-foreground">
                           • Created {new Date(cluster.created_at).toLocaleDateString()}
@@ -1135,32 +1154,38 @@ const ClusterManager = () => {
                     </div>
                   )}
 
-                  {/* Language breakdown with QA counts */}
+                  {/* Language breakdown with QA counts (published/total) */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {Object.entries(cluster.languages).map(([lang, stats]) => {
                       const expectedQAs = stats.total * 4;
-                      const actualQAs = cluster.qa_pages[lang] || 0;
+                      const qaStats = cluster.qa_pages[lang];
+                      const totalQAs = qaStats?.total || 0;
+                      const publishedQAs = qaStats?.published || 0;
+                      const draftQAs = qaStats?.draft || 0;
                       const maxQAs = 24; // Hard cap: 6 articles × 4 types
-                      const isOverCap = actualQAs > maxQAs;
-                      const missingQAs = Math.max(0, expectedQAs - actualQAs);
-                      const langPercent = expectedQAs > 0 ? Math.round((Math.min(actualQAs, expectedQAs) / expectedQAs) * 100) : 0;
+                      const isOverCap = totalQAs > maxQAs;
+                      const missingQAs = Math.max(0, expectedQAs - totalQAs);
+                      const langPercent = expectedQAs > 0 ? Math.round((Math.min(totalQAs, expectedQAs) / expectedQAs) * 100) : 0;
                       const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id && generatingQALanguage?.lang === lang;
+                      const hasUnpublished = draftQAs > 0;
                       
                       return (
                         <div key={lang} className="flex items-center gap-1">
-                          <Badge variant="outline" className={`text-sm ${isOverCap ? 'border-red-300 bg-red-50 dark:bg-red-950/30' : ''}`}>
+                          <Badge variant="outline" className={`text-sm ${isOverCap ? 'border-red-300 bg-red-50 dark:bg-red-950/30' : hasUnpublished ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30' : ''}`}>
                             {getLanguageFlag(lang)} {stats.total}
                             <span className={`ml-1 ${
                               isOverCap
                                 ? 'text-red-600 dark:text-red-400'
-                                : langPercent === 100 
-                                  ? 'text-green-600 dark:text-green-400' 
-                                  : langPercent > 0 
-                                    ? 'text-amber-600 dark:text-amber-400' 
-                                    : 'text-muted-foreground'
+                                : hasUnpublished
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : langPercent === 100 
+                                    ? 'text-green-600 dark:text-green-400' 
+                                    : langPercent > 0 
+                                      ? 'text-amber-600 dark:text-amber-400' 
+                                      : 'text-muted-foreground'
                             }`}>
-                              | {actualQAs}/{maxQAs}Q
-                              {isOverCap ? ' ⚠️' : langPercent === 100 ? ' ✅' : langPercent > 0 ? '' : ''}
+                              | {publishedQAs}P/{totalQAs}T
+                              {isOverCap ? ' ⚠️' : hasUnpublished ? ` (${draftQAs}D)` : langPercent === 100 ? ' ✅' : ''}
                             </span>
                             {stats.draft > 0 && stats.published > 0 && (
                               <span className="text-muted-foreground ml-1">
