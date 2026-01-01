@@ -221,3 +221,6 @@ verify_jwt = false
 
 [functions.sync-qa-translations-jsonb]
 verify_jwt = false
+
+[functions.generate-10lang-qa]
+verify_jwt = false
