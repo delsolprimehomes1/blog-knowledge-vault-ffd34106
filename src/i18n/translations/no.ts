@@ -15,6 +15,17 @@ export const no = {
     linkedinProfile: "LinkedIn-profil",
     contactAgent: "Kontakt Agent",
   },
+  qa: {
+    quickAnswer: "Raskt Svar",
+    verified: "Verifisert",
+    relatedQuestions: "Relaterte Spørsmål",
+    fullArticle: "Full Artikkel",
+    basedOnGuide: "Denne Q&A er basert på vår omfattende guide:",
+    readFullArticle: "Les hele artikkelen",
+    availableInOtherLanguages: "Tilgjengelig på andre språk:",
+    essentialGuide: "Essensiell Guide",
+    expertTips: "Eksperttips",
+  },
   nav: {
     properties: "Eiendommer",
     areas: "Områder",

@@ -15,6 +15,17 @@ export const sv = {
     linkedinProfile: "LinkedIn-profil",
     contactAgent: "Kontakta Agent",
   },
+  qa: {
+    quickAnswer: "Snabbt Svar",
+    verified: "Verifierad",
+    relatedQuestions: "Relaterade Frågor",
+    fullArticle: "Fullständig Artikel",
+    basedOnGuide: "Denna Q&A är baserad på vår omfattande guide:",
+    readFullArticle: "Läs hela artikeln",
+    availableInOtherLanguages: "Tillgänglig på andra språk:",
+    essentialGuide: "Grundläggande Guide",
+    expertTips: "Experttips",
+  },
   nav: {
     properties: "Fastigheter",
     areas: "Områden",

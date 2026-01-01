@@ -68,6 +68,23 @@ export const ClusterHreflangTab = ({ cluster }: ClusterHreflangTabProps) => {
     },
   });
 
+  const repairQAHreflangMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("repair-hreflang-groups", {
+        body: { dryRun: false, clusterId: cluster.cluster_id, contentType: "qa" },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Repaired hreflang for ${data.stats?.fixed || data.updated || 0} Q&A pages`);
+      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
+    },
+    onError: (error) => {
+      toast.error(`Repair failed: ${error.message}`);
+    },
+  });
+
   const expectedLanguages = getAllExpectedLanguages(cluster);
   const existingLanguages = Object.keys(cluster.languages);
   const missingLanguages = expectedLanguages.filter((l) => !existingLanguages.includes(l));
@@ -201,6 +218,20 @@ export const ClusterHreflangTab = ({ cluster }: ClusterHreflangTabProps) => {
             <Languages className="mr-2 h-4 w-4" />
           )}
           Fix Q&A Duplicates
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => repairQAHreflangMutation.mutate()}
+          disabled={repairQAHreflangMutation.isPending}
+        >
+          {repairQAHreflangMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-2 h-4 w-4" />
+          )}
+          Repair Q&A Hreflang
         </Button>
       </div>
     </div>

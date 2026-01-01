@@ -15,6 +15,17 @@ export const pl = {
     linkedinProfile: "Profil LinkedIn",
     contactAgent: "Skontaktuj się z Agentem",
   },
+  qa: {
+    quickAnswer: "Szybka Odpowiedź",
+    verified: "Zweryfikowane",
+    relatedQuestions: "Powiązane Pytania",
+    fullArticle: "Pełny Artykuł",
+    basedOnGuide: "To Q&A oparte jest na naszym kompleksowym przewodniku:",
+    readFullArticle: "Przeczytaj pełny artykuł",
+    availableInOtherLanguages: "Dostępne w innych językach:",
+    essentialGuide: "Niezbędny Przewodnik",
+    expertTips: "Porady Eksperta",
+  },
   nav: {
     properties: "Nieruchomości",
     areas: "Obszary",

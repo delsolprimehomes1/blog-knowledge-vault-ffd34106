@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
 import { QAHreflangTags } from '@/components/QAHreflangTags';
 import { Author, QAEntity } from '@/types/blog';
+import { translations } from '@/i18n/translations';
 
 const LANGUAGE_CODE_MAP: Record<string, string> = {
   en: 'en-GB',
@@ -195,14 +196,17 @@ export default function QAPage() {
   const schemas = generateAllQASchemas(qaPage as any, author);
   const langCode = LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language;
   
+  // Get translations for current language
+  const t = translations[qaPage.language as keyof typeof translations] || translations.en;
+  
   // Use canonical_url from database if set, otherwise fallback to generated URL
   const canonicalUrl = qaPage.canonical_url || `${BASE_URL}/${lang}/qa/${qaPage.slug}`;
   
   // Calculate x-default URL - should point to English version
-  const translations = (qaPage.translations as Record<string, string>) || {};
+  const translationsMap = (qaPage.translations as Record<string, string>) || {};
   const englishSlug = qaPage.language === 'en' 
     ? qaPage.slug 
-    : (translations.en || qaPage.slug);
+    : (translationsMap.en || qaPage.slug);
   const xDefaultUrl = `${BASE_URL}/en/qa/${englishSlug}`;
 
   return (
@@ -292,7 +296,7 @@ export default function QAPage() {
                       : 'bg-white/10 backdrop-blur-sm text-white border border-white/20'
                   } px-4 py-1.5 text-sm font-nav font-medium`}
                 >
-                  {qaPage.qa_type === 'core' ? 'Essential Guide' : 'Expert Tips'}
+                  {qaPage.qa_type === 'core' ? t.qa.essentialGuide : t.qa.expertTips}
                 </Badge>
                 <ContentLanguageSwitcher
                   currentLanguage={qaPage.language}
@@ -318,7 +322,7 @@ export default function QAPage() {
             <CardContent className="p-6 md:p-8 pl-8 md:pl-10">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="h-5 w-5 text-prime-gold" />
-                <span className="text-sm font-nav font-semibold text-prime-gold uppercase tracking-wider">Quick Answer</span>
+                <span className="text-sm font-nav font-semibold text-prime-gold uppercase tracking-wider">{t.qa.quickAnswer}</span>
               </div>
               <p className="speakable-answer text-foreground text-lg leading-relaxed font-sans">
                 {qaPage.speakable_answer}
@@ -357,7 +361,7 @@ export default function QAPage() {
                 {/* Last Reviewed Badge */}
                 <div className="flex items-center text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
                   <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                  <span className="font-medium">Verified</span>
+                  <span className="font-medium">{t.qa.verified}</span>
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground bg-white/50 px-4 py-2 rounded-full">
                   <Calendar className="h-4 w-4 mr-2 text-prime-gold" />
@@ -379,7 +383,7 @@ export default function QAPage() {
             <section className="mb-14 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">Related Questions</h2>
+                <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">{t.qa.relatedQuestions}</h2>
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
               </div>
               
@@ -412,16 +416,16 @@ export default function QAPage() {
                       <div className="w-12 h-12 bg-prime-gold/20 rounded-full flex items-center justify-center mx-auto mb-2">
                         <ExternalLink className="h-6 w-6 text-prime-gold" />
                       </div>
-                      <span className="text-white/60 text-sm font-nav">Full Article</span>
+                      <span className="text-white/60 text-sm font-nav">{t.qa.fullArticle}</span>
                     </div>
                   </div>
                   <div className="flex-1 p-6 flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground mb-2">This Q&A is based on our comprehensive guide:</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t.qa.basedOnGuide}</p>
                     <Link
                       to={`/${qaPage.language}/blog/${qaPage.source_article_slug}`}
                       className="inline-flex items-center text-lg font-display font-semibold text-foreground group-hover:text-prime-gold transition-colors"
                     >
-                      Read the full article
+                      {t.qa.readFullArticle}
                       <ChevronRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform text-prime-gold" />
                     </Link>
                   </div>
@@ -433,7 +437,7 @@ export default function QAPage() {
           {/* Language Switcher */}
           {siblings.length > 0 && (
             <div className="border-t border-border/50 pt-10 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
-              <p className="text-sm text-muted-foreground mb-4 font-nav uppercase tracking-wider">Available in other languages:</p>
+              <p className="text-sm text-muted-foreground mb-4 font-nav uppercase tracking-wider">{t.qa.availableInOtherLanguages}</p>
               <div className="flex flex-wrap gap-3">
                 {siblings
                   .filter((s: any) => s.slug !== qaPage.slug)

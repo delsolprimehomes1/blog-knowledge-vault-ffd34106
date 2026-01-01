@@ -15,6 +15,17 @@ export const hu = {
     linkedinProfile: "LinkedIn Profil",
     contactAgent: "Kapcsolat az Ügynökkel",
   },
+  qa: {
+    quickAnswer: "Gyors Válasz",
+    verified: "Ellenőrizve",
+    relatedQuestions: "Kapcsolódó Kérdések",
+    fullArticle: "Teljes Cikk",
+    basedOnGuide: "Ez a Q&A az átfogó útmutatónkon alapul:",
+    readFullArticle: "Olvassa el a teljes cikket",
+    availableInOtherLanguages: "Elérhető más nyelveken:",
+    essentialGuide: "Alapvető Útmutató",
+    expertTips: "Szakértői Tippek",
+  },
   nav: {
     properties: "Ingatlanok",
     areas: "Területek",

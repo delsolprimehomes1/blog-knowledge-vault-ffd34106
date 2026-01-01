@@ -15,6 +15,17 @@ export const fi = {
     linkedinProfile: "LinkedIn-profiili",
     contactAgent: "Ota Yhteyttä Agenttiin",
   },
+  qa: {
+    quickAnswer: "Nopea Vastaus",
+    verified: "Vahvistettu",
+    relatedQuestions: "Liittyvät Kysymykset",
+    fullArticle: "Koko Artikkeli",
+    basedOnGuide: "Tämä Q&A perustuu kattavaan oppaaseemme:",
+    readFullArticle: "Lue koko artikkeli",
+    availableInOtherLanguages: "Saatavilla muilla kielillä:",
+    essentialGuide: "Olennainen Opas",
+    expertTips: "Asiantuntijavinkit",
+  },
   nav: {
     properties: "Kiinteistöt",
     areas: "Alueet",

@@ -15,6 +15,17 @@ export const tr = {
     linkedinProfile: "LinkedIn Profili",
     contactAgent: "Acenteyle İletişime Geç",
   },
+  qa: {
+    quickAnswer: "Hızlı Cevap",
+    verified: "Doğrulandı",
+    relatedQuestions: "İlgili Sorular",
+    fullArticle: "Tam Makale",
+    basedOnGuide: "Bu Q&A kapsamlı rehberimize dayanmaktadır:",
+    readFullArticle: "Tam makaleyi oku",
+    availableInOtherLanguages: "Diğer dillerde mevcut:",
+    essentialGuide: "Temel Rehber",
+    expertTips: "Uzman İpuçları",
+  },
   nav: {
     properties: "Mülkler",
     areas: "Bölgeler",

@@ -15,6 +15,17 @@ export const nl = {
     linkedinProfile: "LinkedIn Profiel",
     contactAgent: "Contact Agent",
   },
+  qa: {
+    quickAnswer: "Snel Antwoord",
+    verified: "Geverifieerd",
+    relatedQuestions: "Gerelateerde Vragen",
+    fullArticle: "Volledig Artikel",
+    basedOnGuide: "Deze Q&A is gebaseerd op onze uitgebreide gids:",
+    readFullArticle: "Lees het volledige artikel",
+    availableInOtherLanguages: "Beschikbaar in andere talen:",
+    essentialGuide: "Essentiële Gids",
+    expertTips: "Deskundige Tips",
+  },
   nav: {
     properties: "Woningen",
     areas: "Gebieden",
