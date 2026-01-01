@@ -17,8 +17,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle, FileCheck, XCircle, CheckCircle2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -53,6 +61,49 @@ interface QAJobProgress {
   currentLanguage?: string;
 }
 
+interface SEOIssue {
+  id: string;
+  slug: string;
+  language: string;
+  issue: string;
+  expected?: string;
+  actual?: string;
+}
+
+interface ClusterSEOAuditResult {
+  cluster_id: string;
+  cluster_theme: string;
+  blog_audit: {
+    total_articles: number;
+    languages_found: string[];
+    missing_languages: string[];
+    articles_per_language: Record<string, number>;
+    missing_canonicals: SEOIssue[];
+    invalid_canonicals: SEOIssue[];
+    missing_hreflang_group: SEOIssue[];
+    missing_translations: SEOIssue[];
+    self_reference_errors: SEOIssue[];
+    missing_english: SEOIssue[];
+    health_score: number;
+  };
+  qa_audit: {
+    total_pages: number;
+    languages_found: string[];
+    missing_languages: string[];
+    per_language: Record<string, number>;
+    expected_per_language: Record<string, number>;
+    missing_canonicals: SEOIssue[];
+    invalid_canonicals: SEOIssue[];
+    duplicate_language_groups: { hreflang_group_id: string; language: string; count: number }[];
+    language_mismatch: SEOIssue[];
+    health_score: number;
+  };
+  overall_health_score: number;
+  issues_count: number;
+  is_seo_ready: boolean;
+  audited_at: string;
+}
+
 // Backend default translation languages (English + these = 10 languages total)
 const DEFAULT_TRANSLATION_LANGUAGES = ["de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"];
 
@@ -72,7 +123,9 @@ const ClusterManager = () => {
   const [generatingQALanguage, setGeneratingQALanguage] = useState<{ clusterId: string; lang: string } | null>(null);
   const [qaJobProgress, setQaJobProgress] = useState<QAJobProgress | null>(null);
   const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
-
+  const [auditingCluster, setAuditingCluster] = useState<string | null>(null);
+  const [seoAuditResult, setSeoAuditResult] = useState<ClusterSEOAuditResult | null>(null);
+  const [showSeoAuditModal, setShowSeoAuditModal] = useState(false);
   const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
     const queue =
       cluster?.languages_queue && cluster.languages_queue.length > 0
@@ -315,6 +368,28 @@ const ClusterManager = () => {
       setPublishingQAs(null);
     },
   });
+
+  // SEO Audit mutation
+  const seoAuditMutation = useMutation({
+    mutationFn: async (clusterId: string) => {
+      setAuditingCluster(clusterId);
+      const { data, error } = await supabase.functions.invoke('audit-cluster-seo', {
+        body: { cluster_id: clusterId }
+      });
+      if (error) throw error;
+      return data as ClusterSEOAuditResult;
+    },
+    onSuccess: (result) => {
+      setSeoAuditResult(result);
+      setShowSeoAuditModal(true);
+      setAuditingCluster(null);
+    },
+    onError: (error) => {
+      toast.error(`SEO Audit failed: ${error.message}`);
+      setAuditingCluster(null);
+    },
+  });
+
   const generateQAMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       // Get English article IDs in the cluster (both draft and published)
@@ -1254,6 +1329,25 @@ const ClusterManager = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-950"
+                      onClick={() => seoAuditMutation.mutate(cluster.cluster_id)}
+                      disabled={auditingCluster === cluster.cluster_id}
+                    >
+                      {auditingCluster === cluster.cluster_id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Auditing...
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck className="mr-2 h-4 w-4" />
+                          SEO Audit
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => navigate(`/admin/articles?cluster=${cluster.cluster_id}`)}
                     >
                       <Eye className="mr-2 h-4 w-4" />
@@ -1628,6 +1722,246 @@ const ClusterManager = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* SEO Audit Results Modal */}
+        <Dialog open={showSeoAuditModal} onOpenChange={setShowSeoAuditModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3">
+                <FileCheck className="h-5 w-5 text-blue-600" />
+                SEO Audit Results
+                {seoAuditResult && (
+                  <Badge 
+                    className={`ml-2 ${
+                      seoAuditResult.overall_health_score >= 95 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                        : seoAuditResult.overall_health_score >= 80
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                    }`}
+                  >
+                    {seoAuditResult.overall_health_score}% Health
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {seoAuditResult?.cluster_theme || 'Unknown Cluster'} • {seoAuditResult?.issues_count || 0} issues found
+              </DialogDescription>
+            </DialogHeader>
+            
+            {seoAuditResult && (
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-6">
+                  {/* Overall Summary */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card className={seoAuditResult.is_seo_ready ? 'border-green-300 bg-green-50 dark:bg-green-950/30' : 'border-amber-300 bg-amber-50 dark:bg-amber-950/30'}>
+                      <CardContent className="pt-4 text-center">
+                        <div className="text-3xl font-bold">{seoAuditResult.overall_health_score}%</div>
+                        <div className="text-sm text-muted-foreground">Overall Health</div>
+                        {seoAuditResult.is_seo_ready ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mt-2" />
+                        ) : (
+                          <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto mt-2" />
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 text-center">
+                        <div className="text-3xl font-bold">{seoAuditResult.blog_audit.health_score}%</div>
+                        <div className="text-sm text-muted-foreground">Blog Articles</div>
+                        <div className="text-xs text-muted-foreground mt-1">{seoAuditResult.blog_audit.total_articles} total</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 text-center">
+                        <div className="text-3xl font-bold">{seoAuditResult.qa_audit.health_score}%</div>
+                        <div className="text-sm text-muted-foreground">Q&A Pages</div>
+                        <div className="text-xs text-muted-foreground mt-1">{seoAuditResult.qa_audit.total_pages} total</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Blog Audit Details */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Blog Articles Audit
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Languages */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Languages Found ({seoAuditResult.blog_audit.languages_found.length}/10):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {seoAuditResult.blog_audit.languages_found.map(lang => (
+                            <Badge key={lang} variant="outline" className="bg-green-50 dark:bg-green-950/30">
+                              {getLanguageFlag(lang)} {lang.toUpperCase()} ({seoAuditResult.blog_audit.articles_per_language[lang] || 0})
+                            </Badge>
+                          ))}
+                          {seoAuditResult.blog_audit.missing_languages.map(lang => (
+                            <Badge key={lang} variant="outline" className="bg-red-50 dark:bg-red-950/30 text-red-600">
+                              {getLanguageFlag(lang)} {lang.toUpperCase()} (0)
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Issues */}
+                      {seoAuditResult.blog_audit.missing_canonicals.length > 0 && (
+                        <div className="border-l-4 border-red-400 pl-3">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4 inline mr-1" />
+                            Missing Canonicals ({seoAuditResult.blog_audit.missing_canonicals.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.blog_audit.missing_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
+                            {seoAuditResult.blog_audit.missing_canonicals.length > 3 && ` +${seoAuditResult.blog_audit.missing_canonicals.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {seoAuditResult.blog_audit.invalid_canonicals.length > 0 && (
+                        <div className="border-l-4 border-amber-400 pl-3">
+                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-4 w-4 inline mr-1" />
+                            Invalid Canonicals ({seoAuditResult.blog_audit.invalid_canonicals.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.blog_audit.invalid_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
+                            {seoAuditResult.blog_audit.invalid_canonicals.length > 3 && ` +${seoAuditResult.blog_audit.invalid_canonicals.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.blog_audit.missing_hreflang_group.length > 0 && (
+                        <div className="border-l-4 border-red-400 pl-3">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4 inline mr-1" />
+                            Missing Hreflang Group ({seoAuditResult.blog_audit.missing_hreflang_group.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.blog_audit.missing_hreflang_group.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
+                            {seoAuditResult.blog_audit.missing_hreflang_group.length > 3 && ` +${seoAuditResult.blog_audit.missing_hreflang_group.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.blog_audit.missing_translations.length > 0 && (
+                        <div className="border-l-4 border-amber-400 pl-3">
+                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-4 w-4 inline mr-1" />
+                            Incomplete Translations ({seoAuditResult.blog_audit.missing_translations.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.blog_audit.missing_translations.slice(0, 3).map(i => `${i.language}/${i.slug}: ${i.actual}`).join(', ')}
+                            {seoAuditResult.blog_audit.missing_translations.length > 3 && ` +${seoAuditResult.blog_audit.missing_translations.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.blog_audit.missing_english.length > 0 && (
+                        <div className="border-l-4 border-red-400 pl-3">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4 inline mr-1" />
+                            Missing English (x-default) ({seoAuditResult.blog_audit.missing_english.length})
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.blog_audit.health_score === 100 && (
+                        <div className="border-l-4 border-green-400 pl-3">
+                          <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                            All blog articles pass SEO checks!
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Q&A Audit Details */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4" />
+                        Q&A Pages Audit
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Languages */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">Q&A Pages per Language:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(seoAuditResult.qa_audit.per_language).map(([lang, count]) => {
+                            const expected = seoAuditResult.qa_audit.expected_per_language[lang] || 0;
+                            const isComplete = count >= expected;
+                            return (
+                              <Badge 
+                                key={lang} 
+                                variant="outline" 
+                                className={isComplete ? 'bg-green-50 dark:bg-green-950/30' : 'bg-amber-50 dark:bg-amber-950/30'}
+                              >
+                                {getLanguageFlag(lang)} {count}/{expected}
+                                {isComplete && ' ✓'}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Issues */}
+                      {seoAuditResult.qa_audit.missing_canonicals.length > 0 && (
+                        <div className="border-l-4 border-red-400 pl-3">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4 inline mr-1" />
+                            Missing Canonicals ({seoAuditResult.qa_audit.missing_canonicals.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.qa_audit.missing_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
+                            {seoAuditResult.qa_audit.missing_canonicals.length > 3 && ` +${seoAuditResult.qa_audit.missing_canonicals.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.qa_audit.duplicate_language_groups.length > 0 && (
+                        <div className="border-l-4 border-red-400 pl-3">
+                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4 inline mr-1" />
+                            Duplicate Languages in Hreflang Groups ({seoAuditResult.qa_audit.duplicate_language_groups.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {seoAuditResult.qa_audit.duplicate_language_groups.slice(0, 3).map(d => `${d.language}: ${d.count} pages`).join(', ')}
+                            {seoAuditResult.qa_audit.duplicate_language_groups.length > 3 && ` +${seoAuditResult.qa_audit.duplicate_language_groups.length - 3} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.qa_audit.language_mismatch.length > 0 && (
+                        <div className="border-l-4 border-amber-400 pl-3">
+                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-4 w-4 inline mr-1" />
+                            Language Mismatch ({seoAuditResult.qa_audit.language_mismatch.length})
+                          </p>
+                          <p className="text-xs text-muted-foreground">Q&A language doesn't match source article language</p>
+                        </div>
+                      )}
+
+                      {seoAuditResult.qa_audit.health_score === 100 && (
+                        <div className="border-l-4 border-green-400 pl-3">
+                          <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                            All Q&A pages pass SEO checks!
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

@@ -200,3 +200,6 @@ verify_jwt = false
 
 [functions.backfill-qa-languages]
 verify_jwt = false
+
+[functions.audit-cluster-seo]
+verify_jwt = false
