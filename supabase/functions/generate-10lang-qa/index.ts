@@ -213,10 +213,11 @@ serve(async (req) => {
     const existingCount = existingQAs?.length || 0;
     console.log(`[Generate] Existing Q&As for cluster: ${existingCount}`);
 
-    if (existingCount > 0 && !dryRun) {
-      // Delete existing to start fresh
-      console.log(`[Generate] Deleting ${existingCount} existing Q&As...`);
-      await supabase.from('qa_pages').delete().eq('cluster_id', clusterId);
+    // Only delete Q&As for THIS specific qa_type (not all cluster Q&As)
+    const existingForType = existingQAs?.filter(q => q.qa_type === qaType) || [];
+    if (existingForType.length > 0 && !dryRun) {
+      console.log(`[Generate] Deleting ${existingForType.length} existing ${qaType} Q&As...`);
+      await supabase.from('qa_pages').delete().eq('cluster_id', clusterId).eq('qa_type', qaType);
     }
 
     // Get sibling articles in all languages
