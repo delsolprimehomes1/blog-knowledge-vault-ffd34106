@@ -312,23 +312,36 @@ serve(async (req) => {
         }
       }
 
-      // Now update all pages with complete translations JSONB
+      // Now update all pages with complete translations JSONB (including self-reference)
+      console.log(`[Generate] Built translations JSONB with ${Object.keys(languageSlugs).length} languages:`, Object.keys(languageSlugs));
       for (const page of createdPages) {
         page.translations = { ...languageSlugs };
       }
 
       if (!dryRun && createdPages.length > 0) {
-        // Insert all pages for this Q&A type
-        const { error: insertError } = await supabase
+        // Insert all pages for this Q&A type as a batch
+        console.log(`[Generate] Inserting ${createdPages.length} pages for ${currentQaType} with shared hreflang_group_id: ${hreflangGroupId}`);
+        
+        const { error: insertError, data: insertedData } = await supabase
           .from('qa_pages')
-          .insert(createdPages);
+          .insert(createdPages)
+          .select('id, language, slug, hreflang_group_id');
 
         if (insertError) {
           console.error(`[Generate] Insert error for ${currentQaType}:`, insertError);
           results.created -= createdPages.length;
           results.failed += createdPages.length;
         } else {
-          console.log(`[Generate] Inserted ${createdPages.length} pages for ${currentQaType}`);
+          console.log(`[Generate] ✅ Inserted ${insertedData?.length || createdPages.length} pages for ${currentQaType}`);
+          
+          // Verify all share same hreflang_group_id
+          const uniqueGroups = new Set(insertedData?.map(p => p.hreflang_group_id));
+          if (uniqueGroups.size !== 1) {
+            console.error(`[Generate] ❌ CRITICAL: Multiple hreflang_group_ids found!`, Array.from(uniqueGroups));
+          } else {
+            console.log(`[Generate] ✅ All ${insertedData?.length} pages share hreflang_group_id: ${hreflangGroupId}`);
+          }
+          
           results.qaPages.push(...createdPages);
         }
       }
