@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.backfill-eeat-translations]
 verify_jwt = false
+
+[functions.translate-comparison]
+verify_jwt = false
