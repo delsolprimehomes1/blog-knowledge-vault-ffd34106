@@ -218,3 +218,6 @@ verify_jwt = false
 
 [functions.backfill-comparison-languages]
 verify_jwt = false
+
+[functions.sync-qa-translations-jsonb]
+verify_jwt = false
