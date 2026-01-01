@@ -24,11 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle, FileCheck, XCircle, CheckCircle2, Wrench } from "lucide-react";
+import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle, FileCheck, XCircle, CheckCircle2, Wrench, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { toast } from "sonner";
 
 interface ClusterData {
@@ -1926,10 +1926,26 @@ const ClusterManager = () => {
                             <XCircle className="h-4 w-4 inline mr-1" />
                             Missing Canonicals ({seoAuditResult.blog_audit.missing_canonicals.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.blog_audit.missing_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
-                            {seoAuditResult.blog_audit.missing_canonicals.length > 3 && ` +${seoAuditResult.blog_audit.missing_canonicals.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.blog_audit.missing_canonicals.slice(0, 5).map(i => (
+                              <div key={i.id} className="flex items-center gap-1">
+                                <a 
+                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
+                                  title="View on site"
+                                >
+                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
+                              </div>
+                            ))}
+                            {seoAuditResult.blog_audit.missing_canonicals.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_canonicals.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
                       
@@ -1939,10 +1955,26 @@ const ClusterManager = () => {
                             <AlertTriangle className="h-4 w-4 inline mr-1" />
                             Invalid Canonicals ({seoAuditResult.blog_audit.invalid_canonicals.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.blog_audit.invalid_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
-                            {seoAuditResult.blog_audit.invalid_canonicals.length > 3 && ` +${seoAuditResult.blog_audit.invalid_canonicals.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.blog_audit.invalid_canonicals.slice(0, 5).map(i => (
+                              <div key={i.id} className="flex items-center gap-1">
+                                <a 
+                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
+                                  title="View on site"
+                                >
+                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
+                              </div>
+                            ))}
+                            {seoAuditResult.blog_audit.invalid_canonicals.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.invalid_canonicals.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
 
@@ -1952,10 +1984,26 @@ const ClusterManager = () => {
                             <XCircle className="h-4 w-4 inline mr-1" />
                             Missing Hreflang Group ({seoAuditResult.blog_audit.missing_hreflang_group.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.blog_audit.missing_hreflang_group.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
-                            {seoAuditResult.blog_audit.missing_hreflang_group.length > 3 && ` +${seoAuditResult.blog_audit.missing_hreflang_group.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.blog_audit.missing_hreflang_group.slice(0, 5).map(i => (
+                              <div key={i.id} className="flex items-center gap-1">
+                                <a 
+                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
+                                  title="View on site"
+                                >
+                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
+                              </div>
+                            ))}
+                            {seoAuditResult.blog_audit.missing_hreflang_group.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_hreflang_group.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
 
@@ -1965,10 +2013,27 @@ const ClusterManager = () => {
                             <AlertTriangle className="h-4 w-4 inline mr-1" />
                             Incomplete Translations ({seoAuditResult.blog_audit.missing_translations.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.blog_audit.missing_translations.slice(0, 3).map(i => `${i.language}/${i.slug}: ${i.actual}`).join(', ')}
-                            {seoAuditResult.blog_audit.missing_translations.length > 3 && ` +${seoAuditResult.blog_audit.missing_translations.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.blog_audit.missing_translations.slice(0, 5).map(i => (
+                              <div key={i.id} className="flex items-center gap-1">
+                                <a 
+                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate max-w-[250px]"
+                                  title="View on site"
+                                >
+                                  {i.language}/{i.slug.slice(0, 35)}{i.slug.length > 35 ? '...' : ''}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
+                                <span className="text-muted-foreground ml-1">({i.actual})</span>
+                              </div>
+                            ))}
+                            {seoAuditResult.blog_audit.missing_translations.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_translations.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
 
@@ -2051,10 +2116,25 @@ const ClusterManager = () => {
                             <XCircle className="h-4 w-4 inline mr-1" />
                             Missing Canonicals ({seoAuditResult.qa_audit.missing_canonicals.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.qa_audit.missing_canonicals.slice(0, 3).map(i => `${i.language}/${i.slug}`).join(', ')}
-                            {seoAuditResult.qa_audit.missing_canonicals.length > 3 && ` +${seoAuditResult.qa_audit.missing_canonicals.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.qa_audit.missing_canonicals.slice(0, 5).map(i => (
+                              <div key={i.id} className="flex items-center gap-1">
+                                <a 
+                                  href={`https://www.delsolprimehomes.com/${i.language}/qa/${i.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
+                                  title="View on site"
+                                >
+                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              </div>
+                            ))}
+                            {seoAuditResult.qa_audit.missing_canonicals.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.qa_audit.missing_canonicals.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
 
@@ -2064,10 +2144,16 @@ const ClusterManager = () => {
                             <XCircle className="h-4 w-4 inline mr-1" />
                             Duplicate Languages in Hreflang Groups ({seoAuditResult.qa_audit.duplicate_language_groups.length})
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {seoAuditResult.qa_audit.duplicate_language_groups.slice(0, 3).map(d => `${d.language}: ${d.count} pages`).join(', ')}
-                            {seoAuditResult.qa_audit.duplicate_language_groups.length > 3 && ` +${seoAuditResult.qa_audit.duplicate_language_groups.length - 3} more`}
-                          </p>
+                          <div className="text-xs space-y-1">
+                            {seoAuditResult.qa_audit.duplicate_language_groups.slice(0, 5).map((d, idx) => (
+                              <div key={`${d.hreflang_group_id}-${d.language}-${idx}`} className="text-muted-foreground">
+                                {getLanguageFlag(d.language)} {d.language.toUpperCase()}: {d.count} pages in group
+                              </div>
+                            ))}
+                            {seoAuditResult.qa_audit.duplicate_language_groups.length > 5 && 
+                              <span className="text-muted-foreground">+{seoAuditResult.qa_audit.duplicate_language_groups.length - 5} more</span>
+                            }
+                          </div>
                         </div>
                       )}
 
