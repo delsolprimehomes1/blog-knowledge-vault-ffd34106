@@ -74,14 +74,12 @@ serve(async (req) => {
       for (const article of groupArticles) {
         const newTranslations: Record<string, { id: string; slug: string }> = {};
         
-        // Add all OTHER languages in the group as translations
+        // Add ALL languages in the group as translations (including self-reference for hreflang compliance)
         for (const sibling of groupArticles) {
-          if (sibling.id !== article.id && sibling.language !== article.language) {
-            newTranslations[sibling.language] = {
-              id: sibling.id,
-              slug: sibling.slug
-            };
-          }
+          newTranslations[sibling.language] = {
+            id: sibling.id,
+            slug: sibling.slug
+          };
         }
 
         // Check if we need to update
