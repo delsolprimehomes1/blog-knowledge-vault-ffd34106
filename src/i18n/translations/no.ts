@@ -6,6 +6,15 @@ export const no = {
     getStarted: "Kom I Gang",
     exploreAll: "Utforsk Alt",
   },
+  eeat: {
+    expertVerified: "Ekspert Verifisert",
+    licensedProfessional: "Lisensiert Profesjonell",
+    rating: "Vurdering",
+    yearsExperience: "Over {years} års kombinert erfaring i vårt grunderteam",
+    professionalCredentials: "Profesjonelle Kvalifikasjoner",
+    linkedinProfile: "LinkedIn-profil",
+    contactAgent: "Kontakt Agent",
+  },
   nav: {
     properties: "Eiendommer",
     areas: "Områder",

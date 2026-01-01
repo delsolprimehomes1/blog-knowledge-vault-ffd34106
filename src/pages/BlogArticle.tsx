@@ -448,7 +448,7 @@ const BlogArticle = () => {
               />
             )}
 
-            {author && <AuthorBio author={author} />}
+            {author && <AuthorBio author={author} language={article.language} localizedBio={article.author_bio_localized} />}
 
             {relatedArticles && relatedArticles.length > 0 && (
               <RelatedArticles articles={relatedArticles} />

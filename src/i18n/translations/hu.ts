@@ -6,6 +6,15 @@ export const hu = {
     getStarted: "Kezdd El",
     exploreAll: "Fedezd Fel Mindet",
   },
+  eeat: {
+    expertVerified: "Szakértő Ellenőrizve",
+    licensedProfessional: "Engedélyes Szakember",
+    rating: "Értékelés",
+    yearsExperience: "Több mint {years} év kombinált tapasztalat alapító csapatunkban",
+    professionalCredentials: "Szakmai Képesítések",
+    linkedinProfile: "LinkedIn Profil",
+    contactAgent: "Kapcsolat az Ügynökkel",
+  },
   nav: {
     properties: "Ingatlanok",
     areas: "Területek",

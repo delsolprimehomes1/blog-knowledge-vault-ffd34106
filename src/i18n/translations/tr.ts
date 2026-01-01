@@ -6,6 +6,15 @@ export const tr = {
     getStarted: "Başla",
     exploreAll: "Tümünü Keşfet",
   },
+  eeat: {
+    expertVerified: "Uzman Doğrulandı",
+    licensedProfessional: "Lisanslı Profesyonel",
+    rating: "Değerlendirme",
+    yearsExperience: "Kurucu ekibimizde {years} yılı aşkın birleşik deneyim",
+    professionalCredentials: "Profesyonel Yeterlilikler",
+    linkedinProfile: "LinkedIn Profili",
+    contactAgent: "Acenteyle İletişime Geç",
+  },
   nav: {
     properties: "Mülkler",
     areas: "Bölgeler",

@@ -6,6 +6,15 @@ export const nl = {
     getStarted: "Begin Nu",
     exploreAll: "Verken Alles",
   },
+  eeat: {
+    expertVerified: "Expert Geverifieerd",
+    licensedProfessional: "Gediplomeerde Professional",
+    rating: "Beoordeling",
+    yearsExperience: "Meer dan {years} jaar gecombineerde ervaring binnen ons oprichtersteam",
+    professionalCredentials: "Professionele Referenties",
+    linkedinProfile: "LinkedIn Profiel",
+    contactAgent: "Contact Agent",
+  },
   nav: {
     properties: "Woningen",
     areas: "Gebieden",

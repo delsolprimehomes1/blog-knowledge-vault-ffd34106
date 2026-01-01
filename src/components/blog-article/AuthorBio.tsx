@@ -4,12 +4,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Linkedin, Mail, Star, ShieldCheck, Award } from "lucide-react";
 import { Author } from "@/types/blog";
+import { translations } from "@/i18n/translations";
 
 interface AuthorBioProps {
   author: Author;
+  language?: string;
+  localizedBio?: string;
 }
 
-export const AuthorBio = ({ author }: AuthorBioProps) => {
+export const AuthorBio = ({ author, language = 'en', localizedBio }: AuthorBioProps) => {
+  // Get translations for the article's language, fallback to English
+  const t = translations[language as keyof typeof translations]?.eeat || translations.en.eeat;
+  
+  // Use localized bio if available, otherwise use author's default bio
+  const displayBio = localizedBio || author.bio;
 
   return (
     <Card className="my-12 md:my-16 border border-border bg-card shadow-lg overflow-hidden">
@@ -20,19 +28,19 @@ export const AuthorBio = ({ author }: AuthorBioProps) => {
             {author.is_expert_verified && (
               <Badge className="bg-green-600 hover:bg-green-600 text-white border-0 gap-1.5 px-3 py-1.5 text-xs font-medium">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Expert Verified
+                {t.expertVerified}
               </Badge>
             )}
             {author.is_licensed_professional && (
               <Badge className="bg-blue-600 hover:bg-blue-600 text-white border-0 gap-1.5 px-3 py-1.5 text-xs font-medium">
                 <Award className="h-3.5 w-3.5" />
-                Licensed Professional
+                {t.licensedProfessional}
               </Badge>
             )}
             {author.rating && (
               <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-500 gap-1.5 px-3 py-1.5 text-xs font-medium">
                 <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500" />
-                {author.rating.toFixed(1)}★ Rating
+                {author.rating.toFixed(1)}★ {t.rating}
               </Badge>
             )}
           </div>
@@ -65,20 +73,20 @@ export const AuthorBio = ({ author }: AuthorBioProps) => {
             {/* Experience Statement */}
             {author.years_experience > 0 && (
               <p className="text-sm text-muted-foreground text-center md:text-left">
-                Over {author.years_experience} years of combined experience within our founding team
+                {t.yearsExperience.replace('{years}', String(author.years_experience))}
               </p>
             )}
 
             {/* Bio */}
             <p className="text-sm md:text-base leading-relaxed text-foreground/90 text-center md:text-left">
-              {author.bio}
+              {displayBio}
             </p>
 
             {/* Credentials */}
             {author.credentials && author.credentials.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 text-center md:text-left">
-                  Professional Credentials
+                  {t.professionalCredentials}
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                   {author.credentials.slice(0, 3).map((cred, index) => (
@@ -109,7 +117,7 @@ export const AuthorBio = ({ author }: AuthorBioProps) => {
                     rel="noopener noreferrer"
                   >
                     <Linkedin className="h-4 w-4 mr-2" />
-                    LinkedIn Profile
+                    {t.linkedinProfile}
                   </a>
                 </Button>
               )}
@@ -119,7 +127,7 @@ export const AuthorBio = ({ author }: AuthorBioProps) => {
                 className="flex-1 min-h-[48px] bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 <Mail className="h-4 w-4 mr-2" />
-                Contact Agent
+                {t.contactAgent}
               </Button>
             </div>
           </div>

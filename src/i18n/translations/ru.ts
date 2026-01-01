@@ -6,6 +6,15 @@ export const ru = {
     getStarted: "Начать",
     exploreAll: "Исследовать всё",
   },
+  eeat: {
+    expertVerified: "Эксперт Проверен",
+    licensedProfessional: "Лицензированный Специалист",
+    rating: "Рейтинг",
+    yearsExperience: "Более {years} лет совокупного опыта в нашей команде основателей",
+    professionalCredentials: "Профессиональные Квалификации",
+    linkedinProfile: "Профиль LinkedIn",
+    contactAgent: "Связаться с Агентом",
+  },
   nav: {
     properties: "Недвижимость",
     areas: "Районы",

@@ -6,6 +6,15 @@ export const da = {
     getStarted: "Kom I Gang",
     exploreAll: "Udforsk Alle",
   },
+  eeat: {
+    expertVerified: "Ekspert Verificeret",
+    licensedProfessional: "Licenseret Professionel",
+    rating: "Bedømmelse",
+    yearsExperience: "Over {years} års kombineret erfaring i vores stifterteam",
+    professionalCredentials: "Professionelle Kvalifikationer",
+    linkedinProfile: "LinkedIn Profil",
+    contactAgent: "Kontakt Agent",
+  },
   nav: {
     properties: "Ejendomme",
     areas: "Områder",

@@ -6,6 +6,15 @@ export const de = {
     getStarted: "Loslegen",
     exploreAll: "Alles Erkunden",
   },
+  eeat: {
+    expertVerified: "Experte Verifiziert",
+    licensedProfessional: "Lizenzierter Fachmann",
+    rating: "Bewertung",
+    yearsExperience: "Über {years} Jahre kombinierte Erfahrung in unserem Gründerteam",
+    professionalCredentials: "Berufliche Qualifikationen",
+    linkedinProfile: "LinkedIn-Profil",
+    contactAgent: "Agent Kontaktieren",
+  },
   nav: {
     properties: "Immobilien",
     areas: "Gebiete",

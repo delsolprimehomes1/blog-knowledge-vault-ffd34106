@@ -6,6 +6,15 @@ export const it = {
     getStarted: "Inizia",
     exploreAll: "Esplora tutto",
   },
+  eeat: {
+    expertVerified: "Esperto Verificato",
+    licensedProfessional: "Professionista Autorizzato",
+    rating: "Valutazione",
+    yearsExperience: "Oltre {years} anni di esperienza combinata nel nostro team fondatore",
+    professionalCredentials: "Credenziali Professionali",
+    linkedinProfile: "Profilo LinkedIn",
+    contactAgent: "Contatta Agente",
+  },
   nav: {
     properties: "Proprietà",
     areas: "Zone",

@@ -6,6 +6,15 @@ export const fi = {
     getStarted: "Aloita",
     exploreAll: "Tutustu Kaikkiin",
   },
+  eeat: {
+    expertVerified: "Asiantuntija Vahvistettu",
+    licensedProfessional: "Lisensoitu Ammattilainen",
+    rating: "Arviointi",
+    yearsExperience: "Yli {years} vuoden yhdistetty kokemus perustajatiimissämme",
+    professionalCredentials: "Ammattipätevyydet",
+    linkedinProfile: "LinkedIn-profiili",
+    contactAgent: "Ota Yhteyttä Agenttiin",
+  },
   nav: {
     properties: "Kiinteistöt",
     areas: "Alueet",

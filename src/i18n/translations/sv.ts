@@ -6,6 +6,15 @@ export const sv = {
     getStarted: "Kom Igång",
     exploreAll: "Utforska Allt",
   },
+  eeat: {
+    expertVerified: "Expert Verifierad",
+    licensedProfessional: "Licensierad Professionell",
+    rating: "Betyg",
+    yearsExperience: "Över {years} års kombinerad erfarenhet inom vårt grundarteam",
+    professionalCredentials: "Professionella Kvalifikationer",
+    linkedinProfile: "LinkedIn-profil",
+    contactAgent: "Kontakta Agent",
+  },
   nav: {
     properties: "Fastigheter",
     areas: "Områden",

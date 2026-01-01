@@ -94,6 +94,7 @@ export interface BlogArticle {
   // E-E-A-T Fields
   author_id?: string;
   reviewer_id?: string;
+  author_bio_localized?: string;
   date_published?: string;
   date_modified?: string;
   read_time?: number;
