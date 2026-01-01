@@ -67,7 +67,7 @@ export default function QAPage() {
     queryKey: ['qa-page', lang, slug],
     queryFn: async () => {
       // First try to find by slug + language (correct match)
-      const { data: exactMatch, error: exactError } = await supabase
+      const { data: exactMatch } = await supabase
         .from('qa_pages')
         .select('*, authors!author_id(*)')
         .eq('slug', slug)
@@ -75,10 +75,23 @@ export default function QAPage() {
         .eq('status', 'published')
         .single();
       
-      if (exactMatch) return exactMatch;
+      if (exactMatch) {
+        // If source_article_slug is missing but source_article_id exists, fetch it
+        if (!exactMatch.source_article_slug && exactMatch.source_article_id) {
+          const { data: sourceArticle } = await supabase
+            .from('blog_articles')
+            .select('slug')
+            .eq('id', exactMatch.source_article_id)
+            .single();
+          if (sourceArticle) {
+            exactMatch.source_article_slug = sourceArticle.slug;
+          }
+        }
+        return exactMatch;
+      }
       
       // If not found, try slug only to find the actual language
-      const { data: anyMatch, error: anyError } = await supabase
+      const { data: anyMatch } = await supabase
         .from('qa_pages')
         .select('*, authors!author_id(*)')
         .eq('slug', slug)

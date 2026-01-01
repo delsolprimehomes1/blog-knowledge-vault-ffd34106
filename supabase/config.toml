@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.audit-cluster-seo]
 verify_jwt = false
+
+[functions.backfill-qa-source-slugs]
+verify_jwt = false
