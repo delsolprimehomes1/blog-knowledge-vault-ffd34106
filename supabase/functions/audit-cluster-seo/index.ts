@@ -36,6 +36,7 @@ interface SEOIssue {
   issue: string;
   expected?: string;
   actual?: string;
+  missing?: string;  // Comma-separated list of missing items (e.g., languages)
 }
 
 Deno.serve(async (req) => {
@@ -197,16 +198,22 @@ function auditBlogArticles(articles: BlogArticle[]) {
 
     // Check translations JSONB
     const translations = article.translations || {};
-    const translationCount = Object.keys(translations).length;
-    // Should have translations for all other languages (9 others + might include self)
-    if (translationCount < SUPPORTED_LANGUAGES.length - 1) {
+    const translationKeys = Object.keys(translations);
+    const translationCount = translationKeys.length;
+    
+    // Get all languages that SHOULD be in translations (all 10 including self)
+    const missingLangs = SUPPORTED_LANGUAGES.filter(l => !translationKeys.includes(l));
+    
+    // Should have translations for all languages (including self-reference)
+    if (missingLangs.length > 0) {
       missingTranslations.push({
         id: article.id,
         slug: article.slug,
         language: article.language,
         issue: 'Incomplete translations JSONB',
-        expected: `${SUPPORTED_LANGUAGES.length - 1}+ entries`,
-        actual: `${translationCount} entries`,
+        expected: SUPPORTED_LANGUAGES.join(', '),
+        actual: translationKeys.length > 0 ? translationKeys.sort().join(', ') : 'none',
+        missing: missingLangs.sort().join(', '),
       });
     }
   }

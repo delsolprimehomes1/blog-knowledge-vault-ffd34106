@@ -69,6 +69,7 @@ interface SEOIssue {
   issue: string;
   expected?: string;
   actual?: string;
+  missing?: string;
 }
 
 interface ClusterSEOAuditResult {
@@ -2013,21 +2014,31 @@ const ClusterManager = () => {
                             <AlertTriangle className="h-4 w-4 inline mr-1" />
                             Incomplete Translations ({seoAuditResult.blog_audit.missing_translations.length})
                           </p>
-                          <div className="text-xs space-y-1">
+                          <div className="text-xs space-y-2">
                             {seoAuditResult.blog_audit.missing_translations.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex items-center gap-1">
-                                <a 
-                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline truncate max-w-[250px]"
-                                  title="View on site"
-                                >
-                                  {i.language}/{i.slug.slice(0, 35)}{i.slug.length > 35 ? '...' : ''}
-                                </a>
-                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
-                                <span className="text-muted-foreground ml-1">({i.actual})</span>
+                              <div key={i.id} className="flex flex-col gap-0.5 py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                <div className="flex items-center gap-1">
+                                  <a 
+                                    href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline truncate max-w-[250px]"
+                                    title="View on site"
+                                  >
+                                    {i.language}/{i.slug.slice(0, 35)}{i.slug.length > 35 ? '...' : ''}
+                                  </a>
+                                  <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                  <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
+                                </div>
+                                {i.missing && (
+                                  <div className="text-red-500 flex items-center gap-1 ml-4">
+                                    <XCircle className="h-3 w-3 flex-shrink-0" />
+                                    <span>Missing: {i.missing.split(', ').map(l => l.toUpperCase()).join(', ')}</span>
+                                    <span className="text-muted-foreground">
+                                      ({i.actual?.split(', ').length || 0}/10 translations)
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                             {seoAuditResult.blog_audit.missing_translations.length > 5 && 
