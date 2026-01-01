@@ -18,10 +18,26 @@ import {
   SkipForward,
   RotateCcw,
   Circle,
-  ArrowRight
+  ArrowRight,
+  ShieldAlert,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
+  scanCitationsForCompetitors, 
+  removeCitations, 
+  type ScanResult, 
+  type CitationClassification 
+} from '@/lib/competitorDetection';
 
 interface ArticleStatus {
   id: string;
@@ -63,6 +79,12 @@ export default function ClusterAudit() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [processingLog, setProcessingLog] = useState<string[]>([]);
   const [clusterTheme, setClusterTheme] = useState('');
+  
+  // Competitor scanner state
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [isRemovingCompetitors, setIsRemovingCompetitors] = useState(false);
 
   // Auto-audit on load
   useEffect(() => {
@@ -306,6 +328,150 @@ export default function ClusterAudit() {
     toast.info('Article reset to pending');
   };
 
+  // Competitor Scanner
+  const handleScanForCompetitors = async () => {
+    const article = articles[currentIndex];
+    if (!article) {
+      toast.error('No article selected');
+      return;
+    }
+
+    setIsScanning(true);
+    
+    try {
+      // Fetch fresh article data with citations
+      const { data: articleData, error } = await supabase
+        .from('blog_articles')
+        .select('external_citations')
+        .eq('id', article.id)
+        .single();
+      
+      if (error) throw error;
+      
+      const citations = (articleData?.external_citations as any[]) || [];
+      
+      if (citations.length === 0) {
+        toast.info('No citations to scan');
+        setIsScanning(false);
+        return;
+      }
+      
+      const result = scanCitationsForCompetitors(citations);
+      setScanResult(result);
+      setShowScanModal(true);
+      
+      const logEntry = `[${new Date().toLocaleTimeString()}] Scanned ${result.totalCitations} citations: ${result.approved.length} approved, ${result.competitors.length} competitors, ${result.lowValue.length} low-value`;
+      setProcessingLog(prev => [...prev, logEntry]);
+      
+    } catch (error: any) {
+      toast.error(`Scan failed: ${error.message}`);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleRemoveCompetitors = async () => {
+    if (!scanResult || scanResult.competitors.length === 0) return;
+    
+    const article = articles[currentIndex];
+    if (!article) return;
+    
+    setIsRemovingCompetitors(true);
+    
+    try {
+      // Fetch current citations
+      const { data: articleData, error: fetchError } = await supabase
+        .from('blog_articles')
+        .select('external_citations')
+        .eq('id', article.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      const currentCitations = (articleData?.external_citations as any[]) || [];
+      const urlsToRemove = scanResult.competitors.map(c => c.url);
+      const updatedCitations = removeCitations(currentCitations, urlsToRemove);
+      
+      // Update article
+      const { error: updateError } = await supabase
+        .from('blog_articles')
+        .update({ 
+          external_citations: updatedCitations,
+          last_citation_check_at: new Date().toISOString()
+        })
+        .eq('id', article.id);
+      
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setArticles(prev => prev.map((a, i) => 
+        i === currentIndex 
+          ? { ...a, citationCount: updatedCitations.length }
+          : a
+      ));
+      
+      const logEntry = `✅ Removed ${urlsToRemove.length} competitor citations from "${article.headline.substring(0, 40)}..."`;
+      setProcessingLog(prev => [...prev, logEntry]);
+      
+      toast.success(`Removed ${urlsToRemove.length} competitor citations`);
+      setShowScanModal(false);
+      setScanResult(null);
+      
+    } catch (error: any) {
+      toast.error(`Failed to remove: ${error.message}`);
+    } finally {
+      setIsRemovingCompetitors(false);
+    }
+  };
+
+  const handleRemoveSingleCitation = async (citation: CitationClassification) => {
+    const article = articles[currentIndex];
+    if (!article) return;
+    
+    try {
+      const { data: articleData, error: fetchError } = await supabase
+        .from('blog_articles')
+        .select('external_citations')
+        .eq('id', article.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      const currentCitations = (articleData?.external_citations as any[]) || [];
+      const updatedCitations = removeCitations(currentCitations, [citation.url]);
+      
+      const { error: updateError } = await supabase
+        .from('blog_articles')
+        .update({ 
+          external_citations: updatedCitations,
+          last_citation_check_at: new Date().toISOString()
+        })
+        .eq('id', article.id);
+      
+      if (updateError) throw updateError;
+      
+      // Update scan result to remove the citation
+      if (scanResult) {
+        const newResult = { ...scanResult };
+        newResult.competitors = newResult.competitors.filter(c => c.url !== citation.url);
+        newResult.lowValue = newResult.lowValue.filter(c => c.url !== citation.url);
+        newResult.totalCitations -= 1;
+        setScanResult(newResult);
+      }
+      
+      setArticles(prev => prev.map((a, i) => 
+        i === currentIndex 
+          ? { ...a, citationCount: updatedCitations.length }
+          : a
+      ));
+      
+      toast.success(`Removed: ${citation.domain}`);
+      
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`);
+    }
+  };
+
   // Group articles by language
   const articlesByLanguage = articles.reduce((acc, article) => {
     if (!acc[article.language]) acc[article.language] = [];
@@ -371,6 +537,22 @@ export default function ClusterAudit() {
             )}
           </Button>
 
+          {/* Competitor Scanner Button */}
+          {currentArticle && currentArticle.citationCount > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={handleScanForCompetitors} 
+              disabled={isScanning || isFixing}
+              className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+            >
+              {isScanning ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scanning...</>
+              ) : (
+                <><ShieldAlert className="mr-2 h-4 w-4" />Scan for Competitors</>
+              )}
+            </Button>
+          )}
+
           {currentArticle && (currentArticle.status === 'pending' || currentArticle.status === 'failed') && (
             <Button onClick={handleFixNextArticle} disabled={isFixing}>
               {isFixing ? (
@@ -393,6 +575,170 @@ export default function ClusterAudit() {
             Skip
           </Button>
         </div>
+
+        {/* Competitor Scan Modal */}
+        <Dialog open={showScanModal} onOpenChange={setShowScanModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-amber-500" />
+                Citation Competitor Scan Results
+              </DialogTitle>
+              <DialogDescription>
+                {currentArticle?.headline.substring(0, 60)}...
+              </DialogDescription>
+            </DialogHeader>
+            
+            {scanResult && (
+              <div className="flex-1 overflow-y-auto space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <div className="text-2xl font-bold">{scanResult.totalCitations}</div>
+                    <div className="text-xs text-muted-foreground">Total</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <div className="text-2xl font-bold text-green-600">{scanResult.approved.length}</div>
+                    <div className="text-xs text-green-600">Approved</div>
+                  </div>
+                  <div className="text-center p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                    <div className="text-2xl font-bold text-amber-600">{scanResult.lowValue.length}</div>
+                    <div className="text-xs text-amber-600">Low-Value</div>
+                  </div>
+                  <div className="text-center p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <div className="text-2xl font-bold text-red-600">{scanResult.competitors.length}</div>
+                    <div className="text-xs text-red-600">Competitors</div>
+                  </div>
+                </div>
+
+                {/* Competitors Section */}
+                {scanResult.competitors.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-red-600 flex items-center gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Competitors Found ({scanResult.competitors.length})
+                    </h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {scanResult.competitors.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-red-500/5 border border-red-500/20 rounded-md">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-mono text-sm truncate text-red-600">{c.domain}</div>
+                            <div className="text-xs text-muted-foreground truncate">{c.reason}</div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 px-2"
+                              onClick={() => window.open(c.url, '_blank')}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="h-7 px-2"
+                              onClick={() => handleRemoveSingleCitation(c)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Low-Value Section */}
+                {scanResult.lowValue.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-amber-600 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Low-Value Citations ({scanResult.lowValue.length})
+                    </h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {scanResult.lowValue.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-amber-500/5 border border-amber-500/20 rounded-md">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-mono text-sm truncate text-amber-600">{c.domain}</div>
+                            <div className="text-xs text-muted-foreground truncate">{c.reason}</div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 px-2"
+                              onClick={() => window.open(c.url, '_blank')}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-7 px-2"
+                              onClick={() => handleRemoveSingleCitation(c)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Approved Section */}
+                {scanResult.approved.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-green-600 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Approved Citations ({scanResult.approved.length})
+                    </h4>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {scanResult.approved.map((c, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-md">
+                          <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />
+                          <span className="font-mono text-sm truncate">{c.domain}</span>
+                          <span className="text-xs text-muted-foreground truncate">({c.reason})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No Issues */}
+                {scanResult.competitors.length === 0 && scanResult.lowValue.length === 0 && (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-600">
+                      No competitor or low-value citations found. All citations are from approved sources!
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Bulk Actions */}
+                <div className="flex gap-3 pt-4 border-t">
+                  {scanResult.competitors.length > 0 && (
+                    <Button 
+                      variant="destructive" 
+                      onClick={handleRemoveCompetitors}
+                      disabled={isRemovingCompetitors}
+                    >
+                      {isRemovingCompetitors ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Removing...</>
+                      ) : (
+                        <><Trash2 className="mr-2 h-4 w-4" />Remove All Competitors ({scanResult.competitors.length})</>
+                      )}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => setShowScanModal(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Progress Overview */}
         <Card>
