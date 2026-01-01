@@ -492,6 +492,7 @@ ${hreflangTags}
   <meta property="og:title" content="${escapedTitle}" />
   <meta property="og:description" content="${escapedDescription}" />
   <meta property="og:image" content="${metadata.featured_image_url || `${BASE_URL}/assets/logo-new.png`}" />
+  <meta property="og:image:alt" content="${escapeHtml(metadata.featured_image_alt) || escapedTitle}" />
   <meta property="og:locale" content="${locale}" />
   <meta property="og:site_name" content="Del Sol Prime Homes" />
   
@@ -501,6 +502,7 @@ ${hreflangTags}
   <meta name="twitter:title" content="${escapedTitle}" />
   <meta name="twitter:description" content="${escapedDescription}" />
   <meta name="twitter:image" content="${metadata.featured_image_url || `${BASE_URL}/assets/logo-new.png`}" />
+  <meta name="twitter:image:alt" content="${escapeHtml(metadata.featured_image_alt) || escapedTitle}" />
   
   <!-- Article Meta -->
   ${metadata.date_published ? `<meta property="article:published_time" content="${metadata.date_published}" />` : ''}
