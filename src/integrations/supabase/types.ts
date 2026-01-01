@@ -1523,6 +1523,7 @@ export type Database = {
           speakable_answer: string
           status: string | null
           target_audience: string | null
+          translations: Json | null
           updated_at: string | null
           use_case_scenarios: string | null
         }
@@ -1561,6 +1562,7 @@ export type Database = {
           speakable_answer: string
           status?: string | null
           target_audience?: string | null
+          translations?: Json | null
           updated_at?: string | null
           use_case_scenarios?: string | null
         }
@@ -1599,6 +1601,7 @@ export type Database = {
           speakable_answer?: string
           status?: string | null
           target_audience?: string | null
+          translations?: Json | null
           updated_at?: string | null
           use_case_scenarios?: string | null
         }

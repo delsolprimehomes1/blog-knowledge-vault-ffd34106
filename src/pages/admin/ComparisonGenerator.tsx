@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Scale, Trash2, Eye, CheckCircle, Zap, Link as LinkIcon, Quote, Globe, Languages } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Aligned with src/types/hreflang.ts SUPPORTED_LANGUAGES (uses hu not es)
 const LANGUAGES = [
@@ -88,6 +89,8 @@ export default function ComparisonGenerator() {
   const [generatedComparison, setGeneratedComparison] = useState<any>(null);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: '' });
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
+  const [translatingLang, setTranslatingLang] = useState<string | null>(null);
 
   const handleLanguageToggle = (langCode: LanguageCode) => {
     if (langCode === 'en') return;
@@ -211,6 +214,57 @@ export default function ComparisonGenerator() {
     },
   });
 
+  // Translate comparison to another language
+  const translateMutation = useMutation({
+    mutationFn: async ({ comparisonId, targetLanguage }: { comparisonId: string; targetLanguage: string }) => {
+      setTranslatingId(comparisonId);
+      setTranslatingLang(targetLanguage);
+      
+      const { data, error } = await supabase.functions.invoke('translate-comparison', {
+        body: { comparison_id: comparisonId, target_language: targetLanguage }
+      });
+      
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Translation created!", 
+        description: `Created ${LANGUAGES.find(l => l.code === data.language)?.name} version: ${data.slug}` 
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin-comparisons'] });
+      setTranslatingId(null);
+      setTranslatingLang(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Translation failed", description: error.message, variant: "destructive" });
+      setTranslatingId(null);
+      setTranslatingLang(null);
+    },
+  });
+
+  // Group comparisons by topic for showing language coverage
+  const getComparisonsByTopic = () => {
+    if (!comparisons) return {};
+    const grouped: Record<string, typeof comparisons> = {};
+    for (const c of comparisons) {
+      const topic = c.comparison_topic;
+      if (!grouped[topic]) grouped[topic] = [];
+      grouped[topic].push(c);
+    }
+    return grouped;
+  };
+
+  const getExistingLanguages = (topic: string): string[] => {
+    const grouped = getComparisonsByTopic();
+    return grouped[topic]?.map(c => c.language) || [];
+  };
+
+  const getEnglishComparison = (topic: string) => {
+    const grouped = getComparisonsByTopic();
+    return grouped[topic]?.find(c => c.language === 'en');
+  };
   // Bulk generate all missing Phase 3 comparisons
   const handleBulkGenerate = async () => {
     if (missingPhase3.length === 0) {
@@ -578,7 +632,13 @@ export default function ComparisonGenerator() {
           <TabsContent value="manage">
             <Card>
               <CardHeader>
-                <CardTitle>All Comparisons</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Languages className="h-5 w-5" />
+                  All Comparisons
+                </CardTitle>
+                <CardDescription>
+                  Manage comparisons and translate to other languages. Click language badges to translate.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {loadingComparisons ? (
@@ -588,67 +648,173 @@ export default function ComparisonGenerator() {
                 ) : comparisons?.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No comparisons yet</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Comparison</TableHead>
-                        <TableHead>Language</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comparisons?.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{c.option_a} vs {c.option_b}</p>
-                              <p className="text-xs text-muted-foreground">{c.slug}</p>
+                  <div className="space-y-4">
+                    {/* Group by comparison_topic and show English first */}
+                    {Object.entries(getComparisonsByTopic()).map(([topic, topicComparisons]) => {
+                      const englishVersion = topicComparisons.find(c => c.language === 'en');
+                      const existingLangs = topicComparisons.map(c => c.language);
+                      const missingLangs = LANGUAGES.filter(l => !existingLangs.includes(l.code));
+                      
+                      return (
+                        <Card key={topic} className="border">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-base">{topic}</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {topicComparisons.length} / {LANGUAGES.length} languages
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {topicComparisons.every(c => c.status === 'published') ? (
+                                  <Badge variant="default" className="text-xs">All Published</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {topicComparisons.filter(c => c.status === 'published').length} Published
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="uppercase">{c.language}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={c.status === 'published' ? 'default' : 'secondary'}>
-                              {c.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                asChild
-                              >
-                                <Link to={`/compare/${c.slug}`} target="_blank">
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => togglePublishMutation.mutate({ id: c.id, currentStatus: c.status })}
-                              >
-                                <CheckCircle className={`h-4 w-4 ${c.status === 'published' ? 'text-green-500' : ''}`} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (confirm('Delete this comparison?')) {
-                                    deleteMutation.mutate(c.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            {/* Existing Languages */}
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              <span className="text-xs text-muted-foreground mr-1">Exists:</span>
+                              {topicComparisons.map(c => {
+                                const lang = LANGUAGES.find(l => l.code === c.language);
+                                return (
+                                  <TooltipProvider key={c.id}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge 
+                                          variant={c.status === 'published' ? 'default' : 'secondary'}
+                                          className="cursor-pointer text-xs"
+                                          onClick={() => window.open(`/${c.language}/compare/${c.slug}`, '_blank')}
+                                        >
+                                          {lang?.flag} {c.language.toUpperCase()}
+                                          {c.status === 'published' && <CheckCircle className="h-3 w-3 ml-1" />}
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{lang?.name} - {c.status}</p>
+                                        <p className="text-xs text-muted-foreground">{c.slug}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+
+                            {/* Missing Languages - Translate buttons */}
+                            {englishVersion && missingLangs.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mb-3">
+                                <span className="text-xs text-muted-foreground mr-1">Translate:</span>
+                                {missingLangs.map(lang => {
+                                  const isTranslating = translatingId === englishVersion.id && translatingLang === lang.code;
+                                  return (
+                                    <TooltipProvider key={lang.code}>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Badge 
+                                            variant="outline"
+                                            className={`cursor-pointer text-xs hover:bg-primary hover:text-primary-foreground transition-colors ${isTranslating ? 'opacity-50' : ''}`}
+                                            onClick={() => {
+                                              if (!isTranslating) {
+                                                translateMutation.mutate({ 
+                                                  comparisonId: englishVersion.id, 
+                                                  targetLanguage: lang.code 
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            {isTranslating ? (
+                                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                            ) : (
+                                              <span className="mr-1">{lang.flag}</span>
+                                            )}
+                                            {lang.code.toUpperCase()}
+                                          </Badge>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Translate to {lang.name}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {!englishVersion && (
+                              <p className="text-xs text-amber-600 mb-3">
+                                ⚠️ No English version - create English first to enable translations
+                              </p>
+                            )}
+
+                            {/* Actions for each version */}
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[60px]">Lang</TableHead>
+                                  <TableHead>Slug</TableHead>
+                                  <TableHead className="w-[80px]">Status</TableHead>
+                                  <TableHead className="text-right w-[120px]">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {topicComparisons.map((c) => (
+                                  <TableRow key={c.id}>
+                                    <TableCell>
+                                      <Badge variant="outline" className="uppercase text-xs">
+                                        {LANGUAGES.find(l => l.code === c.language)?.flag} {c.language}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground font-mono">
+                                      {c.slug}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant={c.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+                                        {c.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                                          <Link to={`/${c.language}/compare/${c.slug}`} target="_blank">
+                                            <Eye className="h-3.5 w-3.5" />
+                                          </Link>
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => togglePublishMutation.mutate({ id: c.id, currentStatus: c.status })}
+                                        >
+                                          <CheckCircle className={`h-3.5 w-3.5 ${c.status === 'published' ? 'text-green-500' : ''}`} />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() => {
+                                            if (confirm('Delete this comparison?')) {
+                                              deleteMutation.mutate(c.id);
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 )}
               </CardContent>
             </Card>
