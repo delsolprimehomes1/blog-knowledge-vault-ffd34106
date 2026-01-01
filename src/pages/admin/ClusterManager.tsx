@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -17,107 +16,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Search, Eye, Trash2, CheckCircle, HelpCircle, Copy, Loader2, FolderOpen, RefreshCw, Globe, Languages, Shield, Link, Link2, StopCircle, AlertTriangle, PlayCircle, FileCheck, XCircle, CheckCircle2, Wrench, ExternalLink } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { Search, Loader2, FolderOpen, RefreshCw, Link2, AlertTriangle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
-
-interface ClusterData {
-  cluster_id: string;
-  cluster_theme: string | null;
-  languages: Record<string, { total: number; draft: number; published: number }>;
-  total_articles: number;
-  all_draft: boolean;
-  all_published: boolean;
-  created_at: string;
-  job_status?: string;
-  languages_queue?: string[] | null;
-  job_error?: string | null;
-  job_progress?: any;
-  qa_pages: Record<string, { total: number; published: number; draft: number }>;
-  total_qa_pages: number;
-  total_qa_published: number;
-  expected_qa_pages: number; // articles × 4 QAs per article
-  qa_completion_percent: number;
-}
-
-interface QAJobProgress {
-  jobId: string;
-  clusterId: string;
-  status: string;
-  processedArticles: number;
-  totalArticles: number;
-  generatedPages: number;
-  totalExpected: number;
-  currentArticle?: string;
-  currentLanguage?: string;
-}
-
-interface SEOIssue {
-  id: string;
-  slug: string;
-  language: string;
-  issue: string;
-  expected?: string;
-  actual?: string;
-  missing?: string;
-}
-
-interface ClusterSEOAuditResult {
-  cluster_id: string;
-  cluster_theme: string;
-  blog_audit: {
-    total_articles: number;
-    languages_found: string[];
-    missing_languages: string[];
-    articles_per_language: Record<string, number>;
-    missing_canonicals: SEOIssue[];
-    invalid_canonicals: SEOIssue[];
-    missing_hreflang_group: SEOIssue[];
-    missing_translations: SEOIssue[];
-    self_reference_errors: SEOIssue[];
-    missing_english: SEOIssue[];
-    health_score: number;
-  };
-  qa_audit: {
-    total_pages: number;
-    languages_found: string[];
-    missing_languages: string[];
-    per_language: Record<string, number>;
-    expected_per_language: Record<string, number>;
-    missing_canonicals: SEOIssue[];
-    invalid_canonicals: SEOIssue[];
-    duplicate_language_groups: { hreflang_group_id: string; language: string; count: number }[];
-    language_mismatch: SEOIssue[];
-    health_score: number;
-  };
-  overall_health_score: number;
-  issues_count: number;
-  is_seo_ready: boolean;
-  audited_at: string;
-}
-
-interface DryRunPreview {
-  type: 'blog' | 'qa';
-  clusterId: string;
-  clusterTheme: string;
-  result: any;
-}
-
-// Backend default translation languages (English + these = 10 languages total)
-const DEFAULT_TRANSLATION_LANGUAGES = ["de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"];
+import { ClusterCard } from "@/components/admin/cluster-manager/ClusterCard";
+import { 
+  ClusterData, 
+  QAJobProgress,
+  getAllExpectedLanguages,
+  getLanguageFlag,
+  getMissingLanguages,
+  getSourceLanguageInfo,
+  getIncompleteLanguages 
+} from "@/components/admin/cluster-manager/types";
 
 const ClusterManager = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -132,22 +44,6 @@ const ClusterManager = () => {
   const [generatingQALanguage, setGeneratingQALanguage] = useState<{ clusterId: string; lang: string } | null>(null);
   const [qaJobProgress, setQaJobProgress] = useState<QAJobProgress | null>(null);
   const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
-  const [auditingCluster, setAuditingCluster] = useState<string | null>(null);
-  const [seoAuditResult, setSeoAuditResult] = useState<ClusterSEOAuditResult | null>(null);
-  const [showSeoAuditModal, setShowSeoAuditModal] = useState(false);
-  
-  // Dry-run preview state for SEO fixes
-  const [dryRunPreview, setDryRunPreview] = useState<DryRunPreview | null>(null);
-  const [showDryRunModal, setShowDryRunModal] = useState(false);
-  const [applyingFix, setApplyingFix] = useState(false);
-  const getAllExpectedLanguages = (cluster?: Pick<ClusterData, "languages_queue">) => {
-    const queue =
-      cluster?.languages_queue && cluster.languages_queue.length > 0
-        ? cluster.languages_queue
-        : DEFAULT_TRANSLATION_LANGUAGES;
-
-    return ["en", ...queue.filter((l) => l !== "en")];
-  };
 
   // Fetch articles grouped by cluster
   const { data: articles, isLoading } = useQuery({
@@ -383,171 +279,12 @@ const ClusterManager = () => {
     },
   });
 
-  // SEO Audit mutation
-  const seoAuditMutation = useMutation({
-    mutationFn: async (clusterId: string) => {
-      setAuditingCluster(clusterId);
-      const { data, error } = await supabase.functions.invoke('audit-cluster-seo', {
-        body: { cluster_id: clusterId }
-      });
-      if (error) throw error;
-      return data as ClusterSEOAuditResult;
-    },
-    onSuccess: (result) => {
-      setSeoAuditResult(result);
-      setShowSeoAuditModal(true);
-      setAuditingCluster(null);
-    },
-    onError: (error) => {
-      toast.error(`SEO Audit failed: ${error.message}`);
-      setAuditingCluster(null);
-    },
-  });
-
-  // Dry-run blog hreflang fix
-  const blogDryRunMutation = useMutation({
-    mutationFn: async ({ clusterId, clusterTheme }: { clusterId: string; clusterTheme: string }) => {
-      const { data, error } = await supabase.functions.invoke('repair-blog-hreflang-groups', {
-        body: { dryRun: true, cluster_id: clusterId }
-      });
-      if (error) throw error;
-      return { result: data, clusterId, clusterTheme };
-    },
-    onSuccess: ({ result, clusterId, clusterTheme }) => {
-      setDryRunPreview({ type: 'blog', clusterId, clusterTheme, result });
-      setShowDryRunModal(true);
-    },
-    onError: (error) => {
-      toast.error(`Blog dry-run failed: ${error.message}`);
-    },
-  });
-
-  // Dry-run Q&A duplicate fix
-  const qaDryRunMutation = useMutation({
-    mutationFn: async ({ clusterId, clusterTheme }: { clusterId: string; clusterTheme: string }) => {
-      const { data, error } = await supabase.functions.invoke('fix-duplicate-hreflang', {
-        body: { dryRun: true, cluster_id: clusterId }
-      });
-      if (error) throw error;
-      return { result: data, clusterId, clusterTheme };
-    },
-    onSuccess: ({ result, clusterId, clusterTheme }) => {
-      setDryRunPreview({ type: 'qa', clusterId, clusterTheme, result });
-      setShowDryRunModal(true);
-    },
-    onError: (error) => {
-      toast.error(`Q&A dry-run failed: ${error.message}`);
-    },
-  });
-
-  // Apply blog hreflang fix (after dry-run)
-  const applyBlogFixMutation = useMutation({
-    mutationFn: async (clusterId: string) => {
-      setApplyingFix(true);
-      const { data, error } = await supabase.functions.invoke('repair-blog-hreflang-groups', {
-        body: { dryRun: false, cluster_id: clusterId }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (result) => {
-      setApplyingFix(false);
-      setShowDryRunModal(false);
-      setDryRunPreview(null);
-      toast.success(`Fixed ${result.stats?.fixed || 0} blog articles`);
-      // Re-run SEO audit to show updated health
-      if (seoAuditResult?.cluster_id) {
-        seoAuditMutation.mutate(seoAuditResult.cluster_id);
-      }
-    },
-    onError: (error) => {
-      setApplyingFix(false);
-      toast.error(`Blog fix failed: ${error.message}`);
-    },
-  });
-
-  // Apply Q&A duplicate fix (after dry-run)
-  const applyQAFixMutation = useMutation({
-    mutationFn: async (clusterId: string) => {
-      setApplyingFix(true);
-      const { data, error } = await supabase.functions.invoke('fix-duplicate-hreflang', {
-        body: { dryRun: false, cluster_id: clusterId }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (result) => {
-      setApplyingFix(false);
-      setShowDryRunModal(false);
-      setDryRunPreview(null);
-      toast.success(`Fixed ${result.summary?.updates_applied || 0} Q&A pages`);
-      // Re-run SEO audit to show updated health
-      if (seoAuditResult?.cluster_id) {
-        seoAuditMutation.mutate(seoAuditResult.cluster_id);
-      }
-    },
-    onError: (error) => {
-      setApplyingFix(false);
-      toast.error(`Q&A fix failed: ${error.message}`);
-    },
-  });
-
-  // Handle apply fix from dry-run modal
-  const handleApplyFix = () => {
-    if (!dryRunPreview) return;
-    if (dryRunPreview.type === 'blog') {
-      applyBlogFixMutation.mutate(dryRunPreview.clusterId);
-    } else {
-      applyQAFixMutation.mutate(dryRunPreview.clusterId);
-    }
-  };
-
-
-  const generateQAMutation = useMutation({
-    mutationFn: async (clusterId: string) => {
-      // Get English article IDs in the cluster (both draft and published)
-      const { data: clusterArticles, error: fetchError } = await supabase
-        .from("blog_articles")
-        .select("id")
-        .eq("cluster_id", clusterId)
-        .eq("language", "en")
-        .in("status", ["draft", "published"]);
-      
-      if (fetchError) throw fetchError;
-      
-      if (!clusterArticles || clusterArticles.length === 0) {
-        throw new Error("No English articles found in this cluster");
-      }
-      
-      const articleIds = clusterArticles.map((a) => a.id);
-      
-      // Invoke QA generation edge function with proper parameters
-      const { error } = await supabase.functions.invoke("generate-qa-pages", {
-        body: { 
-          articleIds,
-          languages: ['all'],
-          mode: 'bulk'
-        },
-      });
-      
-      if (error) throw error;
-      return articleIds.length;
-    },
-    onSuccess: (count) => {
-      toast.success(`QA generation started for ${count} articles`);
-      queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
-    },
-    onError: (error) => {
-      toast.error(`Failed to start QA generation: ${error.message}`);
-    },
-  });
-
   // Generate QAs for specific language in cluster
   const generateQAsForLanguageMutation = useMutation({
     mutationFn: async ({ clusterId, language }: { clusterId: string; language: string }) => {
       setGeneratingQALanguage({ clusterId, lang: language });
       
-      // Get articles in this cluster and language (both draft and published)
+      // Get articles in this cluster and language
       const { data: clusterArticles, error: fetchError } = await supabase
         .from("blog_articles")
         .select("id")
@@ -562,7 +299,6 @@ const ClusterManager = () => {
       
       let totalGenerated = 0;
       
-      // For each article, call completeMissing mode to fill in gaps
       for (const article of clusterArticles) {
         try {
           const { data, error } = await supabase.functions.invoke("generate-qa-pages", {
@@ -598,9 +334,9 @@ const ClusterManager = () => {
 
   // Poll QA job status
   const pollQAJobStatus = useCallback(async (jobId: string, clusterId: string) => {
-    const maxAttempts = 600; // 50 minutes max
+    const maxAttempts = 600;
     for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       const { data: job } = await supabase
         .from('qa_generation_jobs')
@@ -634,7 +370,6 @@ const ClusterManager = () => {
         return;
       }
       
-      // Detect stalled job (no update for 2+ minutes)
       if (job.status === 'stalled') {
         queryClient.invalidateQueries({ queryKey: ["stalled-qa-jobs"] });
         toast.warning(`QA generation stalled. Click "Resume Job" to continue.`);
@@ -644,7 +379,7 @@ const ClusterManager = () => {
     }
   }, [queryClient]);
 
-  // Generate QAs for next pending language in cluster (one at a time, with pagination/continuation support)
+  // Generate QAs for next pending language in cluster
   const generateNextLanguageQAMutation = useMutation({
     mutationFn: async ({ clusterId, language, articleIds, offset = 0 }: { clusterId: string; language: string; articleIds: string[]; offset?: number }) => {
       setGeneratingQALanguage({ clusterId, lang: language });
@@ -655,7 +390,7 @@ const ClusterManager = () => {
           singleLanguageMode: true,
           targetLanguage: language,
           clusterId,
-          offset, // Pass offset for pagination
+          offset,
         },
       });
       
@@ -663,36 +398,34 @@ const ClusterManager = () => {
       return { ...data, clusterId, language, articleIds };
     },
     onSuccess: (result) => {
-      const { language, generatedPages, skippedPages, failedPages, needsContinuation, articlesProcessed, totalArticlesInLanguage, nextOffset, remainingArticles, clusterId, articleIds } = result;
+      const { language, generatedPages, skippedPages, failedPages, needsContinuation, nextOffset, remainingArticles, clusterId, articleIds, totalArticlesInLanguage } = result;
       
-      // Check for failures first
       if (failedPages && failedPages > 0) {
         if (generatedPages > 0) {
           toast.warning(`Generated ${generatedPages} QA pages for ${language.toUpperCase()}, but ${failedPages} failed`);
         } else {
-          toast.error(`Failed to generate QAs for ${language.toUpperCase()} (${failedPages} failed) - check constraint or logs`);
+          toast.error(`Failed to generate QAs for ${language.toUpperCase()} (${failedPages} failed)`);
         }
       } else if (generatedPages > 0) {
         if (needsContinuation) {
-          toast.info(`Generated ${generatedPages} QAs for ${language.toUpperCase()} (${nextOffset}/${totalArticlesInLanguage} articles done, ${remainingArticles} left)`);
+          toast.info(`Generated ${generatedPages} QAs for ${language.toUpperCase()} (${nextOffset}/${totalArticlesInLanguage} articles done)`);
         } else {
           toast.success(`Generated ${generatedPages} QA pages for ${language.toUpperCase()}`);
         }
       } else if (skippedPages > 0) {
         if (needsContinuation) {
-          toast.info(`Skipped ${skippedPages} existing QAs. Continuing to next batch...`);
+          toast.info(`Skipped ${skippedPages} existing QAs. Continuing...`);
         } else {
-          toast.info(`${language.toUpperCase()} already complete (${skippedPages} pages exist)`);
+          toast.info(`${language.toUpperCase()} already complete`);
         }
       }
       
       queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
       setGeneratingQALanguage(null);
       
-      // Auto-continue with nextOffset if there are more articles to process
       if (needsContinuation && clusterId && articleIds && nextOffset !== undefined) {
         setTimeout(() => {
-          toast.info(`Continuing ${language.toUpperCase()} QA generation (batch ${Math.floor(nextOffset / 3) + 1})...`);
+          toast.info(`Continuing ${language.toUpperCase()} QA generation...`);
           generateNextLanguageQAMutation.mutate({ clusterId, language, articleIds, offset: nextOffset });
         }, 1500);
       }
@@ -703,13 +436,13 @@ const ClusterManager = () => {
     },
   });
 
-  // Get next language that needs QA generation for a cluster
+  // Get next language that needs QA generation
   const getNextPendingQALanguage = useCallback((cluster: ClusterData) => {
     const expectedLanguages = getAllExpectedLanguages(cluster);
     
     for (const lang of expectedLanguages) {
       const langStats = cluster.languages[lang];
-      if (!langStats) continue; // No articles in this language
+      if (!langStats) continue;
       
       const expectedQAs = langStats.total * 4;
       const qaStats = cluster.qa_pages[lang];
@@ -724,8 +457,8 @@ const ClusterManager = () => {
         };
       }
     }
-    return null; // All languages complete
-  }, [getAllExpectedLanguages]);
+    return null;
+  }, []);
 
   // Get QA language status for a cluster
   const getQALanguageStatus = useCallback((cluster: ClusterData) => {
@@ -752,7 +485,7 @@ const ClusterManager = () => {
     }
     
     return statuses;
-  }, [getAllExpectedLanguages]);
+  }, []);
 
   // Query for stalled QA jobs
   const { data: stalledQAJobs } = useQuery({
@@ -767,7 +500,7 @@ const ClusterManager = () => {
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
   });
 
   // Resume stalled QA job mutation
@@ -807,7 +540,7 @@ const ClusterManager = () => {
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("auto-resume-qa-jobs", {
         body: { 
-          stalledThresholdMinutes: 1, // Use short threshold since we're manually triggering
+          stalledThresholdMinutes: 1,
           autoResume: true,
           dryRun: false,
         },
@@ -832,13 +565,13 @@ const ClusterManager = () => {
     },
   });
 
-  // Check for stalled jobs and auto-mark them
+  // Check for stalled jobs
   const checkForStalledJobsMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("auto-resume-qa-jobs", {
         body: { 
           stalledThresholdMinutes: 10,
-          autoResume: false, // Just detect and mark, don't auto-resume
+          autoResume: false,
           dryRun: false,
         },
       });
@@ -858,9 +591,8 @@ const ClusterManager = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       checkForStalledJobsMutation.mutate();
-    }, 60000); // Check every minute
+    }, 60000);
     
-    // Initial check on mount
     checkForStalledJobsMutation.mutate();
     
     return () => clearInterval(interval);
@@ -884,22 +616,19 @@ const ClusterManager = () => {
         if (job.status === "partial" || job.status === "generating" || job.status === "failed") {
           return { status: job.status, error: job.error, progress: job.progress, languages_queue: job.languages_queue, completed_languages: job.completed_languages };
         }
-        // Still in progress, continue polling
       }
     }
     return { status: "timeout", error: "Job status check timed out" };
   };
 
-  // Complete translations for cluster (or complete cluster if < 6 source articles)
+  // Complete translations for cluster
   const completeTranslationsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setTranslatingCluster(clusterId);
 
-      // Check if cluster needs more source articles first
       const clusterData = clusters.find(c => c.cluster_id === clusterId);
       const sourceInfo = clusterData ? getSourceLanguageInfo(clusterData) : { needsMoreSource: false };
       
-      // Use complete-incomplete-cluster if source articles < 6, otherwise translate-cluster
       const functionName = sourceInfo.needsMoreSource 
         ? "complete-incomplete-cluster" 
         : "translate-cluster";
@@ -915,7 +644,6 @@ const ClusterManager = () => {
 
         if (error) {
           const errorMsg = error.message || String(error);
-          // Check for network errors that might be false negatives
           if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
             toast.info("Connection lost — checking job status...");
             const polledResult = await pollJobStatus(clusterId);
@@ -923,7 +651,6 @@ const ClusterManager = () => {
             if (polledResult.status === "completed") {
               return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
             } else if (polledResult.status === "partial" || polledResult.status === "generating") {
-              // Partial/generating means translations are in progress - this is success, not error
               return { 
                 status: "partial", 
                 language: polledResult.progress?.current_language,
@@ -936,65 +663,38 @@ const ClusterManager = () => {
               throw new Error("Connection lost and job status unclear. Try again.");
             }
           }
-          
-          const resp = (error as any)?.context?.response as Response | undefined;
-          if (resp) {
-            try {
-              const payload = await resp.clone().json();
-              const msg = payload?.error || payload?.message;
-              if (msg) throw new Error(msg);
-            } catch {
-              // fall through to generic error below
-            }
-          }
           throw error;
         }
 
         return data;
       } catch (err: any) {
-        // Double-check for network errors in catch block
-        const errorMsg = err.message || String(err);
-        if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network")) {
-          toast.info("Connection lost — checking job status...");
-          const polledResult = await pollJobStatus(clusterId);
-          
-          if (polledResult.status === "completed") {
-            return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
-          } else if (polledResult.status === "partial" || polledResult.status === "generating") {
-            // Partial/generating means translations are in progress - this is success, not error
-            return { 
-              status: "partial", 
-              language: polledResult.progress?.current_language,
-              remainingLanguages: polledResult.languages_queue?.filter((l: string) => !polledResult.completed_languages?.includes(l)),
-              totalArticles: polledResult.progress?.generated_articles 
-            };
-          } else if (polledResult.status === "failed") {
-            throw new Error(polledResult.error || "Translation job failed");
-          }
-        }
         throw err;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
       queryClient.invalidateQueries({ queryKey: ["cluster-jobs"] });
       
-      if (data.status === "completed") {
-        toast.success(`All translations complete! ${data.totalArticles || 'All'} articles translated.`);
-        setTranslatingCluster(null);
-        setTranslationProgress(null);
-      } else if (data.status === "partial" || data.language) {
-        const remainingCount = data.remainingLanguages?.length || 0;
-        setTranslationProgress({
-          current: data.language || "Unknown",
-          remaining: remainingCount,
+      if (result.status === "completed") {
+        toast.success(`All translations completed! Total: ${result.totalArticles || 60} articles`);
+      } else if (result.status === "partial" || result.language) {
+        const remaining = result.remainingLanguages || [];
+        toast.success(`Translated ${result.language?.toUpperCase() || 'language'}`, {
+          description: remaining.length > 0 
+            ? `${remaining.length} languages left: ${remaining.map((l: string) => getLanguageFlag(l)).join(' ')}`
+            : 'All languages complete!'
         });
-        toast.info(`${data.language} translation complete! ${remainingCount} languages remaining. Click again to continue.`);
-        setTranslatingCluster(null);
+        if (remaining.length > 0) {
+          setTranslationProgress({ 
+            current: result.language?.toUpperCase() || 'Unknown', 
+            remaining: remaining.length 
+          });
+        }
       } else {
-        toast.info("Translation progress updated. Click again to continue.");
-        setTranslatingCluster(null);
+        toast.success("Translation batch completed");
       }
+      
+      setTranslatingCluster(null);
       setClusterToTranslate(null);
     },
     onError: (error) => {
@@ -1017,9 +717,7 @@ const ClusterManager = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Regenerated links for ${data.summary?.totalArticles || 0} articles`, {
-        description: `Strategic funnel-based linking applied (max 3 links per article)`
-      });
+      toast.success(`Regenerated links for ${data.summary?.totalArticles || 0} articles`);
       setRegeneratingLinks(null);
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
     },
@@ -1041,9 +739,7 @@ const ClusterManager = () => {
     },
     onSuccess: (data) => {
       const summary = data.summary;
-      toast.success(`Regenerated links for ${summary?.totalArticles || 0} articles across ${summary?.totalClusters || 0} clusters`, {
-        description: `Strategic funnel-based linking applied (max 3 links per article)`
-      });
+      toast.success(`Regenerated links for ${summary?.totalArticles || 0} articles across ${summary?.totalClusters || 0} clusters`);
       setRegeneratingAllLinks(false);
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
     },
@@ -1053,90 +749,9 @@ const ClusterManager = () => {
     }
   });
 
-  const getMissingLanguages = (cluster: ClusterData) => {
-    const existingLanguages = new Set(Object.keys(cluster.languages));
-    return getAllExpectedLanguages(cluster).filter((lang) => !existingLanguages.has(lang));
-  };
-
-  // Detect if cluster needs more source articles (< 6 in any single language)
-  const getSourceLanguageInfo = (cluster: ClusterData) => {
-    // Find the "source" language - the one with articles (preferring 'en' if exists)
-    const langCounts = Object.entries(cluster.languages).map(([lang, stats]) => ({
-      lang,
-      count: stats.total
-    }));
-    
-    // Sort by count desc, prefer English if equal
-    langCounts.sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      if (a.lang === 'en') return -1;
-      if (b.lang === 'en') return 1;
-      return 0;
-    });
-    
-    const sourceInfo = langCounts[0];
-    if (!sourceInfo) return { sourceLanguage: 'en', sourceCount: 0, needsMoreSource: true };
-    
-    return {
-      sourceLanguage: sourceInfo.lang,
-      sourceCount: sourceInfo.count,
-      needsMoreSource: sourceInfo.count < 6
-    };
-  };
-
-  // Detect languages with incomplete translations (1-5 articles instead of 6)
-  const getIncompleteLanguages = (cluster: ClusterData) => {
-    return Object.entries(cluster.languages)
-      .filter(([lang, stats]) => stats.total > 0 && stats.total < 6)
-      .map(([lang, stats]) => ({ lang, count: stats.total }));
-  };
-
   const copyClusterId = (id: string) => {
     navigator.clipboard.writeText(id);
     toast.success("Cluster ID copied to clipboard");
-  };
-
-  const getLanguageFlag = (lang: string) => {
-    const flags: Record<string, string> = {
-      en: "🇬🇧",
-      de: "🇩🇪",
-      nl: "🇳🇱",
-      fr: "🇫🇷",
-      es: "🇪🇸",
-      pl: "🇵🇱",
-      sv: "🇸🇪",
-      da: "🇩🇰",
-      hu: "🇭🇺",
-      fi: "🇫🇮",
-      no: "🇳🇴",
-    };
-    return flags[lang] || lang.toUpperCase();
-  };
-
-  const getStatusBadge = (cluster: ClusterData) => {
-    if (cluster.all_published) {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Published</Badge>;
-    }
-    if (cluster.all_draft) {
-      return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Draft</Badge>;
-    }
-    return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">Mixed</Badge>;
-  };
-
-  const getJobStatusBadge = (status?: string) => {
-    if (!status) return null;
-    switch (status) {
-      case "completed":
-        return <Badge variant="outline" className="text-green-600 border-green-600">Completed</Badge>;
-      case "partial":
-        return <Badge variant="outline" className="text-amber-600 border-amber-600">Partial</Badge>;
-      case "failed":
-        return <Badge variant="outline" className="text-red-600 border-red-600">Failed</Badge>;
-      case "generating":
-        return <Badge variant="outline" className="text-blue-600 border-blue-600">Generating</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
   };
 
   return (
@@ -1145,7 +760,7 @@ const ClusterManager = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Cluster Manager</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Cluster Control Center</h1>
             <p className="text-muted-foreground">
               Manage article clusters ({clusters.length} clusters, {articles?.length || 0} total articles)
             </p>
@@ -1299,379 +914,34 @@ const ClusterManager = () => {
         ) : (
           <div className="space-y-4">
             {filteredClusters.map((cluster) => (
-              <Card key={cluster.cluster_id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-lg truncate">
-                          {cluster.cluster_theme || "Untitled Cluster"}
-                        </CardTitle>
-                        {getStatusBadge(cluster)}
-                        {getJobStatusBadge(cluster.job_status)}
-                      </div>
-                      <CardDescription className="flex items-center gap-2">
-                        <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
-                          {cluster.cluster_id.slice(0, 8)}...
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => copyClusterId(cluster.cluster_id)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        <span className="text-muted-foreground">
-                          • {cluster.total_articles} articles
-                        </span>
-                        {/* QA Progress: show published/total with status indicator */}
-                        <span className={`font-medium ${
-                          cluster.total_qa_published === cluster.total_qa_pages && cluster.qa_completion_percent === 100 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : cluster.total_qa_published < cluster.total_qa_pages
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : cluster.qa_completion_percent > 0 
-                                ? 'text-amber-600 dark:text-amber-400' 
-                                : 'text-muted-foreground'
-                        }`}>
-                          • QAs: {cluster.total_qa_published}P/{cluster.total_qa_pages}T ({cluster.qa_completion_percent}%)
-                          {cluster.total_qa_published === cluster.total_qa_pages && cluster.qa_completion_percent === 100 ? ' ✅' : 
-                           cluster.total_qa_published < cluster.total_qa_pages ? ` (${cluster.total_qa_pages - cluster.total_qa_published}D)` :
-                           cluster.qa_completion_percent > 0 ? ' ⚠️' : ' ❌'}
-                        </span>
-                        <span className="text-muted-foreground">
-                          • Created {new Date(cluster.created_at).toLocaleDateString()}
-                        </span>
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {/* Error display for failed/partial jobs */}
-                  {(cluster.job_status === "partial" || cluster.job_status === "failed") && cluster.job_error && (
-                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
-                      <p className="text-sm text-red-700 dark:text-red-300 font-medium">
-                        ❌ Translation failed
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-words">
-                        {cluster.job_error.length > 150 
-                          ? `${cluster.job_error.slice(0, 150)}...` 
-                          : cluster.job_error}
-                      </p>
-                      {cluster.job_progress?.error_info && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Failed on {cluster.job_progress.error_info.failed_language?.toUpperCase() || "unknown"} 
-                          {cluster.job_progress.error_info.failed_article_index 
-                            ? ` article #${cluster.job_progress.error_info.failed_article_index}` 
-                            : ""}
-                          {" — click Complete Translations to retry"}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Language breakdown with QA counts (published/total) */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {Object.entries(cluster.languages).map(([lang, stats]) => {
-                      const expectedQAs = stats.total * 4;
-                      const qaStats = cluster.qa_pages[lang];
-                      const totalQAs = qaStats?.total || 0;
-                      const publishedQAs = qaStats?.published || 0;
-                      const draftQAs = qaStats?.draft || 0;
-                      const maxQAs = 24; // Hard cap: 6 articles × 4 types
-                      const isOverCap = totalQAs > maxQAs;
-                      const missingQAs = Math.max(0, expectedQAs - totalQAs);
-                      const langPercent = expectedQAs > 0 ? Math.round((Math.min(totalQAs, expectedQAs) / expectedQAs) * 100) : 0;
-                      const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id && generatingQALanguage?.lang === lang;
-                      const hasUnpublished = draftQAs > 0;
-                      
-                      return (
-                        <div key={lang} className="flex items-center gap-1">
-                          <Badge variant="outline" className={`text-sm ${isOverCap ? 'border-red-300 bg-red-50 dark:bg-red-950/30' : hasUnpublished ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30' : ''}`}>
-                            {getLanguageFlag(lang)} {stats.total}
-                            <span className={`ml-1 ${
-                              isOverCap
-                                ? 'text-red-600 dark:text-red-400'
-                                : hasUnpublished
-                                  ? 'text-amber-600 dark:text-amber-400'
-                                  : langPercent === 100 
-                                    ? 'text-green-600 dark:text-green-400' 
-                                    : langPercent > 0 
-                                      ? 'text-amber-600 dark:text-amber-400' 
-                                      : 'text-muted-foreground'
-                            }`}>
-                              | {publishedQAs}P/{totalQAs}T
-                              {isOverCap ? ' ⚠️' : hasUnpublished ? ` (${draftQAs}D)` : langPercent === 100 ? ' ✅' : ''}
-                            </span>
-                            {stats.draft > 0 && stats.published > 0 && (
-                              <span className="text-muted-foreground ml-1">
-                                ({stats.published}✓ {stats.draft}○)
-                              </span>
-                            )}
-                          </Badge>
-                          {missingQAs > 0 && !isOverCap && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950"
-                              onClick={() => generateQAsForLanguageMutation.mutate({ clusterId: cluster.cluster_id, language: lang })}
-                              disabled={isGenerating || qaJobProgress?.clusterId === cluster.cluster_id}
-                            >
-                              {isGenerating ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                `+${missingQAs}`
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/admin/clusters/${cluster.cluster_id}/audit`)}
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      AEO Audit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-950"
-                      onClick={() => seoAuditMutation.mutate(cluster.cluster_id)}
-                      disabled={auditingCluster === cluster.cluster_id}
-                    >
-                      {auditingCluster === cluster.cluster_id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Auditing...
-                        </>
-                      ) : (
-                        <>
-                          <FileCheck className="mr-2 h-4 w-4" />
-                          SEO Audit
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/admin/articles?cluster=${cluster.cluster_id}`)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Articles
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setClusterToPublish(cluster.cluster_id)}
-                      disabled={cluster.all_published || publishMutation.isPending}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Publish All
-                    </Button>
-                    {/* Publish All Q&As Button */}
-                    {cluster.total_qa_pages > cluster.total_qa_published && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-950"
-                        onClick={() => setClusterToPublishQAs(cluster.cluster_id)}
-                        disabled={publishingQAs === cluster.cluster_id || publishQAsMutation.isPending}
-                      >
-                        {publishingQAs === cluster.cluster_id ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Publishing...
-                          </>
-                        ) : (
-                          <>
-                            <HelpCircle className="mr-2 h-4 w-4" />
-                            Publish {cluster.total_qa_pages - cluster.total_qa_published} QAs
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    {/* Complete Cluster / Translations Button */}
-                    {(() => {
-                      const sourceInfo = getSourceLanguageInfo(cluster);
-                      const missingLangs = getMissingLanguages(cluster);
-                      const incompleteLangs = getIncompleteLanguages(cluster);
-                      const showButton = sourceInfo.needsMoreSource || missingLangs.length > 0 || incompleteLangs.length > 0 || cluster.job_status === "partial";
-                      
-                      if (!showButton) return null;
-                      
-                      // Show "Complete Cluster" if source articles < 6, otherwise "Complete Translations"
-                      const isCompleteCluster = sourceInfo.needsMoreSource;
-                      
-                      // Build label for incomplete languages
-                      const getButtonLabel = () => {
-                        if (isCompleteCluster) {
-                          return `Complete Cluster (${sourceInfo.sourceCount}/6 ${getLanguageFlag(sourceInfo.sourceLanguage)})`;
-                        }
-                        if (missingLangs.length > 0) {
-                          return `Complete Translations (${missingLangs.length} missing)`;
-                        }
-                        if (incompleteLangs.length > 0) {
-                          const incompleteInfo = incompleteLangs.map(l => `${getLanguageFlag(l.lang)}${l.count}/6`).join(", ");
-                          return `Complete Translations (${incompleteInfo})`;
-                        }
-                        return "Complete Translations";
-                      };
-                      
-                      return (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className={isCompleteCluster 
-                            ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                            : "bg-amber-600 hover:bg-amber-700 text-white"}
-                          onClick={() => setClusterToTranslate(cluster.cluster_id)}
-                          disabled={translatingCluster === cluster.cluster_id || completeTranslationsMutation.isPending}
-                        >
-                          {translatingCluster === cluster.cluster_id ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              {isCompleteCluster ? "Completing..." : "Translating..."}
-                            </>
-                          ) : (
-                            <>
-                              {isCompleteCluster ? <Globe className="mr-2 h-4 w-4" /> : <Languages className="mr-2 h-4 w-4" />}
-                              {getButtonLabel()}
-                            </>
-                          )}
-                        </Button>
-                      );
-                    })()}
-                    {/* Generate Next Language QAs Button */}
-                    {(() => {
-                      const nextPending = getNextPendingQALanguage(cluster);
-                      const qaStatuses = getQALanguageStatus(cluster);
-                      const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
-                      const completedCount = qaStatuses.filter(s => s.status === 'complete').length;
-                      const totalLangs = qaStatuses.length;
-                      
-                      if (!nextPending && !isGenerating) return null;
-                      
-                      // Get article IDs for the next pending language
-                      const getArticleIdsForLanguage = async () => {
-                        const { data } = await supabase
-                          .from("blog_articles")
-                          .select("id")
-                          .eq("cluster_id", cluster.cluster_id)
-                          .eq("language", nextPending!.language)
-                          .in("status", ["draft", "published"]);
-                        return data?.map(a => a.id) || [];
-                      };
-                      
-                      return (
-                        <div className="flex flex-col gap-2">
-                          {/* Language progress bar */}
-                          <div className="flex items-center gap-1 text-xs">
-                            {qaStatuses.map(({ lang, status, count, expected }) => (
-                              <Badge
-                                key={lang}
-                                variant="outline"
-                                className={`text-[10px] px-1 py-0 h-5 ${
-                                  status === 'complete'
-                                    ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-700'
-                                    : status === 'partial'
-                                      ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700'
-                                      : 'bg-muted text-muted-foreground'
-                                } ${isGenerating && generatingQALanguage?.lang === lang ? 'ring-2 ring-purple-400' : ''}`}
-                              >
-                                {getLanguageFlag(lang)}
-                                {status === 'complete' ? '✓' : status === 'partial' ? `${count}/${expected}` : '○'}
-                              </Badge>
-                            ))}
-                          </div>
-                          
-                          {/* Generate next language button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-950"
-                            onClick={async () => {
-                              if (!nextPending) return;
-                              const articleIds = await getArticleIdsForLanguage();
-                              if (articleIds.length === 0) {
-                                toast.error(`No articles found for ${nextPending.language.toUpperCase()}`);
-                                return;
-                              }
-                              generateNextLanguageQAMutation.mutate({
-                                clusterId: cluster.cluster_id,
-                                language: nextPending.language,
-                                articleIds,
-                              });
-                            }}
-                            disabled={isGenerating || generateNextLanguageQAMutation.isPending || !nextPending}
-                          >
-                            {isGenerating ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Generating {getLanguageFlag(generatingQALanguage?.lang || '')} QAs...
-                              </>
-                            ) : nextPending ? (
-                              <>
-                                <HelpCircle className="mr-2 h-4 w-4" />
-                                Generate {getLanguageFlag(nextPending.language)} QAs ({nextPending.missing} needed)
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                All QAs Complete
-                              </>
-                            )}
-                          </Button>
-                          
-                          {/* Progress indicator */}
-                          <p className="text-xs text-muted-foreground">
-                            {completedCount}/{totalLangs} languages complete
-                          </p>
-                        </div>
-                      );
-                    })()}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => regenerateLinksMutation.mutate(cluster.cluster_id)}
-                      disabled={regenerateLinksMutation.isPending || regeneratingLinks === cluster.cluster_id}
-                    >
-                      {regeneratingLinks === cluster.cluster_id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Regenerating...
-                        </>
-                      ) : (
-                        <>
-                          <Link className="mr-2 h-4 w-4" />
-                          Regenerate Links
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setClusterToDelete(cluster.cluster_id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete All
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <ClusterCard
+                key={cluster.cluster_id}
+                cluster={cluster}
+                onPublishArticles={() => setClusterToPublish(cluster.cluster_id)}
+                onDeleteCluster={() => setClusterToDelete(cluster.cluster_id)}
+                onPublishQAs={() => setClusterToPublishQAs(cluster.cluster_id)}
+                onCompleteTranslations={() => setClusterToTranslate(cluster.cluster_id)}
+                onRegenerateLinks={() => regenerateLinksMutation.mutate(cluster.cluster_id)}
+                onGenerateQAs={(language: string, articleIds: string[]) => 
+                  generateNextLanguageQAMutation.mutate({ 
+                    clusterId: cluster.cluster_id, 
+                    language, 
+                    articleIds 
+                  })
+                }
+                isRegeneratingLinks={regeneratingLinks === cluster.cluster_id}
+                isTranslating={translatingCluster === cluster.cluster_id}
+                isGeneratingQA={generatingQALanguage?.clusterId === cluster.cluster_id ? generatingQALanguage.lang : null}
+                isPublishingQAs={publishingQAs === cluster.cluster_id}
+                getNextPendingQALanguage={getNextPendingQALanguage}
+                getQALanguageStatus={getQALanguageStatus}
+                copyClusterId={copyClusterId}
+              />
             ))}
           </div>
         )}
 
-        {/* Publish Confirmation Dialog */}
+        {/* Publish Articles Confirmation Dialog */}
         <AlertDialog open={!!clusterToPublish} onOpenChange={() => setClusterToPublish(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -1720,20 +990,12 @@ const ClusterManager = () => {
         <AlertDialog open={!!clusterToPublishQAs} onOpenChange={() => setClusterToPublishQAs(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-amber-600" />
-                Publish all Q&A pages?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Publish all Q&A pages?</AlertDialogTitle>
               <AlertDialogDescription>
                 {clusterToPublishQAs && (() => {
                   const cluster = clusters.find(c => c.cluster_id === clusterToPublishQAs);
                   const draftCount = cluster ? (cluster.total_qa_pages - cluster.total_qa_published) : 0;
-                  return (
-                    <>
-                      This will publish <strong>{draftCount} draft Q&A pages</strong> in this cluster.
-                      They will become publicly visible on the website.
-                    </>
-                  );
+                  return `This will publish ${draftCount} draft Q&A pages in this cluster.`;
                 })()}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1744,14 +1006,7 @@ const ClusterManager = () => {
                 disabled={publishQAsMutation.isPending}
                 className="bg-amber-600 hover:bg-amber-700"
               >
-                {publishQAsMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  "Publish All QAs"
-                )}
+                {publishQAsMutation.isPending ? "Publishing..." : "Publish All QAs"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1761,52 +1016,27 @@ const ClusterManager = () => {
         <AlertDialog open={!!clusterToTranslate} onOpenChange={() => setClusterToTranslate(null)}>
           <AlertDialogContent className="max-w-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <Languages className="h-5 w-5 text-amber-600" />
-                Complete Translations
-              </AlertDialogTitle>
+              <AlertDialogTitle>Complete Translations</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-4">
-                  <p>
-                    This will translate the 6 English articles into remaining languages.
-                  </p>
+                  <p>This will translate the 6 English articles into remaining languages.</p>
                   
                   {clusterToTranslate && (
                     <div className="bg-muted p-3 rounded-md space-y-2">
                       <p className="text-sm font-medium">Missing languages:</p>
                       <div className="flex flex-wrap gap-2">
                         {getMissingLanguages(clusters.find(c => c.cluster_id === clusterToTranslate) || { languages: {} } as ClusterData).map(lang => (
-                          <Badge key={lang} variant="outline">
+                          <span key={lang} className="text-sm">
                             {getLanguageFlag(lang)} {lang.toUpperCase()}
-                          </Badge>
+                          </span>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {translationProgress && (
-                    <div className="bg-amber-50 dark:bg-amber-950 p-3 rounded-md space-y-2">
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                        Last translated: {translationProgress.current}
-                      </p>
-                      {(() => {
-                        const selectedCluster = clusters.find((c) => c.cluster_id === clusterToTranslate);
-                        const totalTranslationLanguages = getAllExpectedLanguages(selectedCluster).length - 1; // exclude English
-                        const completed = Math.max(0, totalTranslationLanguages - translationProgress.remaining);
-                        const percent = totalTranslationLanguages > 0 ? (completed / totalTranslationLanguages) * 100 : 0;
-                        return <Progress value={percent} />;
-                      })()}
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        {translationProgress.remaining} languages remaining
-                      </p>
-                    </div>
-                  )}
                   
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>• Each click translates <strong>1 language</strong> (6 articles)</p>
+                    <p>• Each click translates 1 language (6 articles)</p>
                     <p>• Takes approximately 3-5 minutes per language</p>
-                    <p>• You may need to click multiple times</p>
-                    <p>• Uses same images as English articles</p>
                   </div>
                 </div>
               </AlertDialogDescription>
@@ -1826,595 +1056,12 @@ const ClusterManager = () => {
                     Translating...
                   </>
                 ) : (
-                  <>
-                    <Globe className="mr-2 h-4 w-4" />
-                    Start Translation
-                  </>
+                  "Start Translation"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* SEO Audit Results Modal */}
-        <Dialog open={showSeoAuditModal} onOpenChange={setShowSeoAuditModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
-                <FileCheck className="h-5 w-5 text-blue-600" />
-                SEO Audit Results
-                {seoAuditResult && (
-                  <Badge 
-                    className={`ml-2 ${
-                      seoAuditResult.overall_health_score >= 95 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                        : seoAuditResult.overall_health_score >= 80
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                    }`}
-                  >
-                    {seoAuditResult.overall_health_score}% Health
-                  </Badge>
-                )}
-              </DialogTitle>
-              <DialogDescription>
-                {seoAuditResult?.cluster_theme || 'Unknown Cluster'} • {seoAuditResult?.issues_count || 0} issues found
-              </DialogDescription>
-            </DialogHeader>
-            
-            {seoAuditResult && (
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-6">
-                  {/* Overall Summary */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <Card className={seoAuditResult.is_seo_ready ? 'border-green-300 bg-green-50 dark:bg-green-950/30' : 'border-amber-300 bg-amber-50 dark:bg-amber-950/30'}>
-                      <CardContent className="pt-4 text-center">
-                        <div className="text-3xl font-bold">{seoAuditResult.overall_health_score}%</div>
-                        <div className="text-sm text-muted-foreground">Overall Health</div>
-                        {seoAuditResult.is_seo_ready ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mt-2" />
-                        ) : (
-                          <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto mt-2" />
-                        )}
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4 text-center">
-                        <div className="text-3xl font-bold">{seoAuditResult.blog_audit.health_score}%</div>
-                        <div className="text-sm text-muted-foreground">Blog Articles</div>
-                        <div className="text-xs text-muted-foreground mt-1">{seoAuditResult.blog_audit.total_articles} total</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4 text-center">
-                        <div className="text-3xl font-bold">{seoAuditResult.qa_audit.health_score}%</div>
-                        <div className="text-sm text-muted-foreground">Q&A Pages</div>
-                        <div className="text-xs text-muted-foreground mt-1">{seoAuditResult.qa_audit.total_pages} total</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Blog Audit Details */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        Blog Articles Audit
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Languages */}
-                      <div>
-                        <p className="text-sm font-medium mb-2">Languages Found ({seoAuditResult.blog_audit.languages_found.length}/10):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {seoAuditResult.blog_audit.languages_found.map(lang => (
-                            <Badge key={lang} variant="outline" className="bg-green-50 dark:bg-green-950/30">
-                              {getLanguageFlag(lang)} {lang.toUpperCase()} ({seoAuditResult.blog_audit.articles_per_language[lang] || 0})
-                            </Badge>
-                          ))}
-                          {seoAuditResult.blog_audit.missing_languages.map(lang => (
-                            <Badge key={lang} variant="outline" className="bg-red-50 dark:bg-red-950/30 text-red-600">
-                              {getLanguageFlag(lang)} {lang.toUpperCase()} (0)
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Issues */}
-                      {seoAuditResult.blog_audit.missing_canonicals.length > 0 && (
-                        <div className="border-l-4 border-red-400 pl-3">
-                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                            <XCircle className="h-4 w-4 inline mr-1" />
-                            Missing Canonicals ({seoAuditResult.blog_audit.missing_canonicals.length})
-                          </p>
-                          <div className="text-xs space-y-1">
-                            {seoAuditResult.blog_audit.missing_canonicals.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex items-center gap-1">
-                                <a 
-                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
-                                  title="View on site"
-                                >
-                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
-                                </a>
-                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
-                              </div>
-                            ))}
-                            {seoAuditResult.blog_audit.missing_canonicals.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_canonicals.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-                      
-                      {seoAuditResult.blog_audit.invalid_canonicals.length > 0 && (
-                        <div className="border-l-4 border-amber-400 pl-3">
-                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            <AlertTriangle className="h-4 w-4 inline mr-1" />
-                            Invalid Canonicals ({seoAuditResult.blog_audit.invalid_canonicals.length})
-                          </p>
-                          <div className="text-xs space-y-1">
-                            {seoAuditResult.blog_audit.invalid_canonicals.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex items-center gap-1">
-                                <a 
-                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
-                                  title="View on site"
-                                >
-                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
-                                </a>
-                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
-                              </div>
-                            ))}
-                            {seoAuditResult.blog_audit.invalid_canonicals.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.invalid_canonicals.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-
-                      {seoAuditResult.blog_audit.missing_hreflang_group.length > 0 && (
-                        <div className="border-l-4 border-red-400 pl-3">
-                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                            <XCircle className="h-4 w-4 inline mr-1" />
-                            Missing Hreflang Group ({seoAuditResult.blog_audit.missing_hreflang_group.length})
-                          </p>
-                          <div className="text-xs space-y-1">
-                            {seoAuditResult.blog_audit.missing_hreflang_group.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex items-center gap-1">
-                                <a 
-                                  href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
-                                  title="View on site"
-                                >
-                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
-                                </a>
-                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
-                              </div>
-                            ))}
-                            {seoAuditResult.blog_audit.missing_hreflang_group.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_hreflang_group.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-
-                      {seoAuditResult.blog_audit.missing_translations.length > 0 && (
-                        <div className="border-l-4 border-amber-400 pl-3">
-                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            <AlertTriangle className="h-4 w-4 inline mr-1" />
-                            Incomplete Translations ({seoAuditResult.blog_audit.missing_translations.length})
-                          </p>
-                          <div className="text-xs space-y-2">
-                            {seoAuditResult.blog_audit.missing_translations.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex flex-col gap-0.5 py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                                <div className="flex items-center gap-1">
-                                  <a 
-                                    href={`https://www.delsolprimehomes.com/${i.language}/blog/${i.slug}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline truncate max-w-[250px]"
-                                    title="View on site"
-                                  >
-                                    {i.language}/{i.slug.slice(0, 35)}{i.slug.length > 35 ? '...' : ''}
-                                  </a>
-                                  <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                  <RouterLink to={`/admin/articles?edit=${i.id}`} className="text-xs text-amber-600 hover:underline ml-1 flex-shrink-0">[Edit]</RouterLink>
-                                </div>
-                                {i.missing && (
-                                  <div className="text-red-500 flex items-center gap-1 ml-4">
-                                    <XCircle className="h-3 w-3 flex-shrink-0" />
-                                    <span>Missing: {i.missing.split(', ').map(l => l.toUpperCase()).join(', ')}</span>
-                                    <span className="text-muted-foreground">
-                                      ({i.actual?.split(', ').length || 0}/10 translations)
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {seoAuditResult.blog_audit.missing_translations.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.blog_audit.missing_translations.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-
-                      {seoAuditResult.blog_audit.missing_english.length > 0 && (
-                        <div className="border-l-4 border-red-400 pl-3">
-                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                            <XCircle className="h-4 w-4 inline mr-1" />
-                            Missing English (x-default) ({seoAuditResult.blog_audit.missing_english.length})
-                          </p>
-                        </div>
-                      )}
-
-                      {seoAuditResult.blog_audit.health_score === 100 && (
-                        <div className="border-l-4 border-green-400 pl-3">
-                          <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                            All blog articles pass SEO checks!
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Quick Fix Button for Blog Issues */}
-                      {(seoAuditResult.blog_audit.missing_hreflang_group.length > 0 || 
-                        seoAuditResult.blog_audit.missing_translations.length > 0) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                          onClick={() => blogDryRunMutation.mutate({ 
-                            clusterId: seoAuditResult.cluster_id, 
-                            clusterTheme: seoAuditResult.cluster_theme 
-                          })}
-                          disabled={blogDryRunMutation.isPending}
-                        >
-                          {blogDryRunMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wrench className="mr-2 h-4 w-4" />
-                          )}
-                          Preview Blog Hreflang Fix ({seoAuditResult.blog_audit.missing_hreflang_group.length + seoAuditResult.blog_audit.missing_translations.length} issues)
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Q&A Audit Details */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <HelpCircle className="h-4 w-4" />
-                        Q&A Pages Audit
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Languages */}
-                      <div>
-                        <p className="text-sm font-medium mb-2">Q&A Pages per Language:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(seoAuditResult.qa_audit.per_language).map(([lang, count]) => {
-                            const expected = seoAuditResult.qa_audit.expected_per_language[lang] || 0;
-                            const isComplete = count >= expected;
-                            return (
-                              <Badge 
-                                key={lang} 
-                                variant="outline" 
-                                className={isComplete ? 'bg-green-50 dark:bg-green-950/30' : 'bg-amber-50 dark:bg-amber-950/30'}
-                              >
-                                {getLanguageFlag(lang)} {count}/{expected}
-                                {isComplete && ' ✓'}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Issues */}
-                      {seoAuditResult.qa_audit.missing_canonicals.length > 0 && (
-                        <div className="border-l-4 border-red-400 pl-3">
-                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                            <XCircle className="h-4 w-4 inline mr-1" />
-                            Missing Canonicals ({seoAuditResult.qa_audit.missing_canonicals.length})
-                          </p>
-                          <div className="text-xs space-y-1">
-                            {seoAuditResult.qa_audit.missing_canonicals.slice(0, 5).map(i => (
-                              <div key={i.id} className="flex items-center gap-1">
-                                <a 
-                                  href={`https://www.delsolprimehomes.com/${i.language}/qa/${i.slug}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline truncate max-w-[300px]"
-                                  title="View on site"
-                                >
-                                  {i.language}/{i.slug.slice(0, 40)}{i.slug.length > 40 ? '...' : ''}
-                                </a>
-                                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              </div>
-                            ))}
-                            {seoAuditResult.qa_audit.missing_canonicals.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.qa_audit.missing_canonicals.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-
-                      {seoAuditResult.qa_audit.duplicate_language_groups.length > 0 && (
-                        <div className="border-l-4 border-red-400 pl-3">
-                          <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                            <XCircle className="h-4 w-4 inline mr-1" />
-                            Duplicate Languages in Hreflang Groups ({seoAuditResult.qa_audit.duplicate_language_groups.length})
-                          </p>
-                          <div className="text-xs space-y-1">
-                            {seoAuditResult.qa_audit.duplicate_language_groups.slice(0, 5).map((d, idx) => (
-                              <div key={`${d.hreflang_group_id}-${d.language}-${idx}`} className="text-muted-foreground">
-                                {getLanguageFlag(d.language)} {d.language.toUpperCase()}: {d.count} pages in group
-                              </div>
-                            ))}
-                            {seoAuditResult.qa_audit.duplicate_language_groups.length > 5 && 
-                              <span className="text-muted-foreground">+{seoAuditResult.qa_audit.duplicate_language_groups.length - 5} more</span>
-                            }
-                          </div>
-                        </div>
-                      )}
-
-                      {seoAuditResult.qa_audit.language_mismatch.length > 0 && (
-                        <div className="border-l-4 border-amber-400 pl-3">
-                          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                            <AlertTriangle className="h-4 w-4 inline mr-1" />
-                            Language Mismatch ({seoAuditResult.qa_audit.language_mismatch.length})
-                          </p>
-                          <p className="text-xs text-muted-foreground">Q&A language doesn't match source article language</p>
-                        </div>
-                      )}
-
-                      {seoAuditResult.qa_audit.health_score === 100 && (
-                        <div className="border-l-4 border-green-400 pl-3">
-                          <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                            All Q&A pages pass SEO checks!
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Quick Fix Button for Q&A Duplicates */}
-                      {seoAuditResult.qa_audit.duplicate_language_groups.length > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                          onClick={() => qaDryRunMutation.mutate({ 
-                            clusterId: seoAuditResult.cluster_id, 
-                            clusterTheme: seoAuditResult.cluster_theme 
-                          })}
-                          disabled={qaDryRunMutation.isPending}
-                        >
-                          {qaDryRunMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wrench className="mr-2 h-4 w-4" />
-                          )}
-                          Preview Q&A Duplicate Fix ({seoAuditResult.qa_audit.duplicate_language_groups.length} groups)
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </ScrollArea>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Dry-Run Preview Modal */}
-        <Dialog open={showDryRunModal} onOpenChange={setShowDryRunModal}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
-                <Wrench className="h-5 w-5 text-amber-600" />
-                {dryRunPreview?.type === 'blog' ? 'Blog Hreflang Fix Preview' : 'Q&A Duplicate Fix Preview'}
-              </DialogTitle>
-              <DialogDescription>
-                {dryRunPreview?.clusterTheme || 'Unknown Cluster'} • Review changes before applying
-              </DialogDescription>
-            </DialogHeader>
-
-            {dryRunPreview && (
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4">
-                  {/* Summary Cards */}
-                  <div className="grid grid-cols-3 gap-4">
-                    {dryRunPreview.type === 'blog' ? (
-                      <>
-                        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {dryRunPreview.result?.stats?.updatesNeeded || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Articles to Update</div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold">
-                              {dryRunPreview.result?.stats?.articlesWithNullGroupId || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Missing Group IDs</div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold">
-                              {dryRunPreview.result?.stats?.orphanArticles || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Orphan Articles</div>
-                          </CardContent>
-                        </Card>
-                      </>
-                    ) : (
-                      <>
-                        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {dryRunPreview.result?.summary?.total_updates || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Q&As to Update</div>
-                          </CardContent>
-                        </Card>
-                        <Card className="border-green-200 bg-green-50 dark:bg-green-950/30">
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold text-green-600">
-                              {dryRunPreview.result?.summary?.qas_to_keep || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Q&As to Keep</div>
-                          </CardContent>
-                        </Card>
-                        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
-                          <CardContent className="pt-4 text-center">
-                            <div className="text-2xl font-bold text-amber-600">
-                              {dryRunPreview.result?.summary?.qas_to_move || 0}
-                            </div>
-                            <div className="text-sm text-muted-foreground">Q&As to Move</div>
-                          </CardContent>
-                        </Card>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Detailed Changes Table */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">
-                        {dryRunPreview.type === 'blog' ? 'Sample Articles to Update' : 'Q&As to Keep/Move'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {dryRunPreview.type === 'blog' ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Slug</TableHead>
-                              <TableHead>Language</TableHead>
-                              <TableHead>Old Group ID</TableHead>
-                              <TableHead>New Group ID</TableHead>
-                              <TableHead>New Translations</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {(dryRunPreview.result?.sampleAffected || []).map((item: any, idx: number) => (
-                              <TableRow key={idx}>
-                                <TableCell className="font-mono text-xs">{item.slug?.substring(0, 30)}...</TableCell>
-                                <TableCell>{item.language?.toUpperCase()}</TableCell>
-                                <TableCell className="text-red-600 font-mono text-xs">
-                                  {item.oldGroupId?.substring(0, 8) || 'NULL'}...
-                                </TableCell>
-                                <TableCell className="text-green-600 font-mono text-xs">
-                                  {item.newGroupId?.substring(0, 8)}...
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  {Object.keys(item.newTranslations || {}).length} languages
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <div className="space-y-4">
-                          {/* Q&As to Keep */}
-                          {(dryRunPreview.result?.kept || []).length > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">
-                                <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                                Q&As to Keep ({dryRunPreview.result?.kept?.length || 0})
-                              </p>
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                {(dryRunPreview.result?.kept || []).slice(0, 5).map((item: any, idx: number) => (
-                                  <div key={idx}>
-                                    {item.language?.toUpperCase()}: {item.slug?.substring(0, 40)}... ({item.reason})
-                                  </div>
-                                ))}
-                                {(dryRunPreview.result?.kept?.length || 0) > 5 && (
-                                  <div className="text-muted-foreground">
-                                    +{(dryRunPreview.result?.kept?.length || 0) - 5} more...
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Q&As to Move */}
-                          {(dryRunPreview.result?.moved || []).length > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">
-                                <AlertTriangle className="h-4 w-4 inline mr-1" />
-                                Q&As to Move to New Groups ({dryRunPreview.result?.moved?.length || 0})
-                              </p>
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                {(dryRunPreview.result?.moved || []).slice(0, 5).map((item: any, idx: number) => (
-                                  <div key={idx}>
-                                    {item.language?.toUpperCase()}: {item.slug?.substring(0, 40)}...
-                                  </div>
-                                ))}
-                                {(dryRunPreview.result?.moved?.length || 0) > 5 && (
-                                  <div className="text-muted-foreground">
-                                    +{(dryRunPreview.result?.moved?.length || 0) - 5} more...
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setShowDryRunModal(false);
-                        setDryRunPreview(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleApplyFix}
-                      disabled={applyingFix}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {applyingFix ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Applying...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Apply Fix ({
-                            dryRunPreview?.type === 'blog' 
-                              ? dryRunPreview?.result?.stats?.updatesNeeded || 0
-                              : dryRunPreview?.result?.summary?.total_updates || 0
-                          } updates)
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </ScrollArea>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </AdminLayout>
   );
