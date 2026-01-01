@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,7 @@ const langToOgLocale: Record<string, string> = {
 };
 export default function ComparisonPage() {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
+  const navigate = useNavigate();
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
   const [showUseCases, setShowUseCases] = useState(false);
 
@@ -106,11 +107,24 @@ export default function ComparisonPage() {
     enabled: !!comparison,
   });
 
-  // Get OG locale
+  // Redirect if URL language doesn't match content language
+  useEffect(() => {
+    if (comparison && comparison.language && comparison.language !== lang) {
+      navigate(`/${comparison.language}/compare/${comparison.slug}`, { replace: true });
+    }
+  }, [comparison, lang, navigate]);
+
+  // Get OG locale - use content language, not URL lang
   const ogLocale = useMemo(() => {
     if (!comparison?.language) return 'en_GB';
     return langToOgLocale[comparison.language] || 'en_GB';
   }, [comparison?.language]);
+
+  // Canonical URL - use database value or construct from content language
+  const canonicalUrl = useMemo(() => {
+    if (!comparison) return '';
+    return (comparison as any).canonical_url || `${BASE_URL}/${comparison.language || 'en'}/compare/${comparison.slug}`;
+  }, [comparison]);
 
   const handleChatClick = () => {
     const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
@@ -171,12 +185,12 @@ export default function ComparisonPage() {
         <html lang={comparison.language || lang || 'en'} />
         <title>{comparison.meta_title}</title>
         <meta name="description" content={comparison.meta_description} />
-        <link rel="canonical" href={`${BASE_URL}/${lang}/compare/${comparison.slug}`} />
+        <link rel="canonical" href={canonicalUrl} />
         
         {/* Open Graph - Enhanced */}
         <meta property="og:title" content={comparison.meta_title} />
         <meta property="og:description" content={comparison.meta_description} />
-        <meta property="og:url" content={`${BASE_URL}/${lang}/compare/${comparison.slug}`} />
+        <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:locale" content={ogLocale} />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
