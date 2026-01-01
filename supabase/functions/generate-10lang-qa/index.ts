@@ -277,6 +277,39 @@ serve(async (req) => {
           
           languageSlugs[lang] = finalSlug;
           
+          // Translate image alt text to Q&A language
+          let imageAlt = englishArticle.featured_image_alt || 'Costa del Sol property';
+          
+          if (lang !== 'en' && englishArticle.featured_image_alt) {
+            try {
+              const altResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                  model: 'gpt-4o-mini', // Fast + cheap for simple translation
+                  messages: [
+                    { role: 'system', content: `Translate to ${LANGUAGE_NAMES[lang]}. Return ONLY the translation, nothing else.` },
+                    { role: 'user', content: englishArticle.featured_image_alt }
+                  ],
+                  max_tokens: 100,
+                  temperature: 0.3,
+                }),
+              });
+              
+              if (altResponse.ok) {
+                const altData = await altResponse.json();
+                imageAlt = altData.choices?.[0]?.message?.content?.trim() || imageAlt;
+                console.log(`[Generate] Translated alt for ${lang}: ${imageAlt}`);
+              }
+            } catch (err) {
+              console.warn(`[Generate] Alt translation failed for ${lang}:`, err);
+              // Falls back to English alt
+            }
+          }
+          
           const pageData = {
             source_article_id: langArticle?.id || englishArticle.id,
             source_article_slug: langArticle?.slug || englishArticle.slug,
@@ -295,7 +328,7 @@ serve(async (req) => {
             meta_title: (qaData.meta_title || '').substring(0, 60),
             meta_description: (qaData.meta_description || '').substring(0, 160),
             featured_image_url: langArticle?.featured_image_url || englishArticle.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200',
-            featured_image_alt: langArticle?.featured_image_alt || englishArticle.featured_image_alt || 'Costa del Sol property',
+            featured_image_alt: imageAlt, // Now language-specific
             category: sourceContent.category,
             status: 'published',
             translations: {}, // Will be filled after all languages created
