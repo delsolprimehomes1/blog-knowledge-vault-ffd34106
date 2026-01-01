@@ -15,6 +15,17 @@ export const ru = {
     linkedinProfile: "Профиль LinkedIn",
     contactAgent: "Связаться с Агентом",
   },
+  qa: {
+    quickAnswer: "Быстрый Ответ",
+    verified: "Проверено",
+    relatedQuestions: "Связанные Вопросы",
+    fullArticle: "Полная Статья",
+    basedOnGuide: "Этот Q&A основан на нашем полном руководстве:",
+    readFullArticle: "Читать полную статью",
+    availableInOtherLanguages: "Доступно на других языках:",
+    essentialGuide: "Основное Руководство",
+    expertTips: "Советы Экспертов",
+  },
   nav: {
     properties: "Недвижимость",
     areas: "Районы",

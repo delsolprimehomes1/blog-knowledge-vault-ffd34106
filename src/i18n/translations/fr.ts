@@ -15,6 +15,17 @@ export const fr = {
     linkedinProfile: "Profil LinkedIn",
     contactAgent: "Contacter l'Agent",
   },
+  qa: {
+    quickAnswer: "Réponse Rapide",
+    verified: "Vérifié",
+    relatedQuestions: "Questions Connexes",
+    fullArticle: "Article Complet",
+    basedOnGuide: "Cette Q&A est basée sur notre guide complet :",
+    readFullArticle: "Lire l'article complet",
+    availableInOtherLanguages: "Disponible dans d'autres langues :",
+    essentialGuide: "Guide Essentiel",
+    expertTips: "Conseils d'Experts",
+  },
   nav: {
     properties: "Propriétés",
     areas: "Zones",
