@@ -6,11 +6,18 @@ import { Clock, Calendar, RefreshCw, Languages } from "lucide-react";
 import { BlogArticle, Author } from "@/types/blog";
 import { useNavigate } from "react-router-dom";
 
+type TranslationValue = string | { id: string; slug: string };
+
+const getSlug = (translation: TranslationValue): string => {
+  if (typeof translation === 'string') return translation;
+  return translation?.slug || '';
+};
+
 interface ArticleHeaderProps {
   article: BlogArticle;
   author: Author | null;
   reviewer: Author | null;
-  translations: Record<string, string>;
+  translations: Record<string, TranslationValue>;
 }
 
 const LANGUAGE_FLAGS: Record<string, { flag: string; name: string }> = {
@@ -59,7 +66,7 @@ export const ArticleHeader = ({ article, author, reviewer, translations }: Artic
         {/* Language selector - right side, always visible when translations exist */}
         {Object.keys(translations).length > 0 && (
           <div className="shrink-0 ml-auto backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border border-white/20 rounded-2xl px-3 py-2 shadow-lg">
-            <Select value={article.language} onValueChange={(lang) => navigate(`/blog/${translations[lang]}`)}>
+            <Select value={article.language} onValueChange={(lang) => navigate(`/blog/${getSlug(translations[lang])}`)}>
               <SelectTrigger className="w-[140px] border-0 bg-transparent h-8">
                 <SelectValue>
                   <span className="text-sm font-medium">{currentLang?.flag}</span>
