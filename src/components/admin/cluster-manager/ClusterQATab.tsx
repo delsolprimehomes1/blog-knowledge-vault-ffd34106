@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -59,6 +59,7 @@ const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'] 
 const MAX_PARALLEL_TRANSLATIONS = 3;
 
 const STALLED_THRESHOLD_MS = 5 * 60 * 1000;
+const AUTO_REFRESH_INTERVAL_MS = 8000;
 
 interface MismatchInfo {
   hasMismatch: boolean;
@@ -99,6 +100,9 @@ export const ClusterQATab = ({
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
   
+  // Race safety: track latest refresh request
+  const refreshCounterRef = useRef(0);
+  
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
   const isJobRunning = activeJob?.status === 'running';
@@ -126,53 +130,95 @@ export const ClusterQATab = ({
     fetchEnglishArticles();
   }, [cluster.cluster_id]);
 
-  // Fetch Q&A counts on mount and refresh (ENHANCEMENT 4: Progress Persistence)
+  // AUTHORITATIVE Q&A COUNT FETCH - single atomic snapshot from DB
   const fetchQACounts = useCallback(async () => {
-    const { count: enCount } = await supabase
-      .from('qa_pages')
-      .select('*', { count: 'exact', head: true })
-      .eq('cluster_id', cluster.cluster_id)
-      .eq('language', 'en');
+    const requestId = ++refreshCounterRef.current;
     
-    setEnglishQACount(enCount || 0);
-
-    const counts: Record<string, number> = {};
-    for (const lang of TARGET_LANGUAGES) {
-      const { count } = await supabase
-        .from('qa_pages')
-        .select('*', { count: 'exact', head: true })
-        .eq('cluster_id', cluster.cluster_id)
-        .eq('language', lang);
-      counts[lang] = count || 0;
-    }
-    setLanguageQACounts(counts);
-
-    const { data: qaData } = await supabase
+    // Single query to get all Q&A data for this cluster
+    const { data: allQAs, error } = await supabase
       .from('qa_pages')
-      .select('source_article_id')
-      .eq('cluster_id', cluster.cluster_id)
-      .eq('language', 'en');
+      .select('language, source_article_id, hreflang_group_id')
+      .eq('cluster_id', cluster.cluster_id);
 
-    if (qaData) {
-      const articleCounts: Record<string, number> = {};
-      qaData.forEach(qa => {
-        if (qa.source_article_id) {
-          articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
-        }
-      });
-      setArticleQACounts(articleCounts);
+    // Race safety: only apply if this is still the latest request
+    if (requestId !== refreshCounterRef.current) {
+      return;
     }
 
+    if (error) {
+      console.error('Error fetching Q&A counts:', error);
+      return;
+    }
+
+    const qaList = allQAs || [];
+
+    // Count English Q&As
+    const englishQAs = qaList.filter(qa => qa.language === 'en');
+    setEnglishQACount(englishQAs.length);
+
+    // Count Q&As per target language (use distinct hreflang_group_id for accuracy)
+    const langCounts: Record<string, number> = {};
+    const langGroupIds: Record<string, Set<string>> = {};
+    
+    for (const lang of TARGET_LANGUAGES) {
+      langGroupIds[lang] = new Set();
+    }
+    
+    qaList.forEach(qa => {
+      if (qa.language && qa.language !== 'en' && TARGET_LANGUAGES.includes(qa.language as any)) {
+        // Use hreflang_group_id for unique group counting (preferred) or just count rows
+        if (qa.hreflang_group_id) {
+          langGroupIds[qa.language].add(qa.hreflang_group_id);
+        } else {
+          // Fallback: count rows if no hreflang_group_id
+          langCounts[qa.language] = (langCounts[qa.language] || 0) + 1;
+        }
+      }
+    });
+
+    // Merge: prefer distinct group count, fallback to row count
+    for (const lang of TARGET_LANGUAGES) {
+      const groupCount = langGroupIds[lang].size;
+      // If we have group IDs, use that count; otherwise use raw row count
+      langCounts[lang] = groupCount > 0 ? groupCount : (langCounts[lang] || 0);
+    }
+    
+    setLanguageQACounts(langCounts);
+
+    // Count English Q&As per source article
+    const articleCounts: Record<string, number> = {};
+    englishQAs.forEach(qa => {
+      if (qa.source_article_id) {
+        articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
+      }
+    });
+    setArticleQACounts(articleCounts);
+
+    // Mark completed languages
     const completedLangs = new Set<string>();
-    Object.entries(counts).forEach(([lang, count]) => {
+    Object.entries(langCounts).forEach(([lang, count]) => {
       if (count >= 24) completedLangs.add(lang);
     });
     setCompletedLanguages(completedLangs);
   }, [cluster.cluster_id]);
 
+  // Initial fetch and when cluster data changes
   useEffect(() => {
     fetchQACounts();
   }, [fetchQACounts, cluster.total_qa_pages]);
+
+  // Auto-refresh while translations are running
+  useEffect(() => {
+    if (translatingLanguages.size === 0 && !generatingArticle && !isGeneratingAll) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchQACounts();
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [translatingLanguages.size, generatingArticle, isGeneratingAll, fetchQACounts]);
 
   // Poll for active job status
   useEffect(() => {
@@ -245,13 +291,10 @@ export const ClusterQATab = ({
 
       if (data?.success) {
         toast.success(`Article ${position}: ${data.created} Q&As created`);
-        setArticleQACounts(prev => ({
-          ...prev,
-          [article.id]: (prev[article.id] || 0) + (data.created || 0)
-        }));
-        setEnglishQACount(prev => prev + (data.created || 0));
         
-        await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+        // Always refresh from backend for accurate counts
+        await fetchQACounts();
+        await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
         return true;
       } else {
         throw new Error(data?.error || 'Unknown error');
@@ -286,19 +329,8 @@ export const ClusterQATab = ({
       if (error) throw error;
 
       if (data?.success) {
-        // Use actualCount from response if available, otherwise fetch from DB
-        let newCount = data.actualCount ?? null;
-        
-        if (newCount === null) {
-          // Fallback: fetch actual count from database
-          const { count: dbCount } = await supabase
-            .from('qa_pages')
-            .select('*', { count: 'exact', head: true })
-            .eq('cluster_id', cluster.cluster_id)
-            .eq('language', targetLanguage);
-          newCount = dbCount || 0;
-        }
-        
+        // Use actualCount from response for immediate toast feedback
+        const newCount = data.actualCount ?? 0;
         const remaining = 24 - newCount;
         
         const msg = remaining > 0
@@ -306,16 +338,9 @@ export const ClusterQATab = ({
           : `${targetLanguage.toUpperCase()}: ✅ Complete! 24/24 Q&As`;
         toast.success(msg);
         
-        setLanguageQACounts(prev => ({
-          ...prev,
-          [targetLanguage]: newCount,
-        }));
-
-        if (newCount >= 24) {
-          setCompletedLanguages(prev => new Set([...prev, targetLanguage]));
-        }
-        
-        await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+        // Refresh UI state from backend for accuracy
+        await fetchQACounts();
+        await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
         return true;
       } else {
         throw new Error(data?.error || 'Unknown error');
@@ -656,7 +681,8 @@ export const ClusterQATab = ({
     } finally {
       setIsRepairing(false);
       setRepairProgress(null);
-      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      await fetchQACounts();
+      await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
     }
   };
 
