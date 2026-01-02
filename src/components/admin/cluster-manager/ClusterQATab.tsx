@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench } from "lucide-react";
+import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench, RefreshCw } from "lucide-react";
 import { ClusterData, getLanguageFlag, getAllExpectedLanguages } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -412,6 +412,19 @@ export const ClusterQATab = ({
               )}
               Cancel
             </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={async () => {
+                await handleCancelJob();
+                setTimeout(() => handleGenerateQAs(), 500);
+              }}
+              disabled={isCancellingJob || isStartingJob}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Start Fresh
+            </Button>
           </div>
         </div>
       )}
@@ -590,7 +603,7 @@ export const ClusterQATab = ({
           Publish All Q&As ({draftQAsCount} drafts)
         </Button>
 
-        {cluster.total_qa_pages < totalExpectedQAs && !isJobStalled && (
+        {cluster.total_qa_pages < totalExpectedQAs && (
           <Button
             variant="default"
             size="sm"
