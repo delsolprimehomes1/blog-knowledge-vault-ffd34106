@@ -538,8 +538,9 @@ serve(async (req) => {
       const languageSlugs: Record<string, string> = {};
       const createdPages: any[] = [];
 
-      // Step 2: Create English page
-      const englishSlug = `${englishQA.slug || qaType.id}-en`.replace(/--+/g, '-').substring(0, 80);
+      // Step 2: Create English page with UNIQUE slug (UUID suffix prevents collisions)
+      const englishUniqueId = crypto.randomUUID().slice(0, 8);
+      const englishSlug = `${englishQA.slug || qaType.id}-en-${englishUniqueId}`.replace(/--+/g, '-').substring(0, 80);
       languageSlugs['en'] = englishSlug;
 
       const englishPageData = {
@@ -586,10 +587,13 @@ serve(async (req) => {
         }, lang, '', 3);
         if (translatedQA) {
           const langArticle = articlesByLang[lang];
-          const langSlug = `${translatedQA.slug || `${qaType.id}-${lang}`}`.replace(/--+/g, '-').substring(0, 80);
           
-          // Ensure slug ends with language code for uniqueness
-          const finalSlug = langSlug.endsWith(`-${lang}`) ? langSlug : `${langSlug}-${lang}`;
+          // Generate UNIQUE slug with UUID suffix to prevent collisions
+          const langUniqueId = crypto.randomUUID().slice(0, 8);
+          const langSlug = `${translatedQA.slug || `${qaType.id}-${lang}`}`.replace(/--+/g, '-').substring(0, 70);
+          const finalSlug = langSlug.endsWith(`-${lang}`) 
+            ? `${langSlug}-${langUniqueId}` 
+            : `${langSlug}-${lang}-${langUniqueId}`;
           languageSlugs[lang] = finalSlug;
 
           // Translate alt text
@@ -640,22 +644,46 @@ serve(async (req) => {
         page.translations = { ...languageSlugs };
       }
 
-      // Step 5: Insert all pages for this Q&A type
+      // Step 5: Insert all pages for this Q&A type (with slug deduplication)
       if (!dryRun && createdPages.length > 0) {
         console.log(`[Generate] Inserting ${createdPages.length} pages for ${qaType.id}...`);
         
+        // Check for existing slugs to prevent duplicate key errors
+        const slugsToCheck = createdPages.map(p => p.slug);
+        const { data: existingSlugs } = await supabase
+          .from('qa_pages')
+          .select('slug')
+          .in('slug', slugsToCheck);
+        
+        const existingSlugSet = new Set(existingSlugs?.map(s => s.slug) || []);
+        
+        // Filter out pages with existing slugs
+        const pagesToInsert = createdPages.filter(p => !existingSlugSet.has(p.slug));
+        
+        if (pagesToInsert.length === 0) {
+          console.log(`[Generate] Skipping ${qaType.id} - all slugs already exist`);
+          continue;
+        }
+        
+        if (pagesToInsert.length < createdPages.length) {
+          const skippedCount = createdPages.length - pagesToInsert.length;
+          console.log(`[Generate] Filtered out ${skippedCount} duplicate slugs`);
+          results.skipped += skippedCount;
+          results.created -= skippedCount;
+        }
+        
         const { error: insertError, data: insertedData } = await supabase
           .from('qa_pages')
-          .insert(createdPages)
+          .insert(pagesToInsert)
           .select('id, language, slug, hreflang_group_id');
 
         if (insertError) {
           console.error(`[Generate] Insert error for ${qaType.id}:`, insertError);
-          results.created -= createdPages.length;
-          results.failed += createdPages.length;
+          results.created -= pagesToInsert.length;
+          results.failed += pagesToInsert.length;
         } else {
           console.log(`[Generate] ✅ Inserted ${insertedData?.length || 0} pages for ${qaType.id}`);
-          results.qaPages.push(...createdPages.map((p, i) => ({
+          results.qaPages.push(...pagesToInsert.map((p, i) => ({
             ...p,
             id: insertedData?.[i]?.id,
           })));
