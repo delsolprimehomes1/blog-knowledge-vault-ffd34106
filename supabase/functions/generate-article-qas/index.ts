@@ -123,8 +123,7 @@ Return ONLY valid JSON:
           },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 2500,
-        temperature: 0.7,
+        max_completion_tokens: 2500,
       }),
     });
 
@@ -204,8 +203,7 @@ Return ONLY valid JSON:
           },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 2500,
-        temperature: 0.3,
+        max_completion_tokens: 2500,
       }),
     });
 
@@ -273,8 +271,7 @@ async function translateAltText(altText: string, language: string): Promise<stri
           { role: 'system', content: `Translate to ${LANGUAGE_NAMES[language]}. Return ONLY the translation.` },
           { role: 'user', content: altText }
         ],
-        max_tokens: 100,
-        temperature: 0.3,
+        max_completion_tokens: 100,
       }),
     });
     
