@@ -21,20 +21,27 @@ const LANGUAGE_NAMES: Record<string, string> = {
   no: 'Norwegian',
 };
 
+// FIX 5: Correct interface matching actual qa_pages schema
 interface QAPage {
   id: string;
-  question: string;
-  answer: string;
+  question_main: string;
+  answer_main: string;
   speakable_answer: string;
   meta_title: string;
   meta_description: string;
   slug: string;
+  title: string;
+  featured_image_url: string;
+  featured_image_alt: string;
+  canonical_url: string;
   language: string;
   cluster_id: string;
   source_article_id: string;
   source_article_slug: string;
+  source_language: string;
   qa_type: string;
   hreflang_group_id: string;
+  translations: Record<string, string>;
   status: string;
 }
 
@@ -56,6 +63,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // FIX 2: Use Lovable AI Gateway instead of OpenAI direct
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
 
     // Get all Q&A pages for this cluster
     const { data: allQAs, error: qaError } = await supabase
@@ -96,12 +109,6 @@ serve(async (req) => {
     let repairedCount = 0;
     const repairLog: { lang: string; qaType: string; sourceArticleId: string }[] = [];
 
-    // Get OpenAI API key
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
-    }
-
     // For each English Q&A, check if translations exist
     for (const englishQA of englishQAs) {
       const { source_article_id, qa_type, hreflang_group_id } = englishQA;
@@ -141,34 +148,56 @@ serve(async (req) => {
 
         console.log(`[repair-missing-qas] Translating ${qa_type} Q&A to ${targetLang} for article ${translatedArticle.slug}`);
 
-        // Translate the Q&A using OpenAI
-        const translatedQA = await translateQA(englishQA, targetLang, openaiApiKey);
+        // Translate the Q&A using Lovable AI Gateway
+        const translatedQA = await translateQA(englishQA, targetLang, lovableApiKey);
 
         if (!translatedQA) {
           console.error(`[repair-missing-qas] Failed to translate Q&A to ${targetLang}`);
           continue;
         }
 
-        // Generate slug from translated question
-        const translatedSlug = generateSlug(translatedQA.question);
+        // Generate slug from translated question with UUID suffix to prevent collisions
+        const uuidSuffix = crypto.randomUUID().substring(0, 8);
+        const translatedSlug = `${generateSlug(translatedQA.question)}-${uuidSuffix}`;
 
-        // Insert the translated Q&A
+        // FIX 4: Translate image alt text
+        const translatedImageAlt = await translateAltText(
+          englishQA.featured_image_alt || 'Q&A about Costa del Sol real estate',
+          targetLang,
+          lovableApiKey
+        );
+
+        // Build canonical URL
+        const canonicalUrl = `https://www.delsolprimehomes.com/${targetLang}/qa/${translatedSlug}`;
+
+        // FIX 1 & 4: Insert with correct column names and all required fields
         const { error: insertError } = await supabase
           .from('qa_pages')
           .insert({
-            question: translatedQA.question,
-            answer: translatedQA.answer,
+            // FIX 1: Correct column names
+            question_main: translatedQA.question,
+            answer_main: translatedQA.answer,
             speakable_answer: translatedQA.speakable_answer,
             meta_title: translatedQA.meta_title,
             meta_description: translatedQA.meta_description,
             slug: translatedSlug,
+            
+            // FIX 4: Required fields that were missing
+            title: translatedQA.question,
+            featured_image_url: englishQA.featured_image_url || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
+            featured_image_alt: translatedImageAlt,
+            canonical_url: canonicalUrl,
+            translations: {}, // Empty JSONB, will be synced by hreflang repair
+            
+            // Standard fields
             language: targetLang,
+            source_language: 'en',
             cluster_id: clusterId,
             source_article_id: translatedArticle.id,
             source_article_slug: translatedArticle.slug,
             qa_type: qa_type,
             hreflang_group_id: hreflang_group_id,
-            status: englishQA.status || 'draft',
+            status: englishQA.status || 'published',
           });
 
         if (insertError) {
@@ -204,10 +233,11 @@ serve(async (req) => {
   }
 });
 
+// FIX 2 & 3: Updated to use Lovable AI Gateway with correct GPT-5 parameters
 async function translateQA(
   englishQA: QAPage, 
   targetLang: string,
-  openaiApiKey: string
+  lovableApiKey: string
 ): Promise<{ question: string; answer: string; speakable_answer: string; meta_title: string; meta_description: string } | null> {
   const languageName = LANGUAGE_NAMES[targetLang] || targetLang;
 
@@ -215,8 +245,8 @@ async function translateQA(
 Maintain the same meaning and format. Keep it natural and fluent in ${languageName}.
 
 English Q&A:
-Question: ${englishQA.question}
-Answer: ${englishQA.answer}
+Question: ${englishQA.question_main}
+Answer: ${englishQA.answer_main}
 Speakable Answer: ${englishQA.speakable_answer}
 Meta Title: ${englishQA.meta_title}
 Meta Description: ${englishQA.meta_description}
@@ -231,24 +261,28 @@ Return ONLY valid JSON with these fields:
 }`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // FIX 2: Use Lovable AI Gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        // FIX 3: Correct model and parameters for GPT-5
+        model: 'openai/gpt-5-mini',
         messages: [
           { role: 'system', content: 'You are a professional translator. Return only valid JSON.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
+        max_completion_tokens: 2500,
+        // No temperature - not supported by GPT-5
       }),
     });
 
     if (!response.ok) {
-      console.error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Lovable AI Gateway error: ${response.status} - ${errorText}`);
       return null;
     }
 
@@ -268,6 +302,42 @@ Return ONLY valid JSON with these fields:
   }
 }
 
+// New helper function to translate image alt text
+async function translateAltText(
+  altText: string,
+  targetLang: string,
+  lovableApiKey: string
+): Promise<string> {
+  if (!altText) return '';
+  
+  const languageName = LANGUAGE_NAMES[targetLang] || targetLang;
+
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${lovableApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-5-mini',
+        messages: [
+          { role: 'system', content: `Translate to ${languageName}. Return ONLY the translation.` },
+          { role: 'user', content: altText }
+        ],
+        max_completion_tokens: 100,
+      }),
+    });
+
+    if (!response.ok) return altText; // Fallback to original
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || altText;
+  } catch {
+    return altText; // Fallback to original on error
+  }
+}
+
 function generateSlug(text: string): string {
   return text
     .toLowerCase()
@@ -276,6 +346,6 @@ function generateSlug(text: string): string {
     .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
     .replace(/\s+/g, '-') // Spaces to hyphens
     .replace(/-+/g, '-') // Multiple hyphens to single
-    .substring(0, 80) // Limit length
+    .substring(0, 70) // Limit length (reduced to leave room for UUID suffix)
     .replace(/^-|-$/g, ''); // Trim hyphens
 }
