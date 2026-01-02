@@ -330,25 +330,52 @@ serve(async (req) => {
           source_article_slug: targetArticle.slug,
         };
 
-        // Check if a Q&A with same question already exists (handles orphans with missing hreflang_group_id)
+        // Check if a Q&A with same question already exists
+        // Only adopt/update if it's a true orphan (null hreflang) or already belongs to this group
         const { data: existingByQuestion } = await supabase
           .from('qa_pages')
-          .select('id')
+          .select('id, hreflang_group_id')
           .eq('cluster_id', clusterId)
           .eq('language', targetLanguage)
-          .eq('question_main', translation.question)
-          .maybeSingle();
+          .eq('question_main', translation.question);
 
-        if (existingByQuestion) {
+        const safeToAdopt = existingByQuestion?.find(q => 
+          q.hreflang_group_id === null || 
+          q.hreflang_group_id === englishQA.hreflang_group_id
+        );
+        const belongsToDifferentGroup = existingByQuestion?.find(q => 
+          q.hreflang_group_id && q.hreflang_group_id !== englishQA.hreflang_group_id
+        );
+
+        if (belongsToDifferentGroup && !safeToAdopt) {
+          // Same question text exists but belongs to a DIFFERENT hreflang group
+          // Insert a new record instead of stealing/updating the other one
+          console.log(`[TranslateQAs] ⚠️ Same-question collision detected. Q&A ${belongsToDifferentGroup.id} belongs to group ${belongsToDifferentGroup.hreflang_group_id}, but we need group ${englishQA.hreflang_group_id}. Inserting new record.`);
+          
+          const { data: insertedQA, error: insertError } = await supabase
+            .from('qa_pages')
+            .insert(translatedQARecord)
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error(`[TranslateQAs] Insert error (collision case):`, insertError);
+            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+            continue;
+          }
+
+          console.log(`[TranslateQAs] ✅ Created NEW ${targetLanguage} Q&A (collision): ${slug}`);
+          translatedQAs.push(insertedQA.id);
+        } else if (safeToAdopt) {
           // Update existing orphan record with correct hreflang_group_id
-          console.log(`[TranslateQAs] Updating orphan Q&A ${existingByQuestion.id}`);
+          console.log(`[TranslateQAs] Adopting orphan Q&A ${safeToAdopt.id}`);
           const { error: updateError } = await supabase
             .from('qa_pages')
             .update({
               ...translatedQARecord,
               hreflang_group_id: englishQA.hreflang_group_id,
             })
-            .eq('id', existingByQuestion.id);
+            .eq('id', safeToAdopt.id);
 
           if (updateError) {
             console.error(`[TranslateQAs] Update error:`, updateError);
@@ -356,10 +383,10 @@ serve(async (req) => {
             continue;
           }
 
-          console.log(`[TranslateQAs] ✅ Updated existing ${targetLanguage} Q&A: ${slug}`);
-          translatedQAs.push(existingByQuestion.id);
+          console.log(`[TranslateQAs] ✅ Adopted existing ${targetLanguage} Q&A: ${slug}`);
+          translatedQAs.push(safeToAdopt.id);
         } else {
-          // Insert new record
+          // Insert new record (no existing match at all)
           const { data: insertedQA, error: insertError } = await supabase
             .from('qa_pages')
             .insert(translatedQARecord)
