@@ -148,11 +148,14 @@ serve(async (req) => {
 
         console.log(`[repair-missing-qas] Translating ${qa_type} Q&A to ${targetLang} for article ${translatedArticle.slug}`);
 
+        // Add delay between API calls to avoid rate limiting
+        await new Promise(r => setTimeout(r, 500));
+
         // Translate the Q&A using Lovable AI Gateway
         const translatedQA = await translateQA(englishQA, targetLang, lovableApiKey);
 
         if (!translatedQA) {
-          console.error(`[repair-missing-qas] Failed to translate Q&A to ${targetLang}`);
+          console.error(`[repair-missing-qas] Failed to translate Q&A to ${targetLang} - check logs above for details`);
           continue;
         }
 
@@ -281,22 +284,39 @@ Return ONLY valid JSON with these fields:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Lovable AI Gateway error: ${response.status} - ${errorText}`);
+      console.error(`[translateQA] Lovable AI Gateway error: ${response.status} - ${errorText}`);
       return null;
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
-    if (!content) return null;
+    // Debug logging
+    console.log(`[translateQA] Response for ${targetLang}: status=${response.status}, contentLen=${content?.length || 0}`);
+    
+    if (!content) {
+      console.error(`[translateQA] Empty content from AI for ${targetLang}`);
+      return null;
+    }
 
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
+    if (!jsonMatch) {
+      console.error(`[translateQA] No JSON found in response for ${targetLang}: ${content.substring(0, 200)}`);
+      return null;
+    }
 
-    return JSON.parse(jsonMatch[0]);
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log(`[translateQA] Successfully parsed ${targetLang} translation`);
+      return parsed;
+    } catch (parseError) {
+      console.error(`[translateQA] JSON parse failed for ${targetLang}: ${parseError}`);
+      console.error(`[translateQA] Raw content: ${jsonMatch[0].substring(0, 300)}`);
+      return null;
+    }
   } catch (error) {
-    console.error('Translation error:', error);
+    console.error(`[translateQA] Error for ${targetLang}:`, error);
     return null;
   }
 }
