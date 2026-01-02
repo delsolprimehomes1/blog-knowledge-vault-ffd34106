@@ -6,6 +6,7 @@ import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, 
 import { ClusterData, getLanguageFlag, getAllExpectedLanguages } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ClusterQATabProps {
   cluster: ClusterData;
@@ -56,11 +57,13 @@ export const ClusterQATab = ({
   publishingQAs,
   generatingQALanguage,
 }: ClusterQATabProps) => {
+  const queryClient = useQueryClient();
   const [activeJob, setActiveJob] = useState<QAJob | null>(null);
   const [isStartingJob, setIsStartingJob] = useState(false);
   const [isResumingJob, setIsResumingJob] = useState(false);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [isRepairing, setIsRepairing] = useState(false);
+  const [repairProgress, setRepairProgress] = useState<{ batch: number; created: number } | null>(null);
   
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
@@ -250,7 +253,7 @@ export const ClusterQATab = ({
 
   const draftQAsCount = cluster.total_qa_pages - cluster.total_qa_published;
 
-  // Detect Q&A count mismatches between languages
+  // FIX 6: Detect Q&A count mismatches using English as reference
   const mismatchInfo = useMemo((): MismatchInfo => {
     const languageCounts: { lang: string; actual: number; expected: number }[] = [];
     
@@ -270,52 +273,94 @@ export const ClusterQATab = ({
       return { hasMismatch: false, maxCount: 0, mismatched: [], total: 0 };
     }
     
-    // Find the maximum actual count (reference point)
-    const maxActual = Math.max(...languageCounts.map(l => l.actual));
+    // FIX 6: Use English count as reference (matches English-first architecture)
+    const enCount = languageCounts.find(l => l.lang === 'en')?.actual || 0;
+    const referenceCount = enCount > 0 ? enCount : Math.max(...languageCounts.map(l => l.actual));
     
-    // Find languages that are behind the leader (only when there are Q&As generated)
+    // Find languages that are behind the reference (only when there are Q&As generated)
     const mismatched = languageCounts
-      .filter(l => l.actual < maxActual && maxActual > 0)
+      .filter(l => l.actual < referenceCount && referenceCount > 0)
       .map(l => ({
         lang: l.lang,
         actual: l.actual,
-        missing: maxActual - l.actual,
+        missing: referenceCount - l.actual,
       }));
     
     return {
       hasMismatch: mismatched.length > 0,
-      maxCount: maxActual,
+      maxCount: referenceCount,
       mismatched,
       total: languageCounts.length,
     };
   }, [expectedLanguages, cluster.qa_pages, cluster.languages]);
 
-  // Handle repair of missing Q&As
+  // FIX 5: Handle repair with auto-retry loop
   const handleRepairMissingQAs = async () => {
     if (!mismatchInfo.hasMismatch) return;
     
     setIsRepairing(true);
+    setRepairProgress({ batch: 0, created: 0 });
+    
+    let totalRepaired = 0;
+    const maxAttempts = 10; // Max 10 batches (5 Q&As each = 50 max)
     
     try {
-      const { data, error } = await supabase.functions.invoke('repair-missing-qas', {
-        body: { 
-          clusterId: cluster.cluster_id,
-          languages: mismatchInfo.mismatched.map(m => m.lang),
-        },
-      });
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(`[Repair] Batch ${attempt}/${maxAttempts}`);
+        setRepairProgress({ batch: attempt, created: totalRepaired });
+        
+        const { data, error } = await supabase.functions.invoke('repair-missing-qas', {
+          body: { 
+            clusterId: cluster.cluster_id,
+            languages: mismatchInfo.mismatched.map(m => m.lang),
+          },
+        });
 
-      if (error) throw error;
+        if (error) {
+          console.error('[Repair] Error in batch:', error);
+          // Show error but continue - some Q&As may have been created
+          toast.error(`Batch ${attempt} failed. Retrying...`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
 
-      toast.success(`Repaired ${data?.repaired || 0} missing Q&As`);
+        if (!data) break;
+        
+        totalRepaired += data.repaired || 0;
+        
+        // Show progress
+        toast.success(data.partial 
+          ? `Progress: ${data.repaired} created (batch ${attempt})`
+          : `Repair complete! ${data.repaired} created`
+        );
+        
+        // If complete or no progress, stop
+        if (!data.partial || data.repaired === 0) {
+          console.log(`[Repair] Complete after ${attempt} batches`);
+          break;
+        }
+        
+        // Small delay before next batch
+        await new Promise(r => setTimeout(r, 2000));
+      }
       
-      // Trigger a page reload to refresh data
-      window.location.reload();
+      // Final message
+      if (totalRepaired > 0) {
+        toast.success(`Repair finished! Total: ${totalRepaired} Q&As created`);
+      } else {
+        toast.info('No Q&As were created - all may already exist');
+      }
       
     } catch (error) {
-      console.error('Error repairing Q&As:', error);
-      toast.error('Failed to repair missing Q&As');
+      console.error('[Repair] Fatal error:', error);
+      toast.error('Repair encountered an error. Some Q&As may have been created.');
     } finally {
       setIsRepairing(false);
+      setRepairProgress(null);
+      
+      // Force refresh via React Query instead of page reload
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      await queryClient.invalidateQueries({ queryKey: ['qa-pages'] });
     }
   };
 
@@ -515,11 +560,16 @@ export const ClusterQATab = ({
             disabled={isRepairing}
           >
             {isRepairing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {repairProgress ? `Batch ${repairProgress.batch} (${repairProgress.created} created)...` : 'Starting...'}
+              </>
             ) : (
-              <Wrench className="mr-2 h-4 w-4" />
+              <>
+                <Wrench className="mr-2 h-4 w-4" />
+                Repair Missing Q&As
+              </>
             )}
-            Repair Missing Q&As
           </Button>
         </div>
       )}

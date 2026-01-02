@@ -21,8 +21,9 @@ const LANGUAGE_NAMES: Record<string, string> = {
   no: 'Norwegian',
 };
 
-// Timeout protection: return partial results after 2.5 minutes
-const TIMEOUT_THRESHOLD_MS = 150000;
+// FIX 1: Batch limits to prevent timeouts
+const MAX_REPAIRS_PER_BATCH = 5;
+const MAX_RUNTIME_MS = 25000; // Return within 25 seconds
 
 interface QAPage {
   id: string;
@@ -47,7 +48,7 @@ interface QAPage {
   status: string;
 }
 
-// Robust JSON parsing with repair logic (from generate-article-qas)
+// Robust JSON parsing with repair logic
 function parseJSONSafe(content: string): any | null {
   if (!content || content.trim() === '') {
     console.error('[parseJSONSafe] Empty content');
@@ -71,11 +72,10 @@ function parseJSONSafe(content: string): any | null {
     const rawMatch = content.match(/\{[\s\S]*\}/);
     if (rawMatch) {
       try {
-        // Attempt repair of common issues
         let repaired = rawMatch[0]
-          .replace(/,\s*}/g, '}') // trailing commas
-          .replace(/,\s*]/g, ']') // trailing commas in arrays
-          .replace(/[\x00-\x1F\x7F]/g, ' '); // control characters
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']')
+          .replace(/[\x00-\x1F\x7F]/g, ' ');
         return JSON.parse(repaired);
       } catch (e3) {
         console.error('[parseJSONSafe] Failed to parse repaired JSON:', e3);
@@ -87,7 +87,28 @@ function parseJSONSafe(content: string): any | null {
   }
 }
 
-// Retry wrapper with longer exponential backoff
+// FIX 3: Fetch with timeout using AbortController
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(timeout);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+// Retry wrapper with exponential backoff
 async function translateWithRetry(
   englishQA: QAPage,
   targetLang: string,
@@ -95,14 +116,18 @@ async function translateWithRetry(
   maxRetries = 3
 ): Promise<{ question: string; answer: string; speakable_answer: string; meta_title: string; meta_description: string } | null> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const result = await translateQA(englishQA, targetLang, lovableApiKey);
-    if (result) {
-      console.log(`[translateWithRetry] Success for ${targetLang} on attempt ${attempt}`);
-      return result;
+    try {
+      const result = await translateQA(englishQA, targetLang, lovableApiKey);
+      if (result) {
+        console.log(`[translateWithRetry] Success for ${targetLang} on attempt ${attempt}`);
+        return result;
+      }
+    } catch (error) {
+      console.error(`[translateWithRetry] Attempt ${attempt} failed for ${targetLang}:`, error);
     }
     
     if (attempt < maxRetries) {
-      const delay = attempt * 3000; // 3s, 6s, 9s - longer delays
+      const delay = attempt * 3000; // 3s, 6s, 9s
       console.log(`[translateWithRetry] Retry ${attempt}/${maxRetries} for ${targetLang} in ${delay}ms...`);
       await new Promise(r => setTimeout(r, delay));
     }
@@ -117,6 +142,8 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
+  let repairedCount = 0;
+  let totalMissing = 0;
 
   try {
     const { clusterId, languages } = await req.json();
@@ -161,7 +188,7 @@ serve(async (req) => {
     
     if (englishQAs.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, repaired: 0, message: 'No English Q&As found to use as reference' }),
+        JSON.stringify({ success: true, repaired: 0, partial: false, remaining: 0, message: 'No English Q&As found to use as reference' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -173,131 +200,153 @@ serve(async (req) => {
       ? languages.filter((l: string) => l !== 'en' && SUPPORTED_LANGUAGES.includes(l))
       : SUPPORTED_LANGUAGES.filter(l => l !== 'en');
 
-    let repairedCount = 0;
     const repairLog: { lang: string; qaType: string; sourceArticleId: string }[] = [];
 
-    // For each English Q&A, check if translations exist
+    // Build list of missing translations first
+    const missingTranslations: { englishQA: QAPage; targetLang: string }[] = [];
+    
     for (const englishQA of englishQAs) {
-      const { source_article_id, qa_type, hreflang_group_id } = englishQA;
+      const { qa_type, hreflang_group_id } = englishQA;
 
       for (const targetLang of targetLanguages) {
-        // Timeout protection: return partial results before timeout
-        if (Date.now() - startTime > TIMEOUT_THRESHOLD_MS) {
-          console.log(`[repair-missing-qas] Timeout protection triggered after ${repairedCount} repairs`);
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              repaired: repairedCount,
-              repairLog,
-              partial: true,
-              message: `Timeout protection: Created ${repairedCount} Q&As. Run again to continue.`
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Check if this Q&A exists in target language
+        // FIX 4: Improved existence check - match hreflang_group_id + qa_type + language
         const existingQA = (qasByLanguage[targetLang] || []).find(
-          qa => qa.hreflang_group_id === hreflang_group_id
+          qa => qa.hreflang_group_id === hreflang_group_id && 
+                qa.qa_type === qa_type && 
+                qa.language === targetLang
         );
 
-        if (existingQA) continue;
-
-        // Find source English article
-        const { data: englishArticle } = await supabase
-          .from('blog_articles')
-          .select('id, slug, headline, hreflang_group_id, translations')
-          .eq('id', source_article_id)
-          .single();
-
-        if (!englishArticle) {
-          console.warn(`[repair-missing-qas] English article ${source_article_id} not found`);
-          continue;
+        if (!existingQA) {
+          missingTranslations.push({ englishQA, targetLang });
         }
-
-        // Find translated article
-        const { data: translatedArticle } = await supabase
-          .from('blog_articles')
-          .select('id, slug, headline')
-          .eq('hreflang_group_id', englishArticle.hreflang_group_id)
-          .eq('language', targetLang)
-          .single();
-
-        if (!translatedArticle) {
-          console.warn(`[repair-missing-qas] No ${targetLang} translation found for article ${source_article_id}`);
-          continue;
-        }
-
-        console.log(`[repair-missing-qas] Translating ${qa_type} Q&A to ${targetLang} for article ${translatedArticle.slug}`);
-
-        // Throttle: 500ms between all calls to reduce AI Gateway load
-        await new Promise(r => setTimeout(r, 500));
-
-        // Translate with retry logic
-        const translatedQA = await translateWithRetry(englishQA, targetLang, lovableApiKey);
-
-        if (!translatedQA) {
-          console.error(`[repair-missing-qas] Failed to translate Q&A to ${targetLang} after all retries`);
-          continue;
-        }
-
-        // Generate slug
-        const uuidSuffix = crypto.randomUUID().substring(0, 8);
-        const translatedSlug = `${generateSlug(translatedQA.question)}-${uuidSuffix}`;
-
-        // Translate image alt text
-        const translatedImageAlt = await translateAltText(
-          englishQA.featured_image_alt || 'Q&A about Costa del Sol real estate',
-          targetLang,
-          lovableApiKey
-        );
-
-        const canonicalUrl = `https://www.delsolprimehomes.com/${targetLang}/qa/${translatedSlug}`;
-
-        // Insert new Q&A
-        const { error: insertError } = await supabase
-          .from('qa_pages')
-          .insert({
-            question_main: translatedQA.question,
-            answer_main: translatedQA.answer,
-            speakable_answer: translatedQA.speakable_answer,
-            meta_title: translatedQA.meta_title,
-            meta_description: translatedQA.meta_description,
-            slug: translatedSlug,
-            title: translatedQA.question,
-            featured_image_url: englishQA.featured_image_url || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
-            featured_image_alt: translatedImageAlt,
-            canonical_url: canonicalUrl,
-            translations: {},
-            language: targetLang,
-            source_language: 'en',
-            cluster_id: clusterId,
-            source_article_id: translatedArticle.id,
-            source_article_slug: translatedArticle.slug,
-            qa_type: qa_type,
-            hreflang_group_id: hreflang_group_id,
-            status: englishQA.status || 'published',
-          });
-
-        if (insertError) {
-          console.error(`[repair-missing-qas] Failed to insert ${targetLang} Q&A:`, insertError);
-          continue;
-        }
-
-        repairedCount++;
-        repairLog.push({ lang: targetLang, qaType: qa_type, sourceArticleId: translatedArticle.id });
-        console.log(`[repair-missing-qas] Successfully created ${targetLang} ${qa_type} Q&A: ${translatedSlug}`);
       }
     }
 
-    console.log(`[repair-missing-qas] Repair complete. Created ${repairedCount} missing Q&As in ${Date.now() - startTime}ms`);
+    totalMissing = missingTranslations.length;
+    console.log(`[repair-missing-qas] Found ${totalMissing} missing translations to repair`);
 
+    if (totalMissing === 0) {
+      return new Response(
+        JSON.stringify({ success: true, repaired: 0, partial: false, remaining: 0, message: 'All translations are complete!' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Process missing translations with batch limits
+    for (const { englishQA, targetLang } of missingTranslations) {
+      // FIX 1: Check batch limit
+      if (repairedCount >= MAX_REPAIRS_PER_BATCH) {
+        console.log(`[repair-missing-qas] ✅ Batch limit reached (${repairedCount} repaired)`);
+        break;
+      }
+
+      // FIX 1: Check time limit
+      if (Date.now() - startTime > MAX_RUNTIME_MS) {
+        console.log(`[repair-missing-qas] ⏱️ Time limit reached (${Date.now() - startTime}ms)`);
+        break;
+      }
+
+      const { source_article_id, qa_type, hreflang_group_id } = englishQA;
+
+      // Find source English article
+      const { data: englishArticle } = await supabase
+        .from('blog_articles')
+        .select('id, slug, headline, hreflang_group_id, translations')
+        .eq('id', source_article_id)
+        .single();
+
+      if (!englishArticle) {
+        console.warn(`[repair-missing-qas] English article ${source_article_id} not found`);
+        continue;
+      }
+
+      // FIX 2: Find translated article WITH image fields
+      const { data: translatedArticle } = await supabase
+        .from('blog_articles')
+        .select('id, slug, headline, featured_image_url, featured_image_alt')
+        .eq('hreflang_group_id', englishArticle.hreflang_group_id)
+        .eq('language', targetLang)
+        .single();
+
+      if (!translatedArticle) {
+        console.warn(`[repair-missing-qas] No ${targetLang} translation found for article ${source_article_id}`);
+        continue;
+      }
+
+      console.log(`[repair-missing-qas] Translating ${qa_type} Q&A to ${targetLang} for article ${translatedArticle.slug}`);
+
+      // Throttle: 500ms between calls
+      await new Promise(r => setTimeout(r, 500));
+
+      // Translate with retry logic
+      const translatedQA = await translateWithRetry(englishQA, targetLang, lovableApiKey);
+
+      if (!translatedQA) {
+        console.error(`[repair-missing-qas] Failed to translate Q&A to ${targetLang} after all retries`);
+        continue;
+      }
+
+      // Generate slug
+      const uuidSuffix = crypto.randomUUID().substring(0, 8);
+      const translatedSlug = `${generateSlug(translatedQA.question)}-${uuidSuffix}`;
+
+      // FIX 2: Use article's existing image alt instead of calling AI
+      const imageAlt = translatedArticle.featured_image_alt || englishQA.featured_image_alt || 'Q&A about Costa del Sol real estate';
+      const imageUrl = translatedArticle.featured_image_url || englishQA.featured_image_url || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200';
+
+      const canonicalUrl = `https://www.delsolprimehomes.com/${targetLang}/qa/${translatedSlug}`;
+
+      // Insert new Q&A
+      const { error: insertError } = await supabase
+        .from('qa_pages')
+        .insert({
+          question_main: translatedQA.question,
+          answer_main: translatedQA.answer,
+          speakable_answer: translatedQA.speakable_answer,
+          meta_title: translatedQA.meta_title,
+          meta_description: translatedQA.meta_description,
+          slug: translatedSlug,
+          title: translatedQA.question,
+          featured_image_url: imageUrl,
+          featured_image_alt: imageAlt,
+          canonical_url: canonicalUrl,
+          translations: {},
+          language: targetLang,
+          source_language: 'en',
+          cluster_id: clusterId,
+          source_article_id: translatedArticle.id,
+          source_article_slug: translatedArticle.slug,
+          qa_type: qa_type,
+          hreflang_group_id: hreflang_group_id,
+          status: englishQA.status || 'published',
+        });
+
+      if (insertError) {
+        console.error(`[repair-missing-qas] Failed to insert ${targetLang} Q&A:`, insertError);
+        continue;
+      }
+
+      repairedCount++;
+      repairLog.push({ lang: targetLang, qaType: qa_type, sourceArticleId: translatedArticle.id });
+      console.log(`[repair-missing-qas] ✅ Created ${targetLang} ${qa_type} Q&A: ${translatedSlug}`);
+    }
+
+    const remaining = totalMissing - repairedCount;
+    const isPartial = remaining > 0;
+
+    console.log(`[repair-missing-qas] Batch complete. Created ${repairedCount} Q&As, ${remaining} remaining, in ${Date.now() - startTime}ms`);
+
+    // FIX 1: Return partial status for auto-retry
     return new Response(
       JSON.stringify({ 
         success: true, 
         repaired: repairedCount,
+        partial: isPartial,
+        remaining: remaining,
         repairLog,
-        message: `Created ${repairedCount} missing Q&As`
+        message: isPartial 
+          ? `Created ${repairedCount} Q&As. ${remaining} still missing.`
+          : `All missing Q&As created (${repairedCount} total).`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -306,12 +355,13 @@ serve(async (req) => {
     console.error('[repair-missing-qas] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: errorMessage, repaired: repairedCount }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 
+// FIX 3: translateQA now uses fetchWithTimeout
 async function translateQA(
   englishQA: QAPage, 
   targetLang: string,
@@ -339,33 +389,38 @@ Return ONLY valid JSON with these fields:
 }`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${lovableApiKey}`,
+    // FIX 3: Use 15 second timeout
+    const response = await fetchWithTimeout(
+      'https://ai.gateway.lovable.dev/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${lovableApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-5-mini',
+          messages: [
+            { role: 'system', content: 'You are a professional translator. Return only valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+          max_completion_tokens: 2500,
+          response_format: { type: "json_object" },
+        }),
       },
-      body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
-        messages: [
-          { role: 'system', content: 'You are a professional translator. Return only valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        max_completion_tokens: 2500,
-        response_format: { type: "json_object" },
-      }),
-    });
+      15000 // 15 second timeout
+    );
 
     // Rate limit handling
     if (response.status === 429) {
       console.log(`[translateQA] Rate limited for ${targetLang}, waiting 15s...`);
       await new Promise(r => setTimeout(r, 15000));
-      return null; // Will be retried by translateWithRetry
+      return null; // Will be retried
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[translateQA] Lovable AI Gateway error: ${response.status} - ${errorText}`);
+      console.error(`[translateQA] AI Gateway error: ${response.status} - ${errorText}`);
       return null;
     }
 
@@ -379,7 +434,6 @@ Return ONLY valid JSON with these fields:
       return null;
     }
 
-    // Use robust JSON parsing
     const parsed = parseJSONSafe(content);
     if (!parsed) {
       console.error(`[translateQA] Failed to parse JSON for ${targetLang}`);
@@ -391,44 +445,6 @@ Return ONLY valid JSON with these fields:
   } catch (error) {
     console.error(`[translateQA] Error for ${targetLang}:`, error);
     return null;
-  }
-}
-
-async function translateAltText(
-  altText: string,
-  targetLang: string,
-  lovableApiKey: string
-): Promise<string> {
-  if (!altText) return '';
-  
-  const languageName = LANGUAGE_NAMES[targetLang] || targetLang;
-
-  try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${lovableApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
-        messages: [
-          { role: 'system', content: `Translate to ${languageName}. Return JSON: {"translation": "your translation"}` },
-          { role: 'user', content: altText }
-        ],
-        max_completion_tokens: 100,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) return altText;
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    const parsed = parseJSONSafe(content);
-    return parsed?.translation || altText;
-  } catch {
-    return altText;
   }
 }
 
