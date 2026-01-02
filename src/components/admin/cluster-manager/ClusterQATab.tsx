@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench, RefreshCw, Globe, Languages } from "lucide-react";
+import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench, RefreshCw, Globe, Languages, Rocket, ShieldCheck } from "lucide-react";
 import { ClusterData, getLanguageFlag, getAllExpectedLanguages } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,7 +23,6 @@ interface EnglishArticle {
   slug: string;
 }
 
-// Use database schema fields directly
 interface QAJob {
   id: string;
   status: string;
@@ -39,17 +38,26 @@ interface QAJob {
   resume_from_qa_type: string | null;
 }
 
-// Correct architecture: 6 articles × 4 Q&A types × 10 languages = 240 Q&As per cluster
+interface VerificationResults {
+  totalQAs: number;
+  expectedTotal: number;
+  completeGroups: number;
+  incompleteGroups: number;
+  allLanguagesEqual: boolean;
+  languageCounts: Record<string, number>;
+  jsonbComplete: boolean;
+  missingJsonbCount: number;
+}
+
 const QAS_PER_ARTICLE = 4;
 const ARTICLES_PER_LANGUAGE = 6;
-const EXPECTED_QAS_PER_LANGUAGE = QAS_PER_ARTICLE * ARTICLES_PER_LANGUAGE; // 24
+const EXPECTED_QAS_PER_LANGUAGE = QAS_PER_ARTICLE * ARTICLES_PER_LANGUAGE;
 const TOTAL_LANGUAGES = 10;
-const EXPECTED_QAS_PER_CLUSTER = EXPECTED_QAS_PER_LANGUAGE * TOTAL_LANGUAGES; // 240
+const EXPECTED_QAS_PER_CLUSTER = EXPECTED_QAS_PER_LANGUAGE * TOTAL_LANGUAGES;
 
-// Target languages (all except English)
 const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'] as const;
+const MAX_PARALLEL_TRANSLATIONS = 3;
 
-// Stalled threshold: 5 minutes without update
 const STALLED_THRESHOLD_MS = 5 * 60 * 1000;
 
 interface MismatchInfo {
@@ -78,16 +86,23 @@ export const ClusterQATab = ({
   const [englishArticles, setEnglishArticles] = useState<EnglishArticle[]>([]);
   const [generatingArticle, setGeneratingArticle] = useState<string | null>(null);
   const [completedArticles, setCompletedArticles] = useState<Set<string>>(new Set());
-  const [translatingLanguage, setTranslatingLanguage] = useState<string | null>(null);
+  const [translatingLanguages, setTranslatingLanguages] = useState<Set<string>>(new Set()); // ENHANCEMENT 3: Parallel
   const [completedLanguages, setCompletedLanguages] = useState<Set<string>>(new Set());
   const [englishQACount, setEnglishQACount] = useState(0);
   const [languageQACounts, setLanguageQACounts] = useState<Record<string, number>>({});
+  
+  // ENHANCEMENT 5: Verification
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResults, setVerificationResults] = useState<VerificationResults | null>(null);
+  
+  // ENHANCEMENT 6: Generate All
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
   
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
   const isJobRunning = activeJob?.status === 'running';
   
-  // Detect stalled jobs
   const isJobStalled = activeJob?.status === 'stalled' || 
     (activeJob?.status === 'running' && activeJob?.updated_at && 
      new Date(activeJob.updated_at).getTime() < Date.now() - STALLED_THRESHOLD_MS);
@@ -111,62 +126,58 @@ export const ClusterQATab = ({
     fetchEnglishArticles();
   }, [cluster.cluster_id]);
 
-  // Fetch Q&A counts on mount and refresh
-  useEffect(() => {
-    const fetchQACounts = async () => {
-      // Get English Q&A count
-      const { count: enCount } = await supabase
+  // Fetch Q&A counts on mount and refresh (ENHANCEMENT 4: Progress Persistence)
+  const fetchQACounts = useCallback(async () => {
+    const { count: enCount } = await supabase
+      .from('qa_pages')
+      .select('*', { count: 'exact', head: true })
+      .eq('cluster_id', cluster.cluster_id)
+      .eq('language', 'en');
+    
+    setEnglishQACount(enCount || 0);
+
+    const counts: Record<string, number> = {};
+    for (const lang of TARGET_LANGUAGES) {
+      const { count } = await supabase
         .from('qa_pages')
         .select('*', { count: 'exact', head: true })
         .eq('cluster_id', cluster.cluster_id)
-        .eq('language', 'en');
-      
-      setEnglishQACount(enCount || 0);
+        .eq('language', lang);
+      counts[lang] = count || 0;
+    }
+    setLanguageQACounts(counts);
 
-      // Get counts per language
-      const counts: Record<string, number> = {};
-      for (const lang of TARGET_LANGUAGES) {
-        const { count } = await supabase
-          .from('qa_pages')
-          .select('*', { count: 'exact', head: true })
-          .eq('cluster_id', cluster.cluster_id)
-          .eq('language', lang);
-        counts[lang] = count || 0;
-      }
-      setLanguageQACounts(counts);
+    const { data: qaData } = await supabase
+      .from('qa_pages')
+      .select('source_article_id')
+      .eq('cluster_id', cluster.cluster_id)
+      .eq('language', 'en');
 
-      // Mark completed articles (those with 4 English Q&As each)
-      const { data: qaData } = await supabase
-        .from('qa_pages')
-        .select('source_article_id')
-        .eq('cluster_id', cluster.cluster_id)
-        .eq('language', 'en');
-
-      if (qaData) {
-        const articleCounts: Record<string, number> = {};
-        qaData.forEach(qa => {
-          if (qa.source_article_id) {
-            articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
-          }
-        });
-        
-        const completed = new Set<string>();
-        Object.entries(articleCounts).forEach(([articleId, count]) => {
-          if (count >= 4) completed.add(articleId);
-        });
-        setCompletedArticles(completed);
-      }
-
-      // Mark completed languages (those with 24 Q&As)
-      const completedLangs = new Set<string>();
-      Object.entries(counts).forEach(([lang, count]) => {
-        if (count >= 24) completedLangs.add(lang);
+    if (qaData) {
+      const articleCounts: Record<string, number> = {};
+      qaData.forEach(qa => {
+        if (qa.source_article_id) {
+          articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
+        }
       });
-      setCompletedLanguages(completedLangs);
-    };
+      
+      const completed = new Set<string>();
+      Object.entries(articleCounts).forEach(([articleId, count]) => {
+        if (count >= 4) completed.add(articleId);
+      });
+      setCompletedArticles(completed);
+    }
 
+    const completedLangs = new Set<string>();
+    Object.entries(counts).forEach(([lang, count]) => {
+      if (count >= 24) completedLangs.add(lang);
+    });
+    setCompletedLanguages(completedLangs);
+  }, [cluster.cluster_id]);
+
+  useEffect(() => {
     fetchQACounts();
-  }, [cluster.cluster_id, cluster.total_qa_pages]);
+  }, [fetchQACounts, cluster.total_qa_pages]);
 
   // Poll for active job status
   useEffect(() => {
@@ -242,25 +253,30 @@ export const ClusterQATab = ({
         setCompletedArticles(prev => new Set([...prev, article.id]));
         setEnglishQACount(prev => prev + (data.created || 0));
         
-        // Refresh data
         await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+        return true;
       } else {
         throw new Error(data?.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Error generating English Q&As:', error);
       toast.error(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     } finally {
       setGeneratingArticle(null);
     }
   };
 
-  // Phase 2: Translate all Q&As to a target language
-  const handleTranslateToLanguage = async (targetLanguage: string) => {
-    setTranslatingLanguage(targetLanguage);
+  // Phase 2: Translate all Q&As to a target language (ENHANCEMENT 3: Parallel support)
+  const handleTranslateToLanguage = async (targetLanguage: string): Promise<boolean> => {
+    setTranslatingLanguages(prev => new Set([...prev, targetLanguage]));
     
     try {
-      toast.info(`Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (5-7 minutes)`);
+      const currentCount = languageQACounts[targetLanguage] || 0;
+      const message = currentCount > 0 
+        ? `Resuming ${targetLanguage.toUpperCase()} translation (${currentCount}/24)...`
+        : `Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (2-3 minutes)`;
+      toast.info(message);
       
       const { data, error } = await supabase.functions.invoke('translate-qas-to-language', {
         body: { 
@@ -272,8 +288,8 @@ export const ClusterQATab = ({
       if (error) throw error;
 
       if (data?.success) {
-        const msg = data.alreadyExisted > 0 
-          ? `${targetLanguage.toUpperCase()}: ${data.translated} translated, ${data.alreadyExisted} already existed`
+        const msg = data.resumed 
+          ? `${targetLanguage.toUpperCase()}: Resumed! ${data.translated} new, ${data.skipped} skipped`
           : `${targetLanguage.toUpperCase()}: ${data.translated}/24 Q&As translated`;
         toast.success(msg);
         
@@ -283,16 +299,175 @@ export const ClusterQATab = ({
           [targetLanguage]: (prev[targetLanguage] || 0) + (data.translated || 0),
         }));
         
-        // Refresh data
         await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+        return true;
       } else {
         throw new Error(data?.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Error translating Q&As:', error);
       toast.error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     } finally {
-      setTranslatingLanguage(null);
+      setTranslatingLanguages(prev => {
+        const next = new Set(prev);
+        next.delete(targetLanguage);
+        return next;
+      });
+    }
+  };
+
+  // ENHANCEMENT 5: Verification
+  const handleVerifyHreflang = async () => {
+    setIsVerifying(true);
+    
+    try {
+      // Query 1: Total Q&As
+      const { count: totalQAs } = await supabase
+        .from('qa_pages')
+        .select('*', { count: 'exact', head: true })
+        .eq('cluster_id', cluster.cluster_id);
+
+      // Query 2: Get all hreflang groups and their member counts
+      const { data: allQAs } = await supabase
+        .from('qa_pages')
+        .select('hreflang_group_id, language, translations')
+        .eq('cluster_id', cluster.cluster_id);
+
+      const groupCounts = new Map<string, number>();
+      const languageCounts: Record<string, number> = { en: 0 };
+      TARGET_LANGUAGES.forEach(l => languageCounts[l] = 0);
+      
+      let missingJsonbCount = 0;
+
+      allQAs?.forEach(qa => {
+        if (qa.hreflang_group_id) {
+          groupCounts.set(qa.hreflang_group_id, (groupCounts.get(qa.hreflang_group_id) || 0) + 1);
+        }
+        if (qa.language) {
+          languageCounts[qa.language] = (languageCounts[qa.language] || 0) + 1;
+        }
+        // Check if translations JSONB has all 10 languages
+        const translations = qa.translations as Record<string, string> | null;
+        if (!translations || Object.keys(translations).length < 10) {
+          missingJsonbCount++;
+        }
+      });
+
+      // Count complete groups (10 members each)
+      let completeGroups = 0;
+      let incompleteGroups = 0;
+      groupCounts.forEach(count => {
+        if (count === 10) completeGroups++;
+        else incompleteGroups++;
+      });
+
+      // Check if all languages have equal counts
+      const langValues = Object.values(languageCounts);
+      const allLanguagesEqual = langValues.every(v => v === langValues[0]) && langValues[0] > 0;
+
+      setVerificationResults({
+        totalQAs: totalQAs || 0,
+        expectedTotal: EXPECTED_QAS_PER_CLUSTER,
+        completeGroups,
+        incompleteGroups,
+        allLanguagesEqual,
+        languageCounts,
+        jsonbComplete: missingJsonbCount === 0,
+        missingJsonbCount,
+      });
+
+      toast.success('Verification complete!');
+    } catch (error) {
+      console.error('Verification error:', error);
+      toast.error('Verification failed');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // ENHANCEMENT 6: Generate All Automatic Mode
+  const handleGenerateAll = async () => {
+    const confirmed = window.confirm(
+      'This will automatically:\n' +
+      '1. Generate 24 English Q&As (Phase 1)\n' +
+      '2. Translate to all 9 languages (Phase 2)\n' +
+      '3. Verify completeness\n\n' +
+      `Estimated time: 25-35 minutes\n` +
+      'You can close this browser - progress is saved.\n\n' +
+      'Continue?'
+    );
+    if (!confirmed) return;
+    
+    setIsGeneratingAll(true);
+    setGenerateAllProgress('Starting Phase 1...');
+    
+    try {
+      // Phase 1: Generate English Q&As for all 6 articles
+      for (let i = 0; i < englishArticles.length; i++) {
+        const article = englishArticles[i];
+        if (completedArticles.has(article.id)) {
+          setGenerateAllProgress(`Phase 1: Article ${i + 1}/6 (skipped - already done)`);
+          continue;
+        }
+        
+        setGenerateAllProgress(`Phase 1: Article ${i + 1}/${englishArticles.length}`);
+        const success = await handleGenerateEnglishQAs(article, i + 1);
+        
+        if (!success) {
+          throw new Error(`Failed on article ${i + 1}`);
+        }
+        
+        // Cooldown between articles
+        if (i < englishArticles.length - 1) {
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+
+      // Refresh counts
+      await fetchQACounts();
+      
+      // Phase 2: Translate to all 9 languages (2 parallel at a time)
+      const batches = [
+        ['de', 'nl'],
+        ['fr', 'pl'],
+        ['sv', 'da'],
+        ['hu', 'fi'],
+        ['no'],
+      ];
+
+      for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+        const batch = batches[batchIdx];
+        setGenerateAllProgress(`Phase 2: Batch ${batchIdx + 1}/${batches.length} (${batch.join(', ')})`);
+        
+        // Filter out already completed languages
+        const langsToTranslate = batch.filter(lang => !completedLanguages.has(lang));
+        
+        if (langsToTranslate.length === 0) continue;
+        
+        // Translate batch in parallel
+        await Promise.all(
+          langsToTranslate.map(lang => handleTranslateToLanguage(lang))
+        );
+        
+        // Cooldown between batches
+        if (batchIdx < batches.length - 1) {
+          await new Promise(r => setTimeout(r, 5000));
+        }
+      }
+
+      // Verification
+      setGenerateAllProgress('Verifying...');
+      await handleVerifyHreflang();
+      
+      toast.success('🎉 All 240 Q&As generated and verified!');
+      
+    } catch (error) {
+      console.error('Generate all error:', error);
+      toast.error(`Generation stopped: ${error instanceof Error ? error.message : 'Unknown error'}. You can resume from where it left off.`);
+    } finally {
+      setIsGeneratingAll(false);
+      setGenerateAllProgress(null);
     }
   };
 
@@ -351,7 +526,6 @@ export const ClusterQATab = ({
     }
   };
 
-  // Calculate correct totals based on actual articles per language
   const getQAStatusForLanguage = (lang: string) => {
     const articleCount = cluster.languages[lang]?.total || 0;
     const expectedQAs = articleCount * QAS_PER_ARTICLE;
@@ -379,7 +553,6 @@ export const ClusterQATab = ({
   const expectedLanguages = getAllExpectedLanguages(cluster);
   const draftQAsCount = cluster.total_qa_pages - cluster.total_qa_published;
 
-  // Mismatch detection
   const mismatchInfo = useMemo((): MismatchInfo => {
     const languageCounts: { lang: string; actual: number; expected: number }[] = [];
     
@@ -506,6 +679,42 @@ export const ClusterQATab = ({
         <Progress value={completionPercent} className="h-2" />
       </div>
 
+      {/* ENHANCEMENT 6: Generate All Button */}
+      {!isPhase1Complete || !isPhase2Complete ? (
+        <Card className="border-gradient-to-r from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Rocket className="h-5 w-5" />
+                  Automatic Generation
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Generate all 240 Q&As automatically. Progress is saved - you can resume if interrupted.
+                </p>
+              </div>
+              <Button
+                onClick={handleGenerateAll}
+                disabled={isGeneratingAll || !!generatingArticle || translatingLanguages.size > 0}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                {isGeneratingAll ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {generateAllProgress || 'Processing...'}
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-4 w-4 mr-2" />
+                    Generate All (25-35 min)
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* ===== PHASE 1: Generate English Q&As ===== */}
       <Card className="border-blue-200 dark:border-blue-800">
         <CardHeader className="pb-3">
@@ -552,7 +761,7 @@ export const ClusterQATab = ({
                   <Button
                     size="sm"
                     variant={isCompleted ? "outline" : "default"}
-                    disabled={isGenerating || isCompleted || !!generatingArticle}
+                    disabled={isGenerating || isCompleted || !!generatingArticle || isGeneratingAll}
                     onClick={() => handleGenerateEnglishQAs(article, index + 1)}
                     className={isCompleted ? 'border-green-400 text-green-700' : 'bg-blue-600 hover:bg-blue-700'}
                   >
@@ -589,10 +798,15 @@ export const ClusterQATab = ({
             {isPhase2Complete && <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Translate all 24 English Q&As to each language. ~5-7 min per language.
+            Translate all 24 English Q&As to each language. ~2-3 min per language (batch mode).
             {!isPhase1Complete && (
               <span className="text-amber-600 font-medium ml-1">
                 (Complete Phase 1 first: {englishQACount}/24 English Q&As)
+              </span>
+            )}
+            {isPhase1Complete && (
+              <span className="text-blue-600 font-medium ml-1">
+                Up to {MAX_PARALLEL_TRANSLATIONS} languages can run in parallel.
               </span>
             )}
           </p>
@@ -603,8 +817,10 @@ export const ClusterQATab = ({
             {TARGET_LANGUAGES.map((lang) => {
               const count = languageQACounts[lang] || 0;
               const isCompleted = count >= 24;
-              const isTranslating = translatingLanguage === lang;
-              const isDisabled = !isPhase1Complete || isTranslating || !!translatingLanguage;
+              const isTranslating = translatingLanguages.has(lang);
+              const canStartMore = translatingLanguages.size < MAX_PARALLEL_TRANSLATIONS;
+              const isDisabled = !isPhase1Complete || isTranslating || (!canStartMore && !isCompleted) || isGeneratingAll;
+              const isPartial = count > 0 && count < 24;
               
               return (
                 <div 
@@ -612,12 +828,14 @@ export const ClusterQATab = ({
                   className={`p-3 rounded-lg border ${
                     isCompleted 
                       ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                      : isPartial
+                      ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
                       : 'bg-background border-border'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg">{getLanguageFlag(lang)}</span>
-                    <span className={`font-bold ${isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    <span className={`font-bold ${isCompleted ? 'text-green-600' : isPartial ? 'text-amber-600' : 'text-muted-foreground'}`}>
                       {count}/24
                       {isCompleted && ' ✅'}
                     </span>
@@ -630,6 +848,8 @@ export const ClusterQATab = ({
                     className={`w-full ${
                       isCompleted 
                         ? 'border-green-400 text-green-700' 
+                        : isPartial
+                        ? 'bg-amber-500 hover:bg-amber-600'
                         : 'bg-purple-600 hover:bg-purple-700'
                     }`}
                   >
@@ -643,6 +863,8 @@ export const ClusterQATab = ({
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Complete
                       </>
+                    ) : isPartial ? (
+                      `Resume ${lang.toUpperCase()} (${count}/24)`
                     ) : (
                       `Translate to ${lang.toUpperCase()}`
                     )}
@@ -651,6 +873,85 @@ export const ClusterQATab = ({
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ENHANCEMENT 5: Verification Panel */}
+      <Card className="border-green-200 dark:border-green-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ShieldCheck className="h-5 w-5 text-green-600" />
+            Verification
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Verify hreflang completeness and translations JSONB integrity.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            onClick={handleVerifyHreflang}
+            disabled={isVerifying}
+            variant="outline"
+            className="border-green-400 text-green-700 hover:bg-green-50"
+          >
+            {isVerifying ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                Verify Hreflang Completeness
+              </>
+            )}
+          </Button>
+
+          {verificationResults && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div className={`p-3 rounded-lg ${verificationResults.totalQAs >= verificationResults.expectedTotal ? 'bg-green-100 dark:bg-green-950' : 'bg-amber-100 dark:bg-amber-950'}`}>
+                  <div className="text-sm font-medium">Total Q&As</div>
+                  <div className="text-xl font-bold">
+                    {verificationResults.totalQAs}/{verificationResults.expectedTotal}
+                    {verificationResults.totalQAs >= verificationResults.expectedTotal ? ' ✅' : ' ⚠️'}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${verificationResults.incompleteGroups === 0 ? 'bg-green-100 dark:bg-green-950' : 'bg-amber-100 dark:bg-amber-950'}`}>
+                  <div className="text-sm font-medium">Complete Groups (10 langs each)</div>
+                  <div className="text-xl font-bold">
+                    {verificationResults.completeGroups}/24
+                    {verificationResults.incompleteGroups === 0 ? ' ✅' : ` (${verificationResults.incompleteGroups} incomplete)`}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${verificationResults.allLanguagesEqual ? 'bg-green-100 dark:bg-green-950' : 'bg-amber-100 dark:bg-amber-950'}`}>
+                  <div className="text-sm font-medium">All Languages Equal</div>
+                  <div className="text-xl font-bold">{verificationResults.allLanguagesEqual ? 'Yes ✅' : 'No ⚠️'}</div>
+                </div>
+                <div className={`p-3 rounded-lg ${verificationResults.jsonbComplete ? 'bg-green-100 dark:bg-green-950' : 'bg-amber-100 dark:bg-amber-950'}`}>
+                  <div className="text-sm font-medium">Translations JSONB</div>
+                  <div className="text-xl font-bold">
+                    {verificationResults.jsonbComplete ? 'Complete ✅' : `${verificationResults.missingJsonbCount} incomplete`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <div className="text-sm font-medium mb-2">Q&As per Language:</div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(verificationResults.languageCounts).map(([lang, count]) => (
+                    <Badge 
+                      key={lang} 
+                      variant={count >= 24 ? "default" : "outline"}
+                      className={count >= 24 ? 'bg-green-600' : 'border-amber-400 text-amber-700'}
+                    >
+                      {getLanguageFlag(lang)} {lang.toUpperCase()}: {count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
