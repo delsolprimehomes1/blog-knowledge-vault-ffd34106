@@ -733,8 +733,10 @@ export async function generateStaticQAPages(distDir: string) {
 
     for (const qa of qaPages) {
       try {
+        const lang = qa.language || 'en';
         const html = generateStaticHTML(qa as any, enhancedHreflang, productionAssets);
-        const filePath = join(distDir, 'qa', qa.slug, 'index.html');
+        // Generate with language prefix: /en/qa/{slug}/index.html
+        const filePath = join(distDir, lang, 'qa', qa.slug, 'index.html');
         
         mkdirSync(dirname(filePath), { recursive: true });
         writeFileSync(filePath, html, 'utf-8');
@@ -745,19 +747,25 @@ export async function generateStaticQAPages(distDir: string) {
         }
       } catch (err) {
         failed++;
-        console.error(`❌ Failed to generate /qa/${qa.slug}:`, err);
+        console.error(`❌ Failed to generate /${qa.language || 'en'}/qa/${qa.slug}:`, err);
       }
     }
 
-    // Generate QA Index page with ItemList schema
-    try {
-      const indexHtml = generateQAIndexHTML(qaPages as any[], productionAssets);
-      const indexPath = join(distDir, 'qa', 'index.html');
-      mkdirSync(dirname(indexPath), { recursive: true });
-      writeFileSync(indexPath, indexHtml, 'utf-8');
-      console.log(`✅ Generated QA index page with ItemList schema`);
-    } catch (err) {
-      console.error(`❌ Failed to generate QA index page:`, err);
+    // Generate language-specific QA Index pages with ItemList schema
+    const languages = ['en', 'de', 'nl', 'fr', 'sv', 'no', 'da', 'fi', 'pl', 'hu'];
+    for (const lang of languages) {
+      try {
+        const langPages = qaPages.filter(qa => qa.language === lang);
+        if (langPages.length > 0) {
+          const indexHtml = generateQAIndexHTML(langPages as any[], productionAssets);
+          const indexPath = join(distDir, lang, 'qa', 'index.html');
+          mkdirSync(dirname(indexPath), { recursive: true });
+          writeFileSync(indexPath, indexHtml, 'utf-8');
+          console.log(`✅ Generated /${lang}/qa/ index page with ${langPages.length} items`);
+        }
+      } catch (err) {
+        console.error(`❌ Failed to generate /${lang}/qa/ index page:`, err);
+      }
     }
 
     console.log(`\n✨ Static QA generation complete!`);
