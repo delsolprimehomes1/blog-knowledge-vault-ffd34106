@@ -49,7 +49,8 @@ function generateSlug(headline: string, qaType: string): string {
 
 async function generateEnglishQA(
   article: { headline: string; detailed_content: string; meta_description: string; funnel_stage: string },
-  qaType: { id: string; label: string }
+  qaType: { id: string; label: string },
+  existingQuestions: string[] = []
 ): Promise<{
   question: string;
   answer: string;
@@ -57,17 +58,26 @@ async function generateEnglishQA(
   metaDescription: string;
   speakableAnswer: string;
 }> {
+  const existingQuestionsBlock = existingQuestions.length > 0
+    ? `\n\nCRITICAL - EXISTING QUESTIONS IN THIS CLUSTER (you MUST create a DIFFERENT question):
+${existingQuestions.map((q, i) => `${i + 1}. "${q}"`).join('\n')}
+
+Your question MUST be unique and NOT duplicate any of the above. Focus on the SPECIFIC angle of this article: "${article.headline}"`
+    : '';
+
   const prompt = `You are an expert real estate content writer. Generate a Q&A page about "${qaType.label}" for this article.
 
 ARTICLE HEADLINE: ${article.headline}
 ARTICLE DESCRIPTION: ${article.meta_description}
 FUNNEL STAGE: ${article.funnel_stage}
+${existingQuestionsBlock}
 
-Generate a focused Q&A about ${qaType.label.toLowerCase()} related to this topic.
+Generate a focused Q&A about ${qaType.label.toLowerCase()} that is SPECIFIC to the unique angle of this article's headline.
+The question must be different from any existing questions listed above.
 
 Return JSON:
 {
-  "question": "A natural question about ${qaType.label.toLowerCase()} (50-80 chars)",
+  "question": "A natural, UNIQUE question about ${qaType.label.toLowerCase()} specific to '${article.headline}' (50-80 chars)",
   "answer": "Comprehensive answer with 3-5 key points, practical advice (200-400 words)",
   "metaTitle": "SEO title under 60 chars including the question topic",
   "metaDescription": "SEO description 120-155 chars summarizing the answer",
@@ -83,13 +93,13 @@ Return JSON:
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert real estate content writer. Always respond with valid JSON.' },
+        { role: 'system', content: 'You are an expert real estate content writer. Always respond with valid JSON. Create UNIQUE questions that are specific to the article headline.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
       max_completion_tokens: 1500,
     }),
-  }, 45000); // 45 second timeout
+  }, 45000);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -144,6 +154,23 @@ serve(async (req) => {
     const createdQAs: string[] = [];
     const errors: string[] = [];
 
+    // Fetch existing questions in this cluster to avoid duplicates
+    const { data: existingClusterQAs } = await supabase
+      .from('qa_pages')
+      .select('question_main, qa_type')
+      .eq('cluster_id', article.cluster_id)
+      .eq('language', 'en');
+
+    const existingQuestionsByType: Record<string, string[]> = {};
+    for (const qa of existingClusterQAs || []) {
+      if (!existingQuestionsByType[qa.qa_type]) {
+        existingQuestionsByType[qa.qa_type] = [];
+      }
+      existingQuestionsByType[qa.qa_type].push(qa.question_main);
+    }
+
+    console.log(`[GenerateEnglishQAs] Found ${existingClusterQAs?.length || 0} existing Q&As in cluster`);
+
     // Generate 4 Q&As (one per type)
     for (const qaType of QA_TYPES) {
       try {
@@ -163,7 +190,10 @@ serve(async (req) => {
           continue;
         }
 
-        // Generate English Q&A content
+        // Get existing questions of this type in the cluster
+        const existingQuestionsOfType = existingQuestionsByType[qaType.id] || [];
+
+        // Generate English Q&A content with existing questions context
         const qaContent = await generateEnglishQA(
           {
             headline: article.headline,
@@ -171,7 +201,8 @@ serve(async (req) => {
             meta_description: article.meta_description,
             funnel_stage: article.funnel_stage,
           },
-          qaType
+          qaType,
+          existingQuestionsOfType
         );
 
         // Create new hreflang_group_id for this Q&A (translations will join this group)
@@ -195,7 +226,7 @@ serve(async (req) => {
           featured_image_alt: article.featured_image_alt,
           hreflang_group_id: hreflangGroupId,
           source_language: 'en',
-          translations: { en: slug }, // Only self for now - will be completed in Phase 2
+          translations: { en: slug },
           related_qas: [],
           internal_links: [],
           funnel_stage: article.funnel_stage,
@@ -218,6 +249,12 @@ serve(async (req) => {
 
         console.log(`[GenerateEnglishQAs] ✅ Created ${qaType.id}: ${insertedQA.slug} (hreflang: ${hreflangGroupId})`);
         createdQAs.push(insertedQA.id);
+
+        // Add to existing questions to prevent collision in same batch
+        if (!existingQuestionsByType[qaType.id]) {
+          existingQuestionsByType[qaType.id] = [];
+        }
+        existingQuestionsByType[qaType.id].push(qaContent.question);
 
       } catch (error) {
         console.error(`[GenerateEnglishQAs] Error for ${qaType.id}:`, error);
