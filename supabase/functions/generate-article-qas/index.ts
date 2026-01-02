@@ -30,6 +30,47 @@ const QA_TYPES = [
 ];
 
 /**
+ * Repair malformed JSON from AI responses
+ */
+function repairJSON(text: string): string {
+  let fixed = text;
+  // Remove trailing commas before closing braces/brackets
+  fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+  // Fix common Unicode issues
+  fixed = fixed.replace(/[\u201C\u201D]/g, '"');
+  fixed = fixed.replace(/[\u2018\u2019]/g, "'");
+  // Remove control characters
+  fixed = fixed.replace(/[\x00-\x1F\x7F]/g, '');
+  return fixed;
+}
+
+/**
+ * Parse JSON with repair attempts
+ */
+function parseJSONSafe(content: string): any | null {
+  // Clean markdown fences
+  let cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) return null;
+  
+  const jsonStr = cleaned.slice(start, end + 1);
+  
+  // Try direct parse first
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    // Try with repairs
+    try {
+      return JSON.parse(repairJSON(jsonStr));
+    } catch (e2) {
+      console.error('[ParseJSON] Failed even after repair');
+      return null;
+    }
+  }
+}
+
+/**
  * Generate original English Q&A content
  */
 async function generateEnglishQA(
@@ -95,15 +136,10 @@ Return ONLY valid JSON:
     }
 
     const data = await response.json();
-    let content = data.choices?.[0]?.message?.content || '';
-    
-    // Parse JSON
-    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const start = content.indexOf('{');
-    const end = content.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('No JSON found');
-    
-    return JSON.parse(content.slice(start, end + 1));
+    const content = data.choices?.[0]?.message?.content || '';
+    const parsed = parseJSONSafe(content);
+    if (!parsed) throw new Error('Failed to parse JSON');
+    return parsed;
     
   } catch (error) {
     console.error(`[Generate] Failed English/${qaType.id}:`, error);
@@ -181,19 +217,38 @@ Return ONLY valid JSON:
     }
 
     const data = await response.json();
-    let content = data.choices?.[0]?.message?.content || '';
-    
-    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const start = content.indexOf('{');
-    const end = content.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('No JSON found');
-    
-    return JSON.parse(content.slice(start, end + 1));
+    const content = data.choices?.[0]?.message?.content || '';
+    const parsed = parseJSONSafe(content);
+    if (!parsed) throw new Error('Failed to parse JSON');
+    return parsed;
     
   } catch (error) {
     console.error(`[Translate] Failed ${targetLanguage}:`, error);
     return null;
   }
+}
+
+/**
+ * Translate with retry logic (3 attempts with exponential backoff)
+ */
+async function translateWithRetry(
+  englishQA: any,
+  targetLanguage: string,
+  apiKey: string,
+  maxRetries = 3
+): Promise<any | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await translateQA(englishQA, targetLanguage, apiKey);
+    if (result) return result;
+    
+    if (attempt < maxRetries) {
+      const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      console.log(`[Translate] Retry ${attempt}/${maxRetries} for ${targetLanguage} in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  console.error(`[Translate] All ${maxRetries} attempts failed for ${targetLanguage}`);
+  return null;
 }
 
 /**
@@ -309,6 +364,17 @@ serve(async (req) => {
 
     console.log(`[Generate] Found sibling articles in: ${Object.keys(articlesByLang).join(', ')}`);
 
+    // Check for existing Q&As for this article to enable continuation
+    const { data: existingQAs } = await supabase
+      .from('qa_pages')
+      .select('qa_type, language')
+      .eq('source_article_id', englishArticle.id);
+    
+    const existingSet = new Set(
+      (existingQAs || []).map(qa => `${qa.qa_type}:${qa.language}`)
+    );
+    console.log(`[Generate] Found ${existingQAs?.length || 0} existing Q&As for this article`);
+
     const sourceContent = {
       headline: englishArticle.headline,
       content: englishArticle.detailed_content || englishArticle.meta_description || '',
@@ -318,12 +384,20 @@ serve(async (req) => {
     const results = {
       created: 0,
       failed: 0,
+      skipped: 0,
       qaPages: [] as any[],
       hreflangGroups: [] as string[],
     };
 
     // Process 4 Q&A types
     for (const qaType of QA_TYPES) {
+      // Check if English Q&A for this type already exists
+      if (existingSet.has(`${qaType.id}:en`)) {
+        console.log(`[Generate] Skipping ${qaType.id} - already exists for this article`);
+        results.skipped += 10;
+        continue;
+      }
+      
       console.log(`\n[Generate] ===== Starting ${qaType.id} =====`);
       
       // Step 1: Generate English Q&A (original content)
@@ -378,19 +452,18 @@ serve(async (req) => {
       // Rate limiting delay
       await new Promise(r => setTimeout(r, 1000));
 
-      // Step 3: Translate to 9 other languages
+      // Step 3: Translate to 9 other languages (with retry)
       for (const lang of NON_ENGLISH_LANGUAGES) {
         console.log(`[Translate] Translating ${qaType.id} to ${lang}...`);
         
-        const translatedQA = await translateQA({
+        const translatedQA = await translateWithRetry({
           question_main: englishQA.question_main,
           answer_main: englishQA.answer_main,
           meta_title: englishQA.meta_title || '',
           meta_description: englishQA.meta_description || '',
           speakable_answer: englishQA.speakable_answer || '',
           slug: englishQA.slug || qaType.id,
-        }, lang, '');
-
+        }, lang, '', 3);
         if (translatedQA) {
           const langArticle = articlesByLang[lang];
           const langSlug = `${translatedQA.slug || `${qaType.id}-${lang}`}`.replace(/--+/g, '-').substring(0, 80);
@@ -477,7 +550,7 @@ serve(async (req) => {
     }
 
     console.log(`\n[Generate] ===== Complete! =====`);
-    console.log(`[Generate] Created: ${results.created}, Failed: ${results.failed}`);
+    console.log(`[Generate] Created: ${results.created}, Skipped: ${results.skipped}, Failed: ${results.failed}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -485,6 +558,7 @@ serve(async (req) => {
       articleHeadline: englishArticle.headline,
       clusterId: englishArticle.cluster_id,
       created: results.created,
+      skipped: results.skipped,
       failed: results.failed,
       expected: QA_TYPES.length * 10, // 4 types × 10 languages = 40
       hreflangGroups: results.hreflangGroups,
