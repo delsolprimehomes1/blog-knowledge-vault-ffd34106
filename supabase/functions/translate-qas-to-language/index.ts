@@ -341,14 +341,31 @@ serve(async (req) => {
       // Batch translate all Q&As in this batch
       const translations = await translateQABatch(qaContents, targetLanguage);
       console.log(`[TranslateQAs] Received ${translations.length} translations`);
+      console.log(`[TranslateQAs] Sent IDs: ${qaContents.map(q => q.id).join(', ')}`);
+      console.log(`[TranslateQAs] Received IDs: ${translations.map(t => t.id).join(', ')}`);
 
       // Create translation lookup by ID
       const translationMap = new Map(translations.map(t => [t.id, t]));
 
       // Insert each translated Q&A (may be from different articles)
-      for (const englishQA of qaGroup) {
-        const translation = translationMap.get(englishQA.id);
+      for (let i = 0; i < qaGroup.length; i++) {
+        const englishQA = qaGroup[i];
+        let translation = translationMap.get(englishQA.id);
+        
+        // Fallback: If ID lookup fails but array lengths match, use index-based matching
+        if (!translation && translations.length === qaGroup.length) {
+          console.log(`[TranslateQAs] Using index-based fallback for ${englishQA.qa_type} (index ${i})`);
+          translation = translations[i];
+        }
+        
+        // Fallback for single item
+        if (!translation && qaGroup.length === 1 && translations.length === 1) {
+          console.log(`[TranslateQAs] Using single-item fallback for ${englishQA.qa_type}`);
+          translation = translations[0];
+        }
+        
         if (!translation) {
+          console.error(`[TranslateQAs] ❌ No translation found for ${englishQA.qa_type} (ID: ${englishQA.id})`);
           errors.push(`Missing translation for ${englishQA.qa_type}`);
           continue;
         }
