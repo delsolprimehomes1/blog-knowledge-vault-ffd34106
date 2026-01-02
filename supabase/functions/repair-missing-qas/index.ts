@@ -269,14 +269,13 @@ Return ONLY valid JSON with these fields:
         'Authorization': `Bearer ${lovableApiKey}`,
       },
       body: JSON.stringify({
-        // FIX 3: Correct model and parameters for GPT-5
         model: 'openai/gpt-5-mini',
         messages: [
           { role: 'system', content: 'You are a professional translator. Return only valid JSON.' },
           { role: 'user', content: prompt }
         ],
         max_completion_tokens: 2500,
-        // No temperature - not supported by GPT-5
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -322,17 +321,24 @@ async function translateAltText(
       body: JSON.stringify({
         model: 'openai/gpt-5-mini',
         messages: [
-          { role: 'system', content: `Translate to ${languageName}. Return ONLY the translation.` },
+          { role: 'system', content: `Translate to ${languageName}. Return JSON: {"translation": "your translation"}` },
           { role: 'user', content: altText }
         ],
         max_completion_tokens: 100,
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) return altText; // Fallback to original
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() || altText;
+    const content = data.choices?.[0]?.message?.content || '';
+    try {
+      const parsed = JSON.parse(content);
+      return parsed.translation || altText;
+    } catch {
+      return content.trim() || altText;
+    }
   } catch {
     return altText; // Fallback to original on error
   }
