@@ -124,7 +124,7 @@ Return a JSON object with "translations" array containing each translated Q&A wi
       max_tokens: 6000, // Increased for batch
       temperature: 0.3,
     }),
-  }, 60000); // 60 second timeout for batch
+  }, 120000); // 120 second timeout for batch (4 Q&As can take 60-90s)
 
   if (!response.ok) {
     const errorText = await response.text();
