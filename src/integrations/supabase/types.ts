@@ -2479,11 +2479,15 @@ export type Database = {
       qa_generation_jobs: {
         Row: {
           article_ids: string[] | null
+          article_results: Json | null
           article_status: Json | null
+          articles_completed: number | null
           cluster_id: string | null
           completed_at: string | null
+          completion_percent: number | null
           created_at: string | null
           current_article_headline: string | null
+          current_article_index: number | null
           current_language: string | null
           error: string | null
           generated_faq_pages: number | null
@@ -2498,16 +2502,22 @@ export type Database = {
           status: string
           total_articles: number | null
           total_faq_pages: number | null
+          total_qas_created: number | null
+          total_qas_failed: number | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           article_ids?: string[] | null
+          article_results?: Json | null
           article_status?: Json | null
+          articles_completed?: number | null
           cluster_id?: string | null
           completed_at?: string | null
+          completion_percent?: number | null
           created_at?: string | null
           current_article_headline?: string | null
+          current_article_index?: number | null
           current_language?: string | null
           error?: string | null
           generated_faq_pages?: number | null
@@ -2522,16 +2532,22 @@ export type Database = {
           status?: string
           total_articles?: number | null
           total_faq_pages?: number | null
+          total_qas_created?: number | null
+          total_qas_failed?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           article_ids?: string[] | null
+          article_results?: Json | null
           article_status?: Json | null
+          articles_completed?: number | null
           cluster_id?: string | null
           completed_at?: string | null
+          completion_percent?: number | null
           created_at?: string | null
           current_article_headline?: string | null
+          current_article_index?: number | null
           current_language?: string | null
           error?: string | null
           generated_faq_pages?: number | null
@@ -2546,6 +2562,8 @@ export type Database = {
           status?: string
           total_articles?: number | null
           total_faq_pages?: number | null
+          total_qas_created?: number | null
+          total_qas_failed?: number | null
           updated_at?: string | null
           user_id?: string | null
         }

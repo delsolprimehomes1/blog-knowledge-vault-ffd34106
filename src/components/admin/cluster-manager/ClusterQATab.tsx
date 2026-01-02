@@ -15,14 +15,15 @@ interface ClusterQATabProps {
   generatingQALanguage: { clusterId: string; lang: string } | null;
 }
 
+// Use database schema fields directly - these new columns were just added
 interface QAJob {
   id: string;
   status: string;
-  total_articles: number;
-  articles_completed: number;
-  total_qas_created: number;
-  total_qas_failed: number;
-  current_article_index: number;
+  total_articles: number | null;
+  articles_completed: number | null;
+  total_qas_created: number | null;
+  total_qas_failed: number | null;
+  current_article_index: number | null;
   current_article_headline: string | null;
   completion_percent: number | null;
   error: string | null;
@@ -67,13 +68,14 @@ export const ClusterQATab = ({
       }
 
       if (data) {
-        setActiveJob(data as QAJob);
+        const jobData = data as unknown as QAJob;
+        setActiveJob(jobData);
         
-        if (data.status === 'completed') {
-          toast.success(`Q&A generation complete! Created ${data.total_qas_created} Q&As`);
+        if (jobData.status === 'completed') {
+          toast.success(`Q&A generation complete! Created ${jobData.total_qas_created || 0} Q&As`);
           clearInterval(interval);
-        } else if (data.status === 'failed') {
-          toast.error(`Q&A generation failed: ${data.error}`);
+        } else if (jobData.status === 'failed') {
+          toast.error(`Q&A generation failed: ${jobData.error}`);
           clearInterval(interval);
         }
       }
@@ -95,7 +97,7 @@ export const ClusterQATab = ({
         .single();
 
       if (data) {
-        setActiveJob(data as QAJob);
+        setActiveJob(data as unknown as QAJob);
       }
     };
     
@@ -116,14 +118,14 @@ export const ClusterQATab = ({
         toast.success('Q&A generation started in background');
         
         // Fetch the job to start polling
-        const { data: jobData } = await supabase
+        const { data: jobResult } = await supabase
           .from('qa_generation_jobs')
           .select('*')
           .eq('id', data.jobId)
           .single();
           
-        if (jobData) {
-          setActiveJob(jobData as QAJob);
+        if (jobResult) {
+          setActiveJob(jobResult as unknown as QAJob);
         }
       }
     } catch (error) {
