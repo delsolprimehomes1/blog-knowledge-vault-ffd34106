@@ -87,7 +87,7 @@ function parseJSONSafe(content: string): any | null {
   }
 }
 
-// Retry wrapper with exponential backoff
+// Retry wrapper with longer exponential backoff
 async function translateWithRetry(
   englishQA: QAPage,
   targetLang: string,
@@ -102,7 +102,7 @@ async function translateWithRetry(
     }
     
     if (attempt < maxRetries) {
-      const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      const delay = attempt * 3000; // 3s, 6s, 9s - longer delays
       console.log(`[translateWithRetry] Retry ${attempt}/${maxRetries} for ${targetLang} in ${delay}ms...`);
       await new Promise(r => setTimeout(r, delay));
     }
@@ -230,6 +230,9 @@ serve(async (req) => {
 
         console.log(`[repair-missing-qas] Translating ${qa_type} Q&A to ${targetLang} for article ${translatedArticle.slug}`);
 
+        // Throttle: 500ms between all calls to reduce AI Gateway load
+        await new Promise(r => setTimeout(r, 500));
+
         // Translate with retry logic
         const translatedQA = await translateWithRetry(englishQA, targetLang, lovableApiKey);
 
@@ -355,8 +358,8 @@ Return ONLY valid JSON with these fields:
 
     // Rate limit handling
     if (response.status === 429) {
-      console.log(`[translateQA] Rate limited for ${targetLang}, waiting 10s...`);
-      await new Promise(r => setTimeout(r, 10000));
+      console.log(`[translateQA] Rate limited for ${targetLang}, waiting 15s...`);
+      await new Promise(r => setTimeout(r, 15000));
       return null; // Will be retried by translateWithRetry
     }
 
