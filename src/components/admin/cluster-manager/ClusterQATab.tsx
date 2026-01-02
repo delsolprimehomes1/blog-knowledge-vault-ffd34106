@@ -85,7 +85,7 @@ export const ClusterQATab = ({
   // Two-phase generation state
   const [englishArticles, setEnglishArticles] = useState<EnglishArticle[]>([]);
   const [generatingArticle, setGeneratingArticle] = useState<string | null>(null);
-  const [completedArticles, setCompletedArticles] = useState<Set<string>>(new Set());
+  const [articleQACounts, setArticleQACounts] = useState<Record<string, number>>({}); // Tracks Q&As per article
   const [translatingLanguages, setTranslatingLanguages] = useState<Set<string>>(new Set()); // ENHANCEMENT 3: Parallel
   const [completedLanguages, setCompletedLanguages] = useState<Set<string>>(new Set());
   const [englishQACount, setEnglishQACount] = useState(0);
@@ -160,12 +160,7 @@ export const ClusterQATab = ({
           articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
         }
       });
-      
-      const completed = new Set<string>();
-      Object.entries(articleCounts).forEach(([articleId, count]) => {
-        if (count >= 4) completed.add(articleId);
-      });
-      setCompletedArticles(completed);
+      setArticleQACounts(articleCounts);
     }
 
     const completedLangs = new Set<string>();
@@ -249,8 +244,11 @@ export const ClusterQATab = ({
       if (error) throw error;
 
       if (data?.success) {
-        toast.success(`Article ${position} complete! Created ${data.created}/4 Q&As`);
-        setCompletedArticles(prev => new Set([...prev, article.id]));
+        toast.success(`Article ${position}: ${data.created} Q&As created`);
+        setArticleQACounts(prev => ({
+          ...prev,
+          [article.id]: (prev[article.id] || 0) + (data.created || 0)
+        }));
         setEnglishQACount(prev => prev + (data.created || 0));
         
         await queryClient.invalidateQueries({ queryKey: ['clusters'] });
@@ -406,7 +404,8 @@ export const ClusterQATab = ({
       // Phase 1: Generate English Q&As for all 6 articles
       for (let i = 0; i < englishArticles.length; i++) {
         const article = englishArticles[i];
-        if (completedArticles.has(article.id)) {
+        const articleCount = articleQACounts[article.id] || 0;
+        if (articleCount >= 4) {
           setGenerateAllProgress(`Phase 1: Article ${i + 1}/6 (skipped - already done)`);
           continue;
         }
@@ -740,7 +739,10 @@ export const ClusterQATab = ({
           {/* Article Buttons */}
           <div className="grid grid-cols-1 gap-2">
             {englishArticles.map((article, index) => {
-              const isCompleted = completedArticles.has(article.id);
+              const qaCount = articleQACounts[article.id] || 0;
+              const isCompleted = qaCount >= 4;
+              const isPartial = qaCount > 0 && qaCount < 4;
+              const missingCount = 4 - qaCount;
               const isGenerating = generatingArticle === article.id;
               
               return (
@@ -748,8 +750,10 @@ export const ClusterQATab = ({
                   key={article.id} 
                   className={`flex items-center gap-3 p-3 rounded-lg border ${
                     isCompleted 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' 
-                      : 'bg-background border-border'
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                      : isPartial
+                        ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+                        : 'bg-background border-border'
                   }`}
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300">
@@ -757,13 +761,14 @@ export const ClusterQATab = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{article.headline}</p>
+                    {qaCount > 0 && <span className="text-xs text-muted-foreground">{qaCount}/4 Q&As</span>}
                   </div>
                   <Button
                     size="sm"
-                    variant={isCompleted ? "outline" : "default"}
+                    variant={isCompleted ? "outline" : isPartial ? "secondary" : "default"}
                     disabled={isGenerating || isCompleted || !!generatingArticle || isGeneratingAll}
                     onClick={() => handleGenerateEnglishQAs(article, index + 1)}
-                    className={isCompleted ? 'border-green-400 text-green-700' : 'bg-blue-600 hover:bg-blue-700'}
+                    className={isCompleted ? 'border-green-400 text-green-700' : isPartial ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-blue-600 hover:bg-blue-700'}
                   >
                     {isGenerating ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -771,6 +776,11 @@ export const ClusterQATab = ({
                       <>
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Done
+                      </>
+                    ) : isPartial ? (
+                      <>
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Generate {missingCount} Missing
                       </>
                     ) : (
                       'Generate 4 Q&As'
