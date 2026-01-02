@@ -291,11 +291,22 @@ export const ClusterQATab = ({
           : `${targetLanguage.toUpperCase()}: ${data.translated}/24 Q&As translated`;
         toast.success(msg);
         
-        setCompletedLanguages(prev => new Set([...prev, targetLanguage]));
+        // Fetch actual count from database instead of adding (fixes phantom count bug)
+        const { count: actualCount } = await supabase
+          .from('qa_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', cluster.cluster_id)
+          .eq('language', targetLanguage);
+
+        const newCount = actualCount || 0;
         setLanguageQACounts(prev => ({
           ...prev,
-          [targetLanguage]: (prev[targetLanguage] || 0) + (data.translated || 0),
+          [targetLanguage]: newCount,
         }));
+
+        if (newCount >= 24) {
+          setCompletedLanguages(prev => new Set([...prev, targetLanguage]));
+        }
         
         await queryClient.invalidateQueries({ queryKey: ['clusters'] });
         return true;
