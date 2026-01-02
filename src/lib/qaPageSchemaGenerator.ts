@@ -2,6 +2,36 @@ import { QAPage, Author } from '@/types/blog';
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
+/**
+ * Truncate answer at sentence boundary for AI-safe schema
+ */
+function truncateAtSentence(text: string, maxLength: number = 600): string {
+  const MIN_LENGTH = 160;
+  
+  if (text.length <= maxLength) {
+    return text;
+  }
+  
+  const truncated = text.substring(0, maxLength);
+  
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclamation = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+  
+  const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
+  
+  if (lastSentenceEnd >= MIN_LENGTH) {
+    return text.substring(0, lastSentenceEnd + 1).trim();
+  }
+  
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace >= MIN_LENGTH) {
+    return text.substring(0, lastSpace).trim() + '.';
+  }
+  
+  return text.substring(0, MIN_LENGTH).trim() + '...';
+}
+
 const LANGUAGE_CODE_MAP: Record<string, string> = {
   en: 'en-GB',
   de: 'de-DE',
@@ -40,7 +70,7 @@ export function generateQAPageSchema(qaPage: QAPage) {
       'answerCount': 1,
       'acceptedAnswer': {
         '@type': 'Answer',
-        'text': qaPage.speakable_answer || qaPage.answer_main?.replace(/<[^>]*>/g, '').slice(0, 500),
+        'text': qaPage.speakable_answer || truncateAtSentence(qaPage.answer_main?.replace(/<[^>]*>/g, '') || '', 600),
         'inLanguage': langCode,
       },
     },

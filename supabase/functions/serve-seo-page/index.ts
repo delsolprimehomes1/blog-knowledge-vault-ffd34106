@@ -244,6 +244,36 @@ function generateHreflangTags(siblings: HreflangSibling[], currentLang: string, 
 // Removed FAQPage schema generation - QAPage schema is sufficient for single Q&A pages
 // FAQPage was causing redundancy with QAPage
 
+/**
+ * Truncate answer at sentence boundary for AI-safe schema
+ */
+function truncateAtSentence(text: string, maxLength: number = 600): string {
+  const MIN_LENGTH = 160;
+  
+  if (text.length <= maxLength) {
+    return text;
+  }
+  
+  const truncated = text.substring(0, maxLength);
+  
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclamation = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+  
+  const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
+  
+  if (lastSentenceEnd >= MIN_LENGTH) {
+    return text.substring(0, lastSentenceEnd + 1).trim();
+  }
+  
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace >= MIN_LENGTH) {
+    return text.substring(0, lastSpace).trim() + '.';
+  }
+  
+  return text.substring(0, MIN_LENGTH).trim() + '...';
+}
+
 function generateQAPageSchema(metadata: PageMetadata): string {
   // For QA pages, use QAPage schema (not FAQPage)
   // Content must be in the page's language (no hardcoded English)
@@ -261,7 +291,7 @@ function generateQAPageSchema(metadata: PageMetadata): string {
       "answerCount": 1,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": metadata.speakable_answer?.replace(/<[^>]*>/g, '').slice(0, 500) || '',
+        "text": truncateAtSentence(metadata.speakable_answer?.replace(/<[^>]*>/g, '') || '', 600),
         "inLanguage": LOCALE_MAP[metadata.language] || metadata.language,
       }
     }
