@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
@@ -76,102 +75,9 @@ const LocationIndex = () => {
     return <NotFound />;
   }
 
-  const BASE_URL = "https://www.delsolprimehomes.com";
-
-  // Generate CollectionPage schema
-  const locationIndexSchema = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "CollectionPage",
-        "@id": `${BASE_URL}/locations/${citySlug}#collectionpage`,
-        "name": `${cityName} Property & Lifestyle Guide | Del Sol Prime Homes`,
-        "description": `Comprehensive guides about ${cityName}, Costa del Sol. Property buying, best areas, cost of living, and more.`,
-        "url": `${BASE_URL}/locations/${citySlug}`,
-        "isPartOf": {
-          "@id": `${BASE_URL}/#website`
-        },
-        "about": {
-          "@type": "Place",
-          "name": cityName
-        },
-        "inLanguage": "en-GB",
-        "mainEntity": {
-          "@type": "ItemList",
-          "numberOfItems": pages.length,
-          "itemListElement": pages.map((page, idx) => ({
-            "@type": "ListItem",
-            "position": idx + 1,
-            "name": page.headline,
-            "url": `${BASE_URL}/locations/${citySlug}/${page.topic_slug}`
-          }))
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL },
-          { "@type": "ListItem", "position": 2, "name": "Locations", "item": `${BASE_URL}/locations` },
-          { "@type": "ListItem", "position": 3, "name": cityName, "item": `${BASE_URL}/locations/${citySlug}` }
-        ]
-      },
-      {
-        "@type": "WebPage",
-        "@id": `${BASE_URL}/locations/${citySlug}#webpage`,
-        "url": `${BASE_URL}/locations/${citySlug}`,
-        "name": `${cityName} Property & Lifestyle Guide`,
-        "description": `Everything you need to know about living, investing, and buying property in ${cityName}, Costa del Sol.`,
-        "isPartOf": {
-          "@id": `${BASE_URL}/#website`
-        },
-        "inLanguage": "en-GB",
-        "speakable": {
-          "@type": "SpeakableSpecification",
-          "cssSelector": ["h1", ".location-intro"]
-        }
-      },
-      {
-        "@type": "Place",
-        "name": cityName,
-        "description": `${cityName} - Costa del Sol destination for property and lifestyle`,
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": cityName,
-          "addressRegion": "Andalucía",
-          "addressCountry": "ES"
-        }
-      }
-    ]
-  };
-
   return (
     <>
-      <Helmet>
-        <html lang={lang} />
-        <title>{cityName} Property & Lifestyle Guide | Del Sol Prime Homes</title>
-        <meta name="description" content={`Comprehensive guides about ${cityName}, Costa del Sol. Property buying, best areas, cost of living, and more.`} />
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <link rel="canonical" href={`${BASE_URL}/locations/${citySlug}`} />
-        
-        {/* Open Graph */}
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={`${cityName} Property & Lifestyle Guide`} />
-        <meta property="og:description" content={`Everything you need to know about ${cityName}, Costa del Sol.`} />
-        <meta property="og:url" content={`${BASE_URL}/locations/${citySlug}`} />
-        {cityImage && <meta property="og:image" content={cityImage} />}
-        {cityImage && <meta property="og:image:alt" content={`${cityName} - Costa del Sol`} />}
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        
-        {/* Hreflang */}
-        <link rel="alternate" hrefLang="en-GB" href={`${BASE_URL}/locations/${citySlug}`} />
-        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/locations/${citySlug}`} />
-        
-        {/* JSON-LD Schema */}
-        <script type="application/ld+json">
-          {JSON.stringify(locationIndexSchema)}
-        </script>
-      </Helmet>
-
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <Header variant="solid" />
       
       <main className="min-h-screen">

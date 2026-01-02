@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 import { Header } from '@/components/home/Header';
 import { Footer } from '@/components/home/Footer';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, ChevronRight, Sparkles, HelpCircle, BookOpen, TrendingUp, Scale, MapPin, BarChart3, Building } from 'lucide-react';
-import { generateQAIndexSpeakableSchema, generateOrganizationSchema } from '@/lib/qaPageSchemaGenerator';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -101,118 +99,9 @@ export default function QAIndex() {
 
   const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '');
 
-  // Generate ItemList + CollectionPage schema for SEO/AI discovery
-  const qaIndexSchema = useMemo(() => {
-    if (qaPages.length === 0) return null;
-    
-    return {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "CollectionPage",
-          "@id": "https://www.delsolprimehomes.com/qa#collectionpage",
-          "name": "Questions & Answers",
-          "description": "Expert answers to common questions about buying property in Costa del Sol, Spain",
-          "url": `https://www.delsolprimehomes.com/${lang}/qa`,
-          "isPartOf": {
-            "@id": "https://www.delsolprimehomes.com/#website"
-          },
-          "about": {
-            "@type": "Thing",
-            "name": "Costa del Sol Real Estate"
-          },
-          "mainEntity": {
-            "@type": "ItemList",
-            "@id": `https://www.delsolprimehomes.com/${lang}/qa#itemlist`,
-            "name": "Costa del Sol Property Q&A",
-            "description": "Expert answers to common questions about buying property in Costa del Sol, Spain",
-            "numberOfItems": qaPages.length,
-            "itemListElement": qaPages.slice(0, 100).map((qa: any, index: number) => ({
-              "@type": "ListItem",
-              "position": index + 1,
-              "name": qa.question_main,
-              "url": `https://www.delsolprimehomes.com/${lang}/qa/${qa.slug}`
-            }))
-          }
-        },
-        {
-          "@type": "BreadcrumbList",
-          "@id": `https://www.delsolprimehomes.com/${lang}/qa#breadcrumb`,
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": "https://www.delsolprimehomes.com/"
-            },
-            {
-              "@type": "ListItem",
-              "position": 2,
-              "name": "Q&A",
-              "item": `https://www.delsolprimehomes.com/${lang}/qa`
-            }
-          ]
-        },
-        {
-          "@type": "WebPage",
-          "@id": `https://www.delsolprimehomes.com/${lang}/qa#webpage`,
-          "url": `https://www.delsolprimehomes.com/${lang}/qa`,
-          "name": "Questions & Answers | Del Sol Prime Homes",
-          "description": "Find answers to common questions about buying property in Costa del Sol, Spain. Expert advice on real estate, legal processes, and lifestyle.",
-          "isPartOf": {
-            "@id": "https://www.delsolprimehomes.com/#website"
-          },
-          "inLanguage": "en-GB"
-        },
-        // Add speakable and organization schemas
-        generateQAIndexSpeakableSchema(),
-        generateOrganizationSchema()
-      ]
-    };
-  }, [qaPages]);
-
   return (
     <>
-      <Helmet>
-        <html lang={lang} />
-        <title>Questions & Answers | Del Sol Prime Homes</title>
-        <meta
-          name="description"
-          content="Find answers to common questions about buying property in Costa del Sol, Spain. Expert advice on real estate, legal processes, and lifestyle."
-        />
-        <link rel="canonical" href={`https://www.delsolprimehomes.com/${lang}/qa`} />
-        
-        {/* SEO Meta Tags */}
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <meta name="author" content="Del Sol Prime Homes" />
-        <meta name="keywords" content="Costa del Sol FAQ, Spain property questions, buying property Spain, real estate Q&A, Spanish property guide" />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content="Questions & Answers | Del Sol Prime Homes" />
-        <meta property="og:description" content="Expert answers to common questions about buying property in Costa del Sol, Spain." />
-        <meta property="og:url" content={`https://www.delsolprimehomes.com/${lang}/qa`} />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        <meta property="og:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
-        <meta property="og:locale" content="en_GB" />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Q&A | Del Sol Prime Homes" />
-        <meta name="twitter:description" content="Expert answers to Costa del Sol property questions." />
-        <meta name="twitter:image" content="https://www.delsolprimehomes.com/assets/qa-og.png" />
-        
-        {/* Hreflang for languages */}
-        <link rel="alternate" hrefLang="en-GB" href={`https://www.delsolprimehomes.com/${lang}/qa`} />
-        <link rel="alternate" hrefLang="x-default" href="https://www.delsolprimehomes.com/en/qa" />
-        
-        {qaIndexSchema && (
-          <script type="application/ld+json">
-            {JSON.stringify(qaIndexSchema)}
-          </script>
-        )}
-      </Helmet>
-
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <Header variant="transparent" />
 
       <main className="min-h-screen bg-background">
@@ -276,13 +165,13 @@ export default function QAIndex() {
                     <SelectItem value="all" className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white">
                       All Languages
                     </SelectItem>
-                    {LANGUAGES.map((lang) => (
+                    {LANGUAGES.map((l) => (
                       <SelectItem 
-                        key={lang.code} 
-                        value={lang.code}
+                        key={l.code} 
+                        value={l.code}
                         className="text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
                       >
-                        {lang.name}
+                        {l.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -374,19 +263,15 @@ export default function QAIndex() {
                           <Icon className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-                            {category}
-                          </h2>
-                          <p className="text-muted-foreground text-sm">
-                            {qas.length} question{qas.length !== 1 ? 's' : ''}
-                          </p>
+                          <h2 className="text-2xl font-display font-bold text-foreground">{category}</h2>
+                          <p className="text-muted-foreground text-sm">{qas.length} {qas.length === 1 ? 'question' : 'questions'}</p>
                         </div>
                       </div>
-
+                      
                       {/* Q&A Cards Grid */}
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                        {qas.map((qa: any, index: number) => (
-                          <QACard key={qa.id} qa={qa} index={index} stripHtml={stripHtml} />
+                        {qas.map((qa: any) => (
+                          <QACard key={qa.id} qa={qa} lang={lang} stripHtml={stripHtml} />
                         ))}
                       </div>
                     </div>
@@ -394,10 +279,10 @@ export default function QAIndex() {
                 })}
               </div>
             ) : (
-              // Show flat grid when specific category is selected
+              // Show flat list when specific category is selected
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                {filteredQas.map((qa: any, index: number) => (
-                  <QACard key={qa.id} qa={qa} index={index} stripHtml={stripHtml} />
+                {filteredQas.map((qa: any) => (
+                  <QACard key={qa.id} qa={qa} lang={lang} stripHtml={stripHtml} />
                 ))}
               </div>
             )}
@@ -410,61 +295,38 @@ export default function QAIndex() {
   );
 }
 
-// Extracted Q&A Card component for reuse - uses qa.language for correct folder
-function QACard({ qa, index, stripHtml }: { qa: any; index: number; stripHtml: (html: string) => string }) {
+// Q&A Card Component
+function QACard({ qa, lang, stripHtml }: { qa: any; lang: string; stripHtml: (html: string) => string }) {
   return (
-    <Link 
-      to={`/${qa.language}/qa/${qa.slug}`}
-      className="animate-fade-in-up"
-      style={{ animationDelay: `${index * 0.05}s` }}
+    <Link
+      to={`/${lang}/qa/${qa.slug}`}
+      className="group block"
     >
-      <Card className="overflow-hidden h-full border-0 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 group">
+      <Card className="h-full overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
         {qa.featured_image_url && (
-          <div className="relative h-52 overflow-hidden">
+          <div className="relative h-48 overflow-hidden">
             <img
               src={qa.featured_image_url}
-              alt={qa.featured_image_alt || qa.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              alt={qa.featured_image_alt || qa.question_main}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-prime-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            {/* Badges */}
-            <div className="absolute top-4 left-4 flex gap-2">
-              <Badge className="bg-white/95 backdrop-blur-sm text-prime-950 border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold">
-                {qa.language.toUpperCase()}
-              </Badge>
-              <Badge
-                className={`backdrop-blur-sm border-0 shadow-sm px-3 py-1 font-nav text-xs font-semibold ${
-                  qa.qa_type === 'core' 
-                    ? 'bg-prime-gold text-prime-950' 
-                    : 'bg-white/95 text-prime-950'
-                }`}
-              >
-                {qa.qa_type === 'core' ? 'Guide' : 'Tips'}
-              </Badge>
-            </div>
-
-            {/* Category Badge */}
-            {qa.category && (
-              <div className="absolute bottom-4 left-4">
-                <Badge className="bg-prime-950/80 backdrop-blur-sm text-white border-0 shadow-sm px-3 py-1 font-nav text-xs">
-                  {qa.category}
-                </Badge>
-              </div>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </div>
         )}
         <CardContent className="p-6">
-          <h2 className="font-display font-bold text-lg text-foreground mb-3 line-clamp-2 group-hover:text-prime-gold transition-colors duration-300">
-            {qa.question_main}
-          </h2>
-          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-5">
-            {stripHtml(qa.answer_main).substring(0, 150)}...
+          <h3 className="text-lg font-display font-semibold text-foreground mb-3 line-clamp-2 group-hover:text-prime-gold transition-colors">
+            {qa.question_main || qa.title}
+          </h3>
+          <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
+            {stripHtml(qa.speakable_answer || qa.answer_main || '').substring(0, 150)}...
           </p>
-          <div className="flex items-center text-prime-gold text-sm font-nav font-semibold group-hover:translate-x-1 transition-transform duration-300">
-            Read Answer
-            <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs">
+              {qa.category || 'General'}
+            </Badge>
+            <Badge variant="outline" className="text-xs uppercase">
+              {qa.language}
+            </Badge>
           </div>
         </CardContent>
       </Card>

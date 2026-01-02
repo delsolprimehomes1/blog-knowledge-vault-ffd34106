@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogHeader } from "@/components/blog-index/BlogHeader";
 import { FilterBar } from "@/components/blog-index/FilterBar";
@@ -131,18 +130,6 @@ const BlogIndex = () => {
   const isLoading = categoriesLoading || articlesLoading;
   const hasError = categoriesError || articlesError;
 
-  // Hreflang configuration
-  const baseUrl = "https://www.delsolprimehomes.com";
-  const blogUrl = `${baseUrl}/${lang}/blog`;
-  
-  const langToHreflang: Record<string, string> = {
-    en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
-    fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', da: 'da-DK', hu: 'hu-HU',
-    fi: 'fi-FI', no: 'nb-NO'
-  };
-
-  const activeLanguages = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
-  
   const totalArticles = articlesData?.totalCount || 0;
   const totalPages = Math.ceil(totalArticles / ARTICLES_PER_PAGE);
   const currentArticles = articlesData?.articles || [];
@@ -161,87 +148,9 @@ const BlogIndex = () => {
     );
   }
 
-  // Generate CollectionPage schema
-  const blogIndexSchema = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "CollectionPage",
-        "@id": `${blogUrl}#collectionpage`,
-        "name": "Blog | Del Sol Prime Homes",
-        "description": "Explore our latest articles about Costa del Sol real estate, property guides, and market insights.",
-        "url": blogUrl,
-        "isPartOf": {
-          "@id": `${baseUrl}/#website`
-        },
-        "about": {
-          "@type": "Thing",
-          "name": "Costa del Sol Real Estate"
-        },
-        "inLanguage": "en-GB"
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
-          { "@type": "ListItem", "position": 2, "name": "Blog", "item": blogUrl }
-        ]
-      },
-      {
-        "@type": "WebPage",
-        "@id": `${blogUrl}#webpage`,
-        "url": blogUrl,
-        "name": "Blog | Del Sol Prime Homes",
-        "description": "Expert articles about Costa del Sol real estate, property guides, and market insights.",
-        "isPartOf": {
-          "@id": `${baseUrl}/#website`
-        },
-        "inLanguage": "en-GB",
-        "speakable": {
-          "@type": "SpeakableSpecification",
-          "cssSelector": [".blog-header h1", ".blog-header p"]
-        }
-      }
-    ]
-  };
-
   return (
     <>
-      <Helmet>
-        <html lang={lang} />
-        <title>Blog | Del Sol Prime Homes</title>
-        <meta name="description" content="Explore our latest articles about Costa del Sol real estate, property guides, and market insights." />
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <link rel="canonical" href={blogUrl} />
-        
-        {/* Open Graph */}
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="Blog | Del Sol Prime Homes" />
-        <meta property="og:description" content="Expert articles about Costa del Sol real estate, property guides, and market insights." />
-        <meta property="og:url" content={blogUrl} />
-        <meta property="og:image" content={`${baseUrl}/assets/logo-new.png`} />
-        <meta property="og:image:alt" content="Del Sol Prime Homes Blog" />
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        
-        {/* Hreflang tags - each language points to its own blog index URL */}
-        {activeLanguages.map(langCode => (
-          <link 
-            key={langCode} 
-            rel="alternate" 
-            hrefLang={langToHreflang[langCode] || langCode} 
-            href={`${baseUrl}/${langCode}/blog`} 
-          />
-        ))}
-        
-        {/* x-default points to English */}
-        <link rel="alternate" hrefLang="x-default" href={`${baseUrl}/en/blog`} />
-        
-        {/* JSON-LD Schema */}
-        <script type="application/ld+json">
-          {JSON.stringify(blogIndexSchema)}
-        </script>
-      </Helmet>
-      
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <div className="container mx-auto px-4 py-12">
         <BlogHeader totalCount={totalArticles} />
 

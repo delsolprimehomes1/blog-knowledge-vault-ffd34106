@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
@@ -14,41 +13,11 @@ import { ComparisonFAQ } from "@/components/comparison/ComparisonFAQ";
 import { CTASection } from "@/components/comparison/CTASection";
 import { TLDRSummary } from "@/components/comparison/TLDRSummary";
 import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
-import { ComparisonHreflangTags } from "@/components/ComparisonHreflangTags";
-import { generateAllComparisonSchemas, ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
+import { ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const BASE_URL = 'https://www.delsolprimehomes.com';
-
-// Language code to hreflang mapping
-const langToHreflang: Record<string, string> = {
-  en: 'en-GB',
-  de: 'de-DE',
-  nl: 'nl-NL',
-  fr: 'fr-FR',
-  pl: 'pl-PL',
-  sv: 'sv-SE',
-  da: 'da-DK',
-  hu: 'hu-HU',
-  fi: 'fi-FI',
-  no: 'nb-NO'
-};
-
-// Language to OG locale mapping
-const langToOgLocale: Record<string, string> = {
-  en: 'en_GB',
-  de: 'de_DE',
-  nl: 'nl_NL',
-  fr: 'fr_FR',
-  pl: 'pl_PL',
-  sv: 'sv_SE',
-  da: 'da_DK',
-  hu: 'hu_HU',
-  fi: 'fi_FI',
-  no: 'nb_NO'
-};
 export default function ComparisonPage() {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
   const navigate = useNavigate();
@@ -71,60 +40,12 @@ export default function ComparisonPage() {
     enabled: !!slug,
   });
 
-  const { data: author } = useQuery({
-    queryKey: ['author', comparison?.author_id],
-    queryFn: async () => {
-      if (!comparison?.author_id) return null;
-      const { data } = await supabase
-        .from('authors')
-        .select('name, job_title, linkedin_url')
-        .eq('id', comparison.author_id)
-        .single();
-      return data;
-    },
-    enabled: !!comparison?.author_id,
-  });
-
-  // Fetch sibling pages for hreflang (same option_a + option_b + niche, different language)
-  const { data: siblingPages } = useQuery({
-    queryKey: ['comparison-siblings', comparison?.option_a, comparison?.option_b, comparison?.niche],
-    queryFn: async () => {
-      if (!comparison) return [];
-      const query = supabase
-        .from('comparison_pages')
-        .select('slug, language')
-        .eq('option_a', comparison.option_a)
-        .eq('option_b', comparison.option_b)
-        .eq('status', 'published');
-      
-      if (comparison.niche) {
-        query.eq('niche', comparison.niche);
-      }
-      
-      const { data } = await query;
-      return data || [];
-    },
-    enabled: !!comparison,
-  });
-
   // Redirect if URL language doesn't match content language
   useEffect(() => {
     if (comparison && comparison.language && comparison.language !== lang) {
       navigate(`/${comparison.language}/compare/${comparison.slug}`, { replace: true });
     }
   }, [comparison, lang, navigate]);
-
-  // Get OG locale - use content language, not URL lang
-  const ogLocale = useMemo(() => {
-    if (!comparison?.language) return 'en_GB';
-    return langToOgLocale[comparison.language] || 'en_GB';
-  }, [comparison?.language]);
-
-  // Canonical URL - use database value or construct from content language
-  const canonicalUrl = useMemo(() => {
-    if (!comparison) return '';
-    return (comparison as any).canonical_url || `${BASE_URL}/${comparison.language || 'en'}/compare/${comparison.slug}`;
-  }, [comparison]);
 
   const handleChatClick = () => {
     const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
@@ -161,7 +82,6 @@ export default function ComparisonPage() {
     );
   }
 
-  const schemas = generateAllComparisonSchemas(comparison, author);
   const quickComparisonTable = Array.isArray(comparison.quick_comparison_table) 
     ? comparison.quick_comparison_table 
     : [];
@@ -171,77 +91,7 @@ export default function ComparisonPage() {
 
   return (
     <>
-      {/* New hreflang tags component using hreflang_group_id */}
-      <ComparisonHreflangTags
-        id={comparison.id}
-        hreflang_group_id={(comparison as any).hreflang_group_id || null}
-        language={comparison.language || 'en'}
-        slug={comparison.slug}
-        canonical_url={(comparison as any).canonical_url || null}
-        source_language={(comparison as any).source_language || 'en'}
-      />
-      
-      <Helmet>
-        <html lang={comparison.language || lang || 'en'} />
-        <title>{comparison.meta_title}</title>
-        <meta name="description" content={comparison.meta_description} />
-        <link rel="canonical" href={canonicalUrl} />
-        
-        {/* Open Graph - Enhanced */}
-        <meta property="og:title" content={comparison.meta_title} />
-        <meta property="og:description" content={comparison.meta_description} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="article" />
-        <meta property="og:locale" content={ogLocale} />
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        {comparison.featured_image_url && (
-          <>
-            <meta property="og:image" content={comparison.featured_image_url} />
-            <meta property="og:image:alt" content={comparison.featured_image_alt || `${comparison.option_a} vs ${comparison.option_b} comparison`} />
-          </>
-        )}
-        
-        {/* Twitter Cards */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@delsolprimehomes" />
-        <meta name="twitter:title" content={comparison.meta_title} />
-        <meta name="twitter:description" content={comparison.meta_description} />
-        {comparison.featured_image_url && (
-          <meta name="twitter:image" content={comparison.featured_image_url} />
-        )}
-        
-        {/* Hreflang Tags are handled by ComparisonHreflangTags component above */}
-        
-        {/* JSON-LD Schemas */}
-        <script type="application/ld+json">
-          {JSON.stringify(schemas.article)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(schemas.speakable)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(schemas.breadcrumb)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(schemas.organization)}
-        </script>
-        {schemas.faq && (
-          <script type="application/ld+json">
-            {JSON.stringify(schemas.faq)}
-          </script>
-        )}
-        {schemas.image && (
-          <script type="application/ld+json">
-            {JSON.stringify(schemas.image)}
-          </script>
-        )}
-        {schemas.table && (
-          <script type="application/ld+json">
-            {JSON.stringify(schemas.table)}
-          </script>
-        )}
-      </Helmet>
-
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <Header />
       
       <main className="min-h-screen bg-background">

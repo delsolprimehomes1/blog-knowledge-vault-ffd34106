@@ -1,7 +1,6 @@
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Helmet } from 'react-helmet';
 import { Header } from '@/components/home/Header';
 import { Footer } from '@/components/home/Footer';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,23 +10,8 @@ import { ContentLanguageSwitcher } from '@/components/ContentLanguageSwitcher';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronRight, Calendar, ExternalLink, Sparkles, Linkedin, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
-import { QAHreflangTags } from '@/components/QAHreflangTags';
 import { Author, QAEntity } from '@/types/blog';
 import { translations } from '@/i18n/translations';
-
-const LANGUAGE_CODE_MAP: Record<string, string> = {
-  en: 'en-GB',
-  de: 'de-DE',
-  nl: 'nl-NL',
-  fr: 'fr-FR',
-  pl: 'pl-PL',
-  sv: 'sv-SE',
-  da: 'da-DK',
-  hu: 'hu-HU',
-  fi: 'fi-FI',
-  no: 'nb-NO',
-};
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
@@ -164,9 +148,6 @@ export default function QAPage() {
   if (error || !qaPage) {
     return (
       <>
-        <Helmet>
-          <meta name="robots" content="noindex,nofollow" />
-        </Helmet>
         <Header variant="solid" />
         <main className="min-h-screen bg-background pt-24 pb-16">
           <div className="container mx-auto px-4 text-center">
@@ -193,70 +174,13 @@ export default function QAPage() {
 
   const author: Author | null = qaPage.authors || null;
   const relatedQas: QAEntity[] = (qaPage.related_qas as unknown as QAEntity[]) || [];
-  const schemas = generateAllQASchemas(qaPage as any, author);
-  const langCode = LANGUAGE_CODE_MAP[qaPage.language] || qaPage.language;
   
   // Get translations for current language
   const t = translations[qaPage.language as keyof typeof translations] || translations.en;
-  
-  // Use canonical_url from database if set, otherwise fallback to generated URL
-  const canonicalUrl = qaPage.canonical_url || `${BASE_URL}/${lang}/qa/${qaPage.slug}`;
-  
-  // Calculate x-default URL - should point to English version
-  const translationsMap = (qaPage.translations as Record<string, string>) || {};
-  const englishSlug = qaPage.language === 'en' 
-    ? qaPage.slug 
-    : (translationsMap.en || qaPage.slug);
-  const xDefaultUrl = `${BASE_URL}/en/qa/${englishSlug}`;
 
   return (
     <>
-      {/* New hreflang tags component using hreflang_group_id */}
-      <QAHreflangTags
-        id={qaPage.id}
-        hreflang_group_id={(qaPage as any).hreflang_group_id || null}
-        language={qaPage.language}
-        slug={qaPage.slug}
-        canonical_url={qaPage.canonical_url || null}
-        source_language={(qaPage as any).source_language || 'en'}
-      />
-      
-      <Helmet>
-        <html lang={langCode} />
-        <title>{qaPage.meta_title}</title>
-        <meta name="description" content={qaPage.meta_description} />
-        <link rel="canonical" href={canonicalUrl} />
-        
-        {/* SEO Meta Tags */}
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <meta name="author" content={author?.name || "Del Sol Prime Homes"} />
-        <meta name="keywords" content={`${qaPage.category || 'Costa del Sol'}, Spain property, real estate Q&A, ${qaPage.question_main.split(' ').slice(0, 5).join(' ')}`} />
-        
-        {/* Open Graph */}
-        <meta property="og:title" content={qaPage.meta_title} />
-        <meta property="og:description" content={qaPage.meta_description} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        <meta property="og:locale" content={langCode.replace('-', '_')} />
-        {qaPage.featured_image_url && (
-          <meta property="og:image" content={qaPage.featured_image_url} />
-        )}
-        {qaPage.featured_image_url && <meta property="og:image:alt" content={qaPage.featured_image_alt || qaPage.question_main} />}
-        <meta property="article:published_time" content={qaPage.created_at} />
-        <meta property="article:modified_time" content={qaPage.updated_at} />
-        {author && <meta property="article:author" content={author.name} />}
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={qaPage.meta_title} />
-        <meta name="twitter:description" content={qaPage.meta_description} />
-        {qaPage.featured_image_url && <meta name="twitter:image" content={qaPage.featured_image_url} />}
-
-        {/* JSON-LD - uses FAQPage schema type for SEO */}
-        <script type="application/ld+json">{JSON.stringify(schemas)}</script>
-      </Helmet>
-
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <Header variant="transparent" />
 
       <main className="min-h-screen bg-background">
@@ -394,10 +318,10 @@ export default function QAPage() {
                     value={`qa-${index}`}
                     className="border border-border/50 rounded-xl px-5 bg-white/50 data-[state=open]:bg-white data-[state=open]:shadow-lg data-[state=open]:border-prime-gold/30 transition-all duration-300"
                   >
-                    <AccordionTrigger className="text-left py-5 font-display font-semibold text-foreground hover:text-prime-gold hover:no-underline transition-colors [&[data-state=open]]:text-prime-gold">
+                    <AccordionTrigger className="text-left font-display font-semibold text-foreground hover:text-prime-gold hover:no-underline py-4">
                       {qa.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
+                    <AccordionContent className="text-muted-foreground pb-4">
                       {qa.answer}
                     </AccordionContent>
                   </AccordionItem>
@@ -408,50 +332,50 @@ export default function QAPage() {
 
           {/* Source Article Link */}
           {qaPage.source_article_slug && (
-            <Card className="mb-14 border-0 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.1)] transition-all duration-300 group animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
-              <CardContent className="p-0">
-                <div className="flex flex-col sm:flex-row">
-                  <div className="sm:w-1/3 h-32 sm:h-auto bg-gradient-to-br from-prime-900 to-prime-950 flex items-center justify-center">
-                    <div className="text-center p-4">
-                      <div className="w-12 h-12 bg-prime-gold/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <ExternalLink className="h-6 w-6 text-prime-gold" />
-                      </div>
-                      <span className="text-white/60 text-sm font-nav">{t.qa.fullArticle}</span>
+            <section className="mb-14 animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
+              <Card className="border border-prime-gold/20 bg-gradient-to-r from-prime-gold/5 to-transparent overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-prime-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ExternalLink className="h-5 w-5 text-prime-gold" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-display font-semibold text-foreground mb-2">{t.qa.fullArticle}</h3>
+                      <p className="text-muted-foreground text-sm mb-3">{t.qa.readFullArticle}</p>
+                      <Link 
+                        to={`/${qaPage.language}/blog/${qaPage.source_article_slug}`}
+                        className="inline-flex items-center text-prime-gold font-nav font-medium hover:underline"
+                      >
+                        {t.qa.basedOnGuide}
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Link>
                     </div>
                   </div>
-                  <div className="flex-1 p-6 flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground mb-2">{t.qa.basedOnGuide}</p>
-                    <Link
-                      to={`/${qaPage.language}/blog/${qaPage.source_article_slug}`}
-                      className="inline-flex items-center text-lg font-display font-semibold text-foreground group-hover:text-prime-gold transition-colors"
-                    >
-                      {t.qa.readFullArticle}
-                      <ChevronRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform text-prime-gold" />
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </section>
           )}
 
-          {/* Language Switcher */}
-          {siblings.length > 0 && (
-            <div className="border-t border-border/50 pt-10 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
-              <p className="text-sm text-muted-foreground mb-4 font-nav uppercase tracking-wider">{t.qa.availableInOtherLanguages}</p>
-              <div className="flex flex-wrap gap-3">
-                {siblings
-                  .filter((s: any) => s.slug !== qaPage.slug)
-                  .map((sibling: any) => (
-                    <Link
-                      key={sibling.slug}
-                      to={`/${sibling.language}/qa/${sibling.slug}`}
-                      className="inline-flex items-center px-5 py-2.5 bg-white border border-border/50 rounded-full text-sm font-nav font-medium text-foreground hover:border-prime-gold hover:text-prime-gold hover:shadow-md hover:shadow-prime-gold/10 transition-all duration-300"
-                    >
-                      {sibling.language.toUpperCase()}
-                    </Link>
-                  ))}
+          {/* Language Switcher for Translations */}
+          {siblings.length > 1 && (
+            <section className="pt-8 border-t border-border/50 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
+              <h3 className="text-lg font-display font-semibold text-foreground mb-4">{t.qa.availableInOtherLanguages}</h3>
+              <div className="flex flex-wrap gap-2">
+                {siblings.map((sibling: any) => (
+                  <Link
+                    key={sibling.slug}
+                    to={`/${sibling.language}/qa/${sibling.slug}`}
+                    className={`px-4 py-2 rounded-full text-sm font-nav font-medium transition-all duration-300 ${
+                      sibling.language === qaPage.language
+                        ? 'bg-prime-gold text-prime-950'
+                        : 'bg-muted text-muted-foreground hover:bg-prime-gold/10 hover:text-prime-gold'
+                    }`}
+                  >
+                    {sibling.language.toUpperCase()}
+                  </Link>
+                ))}
               </div>
-            </div>
+            </section>
           )}
         </div>
       </main>

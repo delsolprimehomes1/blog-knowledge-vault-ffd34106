@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
@@ -12,7 +11,7 @@ import { WhyChooseUs } from "@/components/about/WhyChooseUs";
 import { Credentials } from "@/components/about/Credentials";
 import { AboutFAQ } from "@/components/about/AboutFAQ";
 import { AboutCTA } from "@/components/about/AboutCTA";
-import { generateAllAboutSchemas, type AboutPageContent } from "@/lib/aboutSchemaGenerator";
+import { type AboutPageContent } from "@/lib/aboutSchemaGenerator";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
@@ -74,9 +73,6 @@ const About = () => {
       }
     : defaultContent;
 
-  // Generate JSON-LD schema
-  const jsonLdSchema = generateAllAboutSchemas(pageContent);
-
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -95,31 +91,7 @@ const About = () => {
 
   return (
     <>
-      <Helmet>
-        {/* SEO Meta */}
-        <title>{pageContent.meta_title}</title>
-        <meta name="description" content={pageContent.meta_description} />
-        <link rel="canonical" href={pageContent.canonical_url} />
-
-        {/* Open Graph */}
-        <meta property="og:title" content={pageContent.meta_title} />
-        <meta property="og:description" content={pageContent.meta_description} />
-        <meta property="og:url" content={pageContent.canonical_url} />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png" />
-
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageContent.meta_title} />
-        <meta name="twitter:description" content={pageContent.meta_description} />
-
-        {/* Language */}
-        <html lang={pageContent.language} />
-
-        {/* JSON-LD Schema - Comprehensive for AI understanding */}
-        <script type="application/ld+json">{jsonLdSchema}</script>
-      </Helmet>
-
+      {/* SEO tags are handled by server/edge - no Helmet needed */}
       <div className="min-h-screen bg-background">
         <Header />
 
