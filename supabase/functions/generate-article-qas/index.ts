@@ -29,6 +29,9 @@ const QA_TYPES = [
   { id: 'legal', prompt: 'LEGAL/REGULATORY question - What legal requirements, regulations, or documentation is needed?' },
 ];
 
+// Timeout threshold - save progress before edge function times out (2.5 min with 30s buffer)
+const TIMEOUT_THRESHOLD_MS = 150000;
+
 /**
  * Repair malformed JSON from AI responses
  */
@@ -330,6 +333,7 @@ async function updateJobAndContinue(
       article_results: articleResults,
       completion_percent: completionPercent,
       updated_at: new Date().toISOString(),
+      resume_from_qa_type: null, // Clear any resume state
       ...(isComplete ? {
         status: 'completed',
         completed_at: new Date().toISOString(),
@@ -387,6 +391,68 @@ async function updateJobAndContinue(
 }
 
 /**
+ * Graceful timeout handler - save progress and trigger self-continuation
+ */
+async function handleTimeoutSave(
+  supabase: any,
+  jobId: string,
+  articleIndex: number,
+  englishArticleId: string,
+  resumeFromQAType: string,
+  createdPages: any[],
+  results: { created: number; failed: number; skipped: number },
+  dryRun: boolean
+) {
+  console.log(`[Timeout] ⏰ Saving progress at ${resumeFromQAType} before timeout...`);
+  
+  // Insert any created pages so far
+  if (!dryRun && createdPages.length > 0) {
+    console.log(`[Timeout] Inserting ${createdPages.length} pages before save...`);
+    const { error: insertError } = await supabase
+      .from('qa_pages')
+      .insert(createdPages);
+    
+    if (insertError) {
+      console.error('[Timeout] Insert error during save:', insertError);
+    }
+  }
+
+  // Update job with stalled status and resume point
+  await supabase
+    .from('qa_generation_jobs')
+    .update({
+      status: 'stalled',
+      resume_from_qa_type: resumeFromQAType,
+      current_article_index: articleIndex,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+
+  console.log(`[Timeout] Triggering self-continuation for article ${articleIndex}, resume from ${resumeFromQAType}...`);
+
+  // Fire self-continuation with resume point
+  fetch(
+    `${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-article-qas`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({
+        englishArticleId,
+        jobId,
+        articleIndex,
+        resumeFromQAType,
+        dryRun,
+      }),
+    }
+  ).catch(err => {
+    console.error('[Timeout] Fire-and-forget error (ignored):', err);
+  });
+}
+
+/**
  * Main handler - English-first workflow:
  * 1. Generate 4 English Q&As (original content)
  * 2. Translate each to 9 languages
@@ -398,8 +464,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Track start time for timeout detection
+  const startTime = Date.now();
+
   try {
-    const { englishArticleId, jobId, articleIndex = 0, dryRun = false } = await req.json();
+    const { englishArticleId, jobId, articleIndex = 0, dryRun = false, resumeFromQAType } = await req.json();
     
     if (!englishArticleId) {
       return new Response(JSON.stringify({ error: 'englishArticleId required' }), {
@@ -416,6 +485,20 @@ serve(async (req) => {
     console.log(`[Generate] Starting English-first Q&A generation for: ${englishArticleId}`);
     if (jobId) {
       console.log(`[Generate] Part of job ${jobId}, article index ${articleIndex}`);
+    }
+    if (resumeFromQAType) {
+      console.log(`[Generate] RESUMING from Q&A type: ${resumeFromQAType}`);
+      
+      // Mark job as running again (from stalled)
+      if (jobId) {
+        await supabase
+          .from('qa_generation_jobs')
+          .update({
+            status: 'running',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+      }
     }
 
     // Get English article as source
@@ -509,8 +592,48 @@ serve(async (req) => {
       hreflangGroups: [] as string[],
     };
 
+    // Determine which Q&A types to process (for resume support)
+    let startProcessing = !resumeFromQAType;
+
     // Process 4 Q&A types
     for (const qaType of QA_TYPES) {
+      // Resume support: skip types until we reach the resume point
+      if (resumeFromQAType && qaType.id === resumeFromQAType) {
+        startProcessing = true;
+        console.log(`[Generate] Resuming from ${qaType.id}`);
+      }
+      if (!startProcessing) {
+        console.log(`[Generate] Skipping ${qaType.id} (already processed before timeout)`);
+        continue;
+      }
+
+      // Check for timeout BEFORE starting expensive operations
+      const elapsed = Date.now() - startTime;
+      if (elapsed > TIMEOUT_THRESHOLD_MS && jobId) {
+        console.log(`[Generate] ⏰ Timeout approaching (${elapsed}ms elapsed) - saving progress...`);
+        await handleTimeoutSave(
+          supabase,
+          jobId,
+          articleIndex,
+          englishArticleId,
+          qaType.id,
+          results.qaPages,
+          results,
+          dryRun
+        );
+        
+        return new Response(JSON.stringify({
+          success: true,
+          partial: true,
+          reason: 'timeout_save',
+          resumeFromQAType: qaType.id,
+          created: results.created,
+          message: `Saved progress, continuing from ${qaType.id}...`,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       // Check if English Q&A for this type already exists
       if (existingSet.has(`${qaType.id}:en`)) {
         console.log(`[Generate] Skipping ${qaType.id} - already exists for this article`);
@@ -575,6 +698,52 @@ serve(async (req) => {
 
       // Step 3: Translate to 9 other languages (with retry)
       for (const lang of NON_ENGLISH_LANGUAGES) {
+        // Check timeout before each translation
+        const translationElapsed = Date.now() - startTime;
+        if (translationElapsed > TIMEOUT_THRESHOLD_MS && jobId) {
+          console.log(`[Generate] ⏰ Timeout during ${qaType.id}/${lang} - saving progress...`);
+          
+          // Save pages created so far (including partial translations)
+          for (const page of createdPages) {
+            page.translations = { ...languageSlugs };
+          }
+          
+          if (!dryRun && createdPages.length > 0) {
+            const { error: insertError } = await supabase
+              .from('qa_pages')
+              .insert(createdPages);
+            if (insertError) {
+              console.error('[Timeout] Insert error:', insertError);
+            }
+          }
+          
+          // Continue from next Q&A type (this one is partial, will be skipped on resume)
+          const nextQATypeIndex = QA_TYPES.findIndex(q => q.id === qaType.id) + 1;
+          const nextQAType = QA_TYPES[nextQATypeIndex]?.id || null;
+          
+          if (nextQAType) {
+            await handleTimeoutSave(
+              supabase,
+              jobId,
+              articleIndex,
+              englishArticleId,
+              nextQAType,
+              [],
+              results,
+              dryRun
+            );
+          }
+          
+          return new Response(JSON.stringify({
+            success: true,
+            partial: true,
+            reason: 'timeout_during_translation',
+            created: results.created,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         console.log(`[Translate] Translating ${qaType.id} to ${lang}...`);
         
         const translatedQA = await translateWithRetry({
