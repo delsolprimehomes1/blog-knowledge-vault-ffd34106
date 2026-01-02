@@ -26,7 +26,7 @@ serve(async (req) => {
     
     const { data: stalledJobs, error: fetchError } = await supabase
       .from('qa_generation_jobs')
-      .select('id, cluster_id, article_ids, languages, resume_from_article_index, resume_from_language, generated_faq_pages, total_faq_pages, status, updated_at, current_article_headline')
+      .select('id, cluster_id, article_ids, languages, resume_from_article_index, resume_from_language, generated_faq_pages, total_faq_pages, status, updated_at, current_article_headline, current_article_index, articles_completed')
       .eq('status', 'running')
       .lt('updated_at', thresholdTime);
 
@@ -38,7 +38,7 @@ serve(async (req) => {
     // Also check for jobs that were marked as stalled but never resumed
     const { data: previouslyStalledJobs, error: stalledFetchError } = await supabase
       .from('qa_generation_jobs')
-      .select('id, cluster_id, article_ids, languages, resume_from_article_index, resume_from_language, generated_faq_pages, total_faq_pages, status, updated_at, current_article_headline')
+      .select('id, cluster_id, article_ids, languages, resume_from_article_index, resume_from_language, generated_faq_pages, total_faq_pages, status, updated_at, current_article_headline, current_article_index, articles_completed')
       .eq('status', 'stalled')
       .lt('updated_at', thresholdTime);
 
@@ -98,8 +98,29 @@ serve(async (req) => {
         try {
           console.log(`[AutoResume] Auto-resuming job ${job.id}...`);
           
-          const { data: resumeData, error: resumeError } = await supabase.functions.invoke('generate-qa-pages', {
-            body: { resumeJobId: job.id },
+          // Get article_ids and current index from job
+          const articleIds = job.article_ids || [];
+          const resumeFromIndex = job.resume_from_article_index ?? job.current_article_index ?? 0;
+          const nextArticleId = articleIds[resumeFromIndex];
+          
+          if (!nextArticleId) {
+            console.error(`[AutoResume] No article at index ${resumeFromIndex} for job ${job.id}`);
+            results.push({
+              jobId: job.id,
+              clusterId: job.cluster_id,
+              status: 'resume_failed',
+              error: `No article at index ${resumeFromIndex}`,
+            });
+            continue;
+          }
+          
+          // Call the correct function: generate-article-qas (not generate-qa-pages)
+          const { data: resumeData, error: resumeError } = await supabase.functions.invoke('generate-article-qas', {
+            body: { 
+              englishArticleId: nextArticleId,
+              jobId: job.id,
+              articleIndex: resumeFromIndex,
+            },
           });
 
           if (resumeError) {
@@ -111,12 +132,13 @@ serve(async (req) => {
               error: resumeError.message,
             });
           } else {
-            console.log(`[AutoResume] Successfully resumed job ${job.id}`);
+            console.log(`[AutoResume] Successfully resumed job ${job.id} at article index ${resumeFromIndex}`);
             results.push({
               jobId: job.id,
               clusterId: job.cluster_id,
               status: 'resumed',
-              resumedFromArticle: resumeData?.resumeFromArticle || job.resume_from_article_index,
+              resumedFromArticle: resumeFromIndex,
+              articleId: nextArticleId,
             });
           }
         } catch (err) {
