@@ -50,37 +50,62 @@ function generateSlug(headline: string, qaType: string, lang: string): string {
   return `${baseSlug}-${qaType}-${lang}-${suffix}`;
 }
 
-async function translateQAContent(
-  englishQA: { question_main: string; answer_main: string; meta_title: string; meta_description: string; speakable_answer: string; featured_image_alt: string },
-  targetLanguage: string
-): Promise<{
+// ENHANCEMENT 1: Batch translation - translate 4 Q&As in a single API call
+interface QAContent {
+  id: string;
+  question_main: string;
+  answer_main: string;
+  meta_title: string;
+  meta_description: string;
+  speakable_answer: string;
+  featured_image_alt: string;
+  qa_type: string;
+}
+
+interface TranslatedQAContent {
+  id: string;
   question: string;
   answer: string;
   metaTitle: string;
   metaDescription: string;
   speakableAnswer: string;
   imageAlt: string;
-}> {
+}
+
+async function translateQABatch(
+  qaGroup: QAContent[],
+  targetLanguage: string
+): Promise<TranslatedQAContent[]> {
   const languageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
   
-  const prompt = `Translate this Q&A content to ${languageName}. Keep the same meaning and SEO optimization.
+  const qasForPrompt = qaGroup.map(qa => ({
+    id: qa.id,
+    question: qa.question_main,
+    answer: qa.answer_main,
+    metaTitle: qa.meta_title,
+    metaDescription: qa.meta_description,
+    speakableAnswer: qa.speakable_answer,
+    imageAlt: qa.featured_image_alt || 'Property image',
+  }));
 
-ENGLISH CONTENT:
-Question: ${englishQA.question_main}
-Answer: ${englishQA.answer_main}
-Meta Title: ${englishQA.meta_title}
-Meta Description: ${englishQA.meta_description}
-Speakable: ${englishQA.speakable_answer}
-Image Alt: ${englishQA.featured_image_alt}
+  const prompt = `Translate these ${qaGroup.length} Q&As to ${languageName}. Keep the same meaning and SEO optimization.
 
-Return JSON with translations:
+INPUT Q&As:
+${JSON.stringify(qasForPrompt, null, 2)}
+
+Return a JSON object with "translations" array containing each translated Q&A with SAME id:
 {
-  "question": "translated question",
-  "answer": "translated answer (keep same structure and length)",
-  "metaTitle": "translated SEO title under 60 chars",
-  "metaDescription": "translated SEO description 120-155 chars",
-  "speakableAnswer": "translated voice answer under 100 words",
-  "imageAlt": "translated alt text"
+  "translations": [
+    {
+      "id": "original-id-here",
+      "question": "translated question",
+      "answer": "translated answer (keep same structure and length)",
+      "metaTitle": "translated SEO title under 60 chars",
+      "metaDescription": "translated SEO description 120-155 chars",
+      "speakableAnswer": "translated voice answer under 100 words",
+      "imageAlt": "translated alt text"
+    }
+  ]
 }`;
 
   const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
@@ -96,10 +121,10 @@ Return JSON with translations:
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2000,
+      max_tokens: 6000, // Increased for batch
       temperature: 0.3,
     }),
-  }, 30000); // 30 second timeout
+  }, 60000); // 60 second timeout for batch
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -113,7 +138,8 @@ Return JSON with translations:
     throw new Error('No content in translation response');
   }
 
-  return JSON.parse(content);
+  const parsed = JSON.parse(content);
+  return parsed.translations || [];
 }
 
 serve(async (req) => {
@@ -138,7 +164,7 @@ serve(async (req) => {
       throw new Error(`Invalid target language: ${targetLanguage}. Valid: ${Object.keys(LANGUAGE_NAMES).join(', ')}`);
     }
 
-    console.log(`[TranslateQAs] Starting translation to ${targetLanguage} for cluster ${clusterId}`);
+    console.log(`[TranslateQAs] Starting BATCH translation to ${targetLanguage} for cluster ${clusterId}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -150,25 +176,27 @@ serve(async (req) => {
       .select('*')
       .eq('cluster_id', clusterId)
       .eq('language', 'en')
-      .order('created_at', { ascending: true });
+      .order('source_article_id', { ascending: true })
+      .order('qa_type', { ascending: true });
 
     if (qaError || !englishQAs) {
       throw new Error(`Failed to fetch English Q&As: ${qaError?.message || 'No data'}`);
     }
 
-    console.log(`[TranslateQAs] Found ${englishQAs.length} English Q&As to translate`);
+    console.log(`[TranslateQAs] Found ${englishQAs.length} English Q&As`);
 
     if (englishQAs.length === 0) {
       return new Response(JSON.stringify({
         success: true,
         message: 'No English Q&As found to translate',
         translated: 0,
+        resumed: false,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check which Q&As already exist in target language
+    // ENHANCEMENT 2: Resume capability - check which Q&As already exist
     const { data: existingQAs } = await supabase
       .from('qa_pages')
       .select('hreflang_group_id')
@@ -176,7 +204,8 @@ serve(async (req) => {
       .eq('language', targetLanguage);
 
     const existingGroupIds = new Set((existingQAs || []).map(q => q.hreflang_group_id));
-    console.log(`[TranslateQAs] ${existingGroupIds.size} Q&As already exist in ${targetLanguage}`);
+    const skippedCount = existingGroupIds.size;
+    console.log(`[TranslateQAs] ${skippedCount} Q&As already exist in ${targetLanguage} (will skip)`);
 
     // Filter to only translate missing Q&As
     const qasToTranslate = englishQAs.filter(qa => !existingGroupIds.has(qa.hreflang_group_id));
@@ -187,7 +216,8 @@ serve(async (req) => {
         success: true,
         message: `All Q&As already translated to ${targetLanguage}`,
         translated: 0,
-        alreadyExist: existingGroupIds.size,
+        skipped: skippedCount,
+        resumed: skippedCount > 0,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -218,87 +248,112 @@ serve(async (req) => {
     const translatedQAs: string[] = [];
     const errors: string[] = [];
 
-    // Translate each Q&A
-    for (let i = 0; i < qasToTranslate.length; i++) {
-      const englishQA = qasToTranslate[i];
+    // ENHANCEMENT 1: Group Q&As by source_article_id for batch translation (4 Q&As per batch)
+    const articleGroups = new Map<string, typeof qasToTranslate>();
+    for (const qa of qasToTranslate) {
+      const key = qa.source_article_id || 'unknown';
+      if (!articleGroups.has(key)) {
+        articleGroups.set(key, []);
+      }
+      articleGroups.get(key)!.push(qa);
+    }
+
+    console.log(`[TranslateQAs] Processing ${articleGroups.size} article batches (4 Q&As each)`);
+
+    let batchIndex = 0;
+    for (const [articleId, qaGroup] of articleGroups) {
+      batchIndex++;
       
       try {
-        console.log(`[TranslateQAs] Translating ${i + 1}/${qasToTranslate.length}: ${englishQA.qa_type}`);
+        console.log(`[TranslateQAs] Batch ${batchIndex}/${articleGroups.size}: Translating ${qaGroup.length} Q&As for article ${articleId}`);
 
-        // Find the target language article
-        const englishArticleHreflang = englishArticleHreflangMap.get(englishQA.source_article_id);
+        // Find the target language article for this batch
+        const englishArticleHreflang = englishArticleHreflangMap.get(articleId);
         const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
 
         if (!targetArticle) {
-          console.warn(`[TranslateQAs] No ${targetLanguage} article found for Q&A ${englishQA.id}`);
-          errors.push(`No ${targetLanguage} article for: ${englishQA.title}`);
+          console.warn(`[TranslateQAs] No ${targetLanguage} article found for article ${articleId}`);
+          errors.push(`No ${targetLanguage} article for batch ${batchIndex}`);
           continue;
         }
 
-        // Translate content
-        const translated = await translateQAContent(
-          {
-            question_main: englishQA.question_main,
-            answer_main: englishQA.answer_main,
-            meta_title: englishQA.meta_title,
-            meta_description: englishQA.meta_description,
-            speakable_answer: englishQA.speakable_answer,
-            featured_image_alt: englishQA.featured_image_alt || 'Property image',
-          },
-          targetLanguage
-        );
+        // Prepare Q&As for batch translation
+        const qaContents: QAContent[] = qaGroup.map(qa => ({
+          id: qa.id,
+          question_main: qa.question_main,
+          answer_main: qa.answer_main,
+          meta_title: qa.meta_title,
+          meta_description: qa.meta_description,
+          speakable_answer: qa.speakable_answer,
+          featured_image_alt: qa.featured_image_alt || 'Property image',
+          qa_type: qa.qa_type,
+        }));
 
-        const slug = generateSlug(translated.question, englishQA.qa_type, targetLanguage);
+        // Batch translate all Q&As for this article
+        const translations = await translateQABatch(qaContents, targetLanguage);
+        console.log(`[TranslateQAs] Received ${translations.length} translations`);
 
-        // Build translated Q&A record
-        const translatedQARecord = {
-          source_article_id: targetArticle.id,
-          cluster_id: clusterId,
-          language: targetLanguage,
-          qa_type: englishQA.qa_type,
-          title: translated.question,
-          slug: slug,
-          question_main: translated.question,
-          answer_main: translated.answer,
-          meta_title: translated.metaTitle,
-          meta_description: translated.metaDescription,
-          speakable_answer: translated.speakableAnswer,
-          featured_image_url: englishQA.featured_image_url,
-          featured_image_alt: translated.imageAlt,
-          hreflang_group_id: englishQA.hreflang_group_id, // JOIN the same group!
-          source_language: 'en',
-          translations: {}, // Will be synced after all insertions
-          related_qas: [],
-          internal_links: englishQA.internal_links || [],
-          funnel_stage: englishQA.funnel_stage,
-          status: 'published',
-          source_article_slug: targetArticle.slug,
-        };
+        // Create translation lookup by ID
+        const translationMap = new Map(translations.map(t => [t.id, t]));
 
-        // Insert translated Q&A
-        const { data: insertedQA, error: insertError } = await supabase
-          .from('qa_pages')
-          .insert(translatedQARecord)
-          .select('id')
-          .single();
+        // Insert each translated Q&A
+        for (const englishQA of qaGroup) {
+          const translation = translationMap.get(englishQA.id);
+          if (!translation) {
+            errors.push(`Missing translation for ${englishQA.qa_type}`);
+            continue;
+          }
 
-        if (insertError) {
-          console.error(`[TranslateQAs] Insert error:`, insertError);
-          errors.push(`${englishQA.qa_type}: ${insertError.message}`);
-          continue;
+          const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
+
+          const translatedQARecord = {
+            source_article_id: targetArticle.id,
+            cluster_id: clusterId,
+            language: targetLanguage,
+            qa_type: englishQA.qa_type,
+            title: translation.question,
+            slug: slug,
+            question_main: translation.question,
+            answer_main: translation.answer,
+            meta_title: translation.metaTitle,
+            meta_description: translation.metaDescription,
+            speakable_answer: translation.speakableAnswer,
+            featured_image_url: englishQA.featured_image_url,
+            featured_image_alt: translation.imageAlt,
+            hreflang_group_id: englishQA.hreflang_group_id,
+            source_language: 'en',
+            translations: {},
+            related_qas: [],
+            internal_links: englishQA.internal_links || [],
+            funnel_stage: englishQA.funnel_stage,
+            status: 'published',
+            source_article_slug: targetArticle.slug,
+          };
+
+          const { data: insertedQA, error: insertError } = await supabase
+            .from('qa_pages')
+            .insert(translatedQARecord)
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error(`[TranslateQAs] Insert error:`, insertError);
+            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+            continue;
+          }
+
+          console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A: ${slug}`);
+          translatedQAs.push(insertedQA.id);
         }
 
-        console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A: ${slug}`);
-        translatedQAs.push(insertedQA.id);
-
-        // Small delay between translations to avoid rate limits
-        if (i < qasToTranslate.length - 1) {
-          await new Promise(r => setTimeout(r, 500));
+        // Small delay between batches to avoid rate limits
+        if (batchIndex < articleGroups.size) {
+          await new Promise(r => setTimeout(r, 1000));
         }
 
       } catch (error) {
-        console.error(`[TranslateQAs] Error translating ${englishQA.qa_type}:`, error);
-        errors.push(`${englishQA.qa_type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error(`[TranslateQAs] Error in batch ${batchIndex}:`, error);
+        errors.push(`Batch ${batchIndex}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
@@ -309,7 +364,6 @@ serve(async (req) => {
     
     for (const groupId of affectedGroupIds) {
       try {
-        // Get all Q&As in this hreflang group
         const { data: groupQAs } = await supabase
           .from('qa_pages')
           .select('id, language, slug')
@@ -317,13 +371,11 @@ serve(async (req) => {
 
         if (!groupQAs || groupQAs.length === 0) continue;
 
-        // Build complete translations object
         const translations: Record<string, string> = {};
         for (const qa of groupQAs) {
           translations[qa.language] = qa.slug;
         }
 
-        // Update all Q&As in the group with complete translations
         const { error: updateError } = await supabase
           .from('qa_pages')
           .update({ translations })
@@ -339,6 +391,42 @@ serve(async (req) => {
       }
     }
 
+    // ENHANCEMENT 4: Update cluster progress in database
+    try {
+      const { data: progressData } = await supabase
+        .from('cluster_completion_progress')
+        .select('languages_status')
+        .eq('cluster_id', clusterId)
+        .single();
+
+      const currentStatus = (progressData?.languages_status as Record<string, unknown>) || {};
+      const qaGeneration = (currentStatus.qa_generation as Record<string, unknown>) || {};
+      const translatedLangs = (qaGeneration.languages_translated as string[]) || [];
+      
+      if (!translatedLangs.includes(targetLanguage)) {
+        translatedLangs.push(targetLanguage);
+      }
+
+      await supabase
+        .from('cluster_completion_progress')
+        .upsert({
+          cluster_id: clusterId,
+          languages_status: {
+            ...currentStatus,
+            qa_generation: {
+              ...qaGeneration,
+              languages_translated: translatedLangs,
+              last_updated: new Date().toISOString(),
+            },
+          },
+          last_updated: new Date().toISOString(),
+        });
+
+      console.log(`[TranslateQAs] Updated progress: ${translatedLangs.length} languages translated`);
+    } catch (error) {
+      console.error(`[TranslateQAs] Error updating progress:`, error);
+    }
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`[TranslateQAs] Complete in ${duration}s: ${translatedQAs.length}/${qasToTranslate.length} translated to ${targetLanguage}`);
 
@@ -347,7 +435,9 @@ serve(async (req) => {
       targetLanguage,
       translated: translatedQAs.length,
       expected: qasToTranslate.length,
-      alreadyExisted: existingGroupIds.size,
+      skipped: skippedCount,
+      resumed: skippedCount > 0,
+      batchesProcessed: articleGroups.size,
       errors: errors.length > 0 ? errors : undefined,
       durationSeconds: parseFloat(duration),
     }), {
