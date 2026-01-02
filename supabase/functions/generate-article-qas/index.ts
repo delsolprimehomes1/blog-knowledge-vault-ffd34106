@@ -32,6 +32,33 @@ const QA_TYPES = [
 // Timeout threshold - save progress before edge function times out (2.5 min with 30s buffer)
 const TIMEOUT_THRESHOLD_MS = 150000;
 
+// AI request timeout (60 seconds for generation, 45 seconds for translation)
+const GENERATE_TIMEOUT_MS = 60000;
+const TRANSLATE_TIMEOUT_MS = 45000;
+
+/**
+ * Fetch with timeout using AbortController
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(timeout);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
 /**
  * Repair malformed JSON from AI responses
  */
@@ -120,7 +147,7 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,7 +165,7 @@ Return ONLY valid JSON:
         max_completion_tokens: 2500,
         response_format: { type: "json_object" },
       }),
-    });
+    }, GENERATE_TIMEOUT_MS);
 
     if (!response.ok) {
       const status = response.status;
@@ -202,7 +229,7 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -220,7 +247,7 @@ Return ONLY valid JSON:
         max_completion_tokens: 2500,
         response_format: { type: "json_object" },
       }),
-    });
+    }, TRANSLATE_TIMEOUT_MS);
 
     if (!response.ok) {
       const status = response.status;
@@ -778,11 +805,8 @@ serve(async (req) => {
             : `${langSlug}-${lang}-${langUniqueId}`;
           languageSlugs[lang] = finalSlug;
 
-          // Translate alt text
-          const translatedAlt = await translateAltText(
-            englishArticle.featured_image_alt || 'Costa del Sol property',
-            lang
-          );
+          // Use article's existing translated alt text (no AI call needed - 50% reduction!)
+          const translatedAlt = langArticle?.featured_image_alt || englishArticle.featured_image_alt || 'Costa del Sol property';
 
           const pageData = {
             source_article_id: langArticle?.id || englishArticle.id,
@@ -865,6 +889,7 @@ serve(async (req) => {
           results.failed += pagesToInsert.length;
         } else {
           console.log(`[Generate] ✅ Inserted ${insertedData?.length || 0} pages for ${qaType.id}`);
+          console.log(`[Generate] ✅ VERIFIED: ${qaType.id} group ${hreflangGroupId} has ${insertedData?.length || 0}/10 members`);
           results.qaPages.push(...pagesToInsert.map((p, i) => ({
             ...p,
             id: insertedData?.[i]?.id,

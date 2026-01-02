@@ -64,6 +64,8 @@ export const ClusterQATab = ({
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [isRepairing, setIsRepairing] = useState(false);
   const [repairProgress, setRepairProgress] = useState<{ batch: number; created: number } | null>(null);
+  const [isGeneratingCleanSlate, setIsGeneratingCleanSlate] = useState(false);
+  const [cleanSlateProgress, setCleanSlateProgress] = useState<{ current: number; total: number; created: number } | null>(null);
   
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
@@ -364,6 +366,112 @@ export const ClusterQATab = ({
     }
   };
 
+  // CLEAN SLATE: Delete all Q&As and regenerate for all 6 articles
+  const handleGenerateCleanSlate = async () => {
+    // Get English articles for this cluster
+    const { data: englishArticles, error: articlesError } = await supabase
+      .from('blog_articles')
+      .select('id, headline')
+      .eq('cluster_id', cluster.cluster_id)
+      .eq('language', 'en')
+      .eq('status', 'published')
+      .order('created_at', { ascending: true });
+
+    if (articlesError || !englishArticles || englishArticles.length === 0) {
+      toast.error('No English articles found for this cluster');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ CLEAN SLATE GENERATION\n\n` +
+      `This will DELETE all existing Q&As for this cluster and regenerate from scratch.\n\n` +
+      `Found ${englishArticles.length} English articles.\n` +
+      `Will generate: ${englishArticles.length} × 4 types × 10 languages = ${englishArticles.length * 40} Q&As\n\n` +
+      `Estimated time: ${englishArticles.length * 5}-${englishArticles.length * 8} minutes.\n\n` +
+      `Continue?`
+    );
+    
+    if (!confirmed) return;
+    
+    setIsGeneratingCleanSlate(true);
+    setCleanSlateProgress({ current: 0, total: englishArticles.length, created: 0 });
+    
+    let totalCreated = 0;
+    
+    try {
+      // Step 1: Delete ALL existing Q&As for this cluster
+      toast.info('Deleting existing Q&As...');
+      const { error: deleteError } = await supabase
+        .from('qa_pages')
+        .delete()
+        .eq('cluster_id', cluster.cluster_id);
+      
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        toast.error(`Failed to delete Q&As: ${deleteError.message}`);
+        return;
+      }
+      toast.success('Existing Q&As deleted');
+      
+      // Step 2: Generate for each English article sequentially
+      for (let i = 0; i < englishArticles.length; i++) {
+        const article = englishArticles[i];
+        
+        setCleanSlateProgress({
+          current: i + 1,
+          total: englishArticles.length,
+          created: totalCreated,
+        });
+        
+        toast.info(`Article ${i + 1}/${englishArticles.length}: ${article.headline.substring(0, 40)}...`);
+        console.log(`[CleanSlate] Starting article ${i + 1}/${englishArticles.length}: ${article.id}`);
+        
+        const { data, error } = await supabase.functions.invoke('generate-article-qas', {
+          body: { englishArticleId: article.id },
+        });
+        
+        if (error) {
+          console.error(`Error for article ${i + 1}:`, error);
+          toast.error(`Article ${i + 1} failed: ${error.message}. Continuing...`);
+          continue;
+        }
+        
+        const created = data?.created || 0;
+        totalCreated += created;
+        
+        console.log(`[CleanSlate] Article ${i + 1} complete: ${created} Q&As created`);
+        toast.success(`Article ${i + 1}/${englishArticles.length} done! +${created} Q&As`);
+        
+        // Update progress
+        setCleanSlateProgress({
+          current: i + 1,
+          total: englishArticles.length,
+          created: totalCreated,
+        });
+        
+        // Wait between articles to avoid rate limits
+        if (i < englishArticles.length - 1) {
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      }
+      
+      // Final message
+      const expectedTotal = englishArticles.length * 40;
+      toast.success(`🎉 Clean slate complete! ${totalCreated}/${expectedTotal} Q&As created`);
+      
+    } catch (error) {
+      console.error('[CleanSlate] Fatal error:', error);
+      toast.error(`Generation failed: ${error}`);
+    } finally {
+      setIsGeneratingCleanSlate(false);
+      setCleanSlateProgress(null);
+      
+      // Refresh data
+      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      await queryClient.invalidateQueries({ queryKey: ['qa-pages'] });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Summary Stats */}
@@ -658,7 +766,7 @@ export const ClusterQATab = ({
             variant="default"
             size="sm"
             onClick={handleGenerateQAs}
-            disabled={isStartingJob || isJobRunning}
+            disabled={isStartingJob || isJobRunning || isGeneratingCleanSlate}
             className="bg-amber-500 hover:bg-amber-600"
           >
             {isStartingJob || isJobRunning ? (
@@ -669,6 +777,30 @@ export const ClusterQATab = ({
             {isJobRunning ? 'Generating...' : 'Generate & Translate Q&As'}
           </Button>
         )}
+
+        {/* Clean Slate Button - Generate All 6 Articles Sequentially */}
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleGenerateCleanSlate}
+          disabled={isStartingJob || isJobRunning || isGeneratingCleanSlate || isRepairing}
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          {isGeneratingCleanSlate ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {cleanSlateProgress 
+                ? `Article ${cleanSlateProgress.current}/${cleanSlateProgress.total} (${cleanSlateProgress.created} created)`
+                : 'Starting...'
+              }
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Generate All Q&As (Clean Slate)
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
