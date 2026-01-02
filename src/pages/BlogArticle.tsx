@@ -180,7 +180,7 @@ const BlogArticle = () => {
               article={article}
               author={author || null}
               reviewer={reviewer || null}
-              translations={article.translations as Record<string, string>}
+              translations={article.translations as Record<string, string | { id: string; slug: string }>}
             />
 
             <SpeakableBox answer={article.speakable_answer} language={article.language} />
