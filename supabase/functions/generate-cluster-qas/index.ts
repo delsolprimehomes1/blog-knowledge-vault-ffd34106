@@ -82,7 +82,7 @@ serve(async (req) => {
       .insert({
         cluster_id: clusterId,
         status: 'running',
-        mode: 'cluster',
+        mode: 'background',
         total_articles: articlesToProcess.length,
         articles_completed: 0,
         total_qas_created: 0,
