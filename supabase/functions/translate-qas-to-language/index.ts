@@ -260,37 +260,14 @@ serve(async (req) => {
     const translatedQAs: string[] = [];
     const errors: string[] = [];
 
-    // ENHANCEMENT 1: Group Q&As by source_article_id for batch translation (4 Q&As per batch)
-    const articleGroups = new Map<string, typeof qasToTranslate>();
-    for (const qa of qasToTranslate) {
-      const key = qa.source_article_id || 'unknown';
-      if (!articleGroups.has(key)) {
-        articleGroups.set(key, []);
-      }
-      articleGroups.get(key)!.push(qa);
-    }
-
-    // CHANGE: Process only ONE article batch per invocation (4 Q&As)
-    const articleGroupsArray = Array.from(articleGroups.entries());
-    const totalArticles = articleGroupsArray.length;
+    // Process fixed batch of 4 Q&As regardless of which article they belong to
+    const BATCH_SIZE = 4;
+    const qaGroup = qasToTranslate.slice(0, BATCH_SIZE);
+    const qasRemaining = qasToTranslate.length - qaGroup.length;
     
-    console.log(`[TranslateQAs] Will process 1 of ${totalArticles} article batches (4 Q&As)`);
+    console.log(`[TranslateQAs] Processing batch of ${qaGroup.length} Q&As (${qasRemaining} remaining after this batch)`);
 
-    // Take only the first batch
-    const [articleId, qaGroup] = articleGroupsArray[0];
-    const articlesRemaining = totalArticles - 1;
-    
     try {
-      console.log(`[TranslateQAs] Translating ${qaGroup.length} Q&As for article ${articleId}`);
-
-      // Find the target language article for this batch
-      const englishArticleHreflang = englishArticleHreflangMap.get(articleId);
-      const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
-
-      if (!targetArticle) {
-        throw new Error(`No ${targetLanguage} article found for English article ${articleId}`);
-      }
-
       // Prepare Q&As for batch translation
       const qaContents: QAContent[] = qaGroup.map(qa => ({
         id: qa.id,
@@ -303,18 +280,27 @@ serve(async (req) => {
         qa_type: qa.qa_type,
       }));
 
-      // Batch translate all Q&As for this article
+      // Batch translate all Q&As in this batch
       const translations = await translateQABatch(qaContents, targetLanguage);
       console.log(`[TranslateQAs] Received ${translations.length} translations`);
 
       // Create translation lookup by ID
       const translationMap = new Map(translations.map(t => [t.id, t]));
 
-      // Insert each translated Q&A
+      // Insert each translated Q&A (may be from different articles)
       for (const englishQA of qaGroup) {
         const translation = translationMap.get(englishQA.id);
         if (!translation) {
           errors.push(`Missing translation for ${englishQA.qa_type}`);
+          continue;
+        }
+
+        // Find target article for THIS specific Q&A
+        const englishArticleHreflang = englishArticleHreflangMap.get(englishQA.source_article_id);
+        const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
+
+        if (!targetArticle) {
+          errors.push(`No ${targetLanguage} article found for Q&A from article ${englishQA.source_article_id}`);
           continue;
         }
 
@@ -474,7 +460,7 @@ serve(async (req) => {
       .eq('language', targetLanguage);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const isPartial = articlesRemaining > 0;
+    const isPartial = qasRemaining > 0;
     const currentCount = actualCount || 0;
     const remaining = 24 - currentCount;
     
@@ -491,8 +477,7 @@ serve(async (req) => {
       translated: translatedQAs.length,
       actualCount: currentCount,
       remaining,
-      articlesRemaining,
-      totalArticles,
+      qasRemaining,
       skipped: skippedCount,
       resumed: skippedCount > 0,
       errors: errors.length > 0 ? errors : undefined,
