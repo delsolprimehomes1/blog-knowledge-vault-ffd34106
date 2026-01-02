@@ -48,14 +48,24 @@ function repairJSON(text: string): string {
 }
 
 /**
- * Parse JSON with repair attempts
+ * Parse JSON with repair attempts and enhanced logging
  */
 function parseJSONSafe(content: string): any | null {
+  if (!content || content.trim() === '') {
+    console.error('[ParseJSON] Empty content received');
+    return null;
+  }
+  
   // Clean markdown fences
   let cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) return null;
+  
+  if (start === -1 || end === -1) {
+    console.error('[ParseJSON] No JSON object found in response');
+    console.error('[ParseJSON] Content preview:', cleaned.substring(0, 300));
+    return null;
+  }
   
   const jsonStr = cleaned.slice(start, end + 1);
   
@@ -63,11 +73,13 @@ function parseJSONSafe(content: string): any | null {
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
+    console.error('[ParseJSON] Direct parse failed:', (e as Error).message);
     // Try with repairs
     try {
       return JSON.parse(repairJSON(jsonStr));
     } catch (e2) {
-      console.error('[ParseJSON] Failed even after repair');
+      console.error('[ParseJSON] Repair parse failed:', (e2 as Error).message);
+      console.error('[ParseJSON] Failed JSON preview:', jsonStr.substring(0, 500));
       return null;
     }
   }
@@ -124,6 +136,7 @@ Return ONLY valid JSON:
           { role: 'user', content: prompt }
         ],
         max_completion_tokens: 2500,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -139,6 +152,7 @@ Return ONLY valid JSON:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
+    console.log(`[Generate] Raw response length: ${content.length}`);
     const parsed = parseJSONSafe(content);
     if (!parsed) throw new Error('Failed to parse JSON');
     return parsed;
@@ -204,6 +218,7 @@ Return ONLY valid JSON:
           { role: 'user', content: prompt }
         ],
         max_completion_tokens: 2500,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -219,6 +234,7 @@ Return ONLY valid JSON:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
+    console.log(`[Translate] ${targetLanguage} response length: ${content.length}`);
     const parsed = parseJSONSafe(content);
     if (!parsed) throw new Error('Failed to parse JSON');
     return parsed;
