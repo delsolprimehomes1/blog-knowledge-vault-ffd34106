@@ -108,27 +108,33 @@ Return a JSON object with "translations" array containing each translated Q&A wi
   ]
 }`;
 
-  const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+  // Use Lovable AI Gateway instead of direct OpenAI
+  const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: `You are an expert translator. Translate content to ${languageName} while maintaining SEO quality. Always respond with valid JSON.` },
+        { role: 'system', content: `You are an expert translator. Translate content to ${languageName} while maintaining SEO quality. Always respond with valid JSON only, no markdown.` },
         { role: 'user', content: prompt }
       ],
-      response_format: { type: "json_object" },
-      max_tokens: 6000, // Increased for batch
+      max_tokens: 6000,
       temperature: 0.3,
     }),
-  }, 120000); // 120 second timeout for batch (4 Q&As can take 60-90s)
+  }, 120000);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded. Please try again in a moment.');
+    }
+    if (response.status === 402) {
+      throw new Error('AI credits exhausted. Please add credits to continue.');
+    }
+    throw new Error(`AI API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -138,7 +144,13 @@ Return a JSON object with "translations" array containing each translated Q&A wi
     throw new Error('No content in translation response');
   }
 
-  const parsed = JSON.parse(content);
+  // Parse JSON - handle potential markdown code blocks
+  let jsonContent = content.trim();
+  if (jsonContent.startsWith('```')) {
+    jsonContent = jsonContent.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+  }
+
+  const parsed = JSON.parse(jsonContent);
   return parsed.translations || [];
 }
 
@@ -332,24 +344,51 @@ serve(async (req) => {
           source_article_slug: targetArticle.slug,
         };
 
-        // Use upsert to handle orphan Q&As that exist with same question but different/missing hreflang_group_id
-        const { data: upsertedQA, error: upsertError } = await supabase
+        // Check if a Q&A with same question already exists (handles orphans with missing hreflang_group_id)
+        const { data: existingByQuestion } = await supabase
           .from('qa_pages')
-          .upsert(translatedQARecord, {
-            onConflict: 'cluster_id,language,question_main',
-            ignoreDuplicates: false
-          })
           .select('id')
-          .single();
+          .eq('cluster_id', clusterId)
+          .eq('language', targetLanguage)
+          .eq('question_main', translation.question)
+          .maybeSingle();
 
-        if (upsertError) {
-          console.error(`[TranslateQAs] Upsert error:`, upsertError);
-          errors.push(`${englishQA.qa_type}: ${upsertError.message}`);
-          continue;
+        if (existingByQuestion) {
+          // Update existing orphan record with correct hreflang_group_id
+          console.log(`[TranslateQAs] Updating orphan Q&A ${existingByQuestion.id}`);
+          const { error: updateError } = await supabase
+            .from('qa_pages')
+            .update({
+              ...translatedQARecord,
+              hreflang_group_id: englishQA.hreflang_group_id,
+            })
+            .eq('id', existingByQuestion.id);
+
+          if (updateError) {
+            console.error(`[TranslateQAs] Update error:`, updateError);
+            errors.push(`${englishQA.qa_type}: ${updateError.message}`);
+            continue;
+          }
+
+          console.log(`[TranslateQAs] ✅ Updated existing ${targetLanguage} Q&A: ${slug}`);
+          translatedQAs.push(existingByQuestion.id);
+        } else {
+          // Insert new record
+          const { data: insertedQA, error: insertError } = await supabase
+            .from('qa_pages')
+            .insert(translatedQARecord)
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error(`[TranslateQAs] Insert error:`, insertError);
+            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+            continue;
+          }
+
+          console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A: ${slug}`);
+          translatedQAs.push(insertedQA.id);
         }
-
-        console.log(`[TranslateQAs] ✅ Created/Updated ${targetLanguage} Q&A: ${slug}`);
-        translatedQAs.push(upsertedQA.id);
       }
 
     } catch (error) {
