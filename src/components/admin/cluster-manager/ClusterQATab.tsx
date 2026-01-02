@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText } from "lucide-react";
 import { ClusterData, getLanguageFlag, getAllExpectedLanguages } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ClusterQATabProps {
   cluster: ClusterData;
@@ -10,6 +13,19 @@ interface ClusterQATabProps {
   onGenerateQAs: (articleId?: string) => void;
   publishingQAs: string | null;
   generatingQALanguage: { clusterId: string; lang: string } | null;
+}
+
+interface QAJob {
+  id: string;
+  status: string;
+  total_articles: number;
+  articles_completed: number;
+  total_qas_created: number;
+  total_qas_failed: number;
+  current_article_index: number;
+  current_article_headline: string | null;
+  completion_percent: number | null;
+  error: string | null;
 }
 
 // Correct architecture: 6 articles × 4 Q&A types × 10 languages = 240 Q&As per cluster
@@ -27,8 +43,96 @@ export const ClusterQATab = ({
   publishingQAs,
   generatingQALanguage,
 }: ClusterQATabProps) => {
+  const [activeJob, setActiveJob] = useState<QAJob | null>(null);
+  const [isStartingJob, setIsStartingJob] = useState(false);
+  
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
+  const isJobRunning = activeJob?.status === 'running';
+
+  // Poll for active job status
+  useEffect(() => {
+    if (!activeJob || activeJob.status !== 'running') return;
+
+    const interval = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('qa_generation_jobs')
+        .select('*')
+        .eq('id', activeJob.id)
+        .single();
+
+      if (error) {
+        console.error('Error polling job:', error);
+        return;
+      }
+
+      if (data) {
+        setActiveJob(data as QAJob);
+        
+        if (data.status === 'completed') {
+          toast.success(`Q&A generation complete! Created ${data.total_qas_created} Q&As`);
+          clearInterval(interval);
+        } else if (data.status === 'failed') {
+          toast.error(`Q&A generation failed: ${data.error}`);
+          clearInterval(interval);
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [activeJob?.id, activeJob?.status]);
+
+  // Check for existing running job on mount
+  useEffect(() => {
+    const checkExistingJob = async () => {
+      const { data } = await supabase
+        .from('qa_generation_jobs')
+        .select('*')
+        .eq('cluster_id', cluster.cluster_id)
+        .eq('status', 'running')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) {
+        setActiveJob(data as QAJob);
+      }
+    };
+    
+    checkExistingJob();
+  }, [cluster.cluster_id]);
+
+  const handleGenerateQAs = async () => {
+    setIsStartingJob(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-cluster-qas', {
+        body: { clusterId: cluster.cluster_id },
+      });
+
+      if (error) throw error;
+
+      if (data?.jobId) {
+        toast.success('Q&A generation started in background');
+        
+        // Fetch the job to start polling
+        const { data: jobData } = await supabase
+          .from('qa_generation_jobs')
+          .select('*')
+          .eq('id', data.jobId)
+          .single();
+          
+        if (jobData) {
+          setActiveJob(jobData as QAJob);
+        }
+      }
+    } catch (error) {
+      console.error('Error starting Q&A generation:', error);
+      toast.error('Failed to start Q&A generation');
+    } finally {
+      setIsStartingJob(false);
+    }
+  };
 
   // Calculate correct totals based on actual articles per language
   const getQAStatusForLanguage = (lang: string) => {
@@ -67,7 +171,7 @@ export const ClusterQATab = ({
 
   return (
     <div className="space-y-4">
-      {/* Summary Stats - Updated with correct expectations */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4">
         <div className="text-center p-3 bg-muted/50 rounded-lg">
           <div className="text-2xl font-bold">{cluster.total_qa_pages}</div>
@@ -101,6 +205,57 @@ export const ClusterQATab = ({
           Architecture: {Object.keys(cluster.languages).length} languages × {Object.values(cluster.languages)[0]?.total || 0} articles × 4 Q&A types
         </p>
       </div>
+
+      {/* Active Job Progress */}
+      {isJobRunning && activeJob && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950/30 dark:border-blue-800">
+          <div className="flex items-center gap-2 mb-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="font-medium text-blue-700 dark:text-blue-300">
+              Q&A Generation in Progress
+            </span>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Article {(activeJob.current_article_index || 0) + 1} of {activeJob.total_articles}</span>
+              <span className="font-medium">{activeJob.total_qas_created} Q&As created</span>
+            </div>
+            <Progress 
+              value={((activeJob.articles_completed || 0) / activeJob.total_articles) * 100} 
+              className="h-2" 
+            />
+            {activeJob.current_article_headline && (
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                Processing: {activeJob.current_article_headline}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Job Completed Message */}
+      {activeJob?.status === 'completed' && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/30">
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+            <CheckCircle className="h-4 w-4" />
+            <span>
+              Last generation completed: {activeJob.total_qas_created} Q&As created
+              {activeJob.total_qas_failed > 0 && ` (${activeJob.total_qas_failed} failed)`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Job Failed Message */}
+      {activeJob?.status === 'failed' && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/30">
+          <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Last generation failed: {activeJob.error}</span>
+          </div>
+        </div>
+      )}
 
       {/* Language-by-Language Q&A Status */}
       <div className="space-y-2">
@@ -142,7 +297,7 @@ export const ClusterQATab = ({
       </div>
 
       {/* Warnings */}
-      {languagesNeedingQAs.length > 0 && (
+      {languagesNeedingQAs.length > 0 && !isJobRunning && (
         <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-950/30">
           <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
           <div className="text-sm">
@@ -179,28 +334,19 @@ export const ClusterQATab = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => onGenerateQAs()}
-            disabled={isGenerating}
+            onClick={handleGenerateQAs}
+            disabled={isStartingJob || isJobRunning}
             className="bg-amber-500 hover:bg-amber-600"
           >
-            {isGenerating ? (
+            {isStartingJob || isJobRunning ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <FileText className="mr-2 h-4 w-4" />
             )}
-            Generate & Translate Q&As
+            {isJobRunning ? 'Generating...' : 'Generate & Translate Q&As'}
           </Button>
         )}
       </div>
-      
-      {isGenerating && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950/30">
-          <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Generating English Q&As and translating to 9 languages... This may take several minutes.</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
