@@ -332,20 +332,24 @@ serve(async (req) => {
           source_article_slug: targetArticle.slug,
         };
 
-        const { data: insertedQA, error: insertError } = await supabase
+        // Use upsert to handle orphan Q&As that exist with same question but different/missing hreflang_group_id
+        const { data: upsertedQA, error: upsertError } = await supabase
           .from('qa_pages')
-          .insert(translatedQARecord)
+          .upsert(translatedQARecord, {
+            onConflict: 'cluster_id,language,question_main',
+            ignoreDuplicates: false
+          })
           .select('id')
           .single();
 
-        if (insertError) {
-          console.error(`[TranslateQAs] Insert error:`, insertError);
-          errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+        if (upsertError) {
+          console.error(`[TranslateQAs] Upsert error:`, upsertError);
+          errors.push(`${englishQA.qa_type}: ${upsertError.message}`);
           continue;
         }
 
-        console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A: ${slug}`);
-        translatedQAs.push(insertedQA.id);
+        console.log(`[TranslateQAs] ✅ Created/Updated ${targetLanguage} Q&A: ${slug}`);
+        translatedQAs.push(upsertedQA.id);
       }
 
     } catch (error) {
