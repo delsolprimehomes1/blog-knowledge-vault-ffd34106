@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench, RefreshCw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, HelpCircle, Loader2, PlayCircle, AlertTriangle, FileText, RotateCcw, XCircle, Wrench, RefreshCw, Globe, Languages } from "lucide-react";
 import { ClusterData, getLanguageFlag, getAllExpectedLanguages } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,6 +15,12 @@ interface ClusterQATabProps {
   onGenerateQAs: (articleId?: string) => void;
   publishingQAs: string | null;
   generatingQALanguage: { clusterId: string; lang: string } | null;
+}
+
+interface EnglishArticle {
+  id: string;
+  headline: string;
+  slug: string;
 }
 
 // Use database schema fields directly
@@ -33,12 +40,14 @@ interface QAJob {
 }
 
 // Correct architecture: 6 articles × 4 Q&A types × 10 languages = 240 Q&As per cluster
-// Per language: 6 articles × 4 Q&A types = 24 Q&As
 const QAS_PER_ARTICLE = 4;
 const ARTICLES_PER_LANGUAGE = 6;
 const EXPECTED_QAS_PER_LANGUAGE = QAS_PER_ARTICLE * ARTICLES_PER_LANGUAGE; // 24
 const TOTAL_LANGUAGES = 10;
 const EXPECTED_QAS_PER_CLUSTER = EXPECTED_QAS_PER_LANGUAGE * TOTAL_LANGUAGES; // 240
+
+// Target languages (all except English)
+const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'] as const;
 
 // Stalled threshold: 5 minutes without update
 const STALLED_THRESHOLD_MS = 5 * 60 * 1000;
@@ -64,17 +73,100 @@ export const ClusterQATab = ({
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [isRepairing, setIsRepairing] = useState(false);
   const [repairProgress, setRepairProgress] = useState<{ batch: number; created: number } | null>(null);
-  const [isGeneratingCleanSlate, setIsGeneratingCleanSlate] = useState(false);
-  const [cleanSlateProgress, setCleanSlateProgress] = useState<{ current: number; total: number; created: number } | null>(null);
+  
+  // Two-phase generation state
+  const [englishArticles, setEnglishArticles] = useState<EnglishArticle[]>([]);
+  const [generatingArticle, setGeneratingArticle] = useState<string | null>(null);
+  const [completedArticles, setCompletedArticles] = useState<Set<string>>(new Set());
+  const [translatingLanguage, setTranslatingLanguage] = useState<string | null>(null);
+  const [completedLanguages, setCompletedLanguages] = useState<Set<string>>(new Set());
+  const [englishQACount, setEnglishQACount] = useState(0);
+  const [languageQACounts, setLanguageQACounts] = useState<Record<string, number>>({});
   
   const isPublishing = publishingQAs === cluster.cluster_id;
   const isGenerating = generatingQALanguage?.clusterId === cluster.cluster_id;
   const isJobRunning = activeJob?.status === 'running';
   
-  // Detect stalled jobs: status='stalled' OR running but no update for 5+ minutes
+  // Detect stalled jobs
   const isJobStalled = activeJob?.status === 'stalled' || 
     (activeJob?.status === 'running' && activeJob?.updated_at && 
      new Date(activeJob.updated_at).getTime() < Date.now() - STALLED_THRESHOLD_MS);
+
+  // Fetch English articles on mount
+  useEffect(() => {
+    const fetchEnglishArticles = async () => {
+      const { data, error } = await supabase
+        .from('blog_articles')
+        .select('id, headline, slug')
+        .eq('cluster_id', cluster.cluster_id)
+        .eq('language', 'en')
+        .eq('status', 'published')
+        .order('created_at', { ascending: true });
+
+      if (!error && data) {
+        setEnglishArticles(data);
+      }
+    };
+
+    fetchEnglishArticles();
+  }, [cluster.cluster_id]);
+
+  // Fetch Q&A counts on mount and refresh
+  useEffect(() => {
+    const fetchQACounts = async () => {
+      // Get English Q&A count
+      const { count: enCount } = await supabase
+        .from('qa_pages')
+        .select('*', { count: 'exact', head: true })
+        .eq('cluster_id', cluster.cluster_id)
+        .eq('language', 'en');
+      
+      setEnglishQACount(enCount || 0);
+
+      // Get counts per language
+      const counts: Record<string, number> = {};
+      for (const lang of TARGET_LANGUAGES) {
+        const { count } = await supabase
+          .from('qa_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', cluster.cluster_id)
+          .eq('language', lang);
+        counts[lang] = count || 0;
+      }
+      setLanguageQACounts(counts);
+
+      // Mark completed articles (those with 4 English Q&As each)
+      const { data: qaData } = await supabase
+        .from('qa_pages')
+        .select('source_article_id')
+        .eq('cluster_id', cluster.cluster_id)
+        .eq('language', 'en');
+
+      if (qaData) {
+        const articleCounts: Record<string, number> = {};
+        qaData.forEach(qa => {
+          if (qa.source_article_id) {
+            articleCounts[qa.source_article_id] = (articleCounts[qa.source_article_id] || 0) + 1;
+          }
+        });
+        
+        const completed = new Set<string>();
+        Object.entries(articleCounts).forEach(([articleId, count]) => {
+          if (count >= 4) completed.add(articleId);
+        });
+        setCompletedArticles(completed);
+      }
+
+      // Mark completed languages (those with 24 Q&As)
+      const completedLangs = new Set<string>();
+      Object.entries(counts).forEach(([lang, count]) => {
+        if (count >= 24) completedLangs.add(lang);
+      });
+      setCompletedLanguages(completedLangs);
+    };
+
+    fetchQACounts();
+  }, [cluster.cluster_id, cluster.total_qa_pages]);
 
   // Poll for active job status
   useEffect(() => {
@@ -104,7 +196,7 @@ export const ClusterQATab = ({
           clearInterval(interval);
         }
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [activeJob?.id, activeJob?.status]);
@@ -129,35 +221,78 @@ export const ClusterQATab = ({
     checkExistingJob();
   }, [cluster.cluster_id]);
 
-  const handleGenerateQAs = async () => {
-    setIsStartingJob(true);
+  // Phase 1: Generate English Q&As for a single article
+  const handleGenerateEnglishQAs = async (article: EnglishArticle, position: number) => {
+    setGeneratingArticle(article.id);
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-cluster-qas', {
-        body: { clusterId: cluster.cluster_id },
+      toast.info(`Generating 4 English Q&As for Article ${position}...`);
+      
+      const { data, error } = await supabase.functions.invoke('generate-english-article-qas', {
+        body: { 
+          articleId: article.id,
+          articlePosition: position,
+        },
       });
 
       if (error) throw error;
 
-      if (data?.jobId) {
-        toast.success('Q&A generation started in background');
+      if (data?.success) {
+        toast.success(`Article ${position} complete! Created ${data.created}/4 Q&As`);
+        setCompletedArticles(prev => new Set([...prev, article.id]));
+        setEnglishQACount(prev => prev + (data.created || 0));
         
-        // Fetch the job to start polling
-        const { data: jobResult } = await supabase
-          .from('qa_generation_jobs')
-          .select('*')
-          .eq('id', data.jobId)
-          .single();
-          
-        if (jobResult) {
-          setActiveJob(jobResult as unknown as QAJob);
-        }
+        // Refresh data
+        await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      } else {
+        throw new Error(data?.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Error starting Q&A generation:', error);
-      toast.error('Failed to start Q&A generation');
+      console.error('Error generating English Q&As:', error);
+      toast.error(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsStartingJob(false);
+      setGeneratingArticle(null);
+    }
+  };
+
+  // Phase 2: Translate all Q&As to a target language
+  const handleTranslateToLanguage = async (targetLanguage: string) => {
+    setTranslatingLanguage(targetLanguage);
+    
+    try {
+      toast.info(`Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (5-7 minutes)`);
+      
+      const { data, error } = await supabase.functions.invoke('translate-qas-to-language', {
+        body: { 
+          clusterId: cluster.cluster_id,
+          targetLanguage,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const msg = data.alreadyExisted > 0 
+          ? `${targetLanguage.toUpperCase()}: ${data.translated} translated, ${data.alreadyExisted} already existed`
+          : `${targetLanguage.toUpperCase()}: ${data.translated}/24 Q&As translated`;
+        toast.success(msg);
+        
+        setCompletedLanguages(prev => new Set([...prev, targetLanguage]));
+        setLanguageQACounts(prev => ({
+          ...prev,
+          [targetLanguage]: (prev[targetLanguage] || 0) + (data.translated || 0),
+        }));
+        
+        // Refresh data
+        await queryClient.invalidateQueries({ queryKey: ['clusters'] });
+      } else {
+        throw new Error(data?.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error translating Q&As:', error);
+      toast.error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setTranslatingLanguage(null);
     }
   };
 
@@ -167,10 +302,9 @@ export const ClusterQATab = ({
     setIsResumingJob(true);
     
     try {
-      // Call auto-resume edge function
       const { data, error } = await supabase.functions.invoke('auto-resume-qa-jobs', {
         body: { 
-          stalledThresholdMinutes: 0, // Resume immediately
+          stalledThresholdMinutes: 0,
           autoResume: true,
           specificJobId: activeJob.id,
         },
@@ -179,8 +313,6 @@ export const ClusterQATab = ({
       if (error) throw error;
 
       toast.success('Job resumed! Check progress above.');
-      
-      // Update local state to running
       setActiveJob(prev => prev ? { ...prev, status: 'running', updated_at: new Date().toISOString() } : null);
       
     } catch (error) {
@@ -197,7 +329,6 @@ export const ClusterQATab = ({
     setIsCancellingJob(true);
     
     try {
-      // Mark job as failed/cancelled
       const { error } = await supabase
         .from('qa_generation_jobs')
         .update({
@@ -223,7 +354,6 @@ export const ClusterQATab = ({
   // Calculate correct totals based on actual articles per language
   const getQAStatusForLanguage = (lang: string) => {
     const articleCount = cluster.languages[lang]?.total || 0;
-    // Expected: 4 Q&As per article in that language
     const expectedQAs = articleCount * QAS_PER_ARTICLE;
     const actualQAs = cluster.qa_pages[lang]?.total || 0;
     const publishedQAs = cluster.qa_pages[lang]?.published || 0;
@@ -238,7 +368,6 @@ export const ClusterQATab = ({
     };
   };
 
-  // Calculate cluster-wide expectations
   const totalExpectedQAs = Object.values(cluster.languages).reduce(
     (sum, lang) => sum + (lang.total * QAS_PER_ARTICLE), 
     0
@@ -248,18 +377,12 @@ export const ClusterQATab = ({
     : 0;
 
   const expectedLanguages = getAllExpectedLanguages(cluster);
-  const languagesNeedingQAs = expectedLanguages.filter((lang) => {
-    const status = getQAStatusForLanguage(lang);
-    return status.articleCount > 0 && !status.isComplete;
-  });
-
   const draftQAsCount = cluster.total_qa_pages - cluster.total_qa_published;
 
-  // FIX 6: Detect Q&A count mismatches using English as reference
+  // Mismatch detection
   const mismatchInfo = useMemo((): MismatchInfo => {
     const languageCounts: { lang: string; actual: number; expected: number }[] = [];
     
-    // Get counts for all languages that have articles
     expectedLanguages.forEach((lang) => {
       const status = getQAStatusForLanguage(lang);
       if (status.articleCount > 0) {
@@ -275,11 +398,9 @@ export const ClusterQATab = ({
       return { hasMismatch: false, maxCount: 0, mismatched: [], total: 0 };
     }
     
-    // FIX 6: Use English count as reference (matches English-first architecture)
     const enCount = languageCounts.find(l => l.lang === 'en')?.actual || 0;
     const referenceCount = enCount > 0 ? enCount : Math.max(...languageCounts.map(l => l.actual));
     
-    // Find languages that are behind the reference (only when there are Q&As generated)
     const mismatched = languageCounts
       .filter(l => l.actual < referenceCount && referenceCount > 0)
       .map(l => ({
@@ -296,7 +417,6 @@ export const ClusterQATab = ({
     };
   }, [expectedLanguages, cluster.qa_pages, cluster.languages]);
 
-  // FIX 5: Handle repair with auto-retry loop
   const handleRepairMissingQAs = async () => {
     if (!mismatchInfo.hasMismatch) return;
     
@@ -304,11 +424,10 @@ export const ClusterQATab = ({
     setRepairProgress({ batch: 0, created: 0 });
     
     let totalRepaired = 0;
-    const maxAttempts = 10; // Max 10 batches (5 Q&As each = 50 max)
+    const maxAttempts = 10;
     
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        console.log(`[Repair] Batch ${attempt}/${maxAttempts}`);
         setRepairProgress({ batch: attempt, created: totalRepaired });
         
         const { data, error } = await supabase.functions.invoke('repair-missing-qas', {
@@ -319,8 +438,6 @@ export const ClusterQATab = ({
         });
 
         if (error) {
-          console.error('[Repair] Error in batch:', error);
-          // Show error but continue - some Q&As may have been created
           toast.error(`Batch ${attempt} failed. Retrying...`);
           await new Promise(r => setTimeout(r, 2000));
           continue;
@@ -330,150 +447,35 @@ export const ClusterQATab = ({
         
         totalRepaired += data.repaired || 0;
         
-        // Show progress
         toast.success(data.partial 
           ? `Progress: ${data.repaired} created (batch ${attempt})`
           : `Repair complete! ${data.repaired} created`
         );
         
-        // If complete or no progress, stop
-        if (!data.partial || data.repaired === 0) {
-          console.log(`[Repair] Complete after ${attempt} batches`);
-          break;
-        }
+        if (!data.partial || data.repaired === 0) break;
         
-        // Small delay before next batch
         await new Promise(r => setTimeout(r, 2000));
       }
       
-      // Final message
       if (totalRepaired > 0) {
         toast.success(`Repair finished! Total: ${totalRepaired} Q&As created`);
-      } else {
-        toast.info('No Q&As were created - all may already exist');
       }
       
     } catch (error) {
-      console.error('[Repair] Fatal error:', error);
-      toast.error('Repair encountered an error. Some Q&As may have been created.');
+      toast.error('Repair encountered an error.');
     } finally {
       setIsRepairing(false);
       setRepairProgress(null);
-      
-      // Force refresh via React Query instead of page reload
       await queryClient.invalidateQueries({ queryKey: ['clusters'] });
-      await queryClient.invalidateQueries({ queryKey: ['qa-pages'] });
     }
   };
 
-  // CLEAN SLATE: Delete all Q&As and regenerate for all 6 articles
-  const handleGenerateCleanSlate = async () => {
-    // Get English articles for this cluster
-    const { data: englishArticles, error: articlesError } = await supabase
-      .from('blog_articles')
-      .select('id, headline')
-      .eq('cluster_id', cluster.cluster_id)
-      .eq('language', 'en')
-      .eq('status', 'published')
-      .order('created_at', { ascending: true });
-
-    if (articlesError || !englishArticles || englishArticles.length === 0) {
-      toast.error('No English articles found for this cluster');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `⚠️ CLEAN SLATE GENERATION\n\n` +
-      `This will DELETE all existing Q&As for this cluster and regenerate from scratch.\n\n` +
-      `Found ${englishArticles.length} English articles.\n` +
-      `Will generate: ${englishArticles.length} × 4 types × 10 languages = ${englishArticles.length * 40} Q&As\n\n` +
-      `Estimated time: ${englishArticles.length * 5}-${englishArticles.length * 8} minutes.\n\n` +
-      `Continue?`
-    );
-    
-    if (!confirmed) return;
-    
-    setIsGeneratingCleanSlate(true);
-    setCleanSlateProgress({ current: 0, total: englishArticles.length, created: 0 });
-    
-    let totalCreated = 0;
-    
-    try {
-      // Step 1: Delete ALL existing Q&As for this cluster
-      toast.info('Deleting existing Q&As...');
-      const { error: deleteError } = await supabase
-        .from('qa_pages')
-        .delete()
-        .eq('cluster_id', cluster.cluster_id);
-      
-      if (deleteError) {
-        console.error('Delete error:', deleteError);
-        toast.error(`Failed to delete Q&As: ${deleteError.message}`);
-        return;
-      }
-      toast.success('Existing Q&As deleted');
-      
-      // Step 2: Generate for each English article sequentially
-      for (let i = 0; i < englishArticles.length; i++) {
-        const article = englishArticles[i];
-        
-        setCleanSlateProgress({
-          current: i + 1,
-          total: englishArticles.length,
-          created: totalCreated,
-        });
-        
-        toast.info(`Article ${i + 1}/${englishArticles.length}: ${article.headline.substring(0, 40)}...`);
-        console.log(`[CleanSlate] Starting article ${i + 1}/${englishArticles.length}: ${article.id}`);
-        
-        const { data, error } = await supabase.functions.invoke('generate-article-qas', {
-          body: { englishArticleId: article.id },
-        });
-        
-        if (error) {
-          console.error(`Error for article ${i + 1}:`, error);
-          toast.error(`Article ${i + 1} failed: ${error.message}. Continuing...`);
-          continue;
-        }
-        
-        const created = data?.created || 0;
-        totalCreated += created;
-        
-        console.log(`[CleanSlate] Article ${i + 1} complete: ${created} Q&As created`);
-        toast.success(`Article ${i + 1}/${englishArticles.length} done! +${created} Q&As`);
-        
-        // Update progress
-        setCleanSlateProgress({
-          current: i + 1,
-          total: englishArticles.length,
-          created: totalCreated,
-        });
-        
-        // Wait between articles to avoid rate limits
-        if (i < englishArticles.length - 1) {
-          await new Promise(r => setTimeout(r, 3000));
-        }
-      }
-      
-      // Final message
-      const expectedTotal = englishArticles.length * 40;
-      toast.success(`🎉 Clean slate complete! ${totalCreated}/${expectedTotal} Q&As created`);
-      
-    } catch (error) {
-      console.error('[CleanSlate] Fatal error:', error);
-      toast.error(`Generation failed: ${error}`);
-    } finally {
-      setIsGeneratingCleanSlate(false);
-      setCleanSlateProgress(null);
-      
-      // Refresh data
-      await queryClient.invalidateQueries({ queryKey: ['clusters'] });
-      await queryClient.invalidateQueries({ queryKey: ['qa-pages'] });
-    }
-  };
+  const isPhase1Complete = englishQACount >= 24;
+  const isPhase2Complete = Object.values(languageQACounts).every(count => count >= 24);
+  const totalQAsCreated = englishQACount + Object.values(languageQACounts).reduce((sum, c) => sum + c, 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4">
         <div className="text-center p-3 bg-muted/50 rounded-lg">
@@ -495,45 +497,176 @@ export const ClusterQATab = ({
         </div>
       </div>
 
-      {/* Completion Progress */}
+      {/* Overall Progress */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Q&A Generation Progress</span>
-          <span className="font-medium">
-            {cluster.total_qa_pages}/{totalExpectedQAs} Q&As
-          </span>
+          <span className="font-medium">{cluster.total_qa_pages}/{totalExpectedQAs} Q&As</span>
         </div>
         <Progress value={completionPercent} className="h-2" />
-        <p className="text-xs text-muted-foreground">
-          Architecture: {Object.keys(cluster.languages).length} languages × {Object.values(cluster.languages)[0]?.total || 0} articles × 4 Q&A types
-        </p>
       </div>
+
+      {/* ===== PHASE 1: Generate English Q&As ===== */}
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Globe className="h-5 w-5 text-blue-600" />
+            Phase 1: Generate English Q&As
+            {isPhase1Complete && <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Generate 4 Q&A types per article (pitfalls, costs, process, legal). ~2-3 min per article.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* English Q&A Progress */}
+          <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+            <span className="font-medium">English Q&As:</span>
+            <span className={`text-lg font-bold ${englishQACount >= 24 ? 'text-green-600' : 'text-blue-600'}`}>
+              {englishQACount}/24
+              {englishQACount >= 24 && ' ✅'}
+            </span>
+          </div>
+
+          {/* Article Buttons */}
+          <div className="grid grid-cols-1 gap-2">
+            {englishArticles.map((article, index) => {
+              const isCompleted = completedArticles.has(article.id);
+              const isGenerating = generatingArticle === article.id;
+              
+              return (
+                <div 
+                  key={article.id} 
+                  className={`flex items-center gap-3 p-3 rounded-lg border ${
+                    isCompleted 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' 
+                      : 'bg-background border-border'
+                  }`}
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{article.headline}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isCompleted ? "outline" : "default"}
+                    disabled={isGenerating || isCompleted || !!generatingArticle}
+                    onClick={() => handleGenerateEnglishQAs(article, index + 1)}
+                    className={isCompleted ? 'border-green-400 text-green-700' : 'bg-blue-600 hover:bg-blue-700'}
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isCompleted ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Done
+                      </>
+                    ) : (
+                      'Generate 4 Q&As'
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+
+          {englishArticles.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No English articles found for this cluster.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ===== PHASE 2: Translate to Languages ===== */}
+      <Card className={`border-purple-200 dark:border-purple-800 ${!isPhase1Complete ? 'opacity-60' : ''}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Languages className="h-5 w-5 text-purple-600" />
+            Phase 2: Translate to Languages
+            {isPhase2Complete && <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Translate all 24 English Q&As to each language. ~5-7 min per language.
+            {!isPhase1Complete && (
+              <span className="text-amber-600 font-medium ml-1">
+                (Complete Phase 1 first: {englishQACount}/24 English Q&As)
+              </span>
+            )}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Language Translation Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            {TARGET_LANGUAGES.map((lang) => {
+              const count = languageQACounts[lang] || 0;
+              const isCompleted = count >= 24;
+              const isTranslating = translatingLanguage === lang;
+              const isDisabled = !isPhase1Complete || isTranslating || !!translatingLanguage;
+              
+              return (
+                <div 
+                  key={lang}
+                  className={`p-3 rounded-lg border ${
+                    isCompleted 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                      : 'bg-background border-border'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-lg">{getLanguageFlag(lang)}</span>
+                    <span className={`font-bold ${isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {count}/24
+                      {isCompleted && ' ✅'}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isCompleted ? "outline" : "default"}
+                    disabled={isDisabled || isCompleted}
+                    onClick={() => handleTranslateToLanguage(lang)}
+                    className={`w-full ${
+                      isCompleted 
+                        ? 'border-green-400 text-green-700' 
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
+                  >
+                    {isTranslating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        Translating...
+                      </>
+                    ) : isCompleted ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Complete
+                      </>
+                    ) : (
+                      `Translate to ${lang.toUpperCase()}`
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stalled Job Warning */}
       {isJobStalled && activeJob && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-950/30 dark:border-amber-800">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-5 w-5 text-amber-600" />
-            <span className="font-medium text-amber-700 dark:text-amber-300">
-              Job Stalled
-            </span>
+            <span className="font-medium text-amber-700 dark:text-amber-300">Job Stalled</span>
           </div>
           
           <div className="space-y-2 text-sm text-amber-700 dark:text-amber-400">
             <p>
               Article {(activeJob.current_article_index || 0) + 1} of {activeJob.total_articles} • 
-              {activeJob.total_qas_created || 0} Q&As created so far
+              {activeJob.total_qas_created || 0} Q&As created
             </p>
-            {activeJob.current_article_headline && (
-              <p className="text-xs">
-                Last processing: {activeJob.current_article_headline}
-              </p>
-            )}
-            {activeJob.resume_from_qa_type && (
-              <p className="text-xs">
-                Will resume from: {activeJob.resume_from_qa_type}
-              </p>
-            )}
           </div>
           
           <div className="flex gap-2 mt-3">
@@ -544,12 +677,8 @@ export const ClusterQATab = ({
               disabled={isResumingJob}
               className="border-amber-300 text-amber-700 hover:bg-amber-100"
             >
-              {isResumingJob ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="mr-2 h-4 w-4" />
-              )}
-              Resume Job
+              {isResumingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+              Resume
             </Button>
             <Button
               variant="ghost"
@@ -558,77 +687,9 @@ export const ClusterQATab = ({
               disabled={isCancellingJob}
               className="text-red-600 hover:bg-red-50"
             >
-              {isCancellingJob ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <XCircle className="mr-2 h-4 w-4" />
-              )}
+              {isCancellingJob ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
               Cancel
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={async () => {
-                await handleCancelJob();
-                setTimeout(() => handleGenerateQAs(), 500);
-              }}
-              disabled={isCancellingJob || isStartingJob}
-              className="bg-amber-500 hover:bg-amber-600"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Start Fresh
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Active Job Progress (not stalled) */}
-      {isJobRunning && activeJob && !isJobStalled && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-950/30 dark:border-blue-800">
-          <div className="flex items-center gap-2 mb-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-            <span className="font-medium text-blue-700 dark:text-blue-300">
-              Q&A Generation in Progress
-            </span>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Article {(activeJob.current_article_index || 0) + 1} of {activeJob.total_articles}</span>
-              <span className="font-medium">{activeJob.total_qas_created} Q&As created</span>
-            </div>
-            <Progress 
-              value={((activeJob.articles_completed || 0) / (activeJob.total_articles || 1)) * 100} 
-              className="h-2" 
-            />
-            {activeJob.current_article_headline && (
-              <p className="text-xs text-blue-600 dark:text-blue-400">
-                Processing: {activeJob.current_article_headline}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Job Completed Message */}
-      {activeJob?.status === 'completed' && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/30">
-          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
-            <CheckCircle className="h-4 w-4" />
-            <span>
-              Last generation completed: {activeJob.total_qas_created} Q&As created
-              {(activeJob.total_qas_failed || 0) > 0 && ` (${activeJob.total_qas_failed} failed)`}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Job Failed Message */}
-      {activeJob?.status === 'failed' && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/30">
-          <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
-            <AlertTriangle className="h-4 w-4" />
-            <span>Last generation failed: {activeJob.error}</span>
           </div>
         </div>
       )}
@@ -638,24 +699,13 @@ export const ClusterQATab = ({
         <div className="p-4 bg-orange-50 border border-orange-300 rounded-lg dark:bg-orange-950/30 dark:border-orange-700">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-5 w-5 text-orange-600" />
-            <span className="font-medium text-orange-800 dark:text-orange-300">
-              Q&A Count Mismatch Detected
-            </span>
+            <span className="font-medium text-orange-800 dark:text-orange-300">Q&A Count Mismatch</span>
           </div>
-          
-          <p className="text-sm text-orange-700 dark:text-orange-400 mb-2">
-            Some languages have fewer Q&As than others. Expected {mismatchInfo.maxCount} per language:
-          </p>
           
           <div className="flex flex-wrap gap-2 mb-3">
             {mismatchInfo.mismatched.map(({ lang, actual, missing }) => (
-              <Badge 
-                key={lang} 
-                variant="outline" 
-                className="border-orange-400 text-orange-700 dark:text-orange-300"
-              >
-                {getLanguageFlag(lang)} {lang.toUpperCase()}: {actual}/{mismatchInfo.maxCount} 
-                (missing {missing})
+              <Badge key={lang} variant="outline" className="border-orange-400 text-orange-700">
+                {getLanguageFlag(lang)} {lang.toUpperCase()}: {actual}/{mismatchInfo.maxCount} (missing {missing})
               </Badge>
             ))}
           </div>
@@ -663,14 +713,14 @@ export const ClusterQATab = ({
           <Button
             variant="outline"
             size="sm"
-            className="border-orange-400 text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+            className="border-orange-400 text-orange-700 hover:bg-orange-100"
             onClick={handleRepairMissingQAs}
             disabled={isRepairing}
           >
             {isRepairing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {repairProgress ? `Batch ${repairProgress.batch} (${repairProgress.created} created)...` : 'Starting...'}
+                {repairProgress ? `Batch ${repairProgress.batch}...` : 'Starting...'}
               </>
             ) : (
               <>
@@ -706,15 +756,9 @@ export const ClusterQATab = ({
                 }`}
               >
                 <div className="text-lg">{getLanguageFlag(lang)}</div>
-                <div className="text-sm font-medium">
-                  {status.actualQAs}/{status.expectedQAs}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {status.publishedQAs}P
-                  {status.allPublished && " ✓"}
-                </div>
+                <div className="text-sm font-medium">{status.actualQAs}/{status.expectedQAs}</div>
+                <div className="text-xs text-muted-foreground">{status.publishedQAs}P</div>
                 
-                {/* Status indicator */}
                 {status.isComplete && status.allPublished && (
                   <CheckCircle className="absolute -top-1 -right-1 h-4 w-4 text-green-500" />
                 )}
@@ -727,24 +771,6 @@ export const ClusterQATab = ({
         </div>
       </div>
 
-      {/* Warnings */}
-      {languagesNeedingQAs.length > 0 && !isJobRunning && !isJobStalled && (
-        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-950/30">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-          <div className="text-sm">
-            <span className="font-medium text-amber-800 dark:text-amber-300">
-              {languagesNeedingQAs.length} language(s) incomplete:
-            </span>
-            <span className="text-amber-700 dark:text-amber-400 ml-1">
-              {languagesNeedingQAs.map((l) => l.toUpperCase()).join(", ")}
-            </span>
-            <div className="text-xs text-amber-600 mt-1">
-              Generate English Q&As first, then auto-translate to 9 languages (4 types × 10 languages = 40 per article)
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-2 border-t">
         <Button
@@ -753,53 +779,8 @@ export const ClusterQATab = ({
           onClick={onPublishQAs}
           disabled={draftQAsCount === 0 || isPublishing}
         >
-          {isPublishing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle className="mr-2 h-4 w-4" />
-          )}
+          {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
           Publish All Q&As ({draftQAsCount} drafts)
-        </Button>
-
-        {cluster.total_qa_pages < totalExpectedQAs && (
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleGenerateQAs}
-            disabled={isStartingJob || isJobRunning || isGeneratingCleanSlate}
-            className="bg-amber-500 hover:bg-amber-600"
-          >
-            {isStartingJob || isJobRunning ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <FileText className="mr-2 h-4 w-4" />
-            )}
-            {isJobRunning ? 'Generating...' : 'Generate & Translate Q&As'}
-          </Button>
-        )}
-
-        {/* Clean Slate Button - Generate All 6 Articles Sequentially */}
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleGenerateCleanSlate}
-          disabled={isStartingJob || isJobRunning || isGeneratingCleanSlate || isRepairing}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          {isGeneratingCleanSlate ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {cleanSlateProgress 
-                ? `Article ${cleanSlateProgress.current}/${cleanSlateProgress.total} (${cleanSlateProgress.created} created)`
-                : 'Starting...'
-              }
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Generate All Q&As (Clean Slate)
-            </>
-          )}
         </Button>
       </div>
     </div>
