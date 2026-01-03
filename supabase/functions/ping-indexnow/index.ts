@@ -13,6 +13,7 @@ const INDEXNOW_ENDPOINTS = [
 ];
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
+const API_KEY = Deno.env.get('INDEXNOW_API_KEY') || '8f3a2c1d4e5b6f7a8c9d0e1f2a3b4c5d';
 const KEY_LOCATION = `${BASE_URL}/indexnow-key.txt`;
 
 interface IndexNowRequest {
@@ -133,7 +134,8 @@ serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('INDEXNOW_API_KEY');
+    // Use the API key from env or fallback
+    const apiKey = API_KEY;
     
     if (!apiKey) {
       console.warn('INDEXNOW_API_KEY not configured - skipping IndexNow submission');
