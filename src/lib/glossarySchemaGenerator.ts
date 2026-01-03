@@ -1,3 +1,5 @@
+import { truncateForAEO } from "./aeoUtils";
+
 interface GlossaryTerm {
   term: string;
   full_name: string;
@@ -217,7 +219,7 @@ export function generateGlossaryFAQSchema(glossaryData: GlossaryData) {
       "name": `What is ${term.term} in Spanish real estate?`,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": term.definition
+        "text": truncateForAEO(term.definition)
       }
     }))
   };

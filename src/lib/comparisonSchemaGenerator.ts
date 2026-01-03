@@ -1,4 +1,5 @@
 // Schema generator for comparison pages - AI-citation optimized
+import { truncateForAEO } from "./aeoUtils";
 
 export interface ComparisonPage {
   id: string;
@@ -143,7 +144,7 @@ export function generateComparisonFAQSchema(comparison: ComparisonPage): any | n
       "name": qa.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": qa.answer
+        "text": truncateForAEO(qa.answer)
       }
     }))
   };

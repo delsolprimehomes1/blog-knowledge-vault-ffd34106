@@ -1,4 +1,5 @@
 import { CityBrochureData } from '@/constants/brochures';
+import { truncateForAEO } from "./aeoUtils";
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
@@ -127,7 +128,7 @@ const generateFAQSchema = (city: CityBrochureData) => ({
       name: `Why invest in property in ${city.name}?`,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: `${city.name} offers exceptional investment potential with strong capital appreciation, high rental yields, and year-round demand from international buyers. The Costa del Sol enjoys over 320 days of sunshine, world-class amenities, and excellent connectivity to major European cities.`,
+        text: truncateForAEO(`${city.name} offers exceptional investment potential with strong capital appreciation, high rental yields, and year-round demand from international buyers. The Costa del Sol enjoys over 320 days of sunshine, world-class amenities, and excellent connectivity to major European cities.`),
       },
     },
     {
@@ -135,7 +136,7 @@ const generateFAQSchema = (city: CityBrochureData) => ({
       name: `What types of properties are available in ${city.name}?`,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: `${city.name} offers a diverse range of properties including ${city.propertyTypes.slice(0, 3).join(', ')}. From contemporary apartments to luxury villas, there are options for every lifestyle and budget.`,
+        text: truncateForAEO(`${city.name} offers a diverse range of properties including ${city.propertyTypes.slice(0, 3).join(', ')}. From contemporary apartments to luxury villas, there are options for every lifestyle and budget.`),
       },
     },
     {
@@ -143,7 +144,7 @@ const generateFAQSchema = (city: CityBrochureData) => ({
       name: `Which are the best neighborhoods in ${city.name}?`,
       acceptedAnswer: {
         '@type': 'Answer',
-        text: `The most sought-after neighborhoods in ${city.name} include ${city.neighborhoods.slice(0, 4).join(', ')}. Each area offers unique characteristics, from beachfront living to golf course views.`,
+        text: truncateForAEO(`The most sought-after neighborhoods in ${city.name} include ${city.neighborhoods.slice(0, 4).join(', ')}. Each area offers unique characteristics, from beachfront living to golf course views.`),
       },
     },
     {
@@ -151,7 +152,7 @@ const generateFAQSchema = (city: CityBrochureData) => ({
       name: 'Do you offer support for foreign buyers?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes, Del Sol Prime Homes specializes in guiding international buyers through the Spanish property purchase process. Our multilingual team speaks English, Dutch, German, French, Polish, Swedish, Danish, Hungarian, Finnish, and Norwegian. We provide end-to-end support from property search to key handover.',
+        text: truncateForAEO('Yes, Del Sol Prime Homes specializes in guiding international buyers through the Spanish property purchase process. Our multilingual team speaks English, Dutch, German, French, Polish, Swedish, Danish, Hungarian, Finnish, and Norwegian. We provide end-to-end support from property search to key handover.'),
       },
     },
   ],

@@ -1,3 +1,5 @@
+import { truncateForAEO } from "./aeoUtils";
+
 const BASE_URL = 'https://www.delsolprimehomes.com';
 const LOGO_URL = `${BASE_URL}/assets/logo-new.png`;
 
@@ -141,7 +143,7 @@ export const generateBuyersGuideSchema = (
       "name": faq.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer
+        "text": truncateForAEO(faq.answer)
       }
     }))
   };

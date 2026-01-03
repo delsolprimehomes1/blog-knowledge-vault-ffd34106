@@ -1,5 +1,6 @@
 // About Page Schema Generator for comprehensive JSON-LD
 // Supports: Organization, LocalBusiness, Person, FAQPage, BreadcrumbList, WebPage with Speakable
+import { truncateForAEO } from "./aeoUtils";
 
 interface Founder {
   name: string;
@@ -285,7 +286,7 @@ export function generateFAQPageSchema(faqs: FAQ[]) {
       "name": faq.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer
+        "text": truncateForAEO(faq.answer)
       }
     }))
   };

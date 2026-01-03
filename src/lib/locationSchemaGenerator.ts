@@ -1,5 +1,6 @@
 import { Author } from "@/types/blog";
 import { generatePersonSchema } from "./schemaGenerator";
+import { truncateForAEO } from "./aeoUtils";
 
 export interface LocationPage {
   id: string;
@@ -142,7 +143,7 @@ export function generateLocationFAQSchema(page: LocationPage, author: Author | n
       "name": faq.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer,
+        "text": truncateForAEO(faq.answer),
         ...(author && { "author": generatePersonSchema(author) })
       }
     }))

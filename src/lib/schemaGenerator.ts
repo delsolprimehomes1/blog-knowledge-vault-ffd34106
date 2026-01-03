@@ -1,5 +1,6 @@
 import { BlogArticle, Author } from "@/types/blog";
 import { extractEntitiesFromArticle, entitiesToJsonLd, EntityExtractionResult } from "./entityExtractor";
+import { truncateForAEO } from "./aeoUtils";
 
 export interface SchemaValidationError {
   field: string;
@@ -261,7 +262,7 @@ export function generateFAQSchema(
       "name": faq.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": faq.answer,
+        "text": truncateForAEO(faq.answer),
         ...(author && { "author": generatePersonSchema(author) })
       }
     }))
