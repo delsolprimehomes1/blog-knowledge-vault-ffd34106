@@ -61,6 +61,50 @@ interface LocationData {
   updated_at: string | null;
 }
 
+// Paginated fetching to bypass Supabase 1000-row limit
+async function fetchAllRows<T>(
+  supabase: any,
+  table: string,
+  columns: string,
+  filter: { column: string; value: any },
+  orderBy?: { column: string; ascending: boolean }
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  let allData: T[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from(table)
+      .select(columns)
+      .eq(filter.column, filter.value)
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    
+    if (orderBy) {
+      query = query.order(orderBy.column, { ascending: orderBy.ascending });
+    }
+
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error(`Error fetching ${table} page ${page}:`, error);
+      break;
+    }
+    
+    if (data && data.length > 0) {
+      allData = allData.concat(data);
+      hasMore = data.length === PAGE_SIZE;
+      page++;
+      console.log(`   Fetched ${table} page ${page}: ${data.length} rows (total: ${allData.length})`);
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+}
+
 function getToday(): string {
   return new Date().toISOString().split('T')[0];
 }
@@ -456,12 +500,15 @@ Deno.serve(async (req) => {
     }));
     console.log(`   Trigger: ${trigger_source}, Download XML: ${download_xml}`);
 
-    // Fetch all published content
-    const { data: articles } = await supabase
-      .from('blog_articles')
-      .select('slug, language, cluster_id, is_primary, date_modified, date_published')
-      .eq('status', 'published')
-      .order('date_modified', { ascending: false });
+    // Fetch all published content (paginated to get ALL articles beyond 1000-row limit)
+    console.log('📥 Fetching blog articles with pagination...');
+    const articles = await fetchAllRows<ArticleData>(
+      supabase,
+      'blog_articles',
+      'slug, language, cluster_id, is_primary, date_modified, date_published',
+      { column: 'status', value: 'published' },
+      { column: 'date_modified', ascending: false }
+    );
 
     const { data: qaPages } = await supabase
       .from('qa_pages')
