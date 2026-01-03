@@ -90,14 +90,26 @@ function parsePriceRange(prop: any): { price: number; priceMax?: number } {
   const rawPrice = String(prop.Price || prop.price || '0');
   console.log(`💰 Raw Price field value: "${rawPrice}"`);
   
-  // CRITICAL: Check if price contains a decimal point that might be a concatenated range
-  // New Development prices come as "175000.749000" meaning min=175000, max=749000
+  // CRITICAL: Handle hyphen-separated price ranges like "175000 - 749000"
+  const dashSplit = rawPrice.split(/\s*[-–—]\s*/);
+  if (dashSplit.length >= 2) {
+    const min = parseInt(dashSplit[0].replace(/[^0-9]/g, ''), 10) || 0;
+    const max = parseInt(dashSplit[1].replace(/[^0-9]/g, ''), 10) || 0;
+    
+    if (min > 0 && max > min) {
+      console.log(`💰 DETECTED DASH RANGE: min=${min}, max=${max}`);
+      return { price: min, priceMax: max };
+    }
+  }
+  
+  // Check if price contains a decimal point that might be a concatenated range
+  // New Development prices may come as "175000.749000" meaning min=175000, max=749000
   if (rawPrice.includes('.')) {
     const parts = rawPrice.split('.');
     const beforeDecimal = parseInt(parts[0].replace(/[^0-9]/g, '')) || 0;
     const afterDecimal = parseInt(parts[1]?.replace(/[^0-9]/g, '') || '0') || 0;
     
-    // If the decimal part is suspiciously long (more than 2 digits) and resembles a price,
+    // If the decimal part is suspiciously long (5+ digits) and resembles a price (>10000),
     // it's likely a concatenated min.max format
     if (parts[1] && parts[1].length >= 5 && afterDecimal > 10000) {
       console.log(`💰 DETECTED CONCATENATED PRICE: min=${beforeDecimal}, max=${afterDecimal}`);
