@@ -15,19 +15,64 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
   const [isFavorited, setIsFavorited] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const formatPrice = (price: number, priceMax: number | undefined, currency: string) => {
+  const formatPrice = (price: number | string, priceMax: number | undefined, currency: string) => {
     const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
       maximumFractionDigits: 0,
     });
     
-    // If there's a valid price range (New Developments), show "From €X"
-    if (priceMax && priceMax > price) {
-      return `From ${formatter.format(price)}`;
+    // Convert price to string for analysis
+    const priceStr = String(price);
+    
+    // CASE 1: Check if priceMax is already provided and valid
+    if (priceMax && typeof priceMax === 'number' && priceMax > 0) {
+      const numPrice = typeof price === 'number' ? price : parseInt(priceStr.replace(/[^0-9]/g, ''));
+      if (priceMax > numPrice) {
+        return `From ${formatter.format(numPrice)}`;
+      }
     }
     
-    return formatter.format(price);
+    // CASE 2: Detect dash range format "175000 - 749000"
+    if (priceStr.includes(' - ') || priceStr.includes('-')) {
+      const dashSplit = priceStr.split(/\s*[-–—]\s*/);
+      if (dashSplit.length >= 2) {
+        const min = parseInt(dashSplit[0].replace(/[^0-9]/g, '')) || 0;
+        const max = parseInt(dashSplit[1].replace(/[^0-9]/g, '')) || 0;
+        if (min > 0 && max > min) {
+          return `From ${formatter.format(min)}`;
+        }
+      }
+    }
+    
+    // CASE 3: Detect concatenated number (too many digits - likely min+max combined)
+    // Normal prices are under 100 million (8 digits). If more, it's likely concatenated
+    const numericPrice = parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
+    if (numericPrice > 100000000) {
+      // Try to split in half
+      const priceDigits = String(numericPrice);
+      const midpoint = Math.floor(priceDigits.length / 2);
+      const possibleMin = parseInt(priceDigits.substring(0, midpoint)) || 0;
+      const possibleMax = parseInt(priceDigits.substring(midpoint)) || 0;
+      
+      if (possibleMin > 10000 && possibleMax > possibleMin) {
+        return `From ${formatter.format(possibleMin)}`;
+      }
+    }
+    
+    // CASE 4: Detect decimal format "175000.749000"
+    if (priceStr.includes('.')) {
+      const parts = priceStr.split('.');
+      const beforeDecimal = parseInt(parts[0].replace(/[^0-9]/g, '')) || 0;
+      const afterDecimal = parts[1] ? parseInt(parts[1].replace(/[^0-9]/g, '')) : 0;
+      
+      if (parts[1] && parts[1].length >= 5 && afterDecimal > 10000) {
+        return `From ${formatter.format(beforeDecimal)}`;
+      }
+    }
+    
+    // Default: single price
+    return formatter.format(numericPrice);
   };
 
   const propertyLink = `/${lang}/property/${property.reference}`;
