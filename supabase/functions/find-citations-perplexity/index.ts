@@ -12,9 +12,9 @@ const corsHeaders = {
 const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
 const PERPLEXITY_BASE_URL = 'https://api.perplexity.ai/chat/completions';
 
-// Maximum chunks to search before giving up (prevents timeout)
-// Each chunk = 20 domains, so 5 chunks = 100 domains searched
-const MAX_CHUNKS_TO_SEARCH = 5;
+// Maximum chunks to search - search ALL 906 approved domains before fallback
+// Each chunk = 20 domains, so 100 chunks = 2000 domains max (covers all 906)
+const MAX_CHUNKS_TO_SEARCH = 100;
 
 if (!PERPLEXITY_API_KEY) {
   console.warn('⚠️ PERPLEXITY_API_KEY not found - citation search will fail');
@@ -49,6 +49,38 @@ const COMPETITOR_AGENCIES = [
   'viva-estates.com',
   'inmogolf.com',
   'habitat-marbella.com',
+  
+  // MALAGA/COSTA DEL SOL SPECIFIC COMPETITORS (CRITICAL)
+  'homenetspain.com',
+  'movetomalagaspain.com',
+  'movetomalaga.com',
+  'propertyfindermalaga.com',
+  'malagaproperty.com',
+  'costadelsolhomes.com',
+  'marbellabanus.com',
+  'spanishpropertychoice.com',
+  'propertyforsalespain.com',
+  'spainpropertyforsale.com',
+  'buypropertyspain.com',
+  'livinginspain.com',
+  'expatliving.es',
+  'relocatespain.com',
+  'movingtomalaga.com',
+  'malagarelocation.com',
+  'costadelsolliving.com',
+  'marbellaliving.com',
+  'sunnyspainproperty.com',
+  'spanishsunshine.com',
+  'propertiesinspain.com',
+  'spainhousesforsale.com',
+  'andaluciaproperty.com',
+  'andaluciahouses.com',
+  'estepona-property.com',
+  'benalmadena-property.com',
+  'fuengirola-property.com',
+  'mijas-property.com',
+  'nerja-property.com',
+  'torremolinosproperties.com',
   
   // International luxury agencies
   'engel-voelkers.com',
@@ -90,6 +122,11 @@ const COMPETITOR_AGENCIES = [
   'spanishhomes.com',
   'spanish-property-centre.com',
   'primeinvest.es',
+  
+  // Additional relocation/expat property sites
+  'expatica.com',
+  'internations.org',
+  'justlanded.com',
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -934,9 +971,56 @@ async function findCitationWithOpenWebFallback(
   supabase: any
 ): Promise<Citation | null> {
   console.log(`\n🌐 ═══════════════════════════════════════════`);
-  console.log(`   OPEN WEB FALLBACK SEARCH`);
+  console.log(`   OPEN WEB FALLBACK SEARCH (ULTRA-STRICT MODE)`);
   console.log(`   Claim ${claimIndex}: "${claim.substring(0, 80)}..."`);
   console.log(`═══════════════════════════════════════════\n`);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LAYER 1: EXPANDED KEYWORD BLOCKING
+  // ═══════════════════════════════════════════════════════════════════
+  const ultraBlockedKeywords = [
+    // English real estate terms
+    'property', 'properties', 'realestate', 'real-estate', 'estate-agent',
+    'homes', 'villas', 'apartments', 'condos', 'realtor', 'broker',
+    'listing', 'listings', 'forsale', 'for-sale', 'to-let', 'tolet',
+    'buy-', 'sell-', 'rent-', 'relocation', 'expat-', 'moving-to',
+    'moveto', 'relocate', 'expatlife',
+    
+    // Spanish terms
+    'inmobiliaria', 'inmobiliarias', 'casas', 'pisos', 'viviendas',
+    'alquiler', 'venta', 'comprar', 'vender', 'inmueble', 'inmuebles',
+    
+    // Dutch/Belgian terms
+    'makelaar', 'makelaardij', 'vastgoed', 'woning', 'huizen',
+    
+    // German terms
+    'immobilien', 'makler', 'immobilie',
+    
+    // French terms
+    'immobilier', 'agence-immobiliere',
+    
+    // General terms
+    'immo', 'housing', 'estate', 'propertyfor', 'homesfor',
+    'villasin', 'apartmentsin', 'propertiesin',
+  ];
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LAYER 2: LOCATION + PROPERTY PATTERN BLOCKING
+  // ═══════════════════════════════════════════════════════════════════
+  const locationPropertyPatterns = [
+    /costa.*sol.*(property|homes|villas|real|estate|agency|living)/i,
+    /malaga.*(property|homes|villas|real|estate|agency|relocation)/i,
+    /marbella.*(property|homes|villas|real|estate|agency|living)/i,
+    /spain.*(property|homes|villas|real|estate|living|relocation)/i,
+    /andaluc[ií]a.*(property|homes|villas|real|estate)/i,
+    /move.*to.*(malaga|marbella|spain|costa.*sol|andalucia)/i,
+    /(malaga|marbella|spain|costa.*sol).*move/i,
+    /(buy|sell|rent).*(malaga|marbella|costa.*sol|spain)/i,
+    /(malaga|marbella|costa.*sol).*(buy|sell|rent)/i,
+    /living.*in.*(malaga|marbella|spain|costa.*sol)/i,
+    /expat.*(malaga|marbella|spain|costa.*sol)/i,
+    /(malaga|marbella|spain|costa.*sol).*expat/i,
+  ];
 
   try {
     // Fetch blacklisted domains from database
@@ -944,41 +1028,53 @@ async function findCitationWithOpenWebFallback(
       .from('approved_domains')
       .select('domain')
       .eq('is_allowed', false);
-
-    // Combine database blacklist with hardcoded competitor list
-    const databaseBlacklist = blacklistedDomains?.map((d: { domain: string }) => d.domain) || [];
-    const allBlockedDomains = [...new Set([...COMPETITOR_AGENCIES, ...databaseBlacklist])];
     
-    console.log(`🛑 Total blocked domains: ${allBlockedDomains.length}`);
+    // Also fetch from blocked_domains table
+    const { data: blockedDomainsTable } = await supabase
+      .from('blocked_domains')
+      .select('domain')
+      .eq('is_blocked', true);
+
+    // Combine all blocklists
+    const dbBlacklist = blacklistedDomains?.map((d: { domain: string }) => d.domain) || [];
+    const dbBlocked = blockedDomainsTable?.map((d: { domain: string }) => d.domain) || [];
+    const allBlockedDomains = [...new Set([...COMPETITOR_AGENCIES, ...dbBlacklist, ...dbBlocked])];
+    const databaseBlacklistSet = new Set([...dbBlacklist, ...dbBlocked]);
+    
+    console.log(`🛑 ULTRA-STRICT BLOCKING ACTIVE:`);
     console.log(`   • Hardcoded competitors: ${COMPETITOR_AGENCIES.length}`);
-    console.log(`   • Database blacklist: ${databaseBlacklist.length}\n`);
+    console.log(`   • Database blacklist: ${databaseBlacklistSet.size}`);
+    console.log(`   • Ultra-blocked keywords: ${ultraBlockedKeywords.length}`);
+    console.log(`   • Location+Property patterns: ${locationPropertyPatterns.length}\n`);
 
     // Construct strict exclusion prompt
-    const excludedDomainsStr = allBlockedDomains.join(', ');
+    const excludedDomainsStr = allBlockedDomains.slice(0, 100).join(', '); // First 100 for prompt size
     
     const prompt = `You are a citation research expert. Find ONE authoritative ${language} source that verifies this claim about "${articleTopic}":
 
 "${claim}"
 
 🛑 CRITICAL EXCLUSION RULES:
-You MUST NEVER cite ANY of these ${allBlockedDomains.length} blocked domains:
+You MUST NEVER cite ANY of these blocked domains:
 ${excludedDomainsStr}
 
-Additionally, you MUST NEVER use:
-- Real estate agency websites (inmobiliarias)
-- Property listing portals (idealista, fotocasa, etc.)
-- Real estate investment platforms
-- Relocation/expat property services
-- Any site with "property", "inmobiliaria", "realestate", "vivienda" in domain
+🚫 ABSOLUTELY FORBIDDEN SOURCES:
+- ANY real estate agency, broker, or inmobiliaria
+- ANY property listing portal (idealista, fotocasa, kyero, etc.)
+- ANY relocation/expat property service
+- ANY site selling, renting, or listing properties
+- ANY site with words like "property", "homes", "villas", "inmobiliaria" in domain
+- ANY Costa del Sol or Malaga-focused real estate site
+- ANY site helping people buy/sell/rent property in Spain
 
-✅ ONLY cite these types of sources:
-- Government websites (.gov, .gob.es)
-- Official statistics bureaus (INE, Eurostat)
-- Central banks and financial regulators
-- News outlets (major newspapers, TV networks)
-- Research institutions and universities
-- Established encyclopedias (Wikipedia is OK for general facts)
-- Official tourism/geography authorities
+✅ ONLY ACCEPTABLE SOURCES:
+- Government websites (.gov, .gob.es, .gouv.fr, .gov.uk)
+- Official statistics bureaus (INE, Eurostat, ONS)
+- Central banks (Banco de España, ECB)
+- Major newspapers (El País, El Mundo, The Guardian, BBC)
+- Universities and research institutions
+- Official tourism authorities (NOT property-focused)
+- Wikipedia (for general encyclopedic facts only)
 
 Return ONE citation in this exact JSON format:
 {
@@ -997,7 +1093,7 @@ Return ONE citation in this exact JSON format:
       body: JSON.stringify({
         model: 'sonar',
         messages: [
-          { role: 'system', content: 'You are a citation finder. Return ONLY valid JSON with one citation. Never use blocked domains.' },
+          { role: 'system', content: 'You are a citation finder. Return ONLY valid JSON. NEVER use real estate company websites, property portals, or relocation services.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.2,
@@ -1031,24 +1127,72 @@ Return ONE citation in this exact JSON format:
       return null;
     }
 
-    // CRITICAL: Double-check domain is not blocked
+    // ═══════════════════════════════════════════════════════════════════
+    // TRIPLE-LAYER VALIDATION ON RETURNED CITATION
+    // ═══════════════════════════════════════════════════════════════════
     const url = new URL(citation.url);
-    const domain = url.hostname.replace('www.', '');
+    const domain = url.hostname.replace('www.', '').toLowerCase();
+    const fullUrl = citation.url.toLowerCase();
     
-    if (isBlockedCompetitor(citation.url, domain)) {
-      console.log(`🛑 FALLBACK BLOCKED: ${domain} is a competitor - Perplexity violated exclusion rules!`);
+    console.log(`🔍 Validating citation from: ${domain}`);
+
+    // LAYER 1: Check hardcoded competitors and database blacklist
+    if (isBlockedCompetitorBulletproof(citation.url, domain, databaseBlacklistSet)) {
+      console.log(`🛑 LAYER 1 BLOCKED: ${domain} in competitor/blacklist`);
+      await addToBlacklist(supabase, domain, 'open_web_fallback_violation');
       return null;
     }
 
-    // Additional keyword blocking for safety
-    const domainLower = domain.toLowerCase();
-    const blockedKeywords = ['property', 'inmobiliaria', 'realestate', 'vivienda', 'listing', 'piso', 'casa-', 'homes'];
-    if (blockedKeywords.some(kw => domainLower.includes(kw))) {
-      console.log(`🛑 FALLBACK BLOCKED: ${domain} contains blocked keyword`);
-      return null;
+    // LAYER 2: Ultra keyword blocking
+    for (const keyword of ultraBlockedKeywords) {
+      if (domain.includes(keyword) || fullUrl.includes(keyword)) {
+        console.log(`🛑 LAYER 2 BLOCKED: ${domain} contains keyword "${keyword}"`);
+        await addToBlacklist(supabase, domain, `keyword_${keyword}`);
+        return null;
+      }
     }
 
-    console.log(`✅ Open web citation found: ${domain}`);
+    // LAYER 3: Location + Property pattern blocking
+    for (const pattern of locationPropertyPatterns) {
+      if (pattern.test(domain) || pattern.test(fullUrl)) {
+        console.log(`🛑 LAYER 3 BLOCKED: ${domain} matches location+property pattern`);
+        await addToBlacklist(supabase, domain, 'location_property_pattern');
+        return null;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LAYER 4: ACTIVE PERPLEXITY VERIFICATION (for unknown domains)
+    // ═══════════════════════════════════════════════════════════════════
+    // Check if domain is in our approved list - if so, skip verification
+    const { data: approvedCheck } = await supabase
+      .from('approved_domains')
+      .select('domain')
+      .eq('domain', domain)
+      .eq('is_allowed', true)
+      .single();
+
+    if (!approvedCheck) {
+      // Domain not in approved list - verify it's not a competitor
+      console.log(`🔍 LAYER 4: Active verification for unknown domain: ${domain}`);
+      
+      const verification = await verifyNotCompetitor(citation.url, domain);
+      
+      if (verification.isCompetitor && verification.confidence >= 7) {
+        console.log(`🛑 LAYER 4 BLOCKED: ${domain} verified as competitor`);
+        console.log(`   Business type: ${verification.businessType}`);
+        console.log(`   Confidence: ${verification.confidence}/10`);
+        await addToBlacklist(supabase, domain, `perplexity_verified_${verification.businessType}`);
+        return null;
+      }
+      
+      console.log(`✅ LAYER 4 PASSED: ${domain} is not a real estate company`);
+      console.log(`   Business type: ${verification.businessType}`);
+    } else {
+      console.log(`✅ Domain ${domain} is pre-approved - skipping verification`);
+    }
+
+    console.log(`\n✅ Open web citation PASSED all 4 layers: ${domain}`);
     console.log(`   Source: ${citation.source}`);
     console.log(`   Specificity: ${citation.specificity || 80}\n`);
 
@@ -1056,15 +1200,15 @@ Return ONE citation in this exact JSON format:
       url: citation.url,
       sourceName: citation.source,
       description: citation.text,
-      relevance: 'High - Open web search',
-      authorityScore: 75, // Open web sources get medium authority
+      relevance: 'High - Open web search (verified)',
+      authorityScore: 75,
       specificityScore: citation.specificity || 80,
-      batchTier: 5, // Special tier for open web
+      batchTier: 5,
       needsManualReview: false,
-      isFromOpenWeb: true, // Flag for UI
+      isFromOpenWeb: true,
       diversityScore: 100,
       usageCount: 0,
-    } as any; // Use 'as any' since we're adding extra properties beyond Citation interface
+    } as any;
 
   } catch (error) {
     console.error(`❌ Open web fallback error:`, error);
