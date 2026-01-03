@@ -77,7 +77,7 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
         model: 'gpt-image-1',
         prompt: finalPrompt,
         n: 1,
-        size: '1920x1080'
+        size: '1536x1024'
       }),
     });
 
@@ -182,8 +182,8 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
           featured_image_url: publicUrl,
           featured_image_alt: altText,
           featured_image_caption: caption,
-          featured_image_width: 1920,
-          featured_image_height: 1080,
+          featured_image_width: 1536,
+          featured_image_height: 1024,
           updated_at: new Date().toISOString()
         })
         .eq('id', location_page_id);
@@ -203,8 +203,8 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
           url: publicUrl,
           alt: altText,
           caption: caption,
-          width: 1920,
-          height: 1080,
+          width: 1536,
+          height: 1024,
           format: extension,
           fileName
         }
