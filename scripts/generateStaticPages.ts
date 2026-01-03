@@ -298,26 +298,8 @@ function generateBreadcrumbSchema(article: ArticleData) {
   };
 }
 
-function generateFAQSchema(article: ArticleData) {
-  if (!article.qa_entities || article.qa_entities.length === 0) {
-    return null;
-  }
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#faq`,
-    "inLanguage": article.language,
-    "mainEntity": article.qa_entities.map((qa: any) => ({
-      "@type": "Question",
-      "name": qa.question,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": qa.answer
-      }
-    }))
-  };
-}
+// FAQPage schema removed - blog posts use BlogPosting schema only
+// FAQPage was causing "Duplicate field FAQPage" errors in Google Search Console
 
 function sanitizeForHTML(text: string): string {
   return text
@@ -605,7 +587,7 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
   const articleSchema = generateArticleSchema(article);
   const speakableSchema = generateSpeakableSchema(article);
   const breadcrumbSchema = generateBreadcrumbSchema(article);
-  const faqSchema = generateFAQSchema(article);
+  // FAQPage schema removed to fix duplicate schema errors
   
   // Individual schemas for injection with data-schema attributes
   const schemaScripts = [
@@ -614,7 +596,7 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
     `<script type="application/ld+json" data-schema="article">${JSON.stringify(articleSchema, null, 2)}</script>`,
     `<script type="application/ld+json" data-schema="speakable">${JSON.stringify(speakableSchema, null, 2)}</script>`,
     `<script type="application/ld+json" data-schema="breadcrumb">${JSON.stringify(breadcrumbSchema, null, 2)}</script>`,
-    faqSchema ? `<script type="application/ld+json" data-schema="faq">${JSON.stringify(faqSchema, null, 2)}</script>` : ''
+    // FAQPage schema line removed
   ].filter(Boolean).join('\n  ');
 
   const baseUrl = 'https://www.delsolprimehomes.com';
