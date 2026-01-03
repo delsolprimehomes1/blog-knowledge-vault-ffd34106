@@ -277,6 +277,15 @@ export const ClusterArticlesTab = ({
                 >
                   {article.status}
                 </Badge>
+                {Array.isArray(article.external_citations) && article.external_citations.length > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="shrink-0 h-5 px-1.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                    title={`${article.external_citations.length} approved citation(s)`}
+                  >
+                    🔗 {article.external_citations.length}
+                  </Badge>
+                )}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
