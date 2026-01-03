@@ -63,24 +63,35 @@ export function CreateClusterDialog({ open, onOpenChange, onClusterCreated }: Cr
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 5000));
       
+      // Count actual articles created for this cluster (more reliable than job.progress)
+      const { count: articlesCreated } = await supabase
+        .from('blog_articles')
+        .select('*', { count: 'exact', head: true })
+        .eq('cluster_id', id)
+        .eq('language', 'en');
+      
+      const articleCount = articlesCreated || 0;
+      
+      // Update progress based on actual article count
+      setProgress({
+        current_step: articleCount,
+        total_steps: 6,
+        current_article: articleCount,
+        total_articles: 6
+      });
+      
+      // Check job status for completion/failure
       const { data: job, error } = await supabase
         .from('cluster_generations')
-        .select('status, progress, error, articles')
+        .select('status, error')
         .eq('id', id)
         .maybeSingle();
       
       if (error || !job) continue;
       
-      if (job.progress && typeof job.progress === 'object') {
-        const prog = job.progress as unknown as GenerationProgress;
-        if (prog.current_article !== undefined && prog.total_articles !== undefined) {
-          setProgress(prog);
-        }
-      }
-      
-      if (job.status === 'completed') {
-        const articlesCount = Array.isArray(job.articles) ? job.articles.length : 0;
-        toast.success(`Cluster created with ${articlesCount} articles!`);
+      // Success: 6 English articles created OR job marked completed
+      if (articleCount >= 6 || job.status === 'completed') {
+        toast.success(`Cluster created with ${articleCount} articles!`);
         setIsGenerating(false);
         resetForm();
         onClusterCreated();
