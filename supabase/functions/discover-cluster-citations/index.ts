@@ -27,6 +27,9 @@ const BLOCKED_DOMAINS = [
   'lucasfox.com', 'engel-voelkers.com', 'sothebysrealty.com', 'christiesrealestate.com',
   'savills.com', 'knightfrank.com', 'drumelia.com', 'mpdunne.com',
   'pure-living-properties.com', 'nvoga.com',
+  
+  // Malaga-specific competitors
+  'movetomalagaspain.com', 'movetomalaga.com', 'propertyfindermalaga.com',
 ];
 
 const BLOCKED_KEYWORDS = [

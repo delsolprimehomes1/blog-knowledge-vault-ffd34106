@@ -78,6 +78,10 @@ const COMPETITOR_DOMAINS = [
   'century21.es',
   'remax.es',
   'coldwellbanker.es',
+  // Malaga-specific competitors
+  'movetomalagaspain.com',
+  'movetomalaga.com',
+  'propertyfindermalaga.com',
 ];
 
 // Real estate keyword patterns (multi-language)

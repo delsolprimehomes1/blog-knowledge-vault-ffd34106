@@ -41,6 +41,9 @@ const BLOCKED_DOMAINS = [
   
   // Aggregators
   'spotahome.com', 'nestpick.com', 'housinganyhere.com', 'badi.com',
+  
+  // Malaga-specific competitors
+  'movetomalagaspain.com', 'movetomalaga.com', 'propertyfindermalaga.com',
 ];
 
 // Layer 2: Blocked keywords in domains/URLs
