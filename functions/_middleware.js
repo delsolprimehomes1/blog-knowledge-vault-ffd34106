@@ -190,6 +190,85 @@ export async function onRequest(context) {
     }
   }
   
+  // PRIORITY 0.6: Handle Buyers Guide page - serve with SEO metadata (11 hreflang tags)
+  const buyersGuideMatch = path.match(/^\/([a-z]{2})\/buyers-guide\/?$/) || path === '/buyers-guide';
+  if (buyersGuideMatch) {
+    const lang = buyersGuideMatch[1] || 'en';
+    
+    if (CONFIG.SUPPORTED_LANGUAGES.includes(lang) || path === '/buyers-guide') {
+      try {
+        const indexRequest = new Request(new URL('/index.html', request.url).toString());
+        const assetResponse = await env.ASSETS.fetch(indexRequest);
+        
+        if (assetResponse.ok) {
+          let html = await assetResponse.text();
+          
+          const baseUrl = 'https://www.delsolprimehomes.com';
+          const canonicalLang = path === '/buyers-guide' ? 'en' : lang;
+          const canonicalUrl = `${baseUrl}/${canonicalLang}/buyers-guide`;
+          
+          const BUYERS_GUIDE_META = {
+            en: { title: 'Complete Buyers Guide to Costa del Sol Property | Del Sol Prime Homes', description: 'Your comprehensive guide to buying property on the Costa del Sol. Step-by-step process, costs, legal requirements, Golden Visa information.' },
+            de: { title: 'Vollständiger Immobilienkauf-Leitfaden Costa del Sol | Del Sol Prime Homes', description: 'Ihr umfassender Leitfaden zum Immobilienkauf an der Costa del Sol. Schritt-für-Schritt-Prozess, Kosten, rechtliche Anforderungen.' },
+            nl: { title: 'Complete Koopgids voor Costa del Sol Vastgoed | Del Sol Prime Homes', description: 'Uw uitgebreide gids voor het kopen van onroerend goed aan de Costa del Sol. Stapsgewijs proces, kosten, juridische vereisten.' },
+            fr: { title: 'Guide Complet d\'Achat Immobilier Costa del Sol | Del Sol Prime Homes', description: 'Votre guide complet pour acheter une propriété sur la Costa del Sol. Processus étape par étape, coûts, exigences légales.' },
+            pl: { title: 'Kompletny Przewodnik Kupna Nieruchomości Costa del Sol | Del Sol Prime Homes', description: 'Twój kompleksowy przewodnik po zakupie nieruchomości na Costa del Sol. Proces krok po kroku, koszty, wymogi prawne.' },
+            sv: { title: 'Komplett Köpguide för Costa del Sol Fastigheter | Del Sol Prime Homes', description: 'Din omfattande guide till att köpa fastighet på Costa del Sol. Steg-för-steg-process, kostnader, juridiska krav.' },
+            da: { title: 'Komplet Købsguide til Costa del Sol Ejendomme | Del Sol Prime Homes', description: 'Din omfattende guide til at købe ejendom på Costa del Sol. Trin-for-trin proces, omkostninger, juridiske krav.' },
+            hu: { title: 'Teljes Vásárlási Útmutató Costa del Sol Ingatlanokhoz | Del Sol Prime Homes', description: 'Átfogó útmutatója a Costa del Sol-i ingatlanvásárláshoz. Lépésről lépésre folyamat, költségek, jogi követelmények.' },
+            fi: { title: 'Täydellinen Ostajan Opas Costa del Sol Kiinteistöihin | Del Sol Prime Homes', description: 'Kattava oppaasi kiinteistön ostamiseen Costa del Solilla. Vaiheittainen prosessi, kustannukset, lakisääteiset vaatimukset.' },
+            no: { title: 'Komplett Kjøpsguide for Costa del Sol Eiendommer | Del Sol Prime Homes', description: 'Din omfattende guide til å kjøpe eiendom på Costa del Sol. Steg-for-steg prosess, kostnader, juridiske krav.' }
+          };
+          
+          const meta = BUYERS_GUIDE_META[canonicalLang] || BUYERS_GUIDE_META.en;
+          
+          // 11 hreflang tags (10 languages + x-default)
+          const hreflangTags = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no']
+            .map(l => `    <link rel="alternate" hreflang="${l}" href="${baseUrl}/${l}/buyers-guide" />`)
+            .join('\n');
+          
+          const seoBlock = `
+    <title>${meta.title}</title>
+    <meta name="description" content="${meta.description}" />
+    <link rel="canonical" href="${canonicalUrl}" />
+${hreflangTags}
+    <link rel="alternate" hreflang="x-default" href="${baseUrl}/en/buyers-guide" />
+    <meta property="og:title" content="${meta.title}" />
+    <meta property="og:description" content="${meta.description}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Del Sol Prime Homes" />
+    <meta property="og:image" content="${baseUrl}/assets/costa-del-sol-bg.jpg" />
+`;
+          
+          html = html.replace(/<title>.*?<\/title>/, '');
+          html = html.replace('</head>', `${seoBlock}</head>`);
+          html = html.replace(/<html[^>]*>/, `<html lang="${canonicalLang}">`);
+          
+          // Redirect legacy /buyers-guide to /en/buyers-guide
+          if (path === '/buyers-guide') {
+            return Response.redirect(`${baseUrl}/en/buyers-guide`, 301);
+          }
+          
+          return new Response(html, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600',
+              'X-Middleware-Active': 'true',
+              'X-Middleware-Version': '2026-01-03',
+              'X-SEO-Source': 'buyers-guide-injection',
+              'X-Content-Language': canonicalLang,
+              'X-Page-Type': 'buyers-guide'
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[Middleware] Error processing buyers guide page ${path}:`, error);
+      }
+    }
+  }
+  
   // PRIORITY 1: Serve SPA shell directly for admin, auth, and login routes
   // These are SPA routes that should always return index.html, never redirect or modify
   const isSPAOnlyRoute = 

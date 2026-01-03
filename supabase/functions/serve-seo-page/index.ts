@@ -57,6 +57,7 @@ interface PageMetadata {
   hreflang_group_id?: string
   qa_entities?: any[]
   content_type: 'qa' | 'blog' | 'compare' | 'locations'
+  quick_comparison_table?: any[] // For comparison pages
 }
 
 interface HreflangSibling {
@@ -152,6 +153,7 @@ async function fetchComparisonMetadata(supabase: any, slug: string, lang: string
     hreflang_group_id: data.hreflang_group_id,
     qa_entities: data.qa_entities,
     content_type: 'compare',
+    quick_comparison_table: data.quick_comparison_table,
   }
 }
 
@@ -483,6 +485,53 @@ function generateArticleSchema(metadata: PageMetadata): string {
   return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
 }
 
+function generateSpeakableSchema(metadata: PageMetadata): string {
+  // Generate SpeakableSpecification for AI/voice assistants
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${metadata.canonical_url}#webpage-speakable`,
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [
+        ".speakable-answer",
+        ".comparison-summary",
+        ".tl-dr-summary",
+        ".speakable-box"
+      ]
+    },
+    "url": metadata.canonical_url
+  }
+
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
+}
+
+function generateComparisonTableSchema(metadata: PageMetadata, comparisonTable: any[]): string {
+  // Only generate Table schema for comparison pages with comparison data
+  if (metadata.content_type !== 'compare' || !comparisonTable || comparisonTable.length === 0) {
+    return ''
+  }
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Table",
+    "@id": `${metadata.canonical_url}#comparison-table`,
+    "about": metadata.headline,
+    "description": `Comparison table for ${metadata.headline}`,
+    "mainEntity": comparisonTable.map((row: any, index: number) => ({
+      "@type": "ItemList",
+      "position": index + 1,
+      "name": row.attribute || row.name,
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "item": { "@type": "Thing", "name": row.option_a || row.optionA } },
+        { "@type": "ListItem", "position": 2, "item": { "@type": "Thing", "name": row.option_b || row.optionB } }
+      ]
+    }))
+  }
+
+  return `<script type="application/ld+json">${JSON.stringify(schema)}</script>`
+}
+
 function escapeHtml(text: string | null | undefined): string {
   if (!text) return ''
   return text
@@ -504,6 +553,12 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml
   const articleSchema = generateArticleSchema(metadata)
   const breadcrumbSchema = generateBreadcrumbSchema(metadata)
   const orgSchema = generateOrganizationSchema()
+  
+  // Generate speakable schema for all page types with speakable content
+  const speakableSchema = metadata.speakable_answer ? generateSpeakableSchema(metadata) : ''
+  
+  // Generate comparison table schema for comparison pages
+  const comparisonTableSchema = generateComparisonTableSchema(metadata, metadata.quick_comparison_table || [])
 
   // Build the complete head section (no charset/viewport - those are in index.html)
   const headContent = `
@@ -544,6 +599,8 @@ ${hreflangTags}
   ${articleSchema}
   ${breadcrumbSchema}
   ${orgSchema}
+  ${speakableSchema}
+  ${comparisonTableSchema}
 `
 
   // Replace the entire head section and html lang attribute

@@ -177,7 +177,8 @@ const App = () => (
               <Route path="/glossary" element={<Glossary />} />
               <Route path="/brochure/:citySlug" element={<CityBrochure />} />
               <Route path="/about" element={<About />} />
-              <Route path="/buyers-guide" element={<BuyersGuide />} />
+              <Route path="/buyers-guide" element={<Navigate to="/en/buyers-guide" replace />} />
+              <Route path="/:lang/buyers-guide" element={<BuyersGuide />} />
               
               {/* ========================================== */}
               {/* LANGUAGE-PREFIXED ROUTES (Phase 2)        */}

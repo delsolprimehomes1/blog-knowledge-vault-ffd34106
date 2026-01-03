@@ -37,6 +37,9 @@ interface ComparisonData {
   category?: string;
   author?: any;
   reviewer?: any;
+  translations?: Record<string, string>;
+  canonical_url?: string;
+  hreflang_group_id?: string;
 }
 
 interface ProductionAssets {
@@ -45,6 +48,13 @@ interface ProductionAssets {
 }
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
+const SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
+
+const langToHreflang: Record<string, string> = {
+  en: 'en-GB', de: 'de-DE', nl: 'nl-NL',
+  fr: 'fr-FR', pl: 'pl-PL', sv: 'sv-SE', 
+  da: 'da-DK', hu: 'hu-HU', fi: 'fi-FI', no: 'nb-NO'
+};
 
 function getProductionAssets(distDir: string): ProductionAssets {
   const indexPath = join(distDir, 'index.html');
@@ -90,15 +100,16 @@ function generateOrganizationSchema() {
 }
 
 function generateComparisonArticleSchema(comparison: ComparisonData) {
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
   return {
     "@context": "https://schema.org",
     "@type": "Article",
-    "@id": `${BASE_URL}/compare/${comparison.slug}#article`,
+    "@id": `${canonicalUrl}#article`,
     "headline": comparison.headline,
     "description": comparison.meta_description,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `${BASE_URL}/compare/${comparison.slug}`
+      "@id": canonicalUrl
     },
     "publisher": { "@id": `${BASE_URL}/#organization` },
     "datePublished": comparison.date_published,
@@ -127,11 +138,12 @@ function generateComparisonArticleSchema(comparison: ComparisonData) {
 
 function generateComparisonFAQSchema(comparison: ComparisonData) {
   if (!comparison.qa_entities?.length) return null;
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
   
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": `${BASE_URL}/compare/${comparison.slug}#faq`,
+    "@id": `${canonicalUrl}#faq`,
     "inLanguage": comparison.language,
     "mainEntity": comparison.qa_entities.map(qa => ({
       "@type": "Question",
@@ -145,23 +157,29 @@ function generateComparisonFAQSchema(comparison: ComparisonData) {
 }
 
 function generateSpeakableSchema(comparison: ComparisonData) {
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
   return {
     "@context": "https://schema.org",
-    "@type": "SpeakableSpecification",
-    "inLanguage": comparison.language,
-    "cssSelector": [".speakable-answer", ".comparison-summary", ".final-verdict"]
+    "@type": "WebPage",
+    "@id": `${canonicalUrl}#webpage-speakable`,
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [".speakable-answer", ".comparison-summary", ".final-verdict", ".speakable-box"]
+    },
+    "url": canonicalUrl
   };
 }
 
 function generateBreadcrumbSchema(comparison: ComparisonData) {
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "@id": `${BASE_URL}/compare/${comparison.slug}#breadcrumb`,
+    "@id": `${canonicalUrl}#breadcrumb`,
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL },
-      { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": `${BASE_URL}/compare` },
-      { "@type": "ListItem", "position": 3, "name": comparison.headline, "item": `${BASE_URL}/compare/${comparison.slug}` }
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": `${BASE_URL}/${comparison.language}` },
+      { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": `${BASE_URL}/${comparison.language}/compare` },
+      { "@type": "ListItem", "position": 3, "name": comparison.headline, "item": canonicalUrl }
     ]
   };
 }
@@ -361,6 +379,31 @@ const CRITICAL_CSS = `
   }
 `;
 
+function generateHreflangTags(comparison: ComparisonData): string {
+  const hreflangLinks: string[] = [];
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
+  
+  // Self-referencing tag
+  const currentLangCode = langToHreflang[comparison.language] || comparison.language;
+  hreflangLinks.push(`  <link rel="alternate" hreflang="${currentLangCode}" href="${canonicalUrl}" />`);
+
+  // Translations from JSONB
+  if (comparison.translations && typeof comparison.translations === 'object') {
+    Object.entries(comparison.translations).forEach(([lang, slug]) => {
+      if (slug && typeof slug === 'string' && lang !== comparison.language) {
+        const langCode = langToHreflang[lang] || lang;
+        hreflangLinks.push(`  <link rel="alternate" hreflang="${langCode}" href="${BASE_URL}/${lang}/compare/${slug}" />`);
+      }
+    });
+  }
+
+  // x-default pointing to English version
+  const xDefaultSlug = (comparison.translations as Record<string, string>)?.en || comparison.slug;
+  hreflangLinks.push(`  <link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/compare/${xDefaultSlug}" />`);
+
+  return hreflangLinks.join('\n');
+}
+
 function generateStaticHTML(comparison: ComparisonData, productionAssets: ProductionAssets): string {
   const organizationSchema = generateOrganizationSchema();
   const articleSchema = generateComparisonArticleSchema(comparison);
@@ -378,7 +421,8 @@ function generateStaticHTML(comparison: ComparisonData, productionAssets: Produc
     tableSchema ? `<script type="application/ld+json" data-schema="table">${JSON.stringify(tableSchema, null, 2)}</script>` : ''
   ].filter(Boolean).join('\n  ');
 
-  const canonicalUrl = `${BASE_URL}/compare/${comparison.slug}`;
+  const canonicalUrl = comparison.canonical_url || `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
+  const hreflangTags = generateHreflangTags(comparison);
 
   const cssLinks = productionAssets.css.map(href => 
     `<link rel="stylesheet" href="${href}" />`
@@ -419,6 +463,7 @@ function generateStaticHTML(comparison: ComparisonData, productionAssets: Produc
   <title>${sanitizeForHTML(comparison.meta_title)} | Del Sol Prime Homes</title>
   
   <link rel="canonical" href="${canonicalUrl}" />
+${hreflangTags}
   
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
@@ -519,17 +564,17 @@ function generateStaticHTML(comparison: ComparisonData, productionAssets: Produc
 </html>`;
 }
 
-// Generate Comparison Index page
-function generateComparisonIndexHTML(comparisons: ComparisonData[], productionAssets: ProductionAssets): string {
+// Generate Comparison Index page for a specific language
+function generateComparisonIndexHTML(comparisons: ComparisonData[], productionAssets: ProductionAssets, lang: string = 'en'): string {
   const indexSchema = {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "CollectionPage",
-        "@id": `${BASE_URL}/compare#collectionpage`,
+        "@id": `${BASE_URL}/${lang}/compare#collectionpage`,
         "name": "Property Comparisons",
         "description": "Expert comparisons to help you make informed decisions about buying property in Costa del Sol",
-        "url": `${BASE_URL}/compare`,
+        "url": `${BASE_URL}/${lang}/compare`,
         "mainEntity": {
           "@type": "ItemList",
           "numberOfItems": comparisons.length,
@@ -537,15 +582,15 @@ function generateComparisonIndexHTML(comparisons: ComparisonData[], productionAs
             "@type": "ListItem",
             "position": i + 1,
             "name": c.headline,
-            "url": `${BASE_URL}/compare/${c.slug}`
+            "url": `${BASE_URL}/${c.language}/compare/${c.slug}`
           }))
         }
       },
       {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL },
-          { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": `${BASE_URL}/compare` }
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": `${BASE_URL}/${lang}` },
+          { "@type": "ListItem", "position": 2, "name": "Comparisons", "item": `${BASE_URL}/${lang}/compare` }
         ]
       }
     ]
@@ -559,15 +604,21 @@ function generateComparisonIndexHTML(comparisons: ComparisonData[], productionAs
     `<script type="module" src="${src}"></script>`
   ).join('\n  ');
 
+  // 11 hreflang tags for index page
+  const hreflangTags = SUPPORTED_LANGUAGES.map(l => 
+    `  <link rel="alternate" hreflang="${langToHreflang[l] || l}" href="${BASE_URL}/${l}/compare" />`
+  ).join('\n') + `\n  <link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/compare" />`;
+
   return `<!DOCTYPE html>
-<html lang="en" data-static="true">
+<html lang="${lang}" data-static="true">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Expert property comparisons to help you make informed real estate decisions in Costa del Sol, Spain.">
   <title>Property Comparisons | Del Sol Prime Homes</title>
   
-  <link rel="canonical" href="${BASE_URL}/compare" />
+  <link rel="canonical" href="${BASE_URL}/${lang}/compare" />
+${hreflangTags}
   
   <link rel="icon" type="image/png" href="/favicon.png">
   
@@ -589,7 +640,7 @@ function generateComparisonIndexHTML(comparisons: ComparisonData[], productionAs
       
       <div style="display: grid; gap: 1.5rem; margin-top: 2rem;">
         ${comparisons.map(c => `
-        <a href="/compare/${c.slug}" style="display: block; padding: 1.5rem; background: hsl(var(--prime-gold) / 0.05); border-radius: 0.5rem; text-decoration: none; color: inherit;">
+        <a href="/${c.language}/compare/${c.slug}" style="display: block; padding: 1.5rem; background: hsl(var(--prime-gold) / 0.05); border-radius: 0.5rem; text-decoration: none; color: inherit;">
           <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${sanitizeForHTML(c.headline)}</h2>
           <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">${sanitizeForHTML(c.option_a)} vs ${sanitizeForHTML(c.option_b)}</p>
         </a>
@@ -633,31 +684,41 @@ export async function generateStaticComparisonPages(distDir: string) {
     let generated = 0;
     let failed = 0;
 
-    // Generate individual comparison pages
+    // Generate individual comparison pages WITH language prefix
     for (const comparison of comparisons) {
       try {
+        const lang = comparison.language || 'en';
         const html = generateStaticHTML(comparison as any, productionAssets);
-        const filePath = join(distDir, 'compare', comparison.slug, 'index.html');
+        // Generate with language prefix: /{lang}/compare/{slug}/index.html
+        const filePath = join(distDir, lang, 'compare', comparison.slug, 'index.html');
         
         mkdirSync(dirname(filePath), { recursive: true });
         writeFileSync(filePath, html, 'utf-8');
         
         generated++;
+        if (generated % 20 === 0) {
+          console.log(`✅ Generated: ${generated} comparison pages...`);
+        }
       } catch (err) {
         failed++;
-        console.error(`❌ Failed to generate /compare/${comparison.slug}:`, err);
+        console.error(`❌ Failed to generate /${comparison.language || 'en'}/compare/${comparison.slug}:`, err);
       }
     }
 
-    // Generate comparison index page
-    try {
-      const indexHtml = generateComparisonIndexHTML(comparisons as any, productionAssets);
-      const indexPath = join(distDir, 'compare', 'index.html');
-      mkdirSync(dirname(indexPath), { recursive: true });
-      writeFileSync(indexPath, indexHtml, 'utf-8');
-      console.log('✅ Generated comparison index page');
-    } catch (err) {
-      console.error('❌ Failed to generate comparison index:', err);
+    // Generate language-specific comparison index pages
+    for (const lang of SUPPORTED_LANGUAGES) {
+      try {
+        const langPages = comparisons.filter(c => c.language === lang);
+        if (langPages.length > 0) {
+          const indexHtml = generateComparisonIndexHTML(langPages as any, productionAssets, lang);
+          const indexPath = join(distDir, lang, 'compare', 'index.html');
+          mkdirSync(dirname(indexPath), { recursive: true });
+          writeFileSync(indexPath, indexHtml, 'utf-8');
+          console.log(`✅ Generated /${lang}/compare/ index page with ${langPages.length} items`);
+        }
+      } catch (err) {
+        console.error(`❌ Failed to generate /${lang}/compare/ index page:`, err);
+      }
     }
 
     console.log(`✨ Comparison generation complete! Generated: ${generated}, Failed: ${failed}`);
@@ -668,5 +729,5 @@ export async function generateStaticComparisonPages(distDir: string) {
 }
 
 // Run if called directly
-const distDir = process.argv[2] || 'dist';
-generateStaticComparisonPages(distDir);
+const distDir = process.argv[2] || join(process.cwd(), 'dist');
+generateStaticComparisonPages(distDir).catch(console.error);
