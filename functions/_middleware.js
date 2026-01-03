@@ -646,15 +646,61 @@ ${hreflangTags}
       }
     });
     
+    // Handle non-OK responses (404, etc.)
     if (!seoResponse.ok) {
       console.error(`[SEO Middleware] Edge function returned ${seoResponse.status}`);
-      const response = await next();
-      const newResponse = new Response(response.body, response);
-      newResponse.headers.set('X-Middleware-Active', 'true');
-      newResponse.headers.set('X-Middleware-Version', '2025-12-24');
-      newResponse.headers.set('X-SEO-Matched-Path', path);
-      newResponse.headers.set('X-SEO-Error', `edge-function-${seoResponse.status}`);
-      return newResponse;
+      
+      // Check if it's a redirect response (language mismatch)
+      const responseBody = await seoResponse.text();
+      try {
+        const errorData = JSON.parse(responseBody);
+        
+        // If we have a redirect URL (language mismatch), do 301 redirect
+        if (errorData.redirectTo) {
+          console.log(`[SEO Middleware] Language mismatch redirect: ${path} → ${errorData.redirectTo}`);
+          return Response.redirect(errorData.redirectTo, 301);
+        }
+      } catch (parseError) {
+        // Not JSON, continue to 404 handling
+      }
+      
+      // Return a proper 404 page with noindex
+      console.log(`[SEO Middleware] Returning 404 for: ${path}`);
+      const notFoundHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Page Not Found | Del Sol Prime Homes</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f5f5; }
+    .container { text-align: center; padding: 2rem; }
+    h1 { color: #333; margin-bottom: 1rem; }
+    p { color: #666; margin-bottom: 2rem; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Page Not Found</h1>
+    <p>The page you're looking for doesn't exist or has been moved.</p>
+    <a href="/">Return to Homepage</a>
+  </div>
+</body>
+</html>`;
+      
+      return new Response(notFoundHtml, {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Middleware-Active': 'true',
+          'X-Middleware-Version': '2026-01-03',
+          'X-SEO-Matched-Path': path,
+          'X-Robots-Tag': 'noindex, nofollow'
+        }
+      });
     }
     
     const contentType = seoResponse.headers.get('content-type') || '';

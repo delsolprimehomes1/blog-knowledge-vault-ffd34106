@@ -157,45 +157,81 @@ async function fetchComparisonMetadata(supabase: any, slug: string, lang: string
   }
 }
 
-async function fetchLocationMetadata(supabase: any, slug: string, lang: string): Promise<PageMetadata | null> {
+// Result type for location metadata with potential redirect
+interface LocationResult {
+  metadata: PageMetadata | null
+  redirect?: { to: string; reason: string }
+}
+
+async function fetchLocationMetadata(supabase: any, slug: string, lang: string): Promise<LocationResult> {
   // Location pages have compound slugs: city_slug/topic_slug
   // The slug parameter will be "city-slug/topic-slug" or just the topic_slug if parsed separately
   const slugParts = slug.split('/')
   
   let data, error
+  let citySlug = ''
+  let topicSlug = ''
   
   if (slugParts.length >= 2) {
     // Full path: city_slug/topic_slug
-    const [citySlug, topicSlug] = slugParts
-    console.log(`[Location] Querying by city_slug="${citySlug}" AND topic_slug="${topicSlug}"`)
+    [citySlug, topicSlug] = slugParts
+    console.log(`[Location] Querying by city_slug="${citySlug}" AND topic_slug="${topicSlug}" AND language="${lang}"`)
     
+    // CRITICAL: Include language filter to prevent cross-language slug resolution
     const result = await supabase
       .from('location_pages')
       .select('*')
       .eq('city_slug', citySlug)
       .eq('topic_slug', topicSlug)
+      .eq('language', lang)  // ← LANGUAGE FILTER
       .eq('status', 'published')
       .maybeSingle()
     
     data = result.data
     error = result.error
+    
+    // If not found with language match, check if it exists in another language (for redirect)
+    if (!data && !error) {
+      console.log(`[Location] Not found in ${lang}, checking other languages for redirect...`)
+      const anyLangResult = await supabase
+        .from('location_pages')
+        .select('language, canonical_url, city_slug, topic_slug')
+        .eq('city_slug', citySlug)
+        .eq('topic_slug', topicSlug)
+        .eq('status', 'published')
+        .maybeSingle()
+      
+      if (anyLangResult.data) {
+        const foundPage = anyLangResult.data
+        console.log(`[Location] Found in ${foundPage.language}, should redirect to: ${foundPage.canonical_url}`)
+        return {
+          metadata: null,
+          redirect: {
+            to: foundPage.canonical_url || `${BASE_URL}/${foundPage.language}/locations/${foundPage.city_slug}/${foundPage.topic_slug}`,
+            reason: `language_mismatch:${lang}->${foundPage.language}`
+          }
+        }
+      }
+    }
   } else {
-    // Single slug - try topic_slug first, then city_slug
-    console.log(`[Location] Querying by topic_slug="${slug}"`)
+    // Single slug - try topic_slug first, then city_slug (with language filter)
+    console.log(`[Location] Querying by topic_slug="${slug}" AND language="${lang}"`)
     
     let result = await supabase
       .from('location_pages')
       .select('*')
       .eq('topic_slug', slug)
+      .eq('language', lang)  // ← LANGUAGE FILTER
       .eq('status', 'published')
       .maybeSingle()
     
     if (!result.data) {
-      console.log(`[Location] topic_slug not found, trying city_slug="${slug}"`)
+      console.log(`[Location] topic_slug not found in ${lang}, trying city_slug="${slug}"`)
       result = await supabase
         .from('location_pages')
         .select('*')
         .eq('city_slug', slug)
+        .eq('language', lang)  // ← LANGUAGE FILTER
         .eq('status', 'published')
         .limit(1)
         .maybeSingle()
@@ -207,24 +243,26 @@ async function fetchLocationMetadata(supabase: any, slug: string, lang: string):
 
   if (error || !data) {
     console.error('Error fetching location page:', error)
-    return null
+    return { metadata: null }
   }
 
   const fullSlug = `${data.city_slug}/${data.topic_slug}`
   return {
-    language: data.language || lang,
-    meta_title: data.meta_title,
-    meta_description: data.meta_description,
-    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/locations/${fullSlug}`,
-    headline: data.headline,
-    speakable_answer: data.speakable_answer,
-    featured_image_url: data.featured_image_url,
-    featured_image_alt: data.featured_image_alt,
-    date_published: data.date_published,
-    date_modified: data.date_modified,
-    hreflang_group_id: data.hreflang_group_id,
-    qa_entities: data.qa_entities,
-    content_type: 'locations',
+    metadata: {
+      language: data.language || lang,
+      meta_title: data.meta_title,
+      meta_description: data.meta_description,
+      canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/locations/${fullSlug}`,
+      headline: data.headline,
+      speakable_answer: data.speakable_answer,
+      featured_image_url: data.featured_image_url,
+      featured_image_alt: data.featured_image_alt,
+      date_published: data.date_published,
+      date_modified: data.date_modified,
+      hreflang_group_id: data.hreflang_group_id,
+      qa_entities: data.qa_entities,
+      content_type: 'locations',
+    }
   }
 }
 
@@ -730,6 +768,7 @@ Deno.serve(async (req) => {
 
     // Fetch metadata based on content type
     let metadata: PageMetadata | null = null
+    let redirectInfo: { to: string; reason: string } | undefined
     
     switch (contentType) {
       case 'qa':
@@ -742,8 +781,24 @@ Deno.serve(async (req) => {
         metadata = await fetchComparisonMetadata(supabase, slug, lang)
         break
       case 'locations':
-        metadata = await fetchLocationMetadata(supabase, slug, lang)
+        const locationResult = await fetchLocationMetadata(supabase, slug, lang)
+        metadata = locationResult.metadata
+        redirectInfo = locationResult.redirect
         break
+    }
+
+    // If location page exists but in wrong language, return redirect info
+    if (redirectInfo) {
+      console.log(`[SEO] Language mismatch - redirecting to: ${redirectInfo.to}`)
+      return new Response(
+        JSON.stringify({ 
+          error: 'language_mismatch', 
+          redirectTo: redirectInfo.to,
+          reason: redirectInfo.reason,
+          path 
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!metadata) {
