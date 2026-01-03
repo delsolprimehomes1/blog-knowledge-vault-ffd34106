@@ -1007,21 +1007,24 @@ Return ONLY valid JSON with text in ${seoLanguageName}:
       };
       const speakableLangName = speakableLanguageNames[currentLanguage] || 'English';
       
-      const speakablePrompt = `Write a 40-60 word speakable answer IN ${speakableLangName.toUpperCase()} for this article:
+      const speakablePrompt = `Write a speakable answer IN ${speakableLangName.toUpperCase()} for this article:
 
 Language: ${speakableLangName} (${currentLanguage})
 Question: ${plan.headline}
 Target Keyword: ${plan.targetKeyword}
 Content Focus: ${plan.contentAngle}
 
-Requirements:
-- MUST be written entirely in ${speakableLangName}, NOT English (unless article is English)
-- Conversational tone (use "you" and "your" equivalent in ${speakableLangName})
-- Present tense, active voice
-- Self-contained (no pronouns referring to previous context)
-- Actionable (tell reader what to DO)
-- No jargon
-- Exactly 40-60 words
+HANS' AEO RULES (CRITICAL):
+- Write as a SINGLE PARAGRAPH verdict (80-120 words, max 150)
+- NO lists, NO bullets, NO numbered points, NO line breaks
+- Complete sentences ending with period
+- Self-contained (AI can quote verbatim without context)
+- Neutral, factual tone (no "we", no marketing)
+- Max 800 characters
+- Directly answers the question
+
+WRONG: "There are several steps: 1. First... 2. Second..."
+RIGHT: "Buying property in Costa del Sol involves obtaining a Spanish NIE, appointing an independent lawyer for due diligence, opening a Spanish bank account, signing a private purchase agreement with deposit, and finalizing the sale before a notary."
 
 CRITICAL: The response MUST be in ${speakableLangName}. Do not write in English unless the article language IS English.
 

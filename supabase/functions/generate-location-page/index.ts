@@ -47,7 +47,7 @@ OUTPUT STRUCTURE (STRICT JSON):
   "headline": "Clear, intent-matching H1 headline",
   "meta_title": "SEO title under 60 characters with main keyword",
   "meta_description": "Meta description under 160 characters with target keyword naturally integrated",
-  "speakable_answer": "50-80 word neutral, factual summary. Written for voice & AI citation. Answer the main query directly. No sales language.",
+  "speakable_answer": "SINGLE PARAGRAPH verdict (80-120 words, max 150). NO lists, NO bullets, NO line breaks. Complete sentences ending with period. Self-contained and AI-quotable. Neutral, factual tone.",
   "location_overview": "HTML (MAX 200 WORDS). Where the city is, who it's best for, key characteristics. Use <p>, <strong>, <ul>, <li>.",
   "market_breakdown": "HTML (MAX 300 WORDS). Prices, ranges, expectations. What affects cost or outcomes. Seasonal or demand factors. Use <p>, <h3>, <ul>, <li>.",
   "best_areas": [

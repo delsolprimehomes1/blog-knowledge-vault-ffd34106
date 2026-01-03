@@ -135,6 +135,18 @@ REQUIREMENTS:
 - NO links, NO bullet points in short answer
 - Question must be specific to the article topic
 
+CRITICAL - HANS' AEO RULES FOR speakable_answer:
+- Write as a SINGLE PARAGRAPH verdict/conclusion (80-120 words, max 150)
+- NO lists, NO bullets, NO numbered points, NO line breaks
+- Complete sentences ending with period
+- Self-contained (AI can quote verbatim without context)
+- Neutral, factual tone (no marketing language)
+- Max 800 characters
+- Directly answers the question in summary form
+
+WRONG: "There are 5 key steps: 1. Get an NIE 2. Find a lawyer..."
+RIGHT: "Purchasing property in Costa del Sol involves obtaining a Spanish NIE, appointing an independent lawyer for due diligence, opening a Spanish bank account, and finalizing the sale before a notary."
+
 Return ONLY valid JSON:
 {
   "question_main": "Question ending with ?",
@@ -143,7 +155,7 @@ Return ONLY valid JSON:
   "slug": "url-friendly-slug",
   "meta_title": "Meta title ≤60 chars",
   "meta_description": "Meta description ≤160 chars",
-  "speakable_answer": "Voice-ready summary (50-80 words)"
+  "speakable_answer": "Single paragraph verdict (80-120 words). NO lists. Complete sentences."
 }`;
 
   try {

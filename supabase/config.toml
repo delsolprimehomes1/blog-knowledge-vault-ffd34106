@@ -236,3 +236,6 @@ verify_jwt = false
 
 [functions.translate-qas-to-language]
 verify_jwt = false
+
+[functions.regenerate-aeo-answers]
+verify_jwt = false

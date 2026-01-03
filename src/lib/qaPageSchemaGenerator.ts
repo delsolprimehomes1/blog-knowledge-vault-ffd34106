@@ -3,17 +3,57 @@ import { QAPage, Author } from '@/types/blog';
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
 /**
- * Truncate answer at sentence boundary for AI-safe schema
+ * Hans' AEO Rules: Truncate answer at sentence boundary for AI-safe schema
+ * - Max 800 characters
+ * - Max 150 words  
+ * - No list formatting allowed
  */
-function truncateAtSentence(text: string, maxLength: number = 600): string {
+function truncateAtSentence(text: string, maxChars: number = 800): string {
+  const MAX_WORDS = 150;
   const MIN_LENGTH = 160;
   
-  if (text.length <= maxLength) {
-    return text;
+  // Strip HTML tags for clean processing
+  let cleanText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Check for list patterns and clean them (Hans' AEO rule: no lists)
+  const listPatterns = [
+    /^\d+\.\s/m,           // Numbered lists at line start
+    /^[-*•]\s/m,           // Bullet points at line start  
+    /\n\s*\d+\.\s/,        // Numbered lists mid-text
+    /\n\s*[-*•]\s/,        // Bullets mid-text
+  ];
+  
+  for (const pattern of listPatterns) {
+    if (pattern.test(cleanText)) {
+      // Clean list formatting - convert to flowing prose
+      cleanText = cleanText.replace(/^\s*\d+\.\s+/gm, '');
+      cleanText = cleanText.replace(/\n\s*\d+\.\s+/g, ' ');
+      cleanText = cleanText.replace(/^\s*[-*•]\s+/gm, '');
+      cleanText = cleanText.replace(/\n\s*[-*•]\s+/g, ' ');
+      cleanText = cleanText.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+      break;
+    }
   }
   
-  const truncated = text.substring(0, maxLength);
+  // Check word count first (Hans' rule: max 150 words)
+  const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > MAX_WORDS) {
+    cleanText = words.slice(0, MAX_WORDS).join(' ');
+  }
   
+  // Now check character limit (Hans' rule: max 800 chars)
+  if (cleanText.length <= maxChars) {
+    // Ensure proper ending
+    if (!cleanText.endsWith('.') && !cleanText.endsWith('!') && !cleanText.endsWith('?')) {
+      cleanText = cleanText.trim() + '.';
+    }
+    return cleanText;
+  }
+  
+  // Need to truncate - find sentence boundary
+  const truncated = cleanText.substring(0, maxChars);
+  
+  // Find last sentence ending
   const lastPeriod = truncated.lastIndexOf('.');
   const lastExclamation = truncated.lastIndexOf('!');
   const lastQuestion = truncated.lastIndexOf('?');
@@ -21,15 +61,17 @@ function truncateAtSentence(text: string, maxLength: number = 600): string {
   const lastSentenceEnd = Math.max(lastPeriod, lastExclamation, lastQuestion);
   
   if (lastSentenceEnd >= MIN_LENGTH) {
-    return text.substring(0, lastSentenceEnd + 1).trim();
+    return cleanText.substring(0, lastSentenceEnd + 1).trim();
   }
   
+  // Fallback: truncate at word boundary
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace >= MIN_LENGTH) {
-    return text.substring(0, lastSpace).trim() + '.';
+    return cleanText.substring(0, lastSpace).trim() + '.';
   }
   
-  return text.substring(0, MIN_LENGTH).trim() + '...';
+  // Final fallback
+  return cleanText.substring(0, MIN_LENGTH).trim() + '...';
 }
 
 const LANGUAGE_CODE_MAP: Record<string, string> = {

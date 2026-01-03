@@ -91,6 +91,7 @@ const ClusterManager = lazy(() => import("./pages/admin/ClusterManager"));
 const DuplicateImageFixer = lazy(() => import("./pages/admin/DuplicateImageFixer"));
 const SystemAudit = lazy(() => import("./pages/admin/SystemAudit"));
 const ProductionAudit = lazy(() => import("./pages/admin/ProductionAudit"));
+const AEOAnswerFixer = lazy(() => import("./pages/admin/AEOAnswerFixer"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -168,6 +169,7 @@ const App = () => (
               <Route path="/admin/duplicate-images" element={<ProtectedRoute><DuplicateImageFixer /></ProtectedRoute>} />
               <Route path="/admin/system-audit" element={<ProtectedRoute><SystemAudit /></ProtectedRoute>} />
               <Route path="/admin/production-audit" element={<ProtectedRoute><ProductionAudit /></ProtectedRoute>} />
+              <Route path="/admin/aeo-fixer" element={<ProtectedRoute><AEOAnswerFixer /></ProtectedRoute>} />
               
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}

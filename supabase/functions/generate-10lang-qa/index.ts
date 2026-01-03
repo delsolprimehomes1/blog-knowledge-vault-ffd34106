@@ -72,6 +72,14 @@ REQUIREMENTS:
 - Tone: Neutral, factual, advisory (no "we", no marketing, no CTAs)
 - NO links, NO bullet points in short answer
 
+CRITICAL - HANS' AEO RULES FOR speakable_answer:
+- Write as a SINGLE PARAGRAPH verdict/conclusion (80-120 words, max 150)
+- NO lists, NO bullets, NO numbered points, NO line breaks
+- Complete sentences ending with period
+- Self-contained (AI can quote verbatim without context)
+- Neutral, factual tone
+- Max 800 characters
+
 Return ONLY valid JSON:
 {
   "qa_type": "${qaType}",
@@ -81,7 +89,7 @@ Return ONLY valid JSON:
   "slug": "url-friendly-slug-in-${language}",
   "meta_title": "Meta title ≤60 chars",
   "meta_description": "Meta description ≤160 chars in ${languageName}",
-  "speakable_answer": "Voice-ready summary (50-80 words) in ${languageName}"
+  "speakable_answer": "Single paragraph verdict in ${languageName} (80-120 words). NO lists. Complete sentences."
 }`;
 
   try {

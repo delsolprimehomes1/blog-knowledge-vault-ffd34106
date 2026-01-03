@@ -38,12 +38,19 @@ Headline: ${article.headline}
 Description: ${article.meta_description}
 Content Summary: ${article.detailed_content.substring(0, 800)}...
 
+HANS' AEO RULES FOR ANSWERS (CRITICAL):
+- Each answer: SINGLE PARAGRAPH verdict (80-120 words, max 150)
+- NO lists, NO bullets, NO numbered points, NO line breaks
+- Complete sentences ending with period
+- Self-contained (AI can quote verbatim)
+- Neutral, factual tone
+
 Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
 {
   "faqs": [
     {
       "question": "Question in ${faqLanguageName}?",
-      "answer": "Concise answer in ${faqLanguageName} (2-3 sentences)"
+      "answer": "Single paragraph verdict (80-120 words). NO lists. Complete sentences. Neutral tone."
     }
   ]
 }`;

@@ -118,7 +118,7 @@ Respond in JSON format ONLY:
   ],
   "meta_title": "translated (max 60 chars)",
   "meta_description": "translated (max 160 chars)",
-  "speakable_answer": "translated (50-80 words)"
+  "speakable_answer": "SINGLE PARAGRAPH verdict (80-120 words). NO lists, NO bullets. Complete sentences."
 }`;
 
   const MAX_RETRIES = 2;

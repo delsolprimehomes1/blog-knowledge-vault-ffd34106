@@ -45,7 +45,7 @@ Produce content as JSON with this exact structure:
   "headline": "[HEADLINE_INSTRUCTION]",
   "meta_title": "Short SEO title under 60 characters, include location (Spain/Marbella) and year (2025) where natural",
   "meta_description": "Meta description under 160 characters with target keyword naturally integrated",
-  "speakable_answer": "50-80 word neutral, factual, citation-ready summary answering 'Which is better and why?'. Non-salesy, suitable for voice assistants.",
+  "speakable_answer": "SINGLE PARAGRAPH verdict (80-120 words, max 150) answering 'Which is better and why?'. NO lists, NO bullets, NO line breaks. Complete sentences ending with period. Self-contained and AI-quotable. Neutral, factual tone.",
   "quick_comparison_table": [
     {"criterion": "Cost", "option_a_value": "Brief 10-15 word summary", "option_b_value": "Brief 10-15 word summary"},
     {"criterion": "Pros", "option_a_value": "2-3 key benefits, comma-separated", "option_b_value": "2-3 key benefits, comma-separated"},

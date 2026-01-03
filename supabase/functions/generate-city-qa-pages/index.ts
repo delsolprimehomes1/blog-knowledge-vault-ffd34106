@@ -222,7 +222,7 @@ For EACH question, return a JSON object with:
     {"question": "Related follow-up Q1 in ${targetLanguageName}", "answer": "Short helpful answer"},
     {"question": "Related follow-up Q2 in ${targetLanguageName}", "answer": "Short helpful answer"}
   ],
-  "speakable_answer": "Voice-ready summary (40-60 words) in ${targetLanguageName}. This should be citeable by AI assistants.",
+  "speakable_answer": "SINGLE PARAGRAPH verdict (80-120 words, max 150) in ${targetLanguageName}. NO lists, NO bullets, NO line breaks. Complete sentences ending with period. Self-contained and AI-quotable.",
   "meta_title": "SEO title ≤60 chars in ${targetLanguageName}",
   "meta_description": "SEO description ≤160 chars in ${targetLanguageName}"
 }

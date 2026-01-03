@@ -75,13 +75,25 @@ ${existingQuestionsBlock}
 Generate a focused Q&A about ${qaType.label.toLowerCase()} that is SPECIFIC to the unique angle of this article's headline.
 The question must be different from any existing questions listed above.
 
+CRITICAL - HANS' AEO RULES FOR speakableAnswer:
+- Write as a SINGLE PARAGRAPH verdict/conclusion (80-120 words, max 150)
+- NO lists, NO bullets, NO numbered points, NO line breaks
+- Complete sentences ending with period
+- Self-contained (AI can quote verbatim without context)
+- Neutral, factual tone (no marketing language)
+- Max 800 characters
+- Directly answers the question in summary form
+
+WRONG: "There are 5 key steps: 1. Get an NIE 2. Find a lawyer..."
+RIGHT: "Purchasing property in Costa del Sol involves obtaining a Spanish NIE, appointing an independent lawyer for due diligence, opening a Spanish bank account, signing a private purchase agreement with deposit, and finalizing the sale before a notary through the public deed of sale, after which the property is registered in the Land Registry."
+
 Return JSON:
 {
   "question": "A natural, UNIQUE question about ${qaType.label.toLowerCase()} specific to '${article.headline}' (50-80 chars)",
   "answer": "Comprehensive answer with 3-5 key points, practical advice (200-400 words)",
   "metaTitle": "SEO title under 60 chars including the question topic",
   "metaDescription": "SEO description 120-155 chars summarizing the answer",
-  "speakableAnswer": "Brief 1-2 sentence voice assistant answer (under 100 words)"
+  "speakableAnswer": "Single paragraph verdict (80-120 words, max 150). NO lists. Complete sentences. Neutral tone."
 }`;
 
   const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
