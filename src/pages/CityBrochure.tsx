@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Helmet } from 'react-helmet';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/home/Header';
 import { Footer } from '@/components/home/Footer';
@@ -68,7 +67,8 @@ const parseGalleryImages = (data: unknown): GalleryItem[] => {
 };
 
 const CityBrochure: React.FC = () => {
-  const { citySlug } = useParams<{ citySlug: string }>();
+  // Extract both lang and citySlug from URL params
+  const { lang, citySlug } = useParams<{ lang: string; citySlug: string }>();
   const formRef = useRef<HTMLElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -123,127 +123,12 @@ const CityBrochure: React.FC = () => {
   const galleryImages = parseGalleryImages(city.gallery_images);
   const features = city.features || [];
   const description = city.description || `Discover exceptional real estate opportunities in ${city.name}.`;
-  const BASE_URL = 'https://www.delsolprimehomes.com';
 
-  // Generate JSON-LD schemas for brochure page
-  const brochureSchemas = {
-    "@context": "https://schema.org",
-    "@graph": [
-      // WebPage with Speakable
-      {
-        "@type": "WebPage",
-        "@id": `${BASE_URL}/brochure/${city.slug}#webpage`,
-        "name": city.meta_title || `Luxury Properties in ${city.name}`,
-        "description": city.meta_description || `Discover exceptional luxury properties in ${city.name} on the Costa del Sol.`,
-        "url": `${BASE_URL}/brochure/${city.slug}`,
-        "inLanguage": "en-GB",
-        "isPartOf": {
-          "@id": `${BASE_URL}/#website`
-        },
-        "speakable": {
-          "@type": "SpeakableSpecification",
-          "cssSelector": [".brochure-hero h1", ".brochure-hero p", ".brochure-description"]
-        }
-      },
-      // Place schema
-      {
-        "@type": "Place",
-        "name": city.name,
-        "description": `${city.name} - Premium real estate destination on Spain's Costa del Sol`,
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": city.name,
-          "addressRegion": "Andalucía",
-          "addressCountry": "ES"
-        }
-      },
-      // RealEstateAgent (Organization)
-      {
-        "@type": "RealEstateAgent",
-        "name": "Del Sol Prime Homes",
-        "description": `API-accredited real estate agency specializing in luxury properties in ${city.name} and across the Costa del Sol.`,
-        "url": BASE_URL,
-        "logo": `${BASE_URL}/assets/logo-new.png`,
-        "telephone": "+34 613 578 416",
-        "email": "info@delsolprimehomes.com",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA",
-          "addressLocality": "Fuengirola",
-          "addressRegion": "Málaga",
-          "postalCode": "29640",
-          "addressCountry": "ES"
-        },
-        "areaServed": {
-          "@type": "Place",
-          "name": city.name
-        }
-      },
-      // Breadcrumb
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL },
-          { "@type": "ListItem", "position": 2, "name": "Brochures", "item": `${BASE_URL}/brochure` },
-          { "@type": "ListItem", "position": 3, "name": city.name, "item": `${BASE_URL}/brochure/${city.slug}` }
-        ]
-      },
-      // ImageObject for hero
-      {
-        "@type": "ImageObject",
-        "url": heroImage,
-        "name": `${city.name} - Costa del Sol`,
-        "description": city.meta_description || `Luxury properties in ${city.name}`,
-        "caption": city.hero_headline || `Discover ${city.name}`,
-        "contentLocation": {
-          "@type": "Place",
-          "name": city.name,
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": city.name,
-            "addressRegion": "Andalucía",
-            "addressCountry": "ES"
-          }
-        }
-      }
-    ]
-  };
+  // SEO is now handled server-side by Cloudflare middleware
+  // No Helmet needed - server injects: title, meta, canonical, 11 hreflang tags, OG tags
 
   return (
     <>
-      <Helmet>
-        <title>{city.meta_title || `Luxury Properties in ${city.name} | Del Sol Prime Homes`}</title>
-        <meta name="description" content={city.meta_description || `Discover exceptional luxury properties in ${city.name} on the Costa del Sol.`} />
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <link rel="canonical" href={`${BASE_URL}/brochure/${city.slug}`} />
-        
-        {/* Open Graph */}
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={city.hero_headline || `Luxury Properties in ${city.name}`} />
-        <meta property="og:description" content={city.meta_description || description} />
-        <meta property="og:image" content={heroImage} />
-        <meta property="og:image:alt" content={`${city.name} - Costa del Sol luxury properties`} />
-        <meta property="og:url" content={`${BASE_URL}/brochure/${city.slug}`} />
-        <meta property="og:site_name" content="Del Sol Prime Homes" />
-        <meta property="og:locale" content="en_GB" />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={city.hero_headline || `Luxury Properties in ${city.name}`} />
-        <meta name="twitter:description" content={city.meta_description || description} />
-        <meta name="twitter:image" content={heroImage} />
-        <meta name="twitter:image:alt" content={`${city.name} - Costa del Sol luxury properties`} />
-        
-        {/* Hreflang */}
-        <link rel="alternate" hrefLang="en-GB" href={`${BASE_URL}/brochure/${city.slug}`} />
-        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/brochure/${city.slug}`} />
-        
-        {/* JSON-LD Schema */}
-        <script type="application/ld+json">
-          {JSON.stringify(brochureSchemas)}
-        </script>
-      </Helmet>
-
       <Header variant="transparent" />
 
       <main className="overflow-hidden">

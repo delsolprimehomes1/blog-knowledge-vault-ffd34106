@@ -269,6 +269,150 @@ ${hreflangTags}
     }
   }
   
+  // PRIORITY 0.7: Handle City Brochure pages - serve with SEO metadata (11 hreflang tags)
+  const brochureMatch = path.match(/^\/([a-z]{2})\/brochure\/([a-z0-9-]+)\/?$/);
+  if (brochureMatch) {
+    const [, lang, citySlug] = brochureMatch;
+    
+    if (CONFIG.SUPPORTED_LANGUAGES.includes(lang)) {
+      try {
+        const indexRequest = new Request(new URL('/index.html', request.url).toString());
+        const assetResponse = await env.ASSETS.fetch(indexRequest);
+        
+        if (assetResponse.ok) {
+          let html = await assetResponse.text();
+          
+          const baseUrl = 'https://www.delsolprimehomes.com';
+          const canonicalUrl = `${baseUrl}/${lang}/brochure/${citySlug}`;
+          
+          // City name mapping for meta titles
+          const CITY_NAMES = {
+            'marbella': 'Marbella',
+            'estepona': 'Estepona',
+            'fuengirola': 'Fuengirola',
+            'benalmadena': 'Benalmádena',
+            'mijas': 'Mijas',
+            'sotogrande': 'Sotogrande',
+            'malaga-city': 'Málaga City',
+            'casares': 'Casares',
+            'manilva': 'Manilva',
+            'torremolinos': 'Torremolinos'
+          };
+          
+          const cityName = CITY_NAMES[citySlug] || citySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          
+          // Language-specific meta templates
+          const BROCHURE_META = {
+            en: { title: `Luxury Properties in ${cityName} | Del Sol Prime Homes`, description: `Discover exceptional luxury properties in ${cityName} on the Costa del Sol. Expert guidance from API-licensed agents.` },
+            de: { title: `Luxusimmobilien in ${cityName} | Del Sol Prime Homes`, description: `Entdecken Sie außergewöhnliche Luxusimmobilien in ${cityName} an der Costa del Sol.` },
+            nl: { title: `Luxe Vastgoed in ${cityName} | Del Sol Prime Homes`, description: `Ontdek uitzonderlijk luxe vastgoed in ${cityName} aan de Costa del Sol.` },
+            fr: { title: `Propriétés de Luxe à ${cityName} | Del Sol Prime Homes`, description: `Découvrez des propriétés de luxe exceptionnelles à ${cityName} sur la Costa del Sol.` },
+            pl: { title: `Luksusowe Nieruchomości w ${cityName} | Del Sol Prime Homes`, description: `Odkryj wyjątkowe luksusowe nieruchomości w ${cityName} na Costa del Sol.` },
+            sv: { title: `Lyxfastigheter i ${cityName} | Del Sol Prime Homes`, description: `Upptäck exceptionella lyxfastigheter i ${cityName} på Costa del Sol.` },
+            da: { title: `Luksusejendomme i ${cityName} | Del Sol Prime Homes`, description: `Opdag enestående luksusejendomme i ${cityName} på Costa del Sol.` },
+            hu: { title: `Luxus Ingatlanok ${cityName} | Del Sol Prime Homes`, description: `Fedezze fel a kivételes luxus ingatlanokat ${cityName} városában a Costa del Solon.` },
+            fi: { title: `Luksuskiinteistöt ${cityName} | Del Sol Prime Homes`, description: `Löydä poikkeuksellisia luksuskiinteistöjä ${cityName} Costa del Solilla.` },
+            no: { title: `Luksuseiendommer i ${cityName} | Del Sol Prime Homes`, description: `Oppdag eksepsjonelle luksuseiendommer i ${cityName} på Costa del Sol.` }
+          };
+          
+          const meta = BROCHURE_META[lang] || BROCHURE_META.en;
+          
+          // 11 hreflang tags (10 languages + x-default)
+          const hreflangTags = CONFIG.SUPPORTED_LANGUAGES
+            .map(l => `    <link rel="alternate" hreflang="${l}" href="${baseUrl}/${l}/brochure/${citySlug}" />`)
+            .join('\n');
+          
+          // JSON-LD schema for brochure page
+          const brochureSchema = {
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebPage",
+                "@id": `${canonicalUrl}#webpage`,
+                "name": meta.title,
+                "description": meta.description,
+                "url": canonicalUrl,
+                "inLanguage": lang === 'en' ? 'en-GB' : lang,
+                "isPartOf": { "@id": `${baseUrl}/#website` },
+                "speakable": {
+                  "@type": "SpeakableSpecification",
+                  "cssSelector": [".brochure-hero h1", ".brochure-hero p", ".brochure-description"]
+                }
+              },
+              {
+                "@type": "Place",
+                "name": cityName,
+                "description": `${cityName} - Premium real estate destination on Spain's Costa del Sol`,
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressLocality": cityName,
+                  "addressRegion": "Andalucía",
+                  "addressCountry": "ES"
+                }
+              },
+              {
+                "@type": "RealEstateAgent",
+                "name": "Del Sol Prime Homes",
+                "url": baseUrl,
+                "areaServed": { "@type": "Place", "name": cityName }
+              },
+              {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                  { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+                  { "@type": "ListItem", "position": 2, "name": cityName, "item": canonicalUrl }
+                ]
+              }
+            ]
+          };
+          
+          const seoBlock = `
+    <title>${escapeHtml(meta.title)}</title>
+    <meta name="description" content="${escapeHtml(meta.description)}" />
+    <link rel="canonical" href="${canonicalUrl}" />
+${hreflangTags}
+    <link rel="alternate" hreflang="x-default" href="${baseUrl}/en/brochure/${citySlug}" />
+    <meta property="og:title" content="${escapeHtml(meta.title)}" />
+    <meta property="og:description" content="${escapeHtml(meta.description)}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Del Sol Prime Homes" />
+    <meta property="og:locale" content="${lang === 'en' ? 'en_GB' : lang}" />
+    <script type="application/ld+json">${JSON.stringify(brochureSchema)}</script>
+`;
+          
+          html = html.replace(/<title>.*?<\/title>/, '');
+          html = html.replace('</head>', `${seoBlock}</head>`);
+          html = html.replace(/<html[^>]*>/, `<html lang="${lang}">`);
+          
+          return new Response(html, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600',
+              'X-Middleware-Active': 'true',
+              'X-Middleware-Version': '2026-01-03',
+              'X-SEO-Source': 'brochure-injection',
+              'X-Content-Language': lang,
+              'X-Page-Type': 'city-brochure',
+              'X-City-Slug': citySlug
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[Middleware] Error processing brochure page ${path}:`, error);
+      }
+    }
+  }
+  
+  // Legacy redirect: /brochure/{slug} → /en/brochure/{slug}
+  const legacyBrochureMatch = path.match(/^\/brochure\/([a-z0-9-]+)\/?$/);
+  if (legacyBrochureMatch) {
+    const [, citySlug] = legacyBrochureMatch;
+    const baseUrl = 'https://www.delsolprimehomes.com';
+    return Response.redirect(`${baseUrl}/en/brochure/${citySlug}`, 301);
+  }
+  
   // PRIORITY 1: Serve SPA shell directly for admin, auth, and login routes
   // These are SPA routes that should always return index.html, never redirect or modify
   const isSPAOnlyRoute = 

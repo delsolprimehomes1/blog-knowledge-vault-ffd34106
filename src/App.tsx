@@ -175,7 +175,10 @@ const App = () => (
               {/* ========================================== */}
               <Route path="/sitemap" element={<Sitemap />} />
               <Route path="/glossary" element={<Glossary />} />
-              <Route path="/brochure/:citySlug" element={<CityBrochure />} />
+{/* Legacy redirect for brochures - redirect to English */}
+              <Route path="/brochure/:citySlug" element={<Navigate to={window.location.pathname.replace('/brochure/', '/en/brochure/')} replace />} />
+              {/* Language-prefixed brochure routes */}
+              <Route path="/:lang/brochure/:citySlug" element={<CityBrochure />} />
               <Route path="/about" element={<About />} />
               <Route path="/buyers-guide" element={<Navigate to="/en/buyers-guide" replace />} />
               <Route path="/:lang/buyers-guide" element={<BuyersGuide />} />
