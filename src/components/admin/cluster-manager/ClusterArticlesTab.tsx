@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClusterArticlesTabProps {
   cluster: ClusterData;
@@ -30,8 +36,39 @@ export const ClusterArticlesTab = ({
   incompleteLanguages,
   sourceInfo,
 }: ClusterArticlesTabProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
+
+  // Fetch actual articles for this cluster
+  const { data: articles = [] } = useQuery({
+    queryKey: ['cluster-articles', cluster.cluster_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('blog_articles')
+        .select('id, headline, slug, language, status, funnel_stage')
+        .eq('cluster_id', cluster.cluster_id)
+        .order('language')
+        .order('funnel_stage');
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Filter articles
+  const filteredArticles = articles.filter(article => {
+    const matchesSearch = article.headline.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || article.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleViewLive = (article: { language: string; slug: string }) => {
+    const langPrefix = article.language === 'en' ? '' : `/${article.language}`;
+    window.open(`https://www.delsolprimehomes.com${langPrefix}/blog/${article.slug}`, '_blank');
+  };
 
   return (
     <div className="space-y-4">
@@ -100,6 +137,72 @@ export const ClusterArticlesTab = ({
           ))}
         </div>
       </div>
+
+      {/* Search & Filter */}
+      <div className="flex gap-2 pt-2 border-t">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search articles by title..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Articles List */}
+      {filteredArticles.length > 0 && (
+        <ScrollArea className="h-[200px] border rounded-lg">
+          <div className="p-2 space-y-1">
+            {filteredArticles.map((article) => (
+              <div
+                key={article.id}
+                className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-md group"
+              >
+                <span className="text-lg shrink-0">{getLanguageFlag(article.language)}</span>
+                <span className="flex-1 text-sm truncate">{article.headline}</span>
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  {article.funnel_stage}
+                </Badge>
+                <Badge 
+                  variant={article.status === 'published' ? 'default' : 'secondary'}
+                  className="shrink-0 text-xs"
+                >
+                  {article.status}
+                </Badge>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link to={`/admin/articles/${article.id}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                  {article.status === 'published' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleViewLive(article)}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
 
       {/* Warnings */}
       {(sourceInfo.needsMoreSource || incompleteLanguages.length > 0) && (
