@@ -112,6 +112,55 @@ function generateLocalBusinessSchema(location: LocationData) {
   };
 }
 
+/**
+ * Hans' AEO truncation for SSG - ensures acceptedAnswer compliance
+ * Max 150 words, 800 chars, no lists, sentence boundary
+ */
+function truncateForAEO(text: string, maxChars: number = 800): string {
+  if (!text || typeof text !== 'string') return '';
+  
+  // Clean list formatting
+  let cleaned = text
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/\n\s*\d+\.\s+/g, ' ')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/\n\s*[-*•]\s+/g, ' ')
+    .replace(/^#+\s+/gm, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Strip HTML
+  cleaned = cleaned.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Max 150 words
+  const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > 150) {
+    cleaned = words.slice(0, 150).join(' ');
+  }
+  
+  // If within limit, ensure proper ending
+  if (cleaned.length <= maxChars) {
+    if (!/[.!?]$/.test(cleaned)) cleaned += '.';
+    return cleaned;
+  }
+  
+  // Truncate at sentence boundary
+  const truncated = cleaned.substring(0, maxChars);
+  const lastSentence = Math.max(
+    truncated.lastIndexOf('.'),
+    truncated.lastIndexOf('!'),
+    truncated.lastIndexOf('?')
+  );
+  
+  if (lastSentence >= 160) {
+    return cleaned.substring(0, lastSentence + 1).trim();
+  }
+  
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace >= 160 ? cleaned.substring(0, lastSpace).trim() : cleaned.substring(0, 160).trim()) + '.';
+}
+
 function generateLocationFAQSchema(location: LocationData) {
   if (!location.qa_entities?.length) return null;
   
@@ -125,7 +174,7 @@ function generateLocationFAQSchema(location: LocationData) {
       "name": qa.question,
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": qa.answer
+        "text": truncateForAEO(qa.answer)
       }
     }))
   };
