@@ -417,11 +417,37 @@ function validateContentQuality(article: any, plan: any): {
     score -= 25;
   }
   
-  // Check minimum word count
+  // Check minimum word count - AEO requires 1,500-2,000 words
   const wordCount = article.detailed_content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).length;
-  if (wordCount < 1200) {
-    issues.push(`Content too short (${wordCount} words, minimum 1200)`);
-    score -= 15;
+  if (wordCount < 1500) {
+    issues.push(`Content too short (${wordCount} words, minimum 1500)`);
+    score -= 20;
+  } else if (wordCount > 2300) {
+    issues.push(`Content too long (${wordCount} words, maximum 2300)`);
+    score -= 5;
+  }
+  
+  // Validate FAQ AEO compliance
+  if (article.qa_entities && Array.isArray(article.qa_entities)) {
+    if (article.qa_entities.length < 5) {
+      issues.push(`Too few FAQs: ${article.qa_entities.length} (need 5-8)`);
+      score -= 10;
+    }
+    
+    article.qa_entities.forEach((faq: any, idx: number) => {
+      const answerWords = faq.answer?.split(/\s+/).length || 0;
+      
+      if (answerWords < 80 || answerWords > 150) {
+        issues.push(`FAQ ${idx + 1}: ${answerWords} words (need 80-120)`);
+        score -= 5;
+      }
+      
+      // Check for list formatting (forbidden in FAQ answers)
+      if (faq.answer?.match(/^\s*\d+\.\s|^\s*[-*•]\s|\n\s*\d+\.\s|\n\s*[-*•]\s/m)) {
+        issues.push(`FAQ ${idx + 1} contains forbidden lists`);
+        score -= 10;
+      }
+    });
   }
   
   return {
@@ -1095,7 +1121,13 @@ Return ONLY the speakable text in ${speakableLangName}, no JSON, no formatting, 
         // Fallback to original prompt structure
         console.log(`[Job ${jobId}] ⚠️ Using fallback prompt structure for article ${i + 1}`);
         
-        const contentPrompt = `Write a comprehensive 2000-word blog article:
+        const contentPrompt = `Write a comprehensive blog article (MINIMUM 1,500 words, TARGET 1,800 words, MAXIMUM 2,000 words):
+
+CRITICAL WORD COUNT REQUIREMENT:
+- MINIMUM: 1,500 words (articles under this will be REJECTED)
+- TARGET: 1,800 words
+- MAXIMUM: 2,000 words
+- This is NON-NEGOTIABLE.
 
 Headline: ${plan.headline}
 Target Keyword: ${plan.targetKeyword}
@@ -1104,6 +1136,11 @@ Content Angle: ${plan.contentAngle}
 Funnel Stage: ${plan.funnelStage}
 Target Audience: ${targetAudience}
 Language: ${language}
+
+STRUCTURE TO ACHIEVE 1,800 WORDS:
+1. Introduction (150-200 words) - Hook, establish relevance
+2. Main Content (1,200-1,400 words) - 5-7 substantial H2 sections, 200-250 words each
+3. Conclusion (150-200 words) - Summarize, CTA
 
 Requirements:
 1. Structure with H2 and H3 headings (proper hierarchy)
@@ -1121,7 +1158,7 @@ Format as HTML with:
 - <h2> for main sections (5-7 sections)
 - <h3> for subsections
 - <p> for paragraphs
-- <ul> and <li> for lists
+- <ul> and <li> for lists (allowed in main content, NOT in FAQs)
 - <strong> for emphasis
 - <table> if comparing data
 
@@ -2057,7 +2094,21 @@ Return ONLY valid JSON:
           'fi': 'Finnish', 'no': 'Norwegian'
         }[language] || 'English';
         
-        const faqPrompt = `Generate 3-5 FAQ entities for this article.
+        const faqPrompt = `Generate 5-8 FAQ entities for this article.
+
+CRITICAL AEO RULES FOR EACH ANSWER (NON-NEGOTIABLE):
+- Word count: 80-120 words per answer (NO EXCEPTIONS)
+- Format: Single paragraph ONLY - NO lists, NO bullets, NO numbering, NO line breaks
+- Tone: Write as a verdict/conclusion, NOT a tutorial or step-by-step guide
+- Style: Self-contained (AI can quote verbatim without needing context)
+- Ending: Each answer MUST end with proper punctuation (. ! ?)
+
+WRONG FORMAT (DO NOT USE):
+"There are 3 steps: 1. First... 2. Second... 3. Third..."
+"The process includes: • Step one • Step two"
+
+CORRECT FORMAT (USE THIS):
+"Buying property in Costa del Sol typically takes 8-12 weeks and involves obtaining your NIE, hiring an independent lawyer, opening a Spanish bank account, conducting due diligence on the property, signing a private purchase contract with 10% deposit, and completing before a notary public who registers the deed with the Land Registry."
 
 CRITICAL: Both questions AND answers MUST be written in ${faqLanguageName}. Do NOT write in English unless the article language is English.
 
@@ -2070,7 +2121,7 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
   "faqs": [
     {
       "question": "Question in ${faqLanguageName}?",
-      "answer": "Concise answer in ${faqLanguageName} (2-3 sentences)"
+      "answer": "80-120 word single-paragraph answer in ${faqLanguageName}"
     }
   ]
 }`;
@@ -2144,6 +2195,27 @@ Return ONLY valid JSON with questions and answers in ${faqLanguageName}:
       // 12. Calculate read time
       const wordCount = article.detailed_content.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).length;
       article.read_time = Math.ceil(wordCount / 200);
+
+      // ✅ AEO COMPLIANCE CHECK - Validate FAQ answers
+      if (article.qa_entities && article.qa_entities.length > 0) {
+        let faqIssues = 0;
+        
+        for (const faq of article.qa_entities) {
+          const answerWords = faq.answer?.split(/\s+/).length || 0;
+          
+          if (answerWords < 80 || answerWords > 150) {
+            console.warn(`[Job ${jobId}] ⚠️ FAQ answer word count: ${answerWords} words (need 80-120)`);
+            faqIssues++;
+          }
+          
+          if (faq.answer?.includes('\n') || faq.answer?.match(/^\d+\.|^[-*•]/m)) {
+            console.warn(`[Job ${jobId}] ⚠️ FAQ answer contains list formatting`);
+            faqIssues++;
+          }
+        }
+        
+        console.log(`[Job ${jobId}] 📋 FAQ AEO Check: ${faqIssues} issues in ${article.qa_entities.length} FAQs`);
+      }
 
       // ✅ QUALITY VALIDATION - Ensure content meets quality standards
       console.log(`[Job ${jobId}] 🔍 Validating content quality for article ${i+1}...`);

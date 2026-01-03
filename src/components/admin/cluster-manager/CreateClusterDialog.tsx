@@ -244,7 +244,8 @@ export function CreateClusterDialog({ open, onOpenChange, onClusterCreated }: Cr
                 <p className="font-medium mb-1">This will generate:</p>
                 <ul className="space-y-0.5">
                   <li>• 6 English articles (3 TOFU, 2 MOFU, 1 BOFU)</li>
-                  <li>• Featured images via AI</li>
+                  <li>• 1,500-2,000 words per article (target: 1,800)</li>
+                  <li>• 5-8 AEO-compliant FAQs (80-120 words each)</li>
                   <li>• E-E-A-T compliant content</li>
                   <li>• JSON-LD schema markup</li>
                 </ul>
