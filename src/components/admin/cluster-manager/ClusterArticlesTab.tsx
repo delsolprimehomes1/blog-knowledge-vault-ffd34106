@@ -256,14 +256,14 @@ export const ClusterArticlesTab = ({
           variant="outline"
           size="sm"
           onClick={onTranslate}
-          disabled={missingLanguages.length === 0 || isTranslating || sourceInfo.needsMoreSource}
+          disabled={(missingLanguages.length === 0 && incompleteLanguages.length === 0) || isTranslating || sourceInfo.needsMoreSource}
         >
           {isTranslating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Globe className="mr-2 h-4 w-4" />
           )}
-          Complete Translations ({missingLanguages.length} missing)
+          Complete Translations ({missingLanguages.length + incompleteLanguages.length} incomplete)
         </Button>
 
         <Button
