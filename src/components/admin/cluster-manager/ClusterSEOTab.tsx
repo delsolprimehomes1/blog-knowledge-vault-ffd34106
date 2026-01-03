@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileCheck, Loader2, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { FileCheck, Loader2, CheckCircle2, AlertTriangle, XCircle, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ClusterData, ClusterSEOAuditResult, getLanguageFlag } from "./types";
 
@@ -38,11 +38,43 @@ export const ClusterSEOTab = ({ cluster, onAudit, isAuditing }: ClusterSEOTabPro
     },
   });
 
+  const fixCanonicalsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fix-cluster-canonicals", {
+        body: { 
+          dryRun: false, 
+          contentType: 'all',
+          clusterId: cluster.cluster_id 
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Fixed ${data.totalUpdated} missing canonical URLs`);
+      // Re-run audit to verify fix
+      auditMutation.mutate();
+    },
+    onError: (error) => {
+      toast.error(`Fix failed: ${error.message}`);
+    },
+  });
+
   const handleAudit = () => {
     auditMutation.mutate();
   };
 
+  const handleFixCanonicals = () => {
+    fixCanonicalsMutation.mutate();
+  };
+
   const isRunning = auditMutation.isPending || isAuditing;
+  const isFixing = fixCanonicalsMutation.isPending;
+
+  const hasMissingCanonicals = lastAudit && (
+    lastAudit.blog_audit.missing_canonicals.length > 0 ||
+    (lastAudit.qa_audit as any).missing_canonicals?.length > 0
+  );
 
   return (
     <div className="space-y-4">
@@ -181,7 +213,7 @@ export const ClusterSEOTab = ({ cluster, onAudit, isAuditing }: ClusterSEOTabPro
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-2 border-t">
-        <Button variant="default" size="sm" onClick={handleAudit} disabled={isRunning}>
+        <Button variant="default" size="sm" onClick={handleAudit} disabled={isRunning || isFixing}>
           {isRunning ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
@@ -189,6 +221,23 @@ export const ClusterSEOTab = ({ cluster, onAudit, isAuditing }: ClusterSEOTabPro
           )}
           {lastAudit ? "Re-run SEO Audit" : "Run SEO Audit"}
         </Button>
+        
+        {hasMissingCanonicals && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleFixCanonicals} 
+            disabled={isRunning || isFixing}
+            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+          >
+            {isFixing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wrench className="mr-2 h-4 w-4" />
+            )}
+            Fix Missing Canonicals
+          </Button>
+        )}
       </div>
     </div>
   );
