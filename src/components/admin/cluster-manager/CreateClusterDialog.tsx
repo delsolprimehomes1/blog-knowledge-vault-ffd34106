@@ -101,38 +101,21 @@ export function CreateClusterDialog({ open, onOpenChange, onClusterCreated }: Cr
 
   const createClusterMutation = useMutation({
     mutationFn: async () => {
-      // First create the cluster_generations record
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session?.session?.user?.id;
-      
-      const { data: clusterRecord, error: insertError } = await supabase
-        .from('cluster_generations')
-        .insert({
+      // Call edge function directly - it creates the cluster_generations record
+      const { data, error } = await supabase.functions.invoke('generate-cluster', {
+        body: { 
           topic,
-          primary_keyword: primaryKeyword,
-          target_audience: targetAudience,
-          language: 'en',
-          status: 'pending',
-          user_id: userId,
-          articles_per_cluster: 6,
-          cluster_count: 1,
-          is_multilingual: false,
-        })
-        .select('id')
-        .single();
-      
-      if (insertError) throw insertError;
-      
-      setJobId(clusterRecord.id);
-      
-      // Invoke the generate-cluster edge function
-      const { error: invokeError } = await supabase.functions.invoke('generate-cluster', {
-        body: { jobId: clusterRecord.id }
+          primaryKeyword,
+          targetAudience,
+          language: 'en'
+        }
       });
       
-      if (invokeError) throw invokeError;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to start generation');
       
-      return clusterRecord.id;
+      setJobId(data.jobId);
+      return data.jobId;
     },
     onSuccess: (id) => {
       toast.info("Cluster generation started. This may take a few minutes...");
