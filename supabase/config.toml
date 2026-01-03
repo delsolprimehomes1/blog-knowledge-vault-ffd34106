@@ -239,3 +239,6 @@ verify_jwt = false
 
 [functions.regenerate-aeo-answers]
 verify_jwt = false
+
+[functions.discover-cluster-citations]
+verify_jwt = false
