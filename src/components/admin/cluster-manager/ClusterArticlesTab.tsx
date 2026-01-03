@@ -5,11 +5,14 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ClusterArticlesTabProps {
   cluster: ClusterData;
@@ -36,8 +39,17 @@ export const ClusterArticlesTab = ({
   incompleteLanguages,
   sourceInfo,
 }: ClusterArticlesTabProps) => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+  
+  // Citation discovery state
+  const [discoveringArticle, setDiscoveringArticle] = useState<string | null>(null);
+  const [discoveredCitations, setDiscoveredCitations] = useState<any[]>([]);
+  const [showCitationsModal, setShowCitationsModal] = useState(false);
+  const [currentArticle, setCurrentArticle] = useState<any>(null);
+  const [selectedCitations, setSelectedCitations] = useState<Set<string>>(new Set());
+  const [isApplying, setIsApplying] = useState(false);
 
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
@@ -48,7 +60,7 @@ export const ClusterArticlesTab = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
-        .select('id, headline, slug, language, status, funnel_stage')
+        .select('id, headline, slug, language, status, funnel_stage, detailed_content, external_citations')
         .eq('cluster_id', cluster.cluster_id)
         .order('language')
         .order('funnel_stage');
@@ -68,6 +80,90 @@ export const ClusterArticlesTab = ({
   const handleViewLive = (article: { language: string; slug: string }) => {
     const langPrefix = article.language === 'en' ? '' : `/${article.language}`;
     window.open(`https://www.delsolprimehomes.com${langPrefix}/blog/${article.slug}`, '_blank');
+  };
+
+  const handleDiscoverCitations = async (article: any) => {
+    setDiscoveringArticle(article.id);
+    setCurrentArticle(article);
+    
+    try {
+      toast.info("Finding citations via AI... This takes 10-30 seconds.");
+      
+      const { data, error } = await supabase.functions.invoke('find-citations-perplexity', {
+        body: { 
+          articleTopic: article.headline,
+          articleLanguage: article.language,
+          articleContent: article.detailed_content?.substring(0, 5000) || '',
+          currentCitations: article.external_citations || []
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success && data.citations?.length > 0) {
+        setDiscoveredCitations(data.citations);
+        setSelectedCitations(new Set(data.citations.map((c: any) => c.url)));
+        setShowCitationsModal(true);
+        toast.success(`Found ${data.citations.length} citations!`);
+      } else {
+        toast.info(data.message || "No new citations found for this article");
+      }
+    } catch (error: any) {
+      console.error('Citation discovery failed:', error);
+      toast.error(`Discovery failed: ${error.message}`);
+    } finally {
+      setDiscoveringArticle(null);
+    }
+  };
+
+  const toggleCitation = (url: string) => {
+    setSelectedCitations(prev => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        next.add(url);
+      }
+      return next;
+    });
+  };
+
+  const handleApplyCitations = async () => {
+    if (!currentArticle || selectedCitations.size === 0) return;
+    
+    setIsApplying(true);
+    try {
+      const citationsToAdd = discoveredCitations
+        .filter(c => selectedCitations.has(c.url))
+        .map(c => ({
+          url: c.url,
+          source: c.sourceName || c.source,
+          text: c.relevance || c.suggestedContext || ''
+        }));
+      
+      const existing = (currentArticle.external_citations as any[]) || [];
+      const combined = [...existing, ...citationsToAdd];
+      
+      const { error } = await supabase
+        .from('blog_articles')
+        .update({ external_citations: combined })
+        .eq('id', currentArticle.id);
+      
+      if (error) throw error;
+      
+      toast.success(`Added ${citationsToAdd.length} citations to article`);
+      setShowCitationsModal(false);
+      setDiscoveredCitations([]);
+      setSelectedCitations(new Set());
+      setCurrentArticle(null);
+      
+      // Refetch articles
+      queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+    } catch (error: any) {
+      toast.error(`Failed to apply citations: ${error.message}`);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return (
@@ -182,6 +278,20 @@ export const ClusterArticlesTab = ({
                   {article.status}
                 </Badge>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleDiscoverCitations(article)}
+                    disabled={discoveringArticle === article.id}
+                    title="Find Citations"
+                  >
+                    {discoveringArticle === article.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
                   <Link to={`/admin/articles/${article.id}`}>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
                       <Edit className="h-3.5 w-3.5" />
@@ -287,6 +397,89 @@ export const ClusterArticlesTab = ({
           </Button>
         </Link>
       </div>
+
+      {/* Citations Discovery Modal */}
+      <Dialog open={showCitationsModal} onOpenChange={setShowCitationsModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+              Discovered Citations
+            </DialogTitle>
+            <DialogDescription>
+              Found {discoveredCitations.length} authoritative citations for "{currentArticle?.headline}". 
+              Select which ones to add.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-3">
+              {discoveredCitations.map((citation, idx) => {
+                const isSelected = selectedCitations.has(citation.url);
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border flex items-start gap-3 ${
+                      isSelected ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30' : 'bg-muted/30'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleCitation(citation.url)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-medium text-sm">{citation.sourceName || 'Source'}</span>
+                        {citation.tier && (
+                          <Badge variant="outline" className="text-xs">
+                            {citation.tier}
+                          </Badge>
+                        )}
+                        {citation.diversityScore !== undefined && (
+                          <Badge 
+                            variant={citation.diversityScore >= 60 ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            Diversity: {citation.diversityScore}%
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                        {citation.relevance || citation.suggestedContext}
+                      </p>
+                      <a 
+                        href={citation.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline truncate block"
+                      >
+                        {citation.url}
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowCitationsModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleApplyCitations}
+              disabled={selectedCitations.size === 0 || isApplying}
+            >
+              {isApplying ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+              )}
+              Add {selectedCitations.size} Citation{selectedCitations.size !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
