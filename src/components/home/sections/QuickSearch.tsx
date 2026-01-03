@@ -49,7 +49,7 @@ export const QuickSearch: React.FC = () => {
   const [bedrooms, setBedrooms] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
-  const [status, setStatus] = useState("sales");
+  const [status, setStatus] = useState("new-developments");
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -73,7 +73,7 @@ export const QuickSearch: React.FC = () => {
     setBedrooms("");
     setPriceMin("");
     setPriceMax("");
-    setStatus("sales");
+    setStatus("new-developments");
   };
 
   const isLoading = locationsLoading || typesLoading;

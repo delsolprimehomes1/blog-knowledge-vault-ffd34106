@@ -15,12 +15,19 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
   const [isFavorited, setIsFavorited] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatPrice = (price: number, priceMax: number | undefined, currency: string) => {
+    const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
       maximumFractionDigits: 0,
-    }).format(price);
+    });
+    
+    // If there's a valid price range (New Developments), show "From €X"
+    if (priceMax && priceMax > price) {
+      return `From ${formatter.format(price)}`;
+    }
+    
+    return formatter.format(price);
   };
 
   const propertyLink = `/${lang}/property/${property.reference}`;
@@ -118,7 +125,7 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
             <div className="flex flex-col">
               <span className="text-sm font-medium text-white/80 mb-0.5">Price</span>
               <span className="text-2xl md:text-3xl font-display font-bold text-white drop-shadow-lg">
-                {formatPrice(property.price, property.currency)}
+                {formatPrice(property.price, property.priceMax, property.currency)}
               </span>
             </div>
           </div>

@@ -10,6 +10,7 @@ interface NormalizedProperty {
   reference: string;
   title: string;
   price: number;
+  priceMax?: number;
   currency: string;
   location: string;
   province: string;
@@ -65,22 +66,44 @@ function extractMainImage(prop: any): string {
 }
 
 /**
- * Parses price from various field names
+ * Parses price range from various field names (for New Developments with min/max prices)
  */
-function parsePrice(prop: any): number {
-  const priceFields = ['Price', 'price', 'SalePrice', 'CurrentPrice', 'OriginalPrice'];
+function parsePriceRange(prop: any): { price: number; priceMax?: number } {
+  // Try to get min price
+  const minPriceFields = ['Price', 'price', 'SalePrice', 'CurrentPrice', 'PriceMin', 'priceMin'];
+  let minPrice = 0;
   
-  for (const field of priceFields) {
+  for (const field of minPriceFields) {
     const value = prop[field];
     if (value !== undefined && value !== null && value !== '') {
       const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
       if (!isNaN(parsed) && parsed > 0) {
-        return parsed;
+        minPrice = parsed;
+        break;
       }
     }
   }
   
-  return 0;
+  // Try to get max price (for New Developments price ranges)
+  const maxPriceFields = ['PriceMax', 'priceMax', 'MaxPrice', 'maxPrice', 'OriginalPrice'];
+  let maxPrice = 0;
+  
+  for (const field of maxPriceFields) {
+    const value = prop[field];
+    if (value !== undefined && value !== null && value !== '') {
+      const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
+      // Only use if it's different from min price and greater than min
+      if (!isNaN(parsed) && parsed > 0 && parsed !== minPrice && parsed > minPrice) {
+        maxPrice = parsed;
+        break;
+      }
+    }
+  }
+  
+  return {
+    price: minPrice,
+    priceMax: maxPrice > minPrice ? maxPrice : undefined
+  };
 }
 
 /**
@@ -302,7 +325,7 @@ serve(async (req) => {
     const properties: NormalizedProperty[] = filteredProperties.map((prop: any) => {
       const propertyTypeStr = extractPropertyType(prop);
       const mainImage = extractMainImage(prop);
-      const price = parsePrice(prop);
+      const { price, priceMax } = parsePriceRange(prop);
       const allImages = extractAllImages(prop);
       
       const title = prop.Title || prop.Name || prop.PropertyName || 
@@ -313,6 +336,7 @@ serve(async (req) => {
         reference: prop.Reference || prop.reference || prop.Ref || '',
         title,
         price,
+        priceMax,
         currency: prop.Currency || prop.currency || 'EUR',
         location: prop.Location || prop.location || prop.Area || '',
         province: prop.Province || prop.province || prop.Country || '',

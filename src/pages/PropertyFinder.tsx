@@ -108,9 +108,11 @@ const PropertyFinder = () => {
 
   useEffect(() => {
     const params = getInitialParams();
-    if (Object.keys(params).some((key) => params[key as keyof PropertySearchParams])) {
-      searchProperties(params);
+    // Default to New Developments if no newDevs param in URL
+    if (!params.newDevs) {
+      params.newDevs = "only";
     }
+    searchProperties(params);
   }, []);
 
   const locationName = searchParams.get("location");

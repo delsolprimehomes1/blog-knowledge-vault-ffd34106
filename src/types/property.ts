@@ -1,6 +1,7 @@
 export interface Property {
   reference: string;
   price: number;
+  priceMax?: number;
   currency: string;
   location: string;
   province: string;
