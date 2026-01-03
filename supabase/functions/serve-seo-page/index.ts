@@ -158,23 +158,64 @@ async function fetchComparisonMetadata(supabase: any, slug: string, lang: string
 }
 
 async function fetchLocationMetadata(supabase: any, slug: string, lang: string): Promise<PageMetadata | null> {
-  const { data, error } = await supabase
-    .from('location_pages')
-    .select('*')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle()
+  // Location pages have compound slugs: city_slug/topic_slug
+  // The slug parameter will be "city-slug/topic-slug" or just the topic_slug if parsed separately
+  const slugParts = slug.split('/')
+  
+  let data, error
+  
+  if (slugParts.length >= 2) {
+    // Full path: city_slug/topic_slug
+    const [citySlug, topicSlug] = slugParts
+    console.log(`[Location] Querying by city_slug="${citySlug}" AND topic_slug="${topicSlug}"`)
+    
+    const result = await supabase
+      .from('location_pages')
+      .select('*')
+      .eq('city_slug', citySlug)
+      .eq('topic_slug', topicSlug)
+      .eq('status', 'published')
+      .maybeSingle()
+    
+    data = result.data
+    error = result.error
+  } else {
+    // Single slug - try topic_slug first, then city_slug
+    console.log(`[Location] Querying by topic_slug="${slug}"`)
+    
+    let result = await supabase
+      .from('location_pages')
+      .select('*')
+      .eq('topic_slug', slug)
+      .eq('status', 'published')
+      .maybeSingle()
+    
+    if (!result.data) {
+      console.log(`[Location] topic_slug not found, trying city_slug="${slug}"`)
+      result = await supabase
+        .from('location_pages')
+        .select('*')
+        .eq('city_slug', slug)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle()
+    }
+    
+    data = result.data
+    error = result.error
+  }
 
   if (error || !data) {
     console.error('Error fetching location page:', error)
     return null
   }
 
+  const fullSlug = `${data.city_slug}/${data.topic_slug}`
   return {
     language: data.language || lang,
     meta_title: data.meta_title,
     meta_description: data.meta_description,
-    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/locations/${slug}`,
+    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/locations/${fullSlug}`,
     headline: data.headline,
     speakable_answer: data.speakable_answer,
     featured_image_url: data.featured_image_url,
@@ -200,6 +241,28 @@ async function fetchHreflangSiblings(supabase: any, hreflangGroupId: string, con
   const tableName = tableMap[contentType]
   if (!tableName) return []
 
+  // Location pages have city_slug + topic_slug instead of slug
+  if (contentType === 'locations') {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('language, city_slug, topic_slug, canonical_url')
+      .eq('hreflang_group_id', hreflangGroupId)
+      .eq('status', 'published')
+
+    if (error || !data) {
+      console.error('Error fetching location hreflang siblings:', error)
+      return []
+    }
+
+    // Convert to HreflangSibling format with compound slug
+    return data.map((item: any) => ({
+      language: item.language,
+      slug: `${item.city_slug}/${item.topic_slug}`,
+      canonical_url: item.canonical_url,
+    })) as HreflangSibling[]
+  }
+
+  // Standard content types with slug column
   const { data, error } = await supabase
     .from(tableName)
     .select('language, slug, canonical_url')
@@ -223,15 +286,29 @@ function generateHreflangTags(siblings: HreflangSibling[], currentLang: string, 
     availableLanguages.set(sibling.language, sibling)
   })
 
-  // Generate tags ONLY for languages that EXIST (no fallbacks!)
+  // Generate tags for ALL 10 supported languages (not just existing siblings)
+  // This ensures complete hreflang coverage even when translations don't exist yet
   const tags: string[] = []
   
-  for (const [lang, sibling] of availableLanguages) {
-    const url = sibling.canonical_url || `${BASE_URL}/${lang}/${pathPrefix}/${sibling.slug}`
-    tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
+  for (const lang of SUPPORTED_LANGUAGES) {
+    const sibling = availableLanguages.get(lang)
+    if (sibling) {
+      // Use existing sibling's canonical URL or construct from slug
+      const url = sibling.canonical_url || `${BASE_URL}/${lang}/${pathPrefix}/${sibling.slug}`
+      tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
+    } else {
+      // For missing languages, use the current page's slug pattern
+      // This creates placeholder hreflang tags that can be used when translations are created
+      const currentSibling = availableLanguages.get(currentLang)
+      if (currentSibling) {
+        // Construct URL using the same slug pattern but different language
+        const url = `${BASE_URL}/${lang}/${pathPrefix}/${currentSibling.slug}`
+        tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
+      }
+    }
   }
 
-  // Add x-default (points to English if it exists, otherwise first available)
+  // Add x-default (points to English if it exists, otherwise current language)
   const englishVersion = availableLanguages.get('en')
   const xDefaultVersion = englishVersion || availableLanguages.get(currentLang) || siblings[0]
   const xDefaultLang = englishVersion ? 'en' : (xDefaultVersion?.language || currentLang)

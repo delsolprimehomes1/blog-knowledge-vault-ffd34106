@@ -2226,6 +2226,7 @@ export type Database = {
         Row: {
           author_id: string | null
           best_areas: Json | null
+          canonical_url: string | null
           city_name: string
           city_slug: string
           content_type: string | null
@@ -2259,12 +2260,14 @@ export type Database = {
           speakable_answer: string
           status: string
           topic_slug: string
+          translations: Json | null
           updated_at: string | null
           use_cases: string | null
         }
         Insert: {
           author_id?: string | null
           best_areas?: Json | null
+          canonical_url?: string | null
           city_name: string
           city_slug: string
           content_type?: string | null
@@ -2298,12 +2301,14 @@ export type Database = {
           speakable_answer: string
           status?: string
           topic_slug: string
+          translations?: Json | null
           updated_at?: string | null
           use_cases?: string | null
         }
         Update: {
           author_id?: string | null
           best_areas?: Json | null
+          canonical_url?: string | null
           city_name?: string
           city_slug?: string
           content_type?: string | null
@@ -2337,6 +2342,7 @@ export type Database = {
           speakable_answer?: string
           status?: string
           topic_slug?: string
+          translations?: Json | null
           updated_at?: string | null
           use_cases?: string | null
         }

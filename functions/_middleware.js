@@ -61,7 +61,21 @@ function normalizeSlug(rawSlug) {
  * Check if the path matches an SEO-relevant content page
  */
 function matchSEOPath(path) {
-  // Pattern: /{lang}/{type}/{slug}
+  // Pattern: /{lang}/{type}/{slug} or /{lang}/locations/{citySlug}/{topicSlug}
+  
+  // First check for location pages with compound slug (city/topic)
+  const locationMatch = path.match(/^\/([a-z]{2})\/locations\/([a-z0-9-]+)\/([a-z0-9-]+)$/);
+  if (locationMatch) {
+    const [, lang, citySlug, topicSlug] = locationMatch;
+    if (CONFIG.SUPPORTED_LANGUAGES.includes(lang)) {
+      // Combine into compound slug for edge function
+      const rawSlug = `${citySlug}/${topicSlug}`;
+      const slug = rawSlug; // Already normalized format
+      return { lang, type: 'locations', slug, rawSlug, needsRedirect: false };
+    }
+  }
+  
+  // Standard pattern: /{lang}/{type}/{slug}
   const match = path.match(/^\/([a-z]{2})\/(qa|blog|compare|locations)\/(.+)$/);
   
   if (!match) return null;
