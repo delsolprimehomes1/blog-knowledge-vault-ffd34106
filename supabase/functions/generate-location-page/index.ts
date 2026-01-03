@@ -90,9 +90,9 @@ Tone: Authoritative, Neutral, Evidence-based, Human-readable, AI-friendly. Avoid
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation.`;
 
-// Generate unique hreflang group ID
+// Generate UUID v4 for hreflang group linking
 function generateHreflangGroupId(): string {
-  return `loc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 serve(async (req) => {
