@@ -67,42 +67,57 @@ function extractMainImage(prop: any): string {
 
 /**
  * Parses price range from various field names (for New Developments with min/max prices)
+ * Handles special case where API returns concatenated prices like "175000.749000"
  */
 function parsePriceRange(prop: any): { price: number; priceMax?: number } {
-  // Try to get min price
-  const minPriceFields = ['Price', 'price', 'SalePrice', 'CurrentPrice', 'PriceMin', 'priceMin'];
-  let minPrice = 0;
+  // First, check for dedicated PriceFrom/PriceTo fields (cleanest format)
+  if (prop.PriceFrom !== undefined || prop.PriceTo !== undefined) {
+    const min = parseInt(String(prop.PriceFrom || prop.Price || 0).replace(/[^0-9]/g, ''));
+    const max = parseInt(String(prop.PriceTo || 0).replace(/[^0-9]/g, ''));
+    console.log(`💰 Using PriceFrom/To: min=${min}, max=${max}`);
+    return { price: min, priceMax: max > min ? max : undefined };
+  }
+
+  // Check for PriceMin/PriceMax fields
+  if (prop.PriceMin !== undefined || prop.PriceMax !== undefined) {
+    const min = parseInt(String(prop.PriceMin || prop.Price || 0).replace(/[^0-9]/g, ''));
+    const max = parseInt(String(prop.PriceMax || 0).replace(/[^0-9]/g, ''));
+    console.log(`💰 Using PriceMin/Max: min=${min}, max=${max}`);
+    return { price: min, priceMax: max > min ? max : undefined };
+  }
+
+  // Get the raw Price value as string for analysis
+  const rawPrice = String(prop.Price || prop.price || '0');
+  console.log(`💰 Raw Price field value: "${rawPrice}"`);
   
-  for (const field of minPriceFields) {
-    const value = prop[field];
-    if (value !== undefined && value !== null && value !== '') {
-      const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
-      if (!isNaN(parsed) && parsed > 0) {
-        minPrice = parsed;
-        break;
-      }
+  // CRITICAL: Check if price contains a decimal point that might be a concatenated range
+  // New Development prices come as "175000.749000" meaning min=175000, max=749000
+  if (rawPrice.includes('.')) {
+    const parts = rawPrice.split('.');
+    const beforeDecimal = parseInt(parts[0].replace(/[^0-9]/g, '')) || 0;
+    const afterDecimal = parseInt(parts[1]?.replace(/[^0-9]/g, '') || '0') || 0;
+    
+    // If the decimal part is suspiciously long (more than 2 digits) and resembles a price,
+    // it's likely a concatenated min.max format
+    if (parts[1] && parts[1].length >= 5 && afterDecimal > 10000) {
+      console.log(`💰 DETECTED CONCATENATED PRICE: min=${beforeDecimal}, max=${afterDecimal}`);
+      return { 
+        price: beforeDecimal, 
+        priceMax: afterDecimal > beforeDecimal ? afterDecimal : undefined 
+      };
     }
   }
   
-  // Try to get max price (for New Developments price ranges)
-  const maxPriceFields = ['PriceMax', 'priceMax', 'MaxPrice', 'maxPrice', 'OriginalPrice'];
-  let maxPrice = 0;
+  // Standard single price (use parseInt to remove any decimal portion)
+  const singlePrice = parseInt(rawPrice.replace(/[^0-9]/g, '')) || 0;
+  console.log(`💰 Single price: ${singlePrice}`);
   
-  for (const field of maxPriceFields) {
-    const value = prop[field];
-    if (value !== undefined && value !== null && value !== '') {
-      const parsed = parseFloat(String(value).replace(/[^0-9.]/g, ''));
-      // Only use if it's different from min price and greater than min
-      if (!isNaN(parsed) && parsed > 0 && parsed !== minPrice && parsed > minPrice) {
-        maxPrice = parsed;
-        break;
-      }
-    }
-  }
+  // Check OriginalPrice as potential max price
+  const originalPrice = parseInt(String(prop.OriginalPrice || 0).replace(/[^0-9]/g, ''));
   
   return {
-    price: minPrice,
-    priceMax: maxPrice > minPrice ? maxPrice : undefined
+    price: singlePrice,
+    priceMax: originalPrice > singlePrice ? originalPrice : undefined
   };
 }
 
