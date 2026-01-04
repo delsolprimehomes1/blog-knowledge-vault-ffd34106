@@ -205,17 +205,29 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 border border-border/50 group-hover:border-primary/30 group-hover:bg-primary/5 transition-all duration-300">
               <Bed className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{property.bedrooms}</span>
+              <span className="text-sm font-semibold text-foreground">
+                {property.bedroomsMax && property.bedroomsMax > property.bedrooms 
+                  ? `${property.bedrooms}-${property.bedroomsMax}` 
+                  : property.bedrooms}
+              </span>
               <span className="text-xs text-muted-foreground">beds</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 border border-border/50 group-hover:border-primary/30 group-hover:bg-primary/5 transition-all duration-300">
               <Bath className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{property.bathrooms}</span>
+              <span className="text-sm font-semibold text-foreground">
+                {property.bathroomsMax && property.bathroomsMax > property.bathrooms 
+                  ? `${property.bathrooms}-${property.bathroomsMax}` 
+                  : property.bathrooms}
+              </span>
               <span className="text-xs text-muted-foreground">baths</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 border border-border/50 group-hover:border-primary/30 group-hover:bg-primary/5 transition-all duration-300">
               <Maximize2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{property.builtArea}</span>
+              <span className="text-sm font-semibold text-foreground">
+                {property.builtAreaMax && property.builtAreaMax > property.builtArea 
+                  ? `${property.builtArea}-${property.builtAreaMax}` 
+                  : property.builtArea}
+              </span>
               <span className="text-xs text-muted-foreground">m²</span>
             </div>
           </div>

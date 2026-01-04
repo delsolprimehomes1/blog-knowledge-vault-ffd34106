@@ -6,9 +6,13 @@ export interface Property {
   location: string;
   province: string;
   bedrooms: number;
+  bedroomsMax?: number;
   bathrooms: number;
+  bathroomsMax?: number;
   builtArea: number;
+  builtAreaMax?: number;
   plotArea?: number;
+  plotAreaMax?: number;
   propertyType: string;
   mainImage: string;
   images: string[];

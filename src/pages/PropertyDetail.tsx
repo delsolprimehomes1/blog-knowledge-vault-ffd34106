@@ -216,9 +216,13 @@ const PropertyDetail = () => {
           <div className="mb-8 md:mb-12">
             <PropertyStats
               bedrooms={property.bedrooms}
+              bedroomsMax={property.bedroomsMax}
               bathrooms={property.bathrooms}
+              bathroomsMax={property.bathroomsMax}
               builtArea={property.builtArea}
+              builtAreaMax={property.builtAreaMax}
               plotArea={property.plotArea}
+              plotAreaMax={property.plotAreaMax}
               orientation={property.orientation}
               views={property.views}
             />

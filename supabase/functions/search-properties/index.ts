@@ -15,9 +15,13 @@ interface NormalizedProperty {
   location: string;
   province: string;
   bedrooms: number;
+  bedroomsMax?: number;
   bathrooms: number;
+  bathroomsMax?: number;
   builtArea: number;
+  builtAreaMax?: number;
   plotArea?: number;
+  plotAreaMax?: number;
   propertyType: string;
   mainImage: string;
   images: string[];
@@ -131,6 +135,27 @@ function parsePriceRange(prop: any): { price: number; priceMax?: number } {
     price: singlePrice,
     priceMax: originalPrice > singlePrice ? originalPrice : undefined
   };
+}
+
+/**
+ * Parses range values for bedrooms, bathrooms, built area
+ * Handles "1 - 4" string format, separate min/max fields, or single values
+ */
+function parseRangeValue(minField: any, maxField?: any): { min: number; max?: number } {
+  const minStr = String(minField || '0');
+  
+  // Check if min contains a range like "1 - 4"
+  if (minStr.includes('-') || minStr.includes('–')) {
+    const parts = minStr.split(/\s*[-–—]\s*/);
+    const minVal = parseInt(parts[0]) || 0;
+    const maxVal = parseInt(parts[1]) || 0;
+    return { min: minVal, max: maxVal > minVal ? maxVal : undefined };
+  }
+  
+  const minVal = parseInt(minStr) || 0;
+  const maxVal = maxField ? (parseInt(String(maxField)) || 0) : 0;
+  
+  return { min: minVal, max: maxVal > minVal ? maxVal : undefined };
 }
 
 /**
@@ -358,6 +383,24 @@ serve(async (req) => {
       const title = prop.Title || prop.Name || prop.PropertyName || 
                    `${propertyTypeStr} in ${prop.Location || prop.location || 'Costa del Sol'}`;
 
+      // Parse range values for New Developments
+      const bedroomsRange = parseRangeValue(
+        prop.Bedrooms || prop.bedrooms || prop.BedsMin,
+        prop.BedsMax || prop.BedroomsMax
+      );
+      const bathroomsRange = parseRangeValue(
+        prop.Bathrooms || prop.bathrooms || prop.BathsMin,
+        prop.BathsMax || prop.BathroomsMax
+      );
+      const builtRange = parseRangeValue(
+        prop.Built || prop.BuiltArea || prop.builtArea || prop.BuiltMin,
+        prop.BuiltMax || prop.BuiltAreaMax
+      );
+      const plotRange = parseRangeValue(
+        prop.GardenPlot || prop.PlotArea || prop.plotArea || prop.Plot || prop.PlotMin,
+        prop.PlotMax || prop.PlotAreaMax
+      );
+
       return {
         id: prop.Reference || prop.reference || prop.Ref || '',
         reference: prop.Reference || prop.reference || prop.Ref || '',
@@ -367,10 +410,14 @@ serve(async (req) => {
         currency: prop.Currency || prop.currency || 'EUR',
         location: prop.Location || prop.location || prop.Area || '',
         province: prop.Province || prop.province || prop.Country || '',
-        bedrooms: parseInt(prop.Bedrooms || prop.bedrooms) || 0,
-        bathrooms: parseInt(prop.Bathrooms || prop.bathrooms) || 0,
-        builtArea: parseFloat(prop.Built || prop.BuiltArea || prop.builtArea) || 0,
-        plotArea: parseFloat(prop.GardenPlot || prop.PlotArea || prop.plotArea || prop.Plot) || undefined,
+        bedrooms: bedroomsRange.min,
+        bedroomsMax: bedroomsRange.max,
+        bathrooms: bathroomsRange.min,
+        bathroomsMax: bathroomsRange.max,
+        builtArea: builtRange.min,
+        builtAreaMax: builtRange.max,
+        plotArea: plotRange.min || undefined,
+        plotAreaMax: plotRange.max,
         propertyType: propertyTypeStr,
         mainImage,
         images: allImages,
