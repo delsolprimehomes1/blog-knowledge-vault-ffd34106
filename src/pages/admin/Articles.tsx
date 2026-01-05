@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BlogArticle, ArticleStatus, FunnelStage, Language } from "@/types/blog";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -21,7 +21,6 @@ import {
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
 import { Search, Edit, Eye, Trash2, Plus, AlertCircle, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const Articles = () => {
