@@ -183,14 +183,29 @@ Return JSON: { "headline": "...", "targetKeyword": "...", "contentAngle": "...",
             }),
           });
 
-          if (!planResponse.ok) throw new Error(`Plan generation failed: ${planResponse.status}`);
+          if (!planResponse.ok) {
+            const errorText = await planResponse.text();
+            console.error(`[Missing] Plan API error (${planResponse.status}):`, errorText.substring(0, 500));
+            throw new Error(`Plan generation failed: ${planResponse.status}`);
+          }
 
           const planData = await planResponse.json();
           const planText = planData.choices?.[0]?.message?.content || '';
+          if (!planText.trim()) {
+            throw new Error('OpenAI returned empty plan response');
+          }
           const planCleaned = planText.replace(/```json\n?|\n?```|```\n?/g, '').trim();
-          const plan = JSON.parse(planCleaned.match(/\{[\s\S]*\}/)?.[0] || planCleaned);
+          const planMatch = planCleaned.match(/\{[\s\S]*\}/);
+          if (!planMatch) {
+            console.error(`[Missing] Plan response not JSON:`, planText.substring(0, 500));
+            throw new Error('Plan response did not contain valid JSON');
+          }
+          const plan = JSON.parse(planMatch[0]);
 
           console.log(`[Missing] Plan: ${plan.headline}`);
+          
+          // Small delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
           const article: any = {
             funnel_stage: missing.funnelStage,
@@ -265,18 +280,45 @@ Return ONLY the category name exactly as shown above.`;
             }),
           });
 
-          if (!contentResponse.ok) throw new Error(`Content generation failed: ${contentResponse.status}`);
+          if (!contentResponse.ok) {
+            const errorText = await contentResponse.text();
+            console.error(`[Missing] Content API error (${contentResponse.status}):`, errorText.substring(0, 500));
+            throw new Error(`Content generation failed: ${contentResponse.status}`);
+          }
 
           const contentData = await contentResponse.json();
           const contentText = contentData.choices?.[0]?.message?.content || '';
+          
+          if (!contentText.trim()) {
+            throw new Error('OpenAI returned empty content response');
+          }
+          
+          // Validate JSON-like response before parsing
           const contentCleaned = contentText.replace(/```json\n?|\n?```|```\n?/g, '').trim();
-          const contentJson = JSON.parse(contentCleaned.match(/\{[\s\S]*\}/)?.[0] || contentCleaned);
+          const contentMatch = contentCleaned.match(/\{[\s\S]*\}/);
+          
+          if (!contentMatch) {
+            console.error(`[Missing] Content response not JSON (first 500 chars):`, contentText.substring(0, 500));
+            throw new Error('Content response did not contain valid JSON object');
+          }
+          
+          let contentJson;
+          try {
+            contentJson = JSON.parse(contentMatch[0]);
+          } catch (parseError) {
+            console.error(`[Missing] JSON parse failed:`, parseError);
+            console.error(`[Missing] Raw content (first 1000 chars):`, contentMatch[0].substring(0, 1000));
+            throw new Error(`Failed to parse content JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+          }
 
           article.detailed_content = contentJson.detailed_content || contentJson.content || '';
           article.meta_title = (contentJson.meta_title || plan.headline).substring(0, 60);
           article.meta_description = (contentJson.meta_description || '').substring(0, 160);
           article.speakable_answer = contentJson.speakable_answer || '';
           article.qa_entities = contentJson.qa_entities || contentJson.faqs || [];
+          
+          // Small delay before image generation
+          await new Promise(resolve => setTimeout(resolve, 1500));
 
           // Featured image
           const imagePrompt = `Professional real estate photo: ${plan.headline}. Costa del Sol, Spain. High quality, natural lighting.`;
