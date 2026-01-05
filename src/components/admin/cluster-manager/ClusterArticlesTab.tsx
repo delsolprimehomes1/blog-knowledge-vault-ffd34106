@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles } from "lucide-react";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +50,9 @@ export const ClusterArticlesTab = ({
   const [currentArticle, setCurrentArticle] = useState<any>(null);
   const [selectedCitations, setSelectedCitations] = useState<Set<string>>(new Set());
   const [isApplying, setIsApplying] = useState(false);
+  
+  // Generate missing articles state
+  const [isGeneratingMissing, setIsGeneratingMissing] = useState(false);
 
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
@@ -163,6 +166,38 @@ export const ClusterArticlesTab = ({
       toast.error(`Failed to apply citations: ${error.message}`);
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  // Calculate missing articles count
+  const getMissingCount = () => {
+    const sourceArticles = articles.filter(a => a.language === sourceInfo.sourceLanguage);
+    return 6 - sourceArticles.length;
+  };
+
+  const handleGenerateMissing = async () => {
+    setIsGeneratingMissing(true);
+    try {
+      toast.info("Generating missing article(s)... This may take 1-2 minutes.");
+      
+      const { data, error } = await supabase.functions.invoke('generate-missing-articles', {
+        body: { clusterId: cluster.cluster_id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast.success(`Generated ${data.generated} missing article(s)!`);
+        queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+        queryClient.invalidateQueries({ queryKey: ['clusters-unified'] });
+      } else {
+        toast.error(data.error || "Failed to generate missing articles");
+      }
+    } catch (error: any) {
+      console.error('Generate missing failed:', error);
+      toast.error(`Failed: ${error.message}`);
+    } finally {
+      setIsGeneratingMissing(false);
     }
   };
 
@@ -357,6 +392,23 @@ export const ClusterArticlesTab = ({
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-2 border-t">
+        {sourceInfo.needsMoreSource && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleGenerateMissing}
+            disabled={isGeneratingMissing}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            {isGeneratingMissing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
+            Generate Missing ({getMissingCount()})
+          </Button>
+        )}
+
         <Button
           variant="outline"
           size="sm"

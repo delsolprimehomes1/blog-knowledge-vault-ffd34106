@@ -245,3 +245,6 @@ verify_jwt = false
 
 [functions.discover-cluster-citations]
 verify_jwt = false
+
+[functions.generate-missing-articles]
+verify_jwt = false
