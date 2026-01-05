@@ -384,6 +384,37 @@ Return ONLY the category name exactly as shown above.`;
 
     console.log(`\n[Missing] ✅ Complete! Generated ${savedArticles.length} articles, ${errors.length} errors`);
 
+    // Check if cluster is now complete (6 source articles) and update status
+    if (savedArticles.length > 0) {
+      const { count: finalCount } = await supabase
+        .from('blog_articles')
+        .select('id', { count: 'exact', head: true })
+        .eq('cluster_id', clusterId)
+        .eq('language', sourceLanguage);
+
+      console.log(`[Missing] Final article count for source language: ${finalCount}`);
+
+      if (finalCount && finalCount >= 6) {
+        const { error: updateError } = await supabase
+          .from('cluster_generations')
+          .update({ 
+            status: 'completed',
+            progress: {
+              saved_articles: finalCount,
+              timeout_stopped: false,
+              message: 'Cluster complete (recovered via Generate Missing)'
+            }
+          })
+          .eq('id', clusterId);
+
+        if (updateError) {
+          console.error(`[Missing] Failed to update cluster status:`, updateError);
+        } else {
+          console.log(`[Missing] ✅ Updated cluster status to 'completed'`);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       generated: savedArticles.length,
