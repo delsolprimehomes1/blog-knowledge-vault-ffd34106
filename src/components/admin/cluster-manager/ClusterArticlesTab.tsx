@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus } from "lucide-react";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -53,6 +54,10 @@ export const ClusterArticlesTab = ({
   
   // Generate missing articles state
   const [isGeneratingMissing, setIsGeneratingMissing] = useState(false);
+  
+  // Delete article state
+  const [articleToDelete, setArticleToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
@@ -198,6 +203,29 @@ export const ClusterArticlesTab = ({
       toast.error(`Failed: ${error.message}`);
     } finally {
       setIsGeneratingMissing(false);
+    }
+  };
+
+  const handleDeleteArticle = async () => {
+    if (!articleToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('blog_articles')
+        .delete()
+        .eq('id', articleToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success(`Deleted "${articleToDelete.headline}"`);
+      setArticleToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+      queryClient.invalidateQueries({ queryKey: ['clusters-unified'] });
+    } catch (error: any) {
+      toast.error(`Delete failed: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -351,6 +379,15 @@ export const ClusterArticlesTab = ({
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setArticleToDelete(article)}
+                    title="Delete article"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -541,6 +578,29 @@ export const ClusterArticlesTab = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!articleToDelete} onOpenChange={() => setArticleToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Article?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{articleToDelete?.headline}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteArticle}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
