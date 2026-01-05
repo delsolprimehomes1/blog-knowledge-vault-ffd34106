@@ -301,7 +301,7 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
               exit={{ opacity: 0, scale: 0.9 }}
               src={getHighResImageUrl(images[currentIndex], 'lightbox')}
               alt={`${title} - Image ${currentIndex + 1}`}
-              className="max-w-[95vw] max-h-[75vh] md:max-w-[90vw] md:max-h-[80vh] object-contain rounded-lg"
+              className="max-w-[95vw] max-h-[85vh] md:max-w-[92vw] md:max-h-[88vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />
 
@@ -314,7 +314,7 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
             </button>
 
             {/* Lightbox Thumbnails */}
-            <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 md:gap-2 overflow-x-auto max-w-[95vw] md:max-w-[90vw] pb-2 px-2">
+            <div className="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 md:gap-2 overflow-x-auto max-w-[95vw] md:max-w-[90vw] pb-2 px-2">
               {images.map((image, index) => (
                 <button
                   key={index}
