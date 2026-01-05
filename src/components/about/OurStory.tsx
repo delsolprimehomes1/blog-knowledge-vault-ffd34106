@@ -19,9 +19,11 @@ export const OurStory = ({ content }: OurStoryProps) => {
   };
 
   const timelineItems = [
-    { year: "2008", event: "Hans relocates to Costa del Sol", icon: History },
-    { year: "2010", event: "Cédric joins, partnership begins", icon: Lightbulb },
-    { year: "2012", event: "Steven completes the founding team", icon: TrendingUp }
+    { year: "1997", event: "Steven Roberts arrives in Spain", icon: History },
+    { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol", icon: History },
+    { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
+    { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp },
+    { year: "2025", event: "Team obtains API License", icon: TrendingUp }
   ];
 
   return (
