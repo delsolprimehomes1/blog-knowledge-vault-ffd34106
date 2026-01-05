@@ -55,14 +55,18 @@ const Hero: React.FC<HeroProps> = ({ content, onStartChat }) => {
                     </Button>
                 </div>
 
-                {/* Video Preview Container (Visual Mockup based on user image) */}
+                {/* Video Preview Container */}
                 <div
                     className="relative w-full max-w-3xl aspect-video bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border border-white/20 shadow-2xl cursor-pointer group animate-fade-in-up delay-200 mt-8"
                     onClick={() => setIsVideoOpen(true)}
+                >
+                    <Play className="absolute inset-0 m-auto w-16 h-16 text-white/80 group-hover:text-white transition-colors" />
+                </div>
 
-        <VideoModal isOpen={isVideoOpen} onClose={() => setIsVideoOpen(false)} />
+                <VideoModal isOpen={isVideoOpen} onClose={() => setIsVideoOpen(false)} />
             </div>
-            );
+        </div>
+    );
 };
 
-            export default Hero;
+export default Hero;
