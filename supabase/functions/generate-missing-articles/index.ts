@@ -7,9 +7,9 @@ const corsHeaders = {
 };
 
 const EXPECTED_STRUCTURE = [
-  { funnelStage: 'TOFU', count: 2 },
+  { funnelStage: 'TOFU', count: 3 },
   { funnelStage: 'MOFU', count: 2 },
-  { funnelStage: 'BOFU', count: 2 },
+  { funnelStage: 'BOFU', count: 1 },
 ];
 
 // Content quality validation
