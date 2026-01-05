@@ -1,14 +1,14 @@
 {
     "hero": {
-        "headline": "OPPDAG LUKSUSLIVET PÅ COSTA DEL SOL",
-        "subheadline": "Opplev en personlig og stressfri tilnærming for å finne drømmeboligen i Sør-Spania.",
+        "headline": "OPPDAG LUKSUSLIV PÅ COSTA DEL SOL",
+        "subheadline": "Opplev en personlig og stressfri tilnærming til å finne drømmeboligen din i Sør-Spania.",
         "videoCTA": "Se vår korte intro",
         "emmaCTA": "Start med Emma"
     },
     "emma": {
-        "headline": "Still dine spørsmål. Del dine ønsker.",
+        "headline": "Still dine spørsmål. Del dine kriterier.",
         "subheadline": "Motta et første skreddersydd utvalg innen 24 timer.",
-        "status": "Online nå - Spør meg om hva som helst!",
+        "status": "På nett nå - Spør meg om hva som helst!",
         "greeting": "Hei! Hvordan kan jeg hjelpe deg i dag?",
         "quickActions": {
             "question": "Still et spørsmål",
@@ -19,54 +19,112 @@
     },
     "testimonials": [
         {
-            "text": "Emma forsto virkelig våre behov og tilbød oss klare valg.",
+            "text": "Emma forsto virkelig våre behov og tilbød oss klare valgmuligheter.",
             "author": "— Peter & Anne, Nederland"
         },
         {
-            "text": "Prosessen gikk smertefritt og vi følte oss aldri presset.",
+            "text": "Prosessen var smidig og vi følte oss aldri presset.",
             "author": "— Lars & Ingrid, Sverige"
         },
         {
-            "text": "Anbefales på det varmeste for alle som ønsker et veiledet boligsøk.",
+            "text": "Anbefales på det sterkeste for alle som ønsker et veiledet boligsøk.",
             "author": "— Thomas & Marie, Frankrike"
         }
     ],
     "properties": {
         "types": {
-            "apartments": "Leiligheter & Penthouse",
-            "villas": "Rekkehus & Villaer"
+            "apartments": {
+                "title": "Leiligheter & Toppleiligheter",
+                "subtitle": "Moderne utviklingsprosjekter med fasiliteter, utsikt og resort-livsstil",
+                "cta": "Se Leilighetsprosjekter >"
+            },
+            "villas": {
+                "title": "Rekkehus & Villaer",
+                "subtitle": "Private hjem med plass, privatliv og arkitektonisk karakter",
+                "cta": "Se Villaer & Hus >"
+            }
         },
-        "moreInfo": "Mer informasjon",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Mer informasjon >",
+        "header": {
+            "title": "Dette er et lite kuratert utvalg.",
+            "subtitle": "Et bredere utvalg er tilgjengelig basert på dine kriterier."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
-                "description": "Moderne leiligheter med panoram utsikt over havet"
+                "price": "From €385,000",
+                "description": "Moderne leiligheter med panoramautsikt over havet"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luksusvilla med privat basseng og hage"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
-                "description": "Tidsriktige leiligheter med store terrasser"
+                "price": "From €420,000",
+                "description": "Nåtids leiligheter med store terrasser"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stilige toppleiligheter med golfutsikt"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Eksklusiv utvikling ved stranden"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Moderne livsstil med resort-fasiliteter"
+                "price": "From €393,000",
+                "description": "Moderne bolig med resort-fasiliteter"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "Høydesignet leiligheter med luksusfasiliteter"
+                "price": "From €440,000",
+                "description": "Høydesign leiligheter med luksusfasiliteter"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegant middelhavsvilla med havutsikt"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luksuriøse rekkehus i eksklusivt område"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Raffinert villa med spansk arkitektur"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Moderne villa med panoramautsikt"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Nåtids design med store tomter"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Rekkehus med private basseng og terrasser"
+            }
+        ]
     },
     "form": {
         "title": "Fyll ut skjemaet for å motta mer informasjon",
@@ -77,13 +135,13 @@
         },
         "consent": "Jeg samtykker til å motta relevant informasjon og oppfølging fra DelSolPrimeHomes.",
         "submit": "Be om WhatsApp / SMS Info",
-        "recaptcha": "Dette nettstedet er beskyttet av reCAPTCHA og Googles personvernregler og vilkår for bruk gjelder.",
+        "recaptcha": "Dette nettstedet beskyttes av reCAPTCHA og Googles personvernregler og vilkår gjelder.",
         "success": "Takk! Vi kontakter deg innen 24 timer.",
         "error": "Noe gikk galt. Vennligst prøv igjen."
     },
     "footer": {
         "copyright": "© 2024 DelSolPrimeHomes. Alle rettigheter forbeholdt.",
-        "privacy": "Personvernerklæring",
-        "terms": "Vilkår for Bruk"
+        "privacy": "Personvernregler",
+        "terms": "Vilkår for bruk"
     }
 }

@@ -1,7 +1,7 @@
 {
     "hero": {
         "headline": "UPPTÄCK LYXBOENDE PÅ COSTA DEL SOL",
-        "subheadline": "Upplev ett personligt och stressfritt tillvägagångssätt för att hitta ditt drömhem i södra Spanien.",
+        "subheadline": "Upplev ett personligt och stressfritt sätt att hitta ditt drömhem i södra Spanien.",
         "videoCTA": "Se vår korta intro",
         "emmaCTA": "Börja med Emma"
     },
@@ -23,7 +23,7 @@
             "author": "— Peter & Anne, Nederländerna"
         },
         {
-            "text": "Processen gick smidigt och vi kände oss aldrig pressade.",
+            "text": "Processen var smidig och vi kände oss aldrig pressade.",
             "author": "— Lars & Ingrid, Sverige"
         },
         {
@@ -33,40 +33,98 @@
     ],
     "properties": {
         "types": {
-            "apartments": "Lägenheter & Takvåningar",
-            "villas": "Radhus & Villor"
+            "apartments": {
+                "title": "Lägenheter & Penthouses",
+                "subtitle": "Moderna utvecklingar med bekvämligheter, utsikt och resort-livsstil",
+                "cta": "Se Lägenhetsprojekt >"
+            },
+            "villas": {
+                "title": "Radhus & Villor",
+                "subtitle": "Privata hem med utrymme, avskildhet och arkitektonisk karaktär",
+                "cta": "Se Villor & Hus >"
+            }
         },
-        "moreInfo": "Mer information",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Mer information >",
+        "header": {
+            "title": "Detta är ett litet kurerat urval.",
+            "subtitle": "Ett bredare utbud finns tillgängligt baserat på dina kriterier."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
+                "price": "From €385,000",
                 "description": "Moderna lägenheter med panoramautsikt över havet"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Lyxvilla med privat pool och trädgård"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
+                "price": "From €420,000",
                 "description": "Nutida lägenheter med stora terrasser"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
-                "description": "Stilfulla takvåningar med golfutsikt"
+                "price": "From €450,000",
+                "description": "Stiliga penthouses med golfutsikt"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Exklusiv utveckling vid stranden"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Modernt boende med bekvämligheter i resortstil"
+                "price": "From €393,000",
+                "description": "Modernt boende med resort-bekvämligheter"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
+                "price": "From €440,000",
                 "description": "Högdesignade lägenheter med lyxfaciliteter"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegant medelhavsvilla med havsutsikt"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Lyxiga radhus i exklusivt område"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Raffinerad villa med spansk arkitektur"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Modern villa med panoramautsikt"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Nutida design med stora tomter"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Radhus med privata pooler och terrasser"
+            }
+        ]
     },
     "form": {
         "title": "Fyll i formuläret för att få mer information",

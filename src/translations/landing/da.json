@@ -1,12 +1,12 @@
 {
     "hero": {
-        "headline": "OPDAG LUKSUSLIV PÅ COSTA DEL SOL",
+        "headline": "OPLEV LUKSUSLIVET PÅ COSTA DEL SOL",
         "subheadline": "Oplev en personlig og stressfri tilgang til at finde din drømmebolig i Sydspanien.",
         "videoCTA": "Se vores korte intro",
         "emmaCTA": "Start med Emma"
     },
     "emma": {
-        "headline": "Stil dine spørgsmål. Del dine ønsker.",
+        "headline": "Stil dine spørgsmål. Del dine kriterier.",
         "subheadline": "Modtag et første skræddersyet udvalg inden for 24 timer.",
         "status": "Online nu - Spørg mig om alt!",
         "greeting": "Hej! Hvordan kan jeg hjælpe dig i dag?",
@@ -23,7 +23,7 @@
             "author": "— Peter & Anne, Holland"
         },
         {
-            "text": "Processen gik glat, og vi følte os aldrig presset.",
+            "text": "Processen var glidende, og vi følte os aldrig pressede.",
             "author": "— Lars & Ingrid, Sverige"
         },
         {
@@ -33,40 +33,98 @@
     ],
     "properties": {
         "types": {
-            "apartments": "Lejligheder & Penthouse",
-            "villas": "Rækkehuse & Villaer"
+            "apartments": {
+                "title": "Lejligheder & Penthouses",
+                "subtitle": "Moderne byggerier med faciliteter, udsigt og resort-livsstil",
+                "cta": "Se Lejlighedsprojekter >"
+            },
+            "villas": {
+                "title": "Rækkehuse & Villaer",
+                "subtitle": "Private hjem med plads, privatliv og arkitektonisk karakter",
+                "cta": "Se Villaer & Huse >"
+            }
         },
-        "moreInfo": "Mere information",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Mere information >",
+        "header": {
+            "title": "Dette er et lille udvalg.",
+            "subtitle": "Et bredere udvalg er tilgængeligt baseret på dine kriterier."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
+                "price": "From €385,000",
                 "description": "Moderne lejligheder med panoramaudsigt over havet"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luksusvilla med privat pool og have"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
+                "price": "From €420,000",
                 "description": "Nutidige lejligheder med store terrasser"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stilfulde penthouses med golfudsigt"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Eksklusivt byggeri ved stranden"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Moderne livsstil med resort-faciliteter"
+                "price": "From €393,000",
+                "description": "Moderne boliger med resort-faciliteter"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "Højt designet lejligheder med luksusfaciliteter"
+                "price": "From €440,000",
+                "description": "Høj-design lejligheder med luksusfaciliteter"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegant middelhavsvilla med havudsigt"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luksusrækkehuse i eksklusivt område"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Raffineret villa med spansk arkitektur"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Moderne villa med panoramaudsigt"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Nutidigt design med store grunde"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Rækkehuse med private pools og terrasser"
+            }
+        ]
     },
     "form": {
         "title": "Udfyld formularen for at modtage mere information",

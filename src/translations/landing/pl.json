@@ -3,12 +3,12 @@
         "headline": "ODKRYJ LUKSUSOWE ŻYCIE NA COSTA DEL SOL",
         "subheadline": "Doświadcz spersonalizowanego i bezstresowego podejścia do znalezienia wymarzonego domu w południowej Hiszpanii.",
         "videoCTA": "Obejrzyj nasze krótkie wprowadzenie",
-        "emmaCTA": "Zacznij z Emmą"
+        "emmaCTA": "Rozpocznij z Emmą"
     },
     "emma": {
         "headline": "Zadaj pytania. Podziel się kryteriami.",
-        "subheadline": "Otrzymaj pierwszą dopasowaną ofertę w ciągu 24 godzin.",
-        "status": "Online teraz - Zapytaj mnie o cokolwiek!",
+        "subheadline": "Otrzymaj pierwszą spersonalizowaną ofertę w ciągu 24 godzin.",
+        "status": "Dostępna teraz - Zapytaj mnie o cokolwiek!",
         "greeting": "Cześć! Jak mogę Ci dzisiaj pomóc?",
         "quickActions": {
             "question": "Zadaj pytanie",
@@ -19,7 +19,7 @@
     },
     "testimonials": [
         {
-            "text": "Emma naprawdę zrozumiała nasze potrzeby i zaoferowała jasne wybory.",
+            "text": "Emma naprawdę zrozumiała nasze potrzeby i zaoferowała nam jasne opcje.",
             "author": "— Peter & Anne, Holandia"
         },
         {
@@ -27,63 +27,121 @@
             "author": "— Lars & Ingrid, Szwecja"
         },
         {
-            "text": "Gorąco polecam każdemu, kto chce prowadzonego poszukiwania nieruchomości.",
+            "text": "Gorąco polecam każdemu, kto chce skorzystać z prowadzonego wyszukiwania nieruchomości.",
             "author": "— Thomas & Marie, Francja"
         }
     ],
     "properties": {
         "types": {
-            "apartments": "Apartamenty & Penthousy",
-            "villas": "Domy Szeregowe & Wille"
+            "apartments": {
+                "title": "Apartamenty i Penthousy",
+                "subtitle": "Nowoczesne inwestycje z udogodnieniami, widokami i stylem kurortowym",
+                "cta": "Zobacz Projekty Apartamentów >"
+            },
+            "villas": {
+                "title": "Domy Szeregowe i Wille",
+                "subtitle": "Prywatne domy z przestrzenią, prywatnością i charakterem architektonicznym",
+                "cta": "Zobacz Wille i Domy >"
+            }
         },
-        "moreInfo": "Więcej informacji",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Więcej informacji >",
+        "header": {
+            "title": "To jest mała wyselekcjonowana oferta.",
+            "subtitle": "Szersza gama jest dostępna w oparciu o Twoje kryteria."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
+                "price": "From €385,000",
                 "description": "Nowoczesne apartamenty z panoramicznym widokiem na morze"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luksusowa willa z prywatnym basenem i ogrodem"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
+                "price": "From €420,000",
                 "description": "Współczesne apartamenty z dużymi tarasami"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stylowe penthousy z widokiem na pole golfowe"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Ekskluzywna inwestycja przy plaży"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Nowoczesne życie z udogodnieniami w stylu kurortu"
+                "price": "From €393,000",
+                "description": "Nowoczesne życie z udogodnieniami kurortu"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
+                "price": "From €440,000",
                 "description": "Apartamenty o wysokim standardzie z luksusowymi udogodnieniami"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegancka willa śródziemnomorska z widokiem na morze"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luksusowe domy szeregowe w ekskluzywnej okolicy"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Wyrafinowana willa o hiszpańskiej architekturze"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Nowoczesna willa z panoramicznym widokiem"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Współczesny design z rozległymi terenami"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Domy szeregowe z prywatnymi basenami i tarasami"
+            }
+        ]
     },
     "form": {
         "title": "Wypełnij formularz, aby otrzymać więcej informacji",
         "fields": {
-            "fullName": "Pełne Imię i Nazwisko",
-            "phone": " Twój Numer Telefonu",
+            "fullName": "Imię i Nazwisko",
+            "phone": "Twój Numer Telefonu",
             "comment": "Komentarz (opcjonalnie)"
         },
-        "consent": "Wyrażam zgodę na otrzymywanie istotnych informacji i kontakty od DelSolPrimeHomes.",
-        "submit": "Poproś o informacje przez WhatsApp / SMS",
-        "recaptcha": "Ta strona jest chroniona przez reCAPTCHA i obowiązują Polityka Prywatności i Warunki Usługi Google.",
+        "consent": "Wyrażam zgodę na otrzymywanie istotnych informacji i kontakt ze strony DelSolPrimeHomes.",
+        "submit": "Poproś o info przez WhatsApp / SMS",
+        "recaptcha": "Ta strona jest chroniona przez reCAPTCHA i obowiązują Polityka Prywatności oraz Warunki Korzystania z Usług Google.",
         "success": "Dziękujemy! Skontaktujemy się z Tobą w ciągu 24 godzin.",
         "error": "Coś poszło nie tak. Spróbuj ponownie."
     },
     "footer": {
         "copyright": "© 2024 DelSolPrimeHomes. Wszelkie prawa zastrzeżone.",
         "privacy": "Polityka Prywatności",
-        "terms": "Warunki Usługi"
+        "terms": "Warunki Korzystania"
     }
 }

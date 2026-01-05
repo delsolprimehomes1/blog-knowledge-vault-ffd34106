@@ -2,18 +2,18 @@
     "hero": {
         "headline": "ONTDEK LUXE WONEN AAN DE COSTA DEL SOL",
         "subheadline": "Ervaar een persoonlijke en stressvrije aanpak bij het vinden van uw droomhuis in Zuid-Spanje.",
-        "videoCTA": "Bekijk Onze Korte Intro",
-        "emmaCTA": "Start met Emma"
+        "videoCTA": "Bekijk onze korte intro",
+        "emmaCTA": "Begin met Emma"
     },
     "emma": {
-        "headline": "Stel uw vragen. Deel uw wensen.",
+        "headline": "Stel uw vragen. Deel uw criteria.",
         "subheadline": "Ontvang binnen 24 uur een eerste selectie op maat.",
         "status": "Nu online - Vraag me alles!",
-        "greeting": "Hoi! Waarmee kan ik u helpen vandaag?",
+        "greeting": "Hoi! Hoe kan ik u vandaag helpen?",
         "quickActions": {
             "question": "Stel een vraag",
             "criteria": "Deel uw criteria",
-            "explore": "Bekijk appartementen of villa's"
+            "explore": "Ontdek appartementen of villa's"
         },
         "placeholder": "Typ uw bericht..."
     },
@@ -27,55 +27,113 @@
             "author": "— Lars & Ingrid, Zweden"
         },
         {
-            "text": "Een aanrader voor iedereen die begeleiding zoekt bij het kopen van een huis.",
+            "text": "Een aanrader voor iedereen die een begeleide zoektocht naar een woning wil.",
             "author": "— Thomas & Marie, Frankrijk"
         }
     ],
     "properties": {
         "types": {
-            "apartments": "Appartementen & Penthouses",
-            "villas": "Herenhuizen & Villa's"
+            "apartments": {
+                "title": "Appartementen & Penthouses",
+                "subtitle": "Moderne ontwikkelingen met voorzieningen, uitzicht en resortlevensstijl",
+                "cta": "Bekijk Appartement Projecten >"
+            },
+            "villas": {
+                "title": "Herenhuizen & Villa's",
+                "subtitle": "Privéwoningen met ruimte, privacy en architectonisch karakter",
+                "cta": "Bekijk Villa's & Huizen >"
+            }
         },
-        "moreInfo": "Meer informatie",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Meer informatie >",
+        "header": {
+            "title": "Dit is een kleine samengestelde selectie.",
+            "subtitle": "Een breder aanbod is beschikbaar op basis van uw criteria."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
-                "description": "Moderne appartementen met panoramisch zeezicht"
+                "price": "From €385,000",
+                "description": "Moderne appartementen met panoramisch uitzicht op zee"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luxe villa met privézwembad en tuin"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
-                "description": "Eigentijdse appartementen met grote terrassen"
+                "price": "From €420,000",
+                "description": "Hedendaagse appartementen met grote terrassen"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stijlvolle penthouses met uitzicht op de golfbaan"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
-                "description": "Exclusief project aan het strand"
+                "price": "From €510,000",
+                "description": "Exclusieve ontwikkeling aan het strand"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Modern wonen met resort-faciliteiten"
+                "price": "From €393,000",
+                "description": "Modern wonen met resortvoorzieningen"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "High-design appartementen met luxe faciliteiten"
+                "price": "From €440,000",
+                "description": "Hoogwaardige designappartementen met luxe faciliteiten"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegante mediterrane villa met uitzicht op zee"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luxe herenhuizen in een exclusieve omgeving"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Verfijnde villa met Spaanse architectuur"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Moderne villa met panoramisch uitzicht"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Hedendaags design met uitgestrekte percelen"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Herenhuizen met privézwembaden en terrassen"
+            }
+        ]
     },
     "form": {
-        "title": "Vul het formulier in voor meer informatie",
+        "title": "Vul het formulier in om meer informatie te ontvangen",
         "fields": {
             "fullName": "Volledige Naam",
             "phone": "Uw Telefoonnummer",
             "comment": "Opmerking (optioneel)"
         },
-        "consent": "Ik ga akkoord met het ontvangen van relevante informatie en follow-up van DelSolPrimeHomes.",
+        "consent": "Ik ga ermee akkoord relevante informatie en follow-up te ontvangen van DelSolPrimeHomes.",
         "submit": "Vraag WhatsApp / SMS Info Aan",
         "recaptcha": "Deze site wordt beschermd door reCAPTCHA en het Google Privacybeleid en de Servicevoorwaarden zijn van toepassing.",
         "success": "Bedankt! We nemen binnen 24 uur contact met u op.",
@@ -84,6 +142,6 @@
     "footer": {
         "copyright": "© 2024 DelSolPrimeHomes. Alle rechten voorbehouden.",
         "privacy": "Privacybeleid",
-        "terms": "Algemene Voorwaarden"
+        "terms": "Servicevoorwaarden"
     }
 }

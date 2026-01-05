@@ -1,19 +1,19 @@
 {
     "hero": {
-        "headline": "FEDEZZE FEL A LUXUS ÉLETÉRZÉST A COSTA DEL SOLON",
+        "headline": "FEDEZZE FEL A LUXUS ÉLETSTÍLUST A COSTA DEL SOLON",
         "subheadline": "Tapasztalja meg a személyre szabott és stresszmentes megközelítést álmai otthonának megtalálásához Dél-Spanyolországban.",
-        "videoCTA": "Nézze meg rövid bemutatónkat",
-        "emmaCTA": "Kezdje Emmával"
+        "videoCTA": "Nézze meg rövid bemutatkozónkat",
+        "emmaCTA": "Kezdés Emmával"
     },
     "emma": {
-        "headline": "Tegye fel kérdéseit. Ossza meg igényeit.",
+        "headline": "Tegye fel kérdéseit. Ossza meg szempontjait.",
         "subheadline": "Kapjon egy első, személyre szabott válogatást 24 órán belül.",
         "status": "Online most - Kérdezzen bármit!",
         "greeting": "Szia! Miben segíthetek ma?",
         "quickActions": {
-            "question": "Kérdés feltevése",
-            "criteria": "Kritériumok megosztása",
-            "explore": "Apartmanok vagy villák felfedezése"
+            "question": "Kérdezzen egyet",
+            "criteria": "Ossza meg szempontjait",
+            "explore": "Fedezze fel az apartmanokat vagy villákat"
         },
         "placeholder": "Írja be üzenetét..."
     },
@@ -27,55 +27,113 @@
             "author": "— Lars & Ingrid, Svédország"
         },
         {
-            "text": "Erősen ajánlott mindenkinek, aki irányított ingatlankeresést szeretne.",
+            "text": "Erősen ajánlott mindenkinek, aki vezetett ingatlankeresést szeretne.",
             "author": "— Thomas & Marie, Franciaország"
         }
     ],
     "properties": {
         "types": {
-            "apartments": "Apartmanok & Penthouse-ok",
-            "villas": "Sorházak & Villák"
+            "apartments": {
+                "title": "Apartmanok & Penthouse-ok",
+                "subtitle": "Modern fejlesztések kényelmi szolgáltatásokkal, kilátással és üdülőhellyel",
+                "cta": "Apartman Projektek Megtekintése >"
+            },
+            "villas": {
+                "title": "Sorházak & Villák",
+                "subtitle": "Magánlakások térrel, magánélettel és építészeti karakterrel",
+                "cta": "Villák & Házak Megtekintése >"
+            }
         },
-        "moreInfo": "További információ",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "További információ >",
+        "header": {
+            "title": "Ez egy kis válogatott kínálat.",
+            "subtitle": "Szélesebb választék áll rendelkezésre az Ön kritériumai alapján."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
+                "price": "From €385,000",
                 "description": "Modern apartmanok panorámás kilátással a tengerre"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luxus villa privát medencével és kerttel"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
+                "price": "From €420,000",
                 "description": "Kortárs apartmanok nagy teraszokkal"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stílusos penthouse-ok kilátással a golfpályára"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Exkluzív fejlesztés a tengerparton"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Modern életvitel üdülőhelyi stílusú kényelemmel"
+                "price": "From €393,000",
+                "description": "Modern életvitel üdülőhelyi kényelmi szolgáltatásokkal"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "Magas színvonalú apartmanok luxuslétesítményekkel"
+                "price": "From €440,000",
+                "description": "Magas színvonalú design apartmanok luxus felszereltséggel"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegáns mediterrán villa tengerre néző kilátással"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luxus sorházak exkluzív területen"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Kifinomult villa spanyol építészettel"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Modern villa panorámás kilátással"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Kortárs design kiterjedt telkekkel"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Sorházak saját medencével és terasszal"
+            }
+        ]
     },
     "form": {
-        "title": "Töltse ki az űrlapot további információkért",
+        "title": "Töltse ki az ürlapot további információkért",
         "fields": {
             "fullName": "Teljes Név",
             "phone": "Telefonszáma",
             "comment": "Megjegyzés (opcionális)"
         },
-        "consent": "Hozzájárulok, hogy releváns információkat és utánkövetést kapjak a DelSolPrimeHomes-tól.",
+        "consent": "Hozzájárulok, hogy releváns információkat és megkereséseket kapjak a DelSolPrimeHomes-tól.",
         "submit": "WhatsApp / SMS Infó Kérése",
         "recaptcha": "Ezt az oldalt a reCAPTCHA védi, és a Google Adatvédelmi Irányelvei és Szolgáltatási Feltételei érvényesek.",
         "success": "Köszönjük! 24 órán belül felvesszük Önnel a kapcsolatot.",

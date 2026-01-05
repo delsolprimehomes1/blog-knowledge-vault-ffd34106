@@ -1,25 +1,25 @@
 {
     "hero": {
-        "headline": "LÖYDÄ YLELLISTÄ ASUMISTA AURINKORANNIKOLTA",
+        "headline": "LÖYDÄ LUKSUSELÄMÄÄ COSTA DEL SOLILTA",
         "subheadline": "Koe henkilökohtainen ja stressitön tapa löytää unelmiesi koti Etelä-Espanjasta.",
         "videoCTA": "Katso lyhyt esittelymme",
         "emmaCTA": "Aloita Emman kanssa"
     },
     "emma": {
-        "headline": "Kysy kysymyksiä. Jaa toiveesi.",
+        "headline": "Kysy kysymyksesi. Jaa kriteerisi.",
         "subheadline": "Saat ensimmäisen räätälöidyn valikoiman 24 tunnin kuluessa.",
         "status": "Paikalla nyt - Kysy minulta mitä vain!",
         "greeting": "Hei! Miten voin auttaa sinua tänään?",
         "quickActions": {
             "question": "Kysy kysymys",
             "criteria": "Jaa kriteerisi",
-            "explore": "Selaa asuntoja tai huviloita"
+            "explore": "Tutustu asuntoihin tai huviloihin"
         },
         "placeholder": "Kirjoita viestisi..."
     },
     "testimonials": [
         {
-            "text": "Emma ymmärsi tarpeemme todella hyvin ja tarjosi selkeitä vaihtoehtoja.",
+            "text": "Emma ymmärsi todella tarpeemme ja tarjosi meille selkeitä vaihtoehtoja.",
             "author": "— Peter & Anne, Alankomaat"
         },
         {
@@ -27,57 +27,115 @@
             "author": "— Lars & Ingrid, Ruotsi"
         },
         {
-            "text": "Suosittelen lämpimästi kaikille, jotka haluavat ohjatun asunnonhaun.",
+            "text": "Erittäin suositeltava kaikille, jotka haluavat ohjatun asuntohaun.",
             "author": "— Thomas & Marie, Ranska"
         }
     ],
     "properties": {
         "types": {
-            "apartments": "Asunnot & Katolhuoneistot",
-            "villas": "Kaupunkitalot & Huvilat"
+            "apartments": {
+                "title": "Huoneistot & Kattohuoneistot",
+                "subtitle": "Moderneja kohteita mukavuuksilla, näkymillä ja resort-tyylillä",
+                "cta": "Katso asuntoprojektit >"
+            },
+            "villas": {
+                "title": "Rivitalot & Huvilat",
+                "subtitle": "Yksityisiä koteja, joissa on tilaa, yksityisyyttä ja arkkitehtonista luonnetta",
+                "cta": "Katso huvilat & talot >"
+            }
         },
-        "moreInfo": "Lisätietoja",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Lisätietoja >",
+        "header": {
+            "title": "Tämä on pieni kuratoitu valikoima.",
+            "subtitle": "Laajempi valikoima on saatavilla kriteeriesi perusteella."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
-                "description": "Moderneja asuntoja panoraamanäköalalla merelle"
+                "price": "From €385,000",
+                "description": "Moderneja huoneistoja panoraamanäkymillä merelle"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luksushuvila yksityisellä uima-altaalla ja puutarhalla"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
-                "description": "Nykytaikaisia asuntoja suurilla terasseilla"
+                "price": "From €420,000",
+                "description": "Nykyaikaisia huoneistoja suurilla terasseilla"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Tyylikkäitä kattohuoneistoja golfnäkymillä"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
-                "description": "Eksklusiivinen kehityshanke rannalla"
+                "price": "From €510,000",
+                "description": "Eksklusiivinen ranta-alueen kehityshanke"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
-                "description": "Modernia asumista lomakeskustyylisillä mukavuuksilla"
+                "price": "From €393,000",
+                "description": "Modernia asumista resort-mukavuuksilla"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "Korkeatasoisia asuntoja luksuspalveluilla"
+                "price": "From €440,000",
+                "description": "Huippudesign-asuntoja luksusvarustelulla"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegantti välimerellinen huvila merinäköalalla"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luksusrivitaloja eksklusiivisella alueella"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Hienostunut huvila espanjalaisella arkkitehtuurilla"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Moderni huvila panoraamanäkymillä"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Nykyaikaista muotoilua laajoilla tonteilla"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Rivitaloja yksityisillä uima-altailla ja terasseilla"
+            }
+        ]
     },
     "form": {
         "title": "Täytä lomake saadaksesi lisätietoja",
         "fields": {
-            "fullName": "Koko Nimi",
+            "fullName": "Koko nimi",
             "phone": "Puhelinnumerosi",
             "comment": "Kommentti (valinnainen)"
         },
-        "consent": "Suostun vastaanottamaan asiaankuuluvaa tietoa ja seurantaa DelSolPrimeHomesilta.",
+        "consent": "Suostun vastaanottamaan asiaankuuluvaa tietoa ja yhteydenottoja DelSolPrimeHomesilta.",
         "submit": "Pyydä WhatsApp / SMS -tiedot",
-        "recaptcha": "Tätä sivustoa suojaa reCAPTCHA, ja Google tietosuojakäytäntö ja käyttöehdot ovat voimassa.",
+        "recaptcha": "Tätä sivustoa suojaa reCAPTCHA, ja Googlen tietosuojakäytäntö sekä käyttöehdot ovat voimassa.",
         "success": "Kiitos! Otamme sinuun yhteyttä 24 tunnin kuluessa.",
         "error": "Jokin meni pieleen. Yritä uudelleen."
     },

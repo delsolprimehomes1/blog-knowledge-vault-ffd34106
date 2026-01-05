@@ -13,13 +13,13 @@
         "quickActions": {
             "question": "Eine Frage stellen",
             "criteria": "Kriterien teilen",
-            "explore": "Apartments oder Villen erkunden"
+            "explore": "Apartments oder Villen entdecken"
         },
         "placeholder": "Geben Sie Ihre Nachricht ein..."
     },
     "testimonials": [
         {
-            "text": "Emma hat unsere Bedürfnisse wirklich verstanden und uns klare Entscheidungen geboten.",
+            "text": "Emma hat unsere Bedürfnisse wirklich verstanden und uns klare Optionen geboten.",
             "author": "— Peter & Anne, Niederlande"
         },
         {
@@ -33,40 +33,98 @@
     ],
     "properties": {
         "types": {
-            "apartments": "Apartments & Penthouses",
-            "villas": "Reihenhäuser & Villen"
+            "apartments": {
+                "title": "Apartments & Penthouses",
+                "subtitle": "Moderne Entwicklungen mit Annehmlichkeiten, Aussicht und Resort-Lebensstil",
+                "cta": "Apartment-Projekte ansehen >"
+            },
+            "villas": {
+                "title": "Stadthäuser & Villen",
+                "subtitle": "Privathäuser mit Platz, Privatsphäre und architektonischem Charakter",
+                "cta": "Villen & Häuser ansehen >"
+            }
         },
-        "moreInfo": "Mehr Informationen",
-        "list": {
-            "panorama-bay": {
+        "moreInfo": "Mehr Informationen >",
+        "header": {
+            "title": "Dies ist eine kleine kuratierte Auswahl.",
+            "subtitle": "Ein breiteres Angebot ist basierend auf Ihren Kriterien verfügbar."
+        },
+        "apartments": [
+            {
+                "id": "panorama-bay",
                 "title": "Panorama Bay",
+                "price": "From €385,000",
                 "description": "Moderne Apartments mit Panoramablick auf das Meer"
             },
-            "villa-amalfi": {
-                "title": "Villa Amalfi",
-                "description": "Luxusvilla mit privatem Pool und Garten"
-            },
-            "sunset-residences": {
+            {
+                "id": "sunset-residences",
                 "title": "Sunset Residences",
+                "price": "From €420,000",
                 "description": "Zeitgenössische Apartments mit großen Terrassen"
             },
-            "green-valley-gardens": {
+            {
+                "id": "green-valley-gardens",
                 "title": "Green Valley Gardens",
+                "price": "From €450,000",
                 "description": "Stilvolle Penthouses mit Golfblick"
             },
-            "la-perla-marina": {
+            {
+                "id": "la-perla-marina",
                 "title": "La Perla Marina",
+                "price": "From €510,000",
                 "description": "Exklusive Entwicklung am Strand"
             },
-            "aqua-blu-oasis": {
+            {
+                "id": "aqua-blu-oasis",
                 "title": "Aqua Blu Oasis",
+                "price": "From €393,000",
                 "description": "Modernes Wohnen mit Resort-Annehmlichkeiten"
             },
-            "elevate-suites": {
+            {
+                "id": "elevate-suites",
                 "title": "Elevate Suites",
-                "description": "High-Design-Apartments mit Luxuseinrichtungen"
+                "price": "From €440,000",
+                "description": "Hochwertige Design-Apartments mit Luxusausstattung"
             }
-        }
+        ],
+        "villas": [
+            {
+                "id": "villa-amalfi",
+                "title": "Villa Amalfi",
+                "price": "From €790,000",
+                "description": "Elegante mediterrane Villa mit Meerblick"
+            },
+            {
+                "id": "sierra-blanca",
+                "title": "Sierra Blanca Townhouses",
+                "price": "From €699,000",
+                "description": "Luxus-Stadthäuser in exklusiver Lage"
+            },
+            {
+                "id": "los-arcos",
+                "title": "Los Arcos Estate",
+                "price": "From €1,950,000",
+                "description": "Raffinierte Villa mit spanischer Architektur"
+            },
+            {
+                "id": "monte-verde",
+                "title": "Monte Verde Villa",
+                "price": "From €835,000",
+                "description": "Moderne Villa mit Panoramablick"
+            },
+            {
+                "id": "horizon-hills",
+                "title": "Horizon Hills Villas",
+                "price": "From €1,150,000",
+                "description": "Zeitgenössisches Design mit weitläufigen Grundstücken"
+            },
+            {
+                "id": "la-terraza",
+                "title": "La Terraza Residences",
+                "price": "From €720,000",
+                "description": "Stadthäuser mit privaten Pools und Terrassen"
+            }
+        ]
     },
     "form": {
         "title": "Füllen Sie das Formular aus, um weitere Informationen zu erhalten",
@@ -77,8 +135,8 @@
         },
         "consent": "Ich stimme zu, relevante Informationen und Follow-ups von DelSolPrimeHomes zu erhalten.",
         "submit": "WhatsApp / SMS Info anfordern",
-        "recaptcha": "Diese Seite ist durch reCAPTCHA geschützt und es gelten die Google-Datenschutzerklärung und Nutzungsbedingungen.",
-        "success": "Danke! Wir werden Sie innerhalb von 24 Stunden kontaktieren.",
+        "recaptcha": "Diese Website ist durch reCAPTCHA geschützt und es gelten die Google-Datenschutzerklärung und Nutzungsbedingungen.",
+        "success": "Danke! Wir melden uns innerhalb von 24 Stunden.",
         "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut."
     },
     "footer": {
