@@ -9,9 +9,6 @@ export enum Language {
   HU = 'hu',
   SV = 'sv',
   NO = 'no',
-  IT = 'it',
-  RU = 'ru',
-  TR = 'tr',
 }
 
 export interface LanguageInfo {
@@ -32,9 +29,6 @@ export const AVAILABLE_LANGUAGES: LanguageInfo[] = [
   { code: Language.HU, name: 'Hungarian', flag: '🇭🇺', nativeName: 'Magyar' },
   { code: Language.SV, name: 'Swedish', flag: '🇸🇪', nativeName: 'Svenska' },
   { code: Language.NO, name: 'Norwegian', flag: '🇳🇴', nativeName: 'Norsk' },
-  { code: Language.IT, name: 'Italian', flag: '🇮🇹', nativeName: 'Italiano' },
-  { code: Language.RU, name: 'Russian', flag: '🇷🇺', nativeName: 'Русский' },
-  { code: Language.TR, name: 'Turkish', flag: '🇹🇷', nativeName: 'Türkçe' },
 ];
 
 export interface NavLink {

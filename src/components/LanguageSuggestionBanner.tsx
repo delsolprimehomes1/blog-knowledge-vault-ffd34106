@@ -21,9 +21,6 @@ const BROWSER_LANG_MAP: Record<string, Language> = {
   'no': Language.NO,
   'nb': Language.NO, // Norwegian Bokmål
   'nn': Language.NO, // Norwegian Nynorsk
-  'it': Language.IT,
-  'ru': Language.RU,
-  'tr': Language.TR,
 };
 
 function getLanguageFromPath(pathname: string): Language | null {

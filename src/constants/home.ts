@@ -18,9 +18,6 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   [Language.HU]: 'Magyar',
   [Language.SV]: 'Svenska',
   [Language.NO]: 'Norsk',
-  [Language.IT]: 'Italiano',
-  [Language.RU]: 'Русский',
-  [Language.TR]: 'Türkçe',
 };
 
 // Locations for dropdown - Expanded list based on requirements
