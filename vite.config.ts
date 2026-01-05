@@ -44,6 +44,9 @@ function sitemapGenerator(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  optimizeDeps: {
+    force: true, // Force re-bundling to clear stale cache
+  },
   server: {
     host: "::",
     port: 8080,
