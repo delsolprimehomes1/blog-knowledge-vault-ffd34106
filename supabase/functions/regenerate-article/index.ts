@@ -87,30 +87,43 @@ serve(async (req) => {
 
     const masterPrompt = promptSetting?.setting_value || '';
 
-    // Build regeneration prompt
-    const systemPrompt = `You are an expert real estate content writer. Your task is to regenerate a blog article with STRICT requirements.
+    // Build regeneration prompt - MUCH more explicit about word counts
+    const systemPrompt = `You are an expert real estate content writer. Your PRIMARY objective is to write LONG, comprehensive articles.
 
 ${masterPrompt}
 
-CRITICAL WORD COUNT REQUIREMENT:
-- You MUST write between 1,800 and 2,200 words of detailed content
-- This is non-negotiable. Articles under 1,500 words will be REJECTED
-- Write with depth and substance - no filler content
+## ABSOLUTE WORD COUNT REQUIREMENT (NON-NEGOTIABLE)
+- You MUST write AT LEAST 1,800 words of content
+- Target range: 1,800 - 2,200 words
+- Articles under 1,500 words will be REJECTED and you will have failed
+- COUNT YOUR WORDS BEFORE RESPONDING
 
-STRUCTURAL REQUIREMENTS:
-1. Include exactly 8 H2 sections with descriptive headings
-2. Each H2 section must have 3-4 paragraphs (200-250 words per section minimum)
-3. Include a "Frequently Asked Questions" section with 5 Q&A items
-4. Use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> HTML tags only
-5. NO markdown, NO <h1> tags
+## MANDATORY STRUCTURE (each section MUST be 200+ words)
+1. Introduction (200 words) - Set the scene
+2. Overview/Background (250 words) - Context and importance
+3. Key Benefits (250 words) - Why this matters
+4. Process/How-To (250 words) - Step-by-step guidance
+5. Important Considerations (250 words) - What to watch for
+6. Market Insights (200 words) - Current trends and data
+7. Expert Tips (200 words) - Professional recommendations
+8. FAQ Section (200 words) - 5 common questions with detailed answers
+9. Conclusion (200 words) - Summary and call to action
 
-CONTENT QUALITY:
-- Write for ${article.language === 'en' ? 'English' : article.language.toUpperCase()} language audience
-- Focus on practical, actionable advice
-- Include specific examples and data where relevant
-- Maintain professional, authoritative tone`;
+TOTAL: 2,000+ words MINIMUM
 
-    const userPrompt = `Regenerate this blog article with COMPREHENSIVE, HIGH-QUALITY content:
+## CONTENT QUALITY
+- Write in ${article.language === 'en' ? 'English' : article.language.toUpperCase()}
+- Use practical, actionable advice with specific examples
+- Include statistics and data points where relevant
+- Each paragraph should be 3-4 sentences minimum
+- NO filler content - every sentence should add value
+
+## HTML FORMAT
+- Use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags only
+- NO markdown, NO <h1> tags
+- Each H2 section must have multiple paragraphs`;
+
+    const userPrompt = `Write a COMPREHENSIVE, DETAILED blog article of AT LEAST 1,800 words.
 
 ARTICLE DETAILS:
 - Title: ${article.headline}
@@ -120,19 +133,21 @@ ARTICLE DETAILS:
 - Funnel Stage: ${article.funnel_stage}
 - Language: ${article.language}
 
-REQUIREMENTS:
-1. Write 1,800-2,200 words of detailed content (this is MANDATORY)
-2. Structure with 8 H2 sections + FAQ section with 5 questions
-3. Each section should be 200-250 words minimum
-4. Include practical examples and specific advice
-5. Use HTML formatting only (<h2>, <h3>, <p>, <ul>, <li>, <strong>)
+CRITICAL REQUIREMENTS:
+1. Write MINIMUM 1,800 words (aim for 2,000+)
+2. Include 9 H2 sections as specified in the system prompt
+3. Each section MUST be 200+ words
+4. Include 5 FAQ questions with detailed answers
+5. Use HTML formatting only
 
-Return a JSON object with this EXACT structure:
+BEFORE SUBMITTING: Count your total words. If under 1,800, go back and expand each section with more examples, details, and explanations.
+
+Return JSON:
 {
-  "detailed_content": "<h2>First Section Title</h2><p>Content...</p>...",
+  "detailed_content": "<h2>Section 1</h2><p>Long detailed content...</p>...",
   "meta_title": "SEO title under 60 chars",
   "meta_description": "SEO description under 160 chars",
-  "speakable_answer": "2-3 sentence summary for voice search"
+  "speakable_answer": "2-3 sentence summary"
 }`;
 
     let finalContent = null;
@@ -144,40 +159,42 @@ Return a JSON object with this EXACT structure:
       
       let attemptPrompt = userPrompt;
       
-      // Escalate prompt on retries
+      // Escalate prompt on retries with VERY explicit instructions
       if (attempt === 2 && newWordCount > 0) {
-        attemptPrompt = `CRITICAL: Your previous attempt was only ${newWordCount} words. This is UNACCEPTABLE.
+        attemptPrompt = `CRITICAL FAILURE: Your previous response was only ${newWordCount} words. THIS IS UNACCEPTABLE.
+
+You MUST write AT LEAST 1,800 words this time. Here's how:
+- Write 9 sections of 200+ words each = 1,800 words minimum
+- Each paragraph should be 4-5 sentences
+- Include more examples, statistics, and details
+- Expand every point with supporting information
 
 ${userPrompt}
 
-MANDATORY EXPANSION:
-- You MUST write at least 1,800 words
-- Each H2 section needs 200-250 words minimum
-- Include more examples, details, and explanations
-- Add more FAQ questions if needed
-
-COUNT YOUR WORDS BEFORE RESPONDING. If under 1,800, ADD MORE CONTENT.`;
+FINAL CHECK: Before responding, count your words. If under 1,800, ADD MORE CONTENT to each section.`;
       } else if (attempt === 3 && newWordCount > 0) {
-        attemptPrompt = `FINAL ATTEMPT - STRICT WORD COUNT ENFORCEMENT
+        attemptPrompt = `FINAL ATTEMPT - YOU HAVE FAILED TWICE
 
-Previous attempts failed with only ${newWordCount} words. This attempt MUST succeed.
+Previous attempts produced only ${newWordCount} words. You need 1,800+ words.
 
-MANDATORY STRUCTURE (follow exactly):
-- Section 1: Introduction (200 words)
-- Section 2: Overview/Background (250 words)
-- Section 3: Key Benefits (250 words)
-- Section 4: Process/How-To (250 words)
-- Section 5: Considerations (250 words)
-- Section 6: Market Insights (200 words)
-- Section 7: Expert Tips (200 words)
-- Section 8: FAQ Section (200 words - 5 questions)
-- Section 9: Conclusion (200 words)
+MANDATORY: Write EXACTLY this structure with MINIMUM word counts:
 
-TOTAL: 1,800+ words MINIMUM
+SECTION 1 - Introduction (220 words): Set the scene, explain why this topic matters
+SECTION 2 - Background (250 words): Historical context, current market conditions  
+SECTION 3 - Benefits (250 words): List 5+ benefits with 2 sentences each explaining why
+SECTION 4 - Process (250 words): 6+ step-by-step instructions with details
+SECTION 5 - Considerations (250 words): 5+ things to watch out for with explanations
+SECTION 6 - Market Data (220 words): Statistics, trends, price ranges, growth rates
+SECTION 7 - Expert Tips (220 words): 5+ professional recommendations
+SECTION 8 - FAQ (220 words): 5 questions with 2-3 sentence answers each
+SECTION 9 - Conclusion (220 words): Summarize key points, next steps, call to action
+
+TOTAL REQUIRED: 2,100+ words
 
 ${userPrompt}`;
       }
 
+      // Use GPT-5 for better instruction following
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -185,13 +202,12 @@ ${userPrompt}`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5-2025-08-07',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: attemptPrompt }
           ],
-          temperature: 0.7,
-          max_tokens: 12000,
+          max_completion_tokens: 16000,
           response_format: { type: 'json_object' }
         }),
       });
