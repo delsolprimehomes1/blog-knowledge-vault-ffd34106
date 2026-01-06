@@ -41,10 +41,10 @@ import BlogIndex from "./pages/BlogIndex";
 import QAIndex from "./pages/QAIndex";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ThankYou from "./pages/ThankYou";
 
 // Lazy load heavy public pages
 const BlogArticle = lazy(() => import("./pages/BlogArticle"));
-const ThankYou = lazy(() => import("./pages/ThankYou"));
 const QAPage = lazy(() => import("./pages/QAPage"));
 const PropertyFinder = lazy(() => import("./pages/PropertyFinder"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
@@ -189,6 +189,7 @@ const App = () => (
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
               {/* MUST BE BEFORE /:lang dynamic route       */}
               {/* ========================================== */}
+              <Route path="/thank-you" element={<ThankYou />} />
               <Route path="/sitemap" element={<Sitemap />} />
               <Route path="/glossary" element={<Glossary />} />
 
