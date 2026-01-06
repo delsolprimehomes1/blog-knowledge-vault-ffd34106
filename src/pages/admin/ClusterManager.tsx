@@ -101,7 +101,7 @@ const ClusterManager = () => {
       if (!clusterMap.has(article.cluster_id)) {
         clusterMap.set(article.cluster_id, {
           cluster_id: article.cluster_id,
-          cluster_theme: article.cluster_theme,
+          cluster_theme: article.cluster_theme || null,
           languages: {},
           total_articles: 0,
           all_draft: true,
@@ -116,6 +116,12 @@ const ClusterManager = () => {
       }
 
       const cluster = clusterMap.get(article.cluster_id)!;
+      
+      // Pick first non-null cluster_theme from any article
+      if (!cluster.cluster_theme && article.cluster_theme) {
+        cluster.cluster_theme = article.cluster_theme;
+      }
+      
       cluster.total_articles++;
 
       if (!cluster.languages[article.language]) {

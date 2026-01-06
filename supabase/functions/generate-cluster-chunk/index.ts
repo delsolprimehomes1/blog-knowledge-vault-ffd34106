@@ -391,7 +391,7 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
     article.meta_description = (contentJson.meta_description || '').substring(0, 160);
     article.speakable_answer = contentJson.speakable_answer || '';
     article.qa_entities = contentJson.qa_entities || contentJson.faqs || [];
-    article.cluster_theme = plan.clusterTopic || '';
+    article.cluster_theme = job.topic || '';
 
     // 3. FEATURED IMAGE
     const imagePrompt = `Professional real estate photo: ${plan.headline}. Costa del Sol, Spain. High quality, natural lighting.`;
