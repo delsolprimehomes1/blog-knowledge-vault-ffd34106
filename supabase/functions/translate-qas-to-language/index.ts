@@ -375,7 +375,65 @@ serve(async (req) => {
         const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
 
         if (!targetArticle) {
-          errors.push(`No ${targetLanguage} article found for Q&A from article ${englishQA.source_article_id}`);
+          // FALLBACK: Use the English article's source_article_id and find ANY target language article
+          console.log(`[TranslateQAs] ⚠️ No hreflang match for article ${englishQA.source_article_id}, trying fallback...`);
+          
+          // Try to find a target article by cluster_id directly
+          const fallbackArticle = targetArticles?.[0];
+          if (!fallbackArticle) {
+            console.error(`[TranslateQAs] ❌ No ${targetLanguage} article found at all for cluster ${clusterId}`);
+            errors.push(`No ${targetLanguage} article found for Q&A from article ${englishQA.source_article_id}`);
+            continue;
+          }
+          
+          console.log(`[TranslateQAs] Using fallback article: ${fallbackArticle.id}`);
+          
+          // Use fallback article
+          const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
+          
+          // Build translated Q&A record with fallback article
+          const now = new Date().toISOString();
+          const translatedQARecord = {
+            source_article_id: fallbackArticle.id,
+            cluster_id: clusterId,
+            language: targetLanguage,
+            qa_type: englishQA.qa_type,
+            title: translation.question,
+            slug: slug,
+            question_main: translation.question,
+            answer_main: translation.answer,
+            meta_title: translation.metaTitle,
+            meta_description: translation.metaDescription,
+            speakable_answer: translation.speakableAnswer,
+            featured_image_url: englishQA.featured_image_url,
+            featured_image_alt: translation.imageAlt,
+            hreflang_group_id: englishQA.hreflang_group_id,
+            source_language: 'en',
+            translations: {},
+            related_qas: [],
+            internal_links: englishQA.internal_links || [],
+            funnel_stage: englishQA.funnel_stage,
+            status: 'published',
+            source_article_slug: fallbackArticle.slug,
+            author_id: '738c1e24-025b-4f15-ac7c-541bb8a5dade',
+            date_published: now,
+            date_modified: now,
+          };
+
+          // Insert directly with fallback
+          const { data: insertedQA, error: insertError } = await supabase
+            .from('qa_pages')
+            .insert(translatedQARecord)
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error(`[TranslateQAs] ❌ Insert error (fallback):`, insertError);
+            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+          } else {
+            console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A (fallback): ${slug}`);
+            translatedQAs.push(insertedQA.id);
+          }
           continue;
         }
 
