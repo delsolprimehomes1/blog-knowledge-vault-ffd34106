@@ -636,9 +636,44 @@ const ClusterManager = () => {
         ? { clusterId, dryRun: false }
         : { jobId: clusterId };
 
-      const MAX_ITERATIONS = 30; // Enough for 9 languages × 6 articles with timeouts
+      const MAX_ITERATIONS = 50; // Increased: enough for 9 languages × 6 articles with many timeouts
+      const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
       let iteration = 0;
       let lastResult: any = null;
+
+      // Check if job is stuck before starting (status=generating but no updates for 5+ min)
+      const { data: jobCheck } = await supabase
+        .from("cluster_generations")
+        .select("status, updated_at, progress")
+        .eq("id", clusterId)
+        .single();
+      
+      if (jobCheck?.status === "generating") {
+        const lastUpdate = new Date(jobCheck.updated_at).getTime();
+        const now = Date.now();
+        if (now - lastUpdate > STUCK_THRESHOLD_MS) {
+          console.log(`[Translation] Job stuck for ${Math.round((now - lastUpdate) / 60000)} min, resetting to partial...`);
+          toast.info("Detected stuck job, resetting to resume...");
+          
+          const existingProgress = typeof jobCheck.progress === 'object' && jobCheck.progress !== null 
+            ? jobCheck.progress as Record<string, unknown>
+            : {};
+          
+          await supabase
+            .from("cluster_generations")
+            .update({ 
+              status: "partial", 
+              progress: { 
+                ...existingProgress, 
+                message: "Resuming from stuck state..." 
+              },
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", clusterId);
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
       while (iteration < MAX_ITERATIONS) {
         iteration++;
@@ -652,7 +687,7 @@ const ClusterManager = () => {
             const errorMsg = error.message || String(error);
             if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout") || errorMsg.includes("shutdown")) {
               // Timeout occurred - poll status and continue if needed
-              toast.info(`Connection timeout — checking status... (attempt ${iteration})`);
+              toast.info(`Connection timeout — checking status... (attempt ${iteration}/${MAX_ITERATIONS})`);
               await new Promise(resolve => setTimeout(resolve, 3000));
               
               const polledResult = await pollJobStatus(clusterId);

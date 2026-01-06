@@ -624,9 +624,25 @@ serve(async (req) => {
     for (let i = 0; i < sourceArticles.length; i++) {
       currentArticleIndex = i + 1;
       
-      // Check timeout
+      // Check timeout - set status to partial immediately so frontend knows to retry
       if (Date.now() - FUNCTION_START_TIME > MAX_RUNTIME) {
         console.log(`[translate-cluster] ⚠️ Timeout approaching, stopping at ${i} articles`);
+        
+        // Update status to partial NOW so the job doesn't appear stuck
+        await supabase
+          .from('cluster_generations')
+          .update({
+            status: 'partial',
+            progress: {
+              message: `Timeout at ${LANGUAGE_NAMES[currentLanguage] || currentLanguage} article ${i + 1}/${expectedCount}. Resumable.`,
+              current_language: currentLanguage,
+              articles_translated: initialExistingCount + translatedCount,
+              timeout_at_article: i + 1,
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+        
         break;
       }
 
