@@ -620,7 +620,7 @@ const ClusterManager = () => {
     return { status: "timeout", error: "Job status check timed out" };
   };
 
-  // Complete translations for cluster
+  // Complete translations for cluster with auto-continue loop
   const completeTranslationsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setTranslatingCluster(clusterId);
@@ -636,39 +636,94 @@ const ClusterManager = () => {
         ? { clusterId, dryRun: false }
         : { jobId: clusterId };
 
-      try {
-        const { data, error } = await supabase.functions.invoke(functionName, {
-          body: bodyParam,
-        });
+      const MAX_ITERATIONS = 30; // Enough for 9 languages × 6 articles with timeouts
+      let iteration = 0;
+      let lastResult: any = null;
 
-        if (error) {
-          const errorMsg = error.message || String(error);
-          if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout")) {
-            toast.info("Connection lost — checking job status...");
-            const polledResult = await pollJobStatus(clusterId);
-            
-            if (polledResult.status === "completed") {
-              return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
-            } else if (polledResult.status === "partial" || polledResult.status === "generating") {
-              return { 
-                status: "partial", 
-                language: polledResult.progress?.current_language,
-                remainingLanguages: polledResult.languages_queue?.filter((l: string) => !polledResult.completed_languages?.includes(l)),
-                totalArticles: polledResult.progress?.generated_articles 
-              };
-            } else if (polledResult.status === "failed") {
-              throw new Error(polledResult.error || "Translation job failed");
-            } else {
-              throw new Error("Connection lost and job status unclear. Try again.");
+      while (iteration < MAX_ITERATIONS) {
+        iteration++;
+        
+        try {
+          const { data, error } = await supabase.functions.invoke(functionName, {
+            body: bodyParam,
+          });
+
+          if (error) {
+            const errorMsg = error.message || String(error);
+            if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout") || errorMsg.includes("shutdown")) {
+              // Timeout occurred - poll status and continue if needed
+              toast.info(`Connection timeout — checking status... (attempt ${iteration})`);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              
+              const polledResult = await pollJobStatus(clusterId);
+              
+              if (polledResult.status === "completed") {
+                return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
+              } else if (polledResult.status === "partial" || polledResult.status === "generating") {
+                // Update progress and continue the loop
+                const remaining = polledResult.languages_queue?.filter((l: string) => !polledResult.completed_languages?.includes(l)) || [];
+                setTranslationProgress({ 
+                  current: polledResult.progress?.current_language?.toUpperCase() || 'Continuing', 
+                  remaining: remaining.length 
+                });
+                
+                if (remaining.length === 0) {
+                  return { status: "completed", totalArticles: polledResult.progress?.generated_articles };
+                }
+                
+                // Wait a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                continue; // Auto-continue the loop
+              } else if (polledResult.status === "failed") {
+                throw new Error(polledResult.error || "Translation job failed");
+              }
+              
+              // Unknown status - wait and retry
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              continue;
             }
+            throw error;
           }
-          throw error;
-        }
 
-        return data;
-      } catch (err: any) {
-        throw err;
+          lastResult = data;
+          
+          // Check if completed
+          if (data.status === "completed") {
+            return data;
+          }
+          
+          // Check if more languages remain
+          const remaining = data.remainingLanguages || [];
+          if (remaining.length > 0) {
+            // Update progress UI
+            setTranslationProgress({ 
+              current: data.language?.toUpperCase() || 'Unknown', 
+              remaining: remaining.length 
+            });
+            toast.info(`Completed ${data.language?.toUpperCase() || 'language'} — ${remaining.length} left, continuing...`);
+            
+            // Brief delay before next call
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            continue; // Auto-continue the loop
+          }
+          
+          // No remaining languages - we're done
+          return { ...data, status: "completed" };
+          
+        } catch (err: any) {
+          const errorMsg = err.message || String(err);
+          if (errorMsg.includes("Failed to fetch") || errorMsg.includes("network") || errorMsg.includes("timeout") || errorMsg.includes("shutdown")) {
+            // Retry on timeout
+            toast.info(`Timeout — retrying (attempt ${iteration})...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+          throw err;
+        }
       }
+      
+      // Max iterations reached
+      return lastResult || { status: "partial", message: "Max iterations reached, please continue manually" };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
@@ -676,6 +731,7 @@ const ClusterManager = () => {
       
       if (result.status === "completed") {
         toast.success(`All translations completed! Total: ${result.totalArticles || 60} articles`);
+        setTranslationProgress(null);
       } else if (result.status === "partial" || result.language) {
         const remaining = result.remainingLanguages || [];
         toast.success(`Translated ${result.language?.toUpperCase() || 'language'}`, {
@@ -688,9 +744,12 @@ const ClusterManager = () => {
             current: result.language?.toUpperCase() || 'Unknown', 
             remaining: remaining.length 
           });
+        } else {
+          setTranslationProgress(null);
         }
       } else {
         toast.success("Translation batch completed");
+        setTranslationProgress(null);
       }
       
       setTranslatingCluster(null);
