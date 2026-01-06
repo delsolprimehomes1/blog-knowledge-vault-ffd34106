@@ -352,6 +352,7 @@ export type Database = {
         Row: {
           author_bio_localized: string | null
           author_id: string | null
+          author_photo_context: string | null
           canonical_url: string | null
           category: string
           citation_failure_reason: string | null
@@ -407,6 +408,7 @@ export type Database = {
         Insert: {
           author_bio_localized?: string | null
           author_id?: string | null
+          author_photo_context?: string | null
           canonical_url?: string | null
           category: string
           citation_failure_reason?: string | null
@@ -462,6 +464,7 @@ export type Database = {
         Update: {
           author_bio_localized?: string | null
           author_id?: string | null
+          author_photo_context?: string | null
           canonical_url?: string | null
           category?: string
           citation_failure_reason?: string | null
