@@ -220,15 +220,28 @@ const ClusterManager = () => {
   // Publish all articles in cluster
   const publishMutation = useMutation({
     mutationFn: async (clusterId: string) => {
-      const { error } = await supabase
+      const now = new Date().toISOString();
+      
+      // Phase 1: Update articles that DON'T have date_published yet
+      const { error: error1 } = await supabase
         .from("blog_articles")
         .update({ 
           status: "published", 
-          date_published: new Date().toISOString() 
+          date_published: now 
         })
-        .eq("cluster_id", clusterId);
+        .eq("cluster_id", clusterId)
+        .is("date_published", null);
       
-      if (error) throw error;
+      if (error1) throw error1;
+      
+      // Phase 2: Update articles that ALREADY have date_published (only set status)
+      const { error: error2 } = await supabase
+        .from("blog_articles")
+        .update({ status: "published" })
+        .eq("cluster_id", clusterId)
+        .not("date_published", "is", null);
+      
+      if (error2) throw error2;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
@@ -264,18 +277,34 @@ const ClusterManager = () => {
   const publishQAsMutation = useMutation({
     mutationFn: async (clusterId: string) => {
       setPublishingQAs(clusterId);
-      const { data, error } = await supabase
+      const now = new Date().toISOString();
+      
+      // Phase 1: Update Q&As that DON'T have date_published yet
+      const { data: data1, error: error1 } = await supabase
         .from("qa_pages")
         .update({ 
           status: "published", 
-          date_published: new Date().toISOString() 
+          date_published: now 
         })
         .eq("cluster_id", clusterId)
         .eq("status", "draft")
+        .is("date_published", null)
         .select("id");
       
-      if (error) throw error;
-      return data?.length || 0;
+      if (error1) throw error1;
+      
+      // Phase 2: Update Q&As that ALREADY have date_published (only set status)
+      const { data: data2, error: error2 } = await supabase
+        .from("qa_pages")
+        .update({ status: "published" })
+        .eq("cluster_id", clusterId)
+        .eq("status", "draft")
+        .not("date_published", "is", null)
+        .select("id");
+      
+      if (error2) throw error2;
+      
+      return (data1?.length || 0) + (data2?.length || 0);
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["cluster-qa-pages"] });
