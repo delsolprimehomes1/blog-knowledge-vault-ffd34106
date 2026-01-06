@@ -248,3 +248,6 @@ verify_jwt = false
 
 [functions.generate-missing-articles]
 verify_jwt = false
+
+[functions.regenerate-article]
+verify_jwt = false

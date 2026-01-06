@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2 } from "lucide-react";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2, RefreshCw } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
@@ -54,6 +54,9 @@ export const ClusterArticlesTab = ({
   
   // Generate missing articles state
   const [isGeneratingMissing, setIsGeneratingMissing] = useState(false);
+  
+  // Regenerate article state
+  const [regeneratingArticle, setRegeneratingArticle] = useState<string | null>(null);
   
   // Delete article state
   const [articleToDelete, setArticleToDelete] = useState<any>(null);
@@ -227,6 +230,33 @@ export const ClusterArticlesTab = ({
       toast.error(`Failed: ${error.message}`);
     } finally {
       setIsGeneratingMissing(false);
+    }
+  };
+
+  const handleRegenerateArticle = async (article: any) => {
+    const wordCount = countWords(article.detailed_content || '');
+    setRegeneratingArticle(article.id);
+    
+    toast.info(`Regenerating "${article.headline}"... This may take 1-2 minutes.`);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-article', {
+        body: { articleId: article.id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast.success(`Regenerated! ${data.oldWordCount}w → ${data.newWordCount}w`);
+        queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+      } else {
+        toast.error(data.error || 'Regeneration failed');
+      }
+    } catch (error: any) {
+      console.error('Regenerate failed:', error);
+      toast.error(`Failed: ${error.message}`);
+    } finally {
+      setRegeneratingArticle(null);
     }
   };
 
@@ -406,6 +436,20 @@ export const ClusterArticlesTab = ({
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-7 w-7 ${wordCountStatus === 'short' ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-100' : ''}`}
+                    onClick={() => handleRegenerateArticle(article)}
+                    disabled={regeneratingArticle === article.id}
+                    title={wordCountStatus === 'short' ? `Regenerate (${wordCount}w → 1500-2500w)` : 'Regenerate Content'}
+                  >
+                    {regeneratingArticle === article.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
                     )}
                   </Button>
                   <Link to={`/admin/articles/${article.id}`}>
