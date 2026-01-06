@@ -117,7 +117,7 @@ export const ArticleHeader = ({ article, author, reviewer, translations }: Artic
         <div className="backdrop-blur-md bg-primary/10 border-2 border-primary/20 rounded-2xl p-4 shadow-lg">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12 ring-2 ring-primary/30">
-              <AvatarImage src="/images/hans-blog.jpg" alt={reviewer.name} />
+              <AvatarImage src="/images/hans-blog.jpg?v=3" alt={reviewer.name} />
               <AvatarFallback className="text-sm bg-primary/20">{reviewer.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
