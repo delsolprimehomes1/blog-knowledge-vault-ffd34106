@@ -88,42 +88,37 @@ serve(async (req) => {
     const masterPrompt = promptSetting?.setting_value || '';
 
     // Build regeneration prompt - MUCH more explicit about word counts
-    const systemPrompt = `You are an expert real estate content writer. Your PRIMARY objective is to write LONG, comprehensive articles.
+    const systemPrompt = `You are an expert real estate content writer.
 
 ${masterPrompt}
 
-## ABSOLUTE WORD COUNT REQUIREMENT (NON-NEGOTIABLE)
-- You MUST write AT LEAST 1,800 words of content
-- Target range: 1,800 - 2,200 words
-- Articles under 1,500 words will be REJECTED and you will have failed
-- COUNT YOUR WORDS BEFORE RESPONDING
+## WORD COUNT REQUIREMENTS (STRICT BOUNDARIES)
+- TARGET: 1,800 words (ideal length)
+- MINIMUM: 1,500 words (do not go below)
+- MAXIMUM: 2,500 words (do not exceed)
+- Articles outside this range will be REJECTED
 
-## MANDATORY STRUCTURE (each section MUST be 200+ words)
-1. Introduction (200 words) - Set the scene
-2. Overview/Background (250 words) - Context and importance
-3. Key Benefits (250 words) - Why this matters
-4. Process/How-To (250 words) - Step-by-step guidance
-5. Important Considerations (250 words) - What to watch for
-6. Market Insights (200 words) - Current trends and data
-7. Expert Tips (200 words) - Professional recommendations
-8. FAQ Section (200 words) - 5 common questions with detailed answers
-9. Conclusion (200 words) - Summary and call to action
-
-TOTAL: 2,000+ words MINIMUM
+## STRUCTURE (aim for ~1,800 words total)
+1. Introduction (150 words) - Set the scene
+2. Overview/Background (180 words) - Context and importance
+3. Key Benefits (180 words) - Why this matters
+4. Process/How-To (180 words) - Step-by-step guidance
+5. Important Considerations (180 words) - What to watch for
+6. Market Insights (150 words) - Current trends
+7. Expert Tips (150 words) - Professional recommendations
+8. FAQ Section (150 words) - 4-5 questions with concise answers
+9. Conclusion (120 words) - Summary and call to action
 
 ## CONTENT QUALITY
 - Write in ${article.language === 'en' ? 'English' : article.language.toUpperCase()}
-- Use practical, actionable advice with specific examples
-- Include statistics and data points where relevant
-- Each paragraph should be 3-4 sentences minimum
-- NO filler content - every sentence should add value
+- Be concise and valuable - no filler content
+- Each paragraph: 2-3 sentences
 
 ## HTML FORMAT
 - Use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags only
-- NO markdown, NO <h1> tags
-- Each H2 section must have multiple paragraphs`;
+- NO markdown, NO <h1> tags`;
 
-    const userPrompt = `Write a COMPREHENSIVE, DETAILED blog article of AT LEAST 1,800 words.
+    const userPrompt = `Write a blog article about the topic below.
 
 ARTICLE DETAILS:
 - Title: ${article.headline}
@@ -133,18 +128,17 @@ ARTICLE DETAILS:
 - Funnel Stage: ${article.funnel_stage}
 - Language: ${article.language}
 
-CRITICAL REQUIREMENTS:
-1. Write MINIMUM 1,800 words (aim for 2,000+)
-2. Include 9 H2 sections as specified in the system prompt
-3. Each section MUST be 200+ words
-4. Include 5 FAQ questions with detailed answers
-5. Use HTML formatting only
+WORD COUNT BOUNDARIES:
+- MINIMUM: 1,500 words
+- TARGET: 1,800 words
+- MAXIMUM: 2,500 words
 
-BEFORE SUBMITTING: Count your total words. If under 1,800, go back and expand each section with more examples, details, and explanations.
+If your content exceeds 2,500 words, trim it by being more concise.
+If your content is under 1,500 words, expand with more details.
 
 Return JSON:
 {
-  "detailed_content": "<h2>Section 1</h2><p>Long detailed content...</p>...",
+  "detailed_content": "<h2>Section 1</h2><p>Content...</p>...",
   "meta_title": "SEO title under 60 chars",
   "meta_description": "SEO description under 160 chars",
   "speakable_answer": "2-3 sentence summary"
@@ -161,35 +155,15 @@ Return JSON:
       
       // Escalate prompt on retries with VERY explicit instructions
       if (attempt === 2 && newWordCount > 0) {
-        attemptPrompt = `CRITICAL FAILURE: Your previous response was only ${newWordCount} words. THIS IS UNACCEPTABLE.
+        attemptPrompt = `Your previous response was ${newWordCount} words, which is ${newWordCount < 1500 ? 'below the 1,500 minimum' : 'acceptable but could be better'}.
 
-You MUST write AT LEAST 1,800 words this time. Here's how:
-- Write 9 sections of 200+ words each = 1,800 words minimum
-- Each paragraph should be 4-5 sentences
-- Include more examples, statistics, and details
-- Expand every point with supporting information
+Target: 1,700-1,900 words. Add more detail to each section.
 
-${userPrompt}
-
-FINAL CHECK: Before responding, count your words. If under 1,800, ADD MORE CONTENT to each section.`;
+${userPrompt}`;
       } else if (attempt === 3 && newWordCount > 0) {
-        attemptPrompt = `FINAL ATTEMPT - YOU HAVE FAILED TWICE
+        attemptPrompt = `Previous attempt: ${newWordCount} words. Target: 1,600-1,800 words.
 
-Previous attempts produced only ${newWordCount} words. You need 1,800+ words.
-
-MANDATORY: Write EXACTLY this structure with MINIMUM word counts:
-
-SECTION 1 - Introduction (220 words): Set the scene, explain why this topic matters
-SECTION 2 - Background (250 words): Historical context, current market conditions  
-SECTION 3 - Benefits (250 words): List 5+ benefits with 2 sentences each explaining why
-SECTION 4 - Process (250 words): 6+ step-by-step instructions with details
-SECTION 5 - Considerations (250 words): 5+ things to watch out for with explanations
-SECTION 6 - Market Data (220 words): Statistics, trends, price ranges, growth rates
-SECTION 7 - Expert Tips (220 words): 5+ professional recommendations
-SECTION 8 - FAQ (220 words): 5 questions with 2-3 sentence answers each
-SECTION 9 - Conclusion (220 words): Summarize key points, next steps, call to action
-
-TOTAL REQUIRED: 2,100+ words
+Write 8 sections with ~200 words each. Be thorough but concise.
 
 ${userPrompt}`;
       }
@@ -229,7 +203,11 @@ ${userPrompt}`;
       newWordCount = countWords(parsed.detailed_content || '');
       console.log(`Attempt ${attempt}: Generated ${newWordCount} words`);
 
-      if (newWordCount >= 1500) {
+      if (newWordCount >= 1500 && newWordCount <= 2500) {
+        finalContent = parsed;
+        break;
+      } else if (newWordCount > 2500) {
+        console.warn(`Attempt ${attempt}: ${newWordCount}w exceeds 2,500 maximum, but accepting`);
         finalContent = parsed;
         break;
       }
