@@ -163,7 +163,8 @@ async function generateSingleArticle(
   language: string,
   masterPrompt: string,
   authors: any[],
-  categories: any[]
+  categories: any[],
+  clusterTopic: string
 ): Promise<{ articleId: string | null; error: string | null }> {
   const OPENAI_API_KEY = openaiKey;
   
@@ -391,7 +392,7 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
     article.meta_description = (contentJson.meta_description || '').substring(0, 160);
     article.speakable_answer = contentJson.speakable_answer || '';
     article.qa_entities = contentJson.qa_entities || contentJson.faqs || [];
-    article.cluster_theme = job.topic || '';
+    article.cluster_theme = clusterTopic || '';
 
     // 3. FEATURED IMAGE
     const imagePrompt = `Professional real estate photo: ${plan.headline}. Costa del Sol, Spain. High quality, natural lighting.`;
@@ -546,7 +547,8 @@ serve(async (req) => {
         job.language || 'en',
         masterPrompt,
         authors || [],
-        categories || []
+        categories || [],
+        job.topic || ''
       );
 
       if (result.articleId) {
