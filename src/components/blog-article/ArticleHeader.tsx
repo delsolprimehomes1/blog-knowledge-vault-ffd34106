@@ -95,28 +95,6 @@ export const ArticleHeader = ({ article, author, reviewer, translations }: Artic
         {article.headline}
       </h1>
 
-      {/* Author Card - Hero Element */}
-      {author && (
-        <div className="glass-premium rounded-3xl p-6 md:p-8 shadow-2xl border-2 border-transparent bg-gradient-to-br from-white/90 to-white/70 dark:from-gray-900/90 dark:to-gray-900/70 hover:shadow-[0_10px_40px_rgba(42,58,50,0.15)] transition-all duration-500">
-          <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
-            <span className="inline-block w-1 h-4 bg-gradient-to-b from-primary to-accent rounded-full"></span>
-            Written by
-          </p>
-          <div className="flex items-center gap-6">
-            <Avatar className="h-24 w-24 md:h-28 md:w-28 ring-4 ring-gradient-to-br from-primary to-accent shadow-lg">
-              <AvatarImage src={author.photo_url} alt={author.name} />
-              <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white">
-                {author.name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <p className="font-bold text-xl md:text-2xl mb-1">{author.name}</p>
-              <p className="text-base md:text-lg text-primary font-medium">{author.job_title}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Simplified Meta Row */}
       <div className="flex flex-wrap items-center gap-3">
         {article.date_published && (
