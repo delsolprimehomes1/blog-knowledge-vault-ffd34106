@@ -2,14 +2,35 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
     MessageCircle,
-    Search,
     Filter,
+    Globe,
+    User,
+    Home,
+    MapPin,
+    Wallet,
+    Bed,
+    Bath,
     Calendar,
-    CheckCircle,
-    XCircle,
-    Clock,
-    Globe
+    Sparkles,
+    Target
 } from 'lucide-react';
+
+interface CustomFields {
+    motivation?: string;
+    buyer_type?: string;
+    property_type?: string;
+    location_preference?: string;
+    budget_min?: number;
+    budget_max?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    timeline?: string;
+    location_priorities?: string[];
+    must_have_features?: string[];
+    lifestyle_priorities?: string[];
+    visit_plans?: string;
+    purchase_timeline?: string;
+}
 
 interface EmmaConversation {
     id: string;
@@ -22,6 +43,7 @@ interface EmmaConversation {
     sales_notes: string | null;
     created_at: string;
     updated_at: string;
+    custom_fields: CustomFields | null;
 }
 
 // Map language codes to flags/names
@@ -233,6 +255,82 @@ const EmmaConversations = () => {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Lead Profile - Custom Fields */}
+                            {selectedConversation.custom_fields && Object.keys(selectedConversation.custom_fields).length > 0 && (
+                                <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <Target className="w-4 h-4 text-primary" />
+                                        Lead Profile
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {selectedConversation.custom_fields.buyer_type && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <User className="w-4 h-4 text-blue-500" />
+                                                <span className="text-sm capitalize">{selectedConversation.custom_fields.buyer_type}</span>
+                                            </div>
+                                        )}
+                                        {selectedConversation.custom_fields.property_type && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Home className="w-4 h-4 text-green-500" />
+                                                <span className="text-sm capitalize">{selectedConversation.custom_fields.property_type}</span>
+                                            </div>
+                                        )}
+                                        {selectedConversation.custom_fields.location_preference && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <MapPin className="w-4 h-4 text-red-500" />
+                                                <span className="text-sm">{selectedConversation.custom_fields.location_preference}</span>
+                                            </div>
+                                        )}
+                                        {(selectedConversation.custom_fields.budget_min || selectedConversation.custom_fields.budget_max) && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Wallet className="w-4 h-4 text-amber-500" />
+                                                <span className="text-sm">
+                                                    {selectedConversation.custom_fields.budget_min && selectedConversation.custom_fields.budget_max
+                                                        ? `€${(selectedConversation.custom_fields.budget_min / 1000).toFixed(0)}k - €${(selectedConversation.custom_fields.budget_max / 1000).toFixed(0)}k`
+                                                        : selectedConversation.custom_fields.budget_max
+                                                            ? `Up to €${(selectedConversation.custom_fields.budget_max / 1000).toFixed(0)}k`
+                                                            : `From €${(selectedConversation.custom_fields.budget_min! / 1000).toFixed(0)}k`
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedConversation.custom_fields.bedrooms && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Bed className="w-4 h-4 text-purple-500" />
+                                                <span className="text-sm">{selectedConversation.custom_fields.bedrooms} beds</span>
+                                            </div>
+                                        )}
+                                        {selectedConversation.custom_fields.bathrooms && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Bath className="w-4 h-4 text-cyan-500" />
+                                                <span className="text-sm">{selectedConversation.custom_fields.bathrooms} baths</span>
+                                            </div>
+                                        )}
+                                        {(selectedConversation.custom_fields.timeline || selectedConversation.custom_fields.purchase_timeline) && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Calendar className="w-4 h-4 text-indigo-500" />
+                                                <span className="text-sm">{selectedConversation.custom_fields.purchase_timeline || selectedConversation.custom_fields.timeline}</span>
+                                            </div>
+                                        )}
+                                        {selectedConversation.custom_fields.motivation && (
+                                            <div className="flex items-center gap-2 bg-white rounded-lg p-2 border">
+                                                <Sparkles className="w-4 h-4 text-pink-500" />
+                                                <span className="text-sm capitalize">{selectedConversation.custom_fields.motivation}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {selectedConversation.custom_fields.must_have_features && selectedConversation.custom_fields.must_have_features.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {selectedConversation.custom_fields.must_have_features.map((feature, idx) => (
+                                                <span key={idx} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                                                    {feature}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Chat Transcript */}
                             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50">
