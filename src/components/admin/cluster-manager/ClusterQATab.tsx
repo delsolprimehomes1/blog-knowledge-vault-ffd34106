@@ -687,8 +687,9 @@ export const ClusterQATab = ({
   };
 
   const isPhase1Complete = englishQACount >= 24;
-  const isPhase2Complete = Object.values(languageQACounts).every(count => count >= 24);
-  const totalQAsCreated = englishQACount + Object.values(languageQACounts).reduce((sum, c) => sum + c, 0);
+  // Use cluster.qa_pages as single source of truth for Phase 2 completion
+  const isPhase2Complete = TARGET_LANGUAGES.every(lang => (cluster.qa_pages[lang]?.total || 0) >= 24);
+  const totalQAsCreated = englishQACount + TARGET_LANGUAGES.reduce((sum, lang) => sum + (cluster.qa_pages[lang]?.total || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -866,10 +867,11 @@ export const ClusterQATab = ({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Language Translation Grid */}
+          {/* Language Translation Grid - using cluster.qa_pages as single source of truth */}
           <div className="grid grid-cols-3 gap-3">
             {TARGET_LANGUAGES.map((lang) => {
-              const count = languageQACounts[lang] || 0;
+              // Use cluster.qa_pages for consistency with mismatch warnings
+              const count = cluster.qa_pages[lang]?.total || 0;
               const isCompleted = count >= 24;
               const isTranslating = translatingLanguages.has(lang);
               const canStartMore = translatingLanguages.size < MAX_PARALLEL_TRANSLATIONS;
