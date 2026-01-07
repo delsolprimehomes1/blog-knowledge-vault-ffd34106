@@ -97,6 +97,7 @@ const DuplicateImageFixer = lazy(() => import("./pages/admin/DuplicateImageFixer
 const SystemAudit = lazy(() => import("./pages/admin/SystemAudit"));
 const ProductionAudit = lazy(() => import("./pages/admin/ProductionAudit"));
 const AEOAnswerFixer = lazy(() => import("./pages/admin/AEOAnswerFixer"));
+const AddProperty = lazy(() => import("./pages/AddProperty"));
 
 // Landing Pages (Paid Traffic)
 const LandingEn = lazy(() => import("./pages/landing/en"));
@@ -192,6 +193,9 @@ const App = () => (
               <Route path="/admin/system-audit" element={<ProtectedRoute><SystemAudit /></ProtectedRoute>} />
               <Route path="/admin/production-audit" element={<ProtectedRoute><ProductionAudit /></ProtectedRoute>} />
               <Route path="/admin/aeo-fixer" element={<ProtectedRoute><AEOAnswerFixer /></ProtectedRoute>} />
+
+              {/* Standalone Property Management Page */}
+              <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />
 
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
