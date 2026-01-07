@@ -2480,6 +2480,63 @@ export type Database = {
         }
         Relationships: []
       }
+      properties: {
+        Row: {
+          baths: number
+          beds_max: number | null
+          beds_min: number
+          category: string
+          created_at: string | null
+          descriptions: Json
+          display_order: number | null
+          id: string
+          images: Json
+          internal_name: string
+          internal_ref: string | null
+          is_active: boolean | null
+          location: string
+          price_eur: number
+          size_sqm: number
+          updated_at: string | null
+        }
+        Insert: {
+          baths: number
+          beds_max?: number | null
+          beds_min: number
+          category: string
+          created_at?: string | null
+          descriptions?: Json
+          display_order?: number | null
+          id?: string
+          images?: Json
+          internal_name: string
+          internal_ref?: string | null
+          is_active?: boolean | null
+          location: string
+          price_eur: number
+          size_sqm: number
+          updated_at?: string | null
+        }
+        Update: {
+          baths?: number
+          beds_max?: number | null
+          beds_min?: number
+          category?: string
+          created_at?: string | null
+          descriptions?: Json
+          display_order?: number | null
+          id?: string
+          images?: Json
+          internal_name?: string
+          internal_ref?: string | null
+          is_active?: boolean | null
+          location?: string
+          price_eur?: number
+          size_sqm?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       qa_article_tracking: {
         Row: {
           created_at: string | null
