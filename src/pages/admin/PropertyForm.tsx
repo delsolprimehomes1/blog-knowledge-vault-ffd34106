@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, Home, Upload, Loader2, Languages } from 'lucide-react';
+import { AdminLayout } from "@/components/AdminLayout";
 
 const PropertyForm: React.FC = () => {
     const navigate = useNavigate();
@@ -214,8 +215,8 @@ Return format:
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container mx-auto px-4 max-w-4xl">
+        <AdminLayout>
+            <div className="container mx-auto px-4 max-w-4xl py-8">
 
                 {/* Header */}
                 <div className="mb-8">
@@ -240,8 +241,8 @@ Return format:
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, category: 'apartment' }))}
                                     className={`p-6 rounded-lg border-2 transition-all ${formData.category === 'apartment'
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     <Building2 className="w-8 h-8 mx-auto mb-2 text-primary" />
@@ -252,8 +253,8 @@ Return format:
                                     type="button"
                                     onClick={() => setFormData(prev => ({ ...prev, category: 'villa' }))}
                                     className={`p-6 rounded-lg border-2 transition-all ${formData.category === 'villa'
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     <Home className="w-8 h-8 mx-auto mb-2 text-primary" />
@@ -507,7 +508,7 @@ Return format:
                     </div>
                 </form>
             </div>
-        </div>
+        </AdminLayout>
     );
 };
 
