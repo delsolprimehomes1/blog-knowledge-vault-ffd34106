@@ -16,6 +16,7 @@ const PropertyForm: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [translating, setTranslating] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     const [formData, setFormData] = useState({
         internal_name: '',
@@ -202,16 +203,40 @@ Return format:
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        // TODO: Implement actual image upload to Supabase Storage
-        // For now, using placeholder URLs
-        const newImages = Array.from(files).map((file, index) =>
-            `https://placehold.co/1200x800/C9A961/white?text=Image+${formData.images.length + index + 1}`
-        );
+        setUploading(true);
+        const uploadedUrls: string[] = [];
 
-        setFormData(prev => ({
-            ...prev,
-            images: [...prev.images, ...newImages].slice(0, 4) // Max 4 images
-        }));
+        try {
+            for (const file of Array.from(files)) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+                const { data, error } = await supabase.storage
+                    .from('property-images')
+                    .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+                if (error) {
+                    console.error('Upload error:', error);
+                    continue;
+                }
+
+                if (data) {
+                    const { data: urlData } = supabase.storage
+                        .from('property-images')
+                        .getPublicUrl(fileName);
+                    uploadedUrls.push(urlData.publicUrl);
+                }
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...uploadedUrls].slice(0, 4)
+            }));
+        } catch (error) {
+            console.error('Image upload failed:', error);
+        } finally {
+            setUploading(false);
+        }
     };
 
     return (
@@ -428,15 +453,25 @@ Return format:
                                     ))}
 
                                     {formData.images.length < 4 && (
-                                        <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                                            <span className="text-xs text-gray-500">Upload</span>
+                                        <label className={`aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:border-primary'}`}>
+                                            {uploading ? (
+                                                <>
+                                                    <Loader2 className="w-8 h-8 text-primary mb-2 animate-spin" />
+                                                    <span className="text-xs text-gray-500">Uploading...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                                    <span className="text-xs text-gray-500">Upload</span>
+                                                </>
+                                            )}
                                             <input
                                                 type="file"
                                                 multiple
                                                 accept="image/*"
                                                 onChange={handleImageUpload}
                                                 className="hidden"
+                                                disabled={uploading}
                                             />
                                         </label>
                                     )}
