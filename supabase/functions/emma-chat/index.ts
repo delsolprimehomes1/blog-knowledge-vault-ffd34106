@@ -1,9 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import Anthropic from "npm:@anthropic-ai/sdk@0.18.0";
-
-const anthropic = new Anthropic({
-    apiKey: Deno.env.get('ANTHROPIC_API_KEY') || '',
-});
 
 // Resales Online API configuration
 const RESALES_API_KEY = Deno.env.get('RESALES_API_KEY') || '';
@@ -161,25 +156,36 @@ COLLECTED_INFO: {"name": "their name", "whatsapp": "their number"}
 
 Remember: You're not just a bot collecting data - you're a helpful consultant building a real relationship. Be human, be warm, be genuine. And ALWAYS speak in ${languageName}.`;
 
-        const response = await anthropic.messages.create({
-            model: 'claude-3-sonnet-20240229', // Fallback to a broadly available model ID if the specific one is custom
-            max_tokens: 1024,
-            messages: [
-                ...conversationHistory.map(msg => ({
-                    role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
-                    content: msg.content
-                })),
-                {
-                    role: 'user' as const,
-                    content: message
-                }
-            ],
-            system: systemPrompt
+        // Call Claude API directly with fetch (no SDK)
+        const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1024,
+                system: systemPrompt,
+                messages: [
+                    ...conversationHistory.map(msg => ({
+                        role: msg.role === 'assistant' ? 'assistant' : 'user',
+                        content: msg.content
+                    })),
+                    { role: 'user', content: message }
+                ]
+            })
         });
 
-        const responseText = response.content[0].type === 'text'
-            ? response.content[0].text
-            : '';
+        if (!anthropicResponse.ok) {
+            const errorText = await anthropicResponse.text();
+            console.error('Anthropic API error:', anthropicResponse.status, errorText);
+            throw new Error(`Anthropic API error: ${anthropicResponse.status}`);
+        }
+
+        const response = await anthropicResponse.json();
+        const responseText = response.content?.[0]?.text || '';
 
         console.log(`✅ Emma response generated in ${language}: "${responseText.substring(0, 50)}..."`);
 
