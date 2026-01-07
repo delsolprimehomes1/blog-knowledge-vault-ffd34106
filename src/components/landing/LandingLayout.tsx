@@ -12,6 +12,7 @@ import StickyActionButton from './StickyActionButton';
 import PrePropertiesAction from './PrePropertiesAction';
 import BridgingStatement from './BridgingStatement';
 import PropertyCategories from './PropertyCategories';
+import ExplainerVideo from './ExplainerVideo';
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import { trackPageView } from '@/utils/landing/analytics';
 
@@ -104,20 +105,18 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             </header>
 
             <Hero
-                content={translations.hero}
-                language={language}
                 onStartChat={() => setIsEmmaOpen(true)}
                 onOpenVideo={() => {
-                    // If we had a specific video element to scroll to or open logic
-                    // For now, Hero handles its own video, or we can scroll to a video section if existing
-                    // But Hero has the video button.
-                    // Let's assume this prop is handled inside Hero mostly, or if we need to scroll:
-                    // const video = document.getElementById('explainer-video');
-                    // video?.scrollIntoView({ behavior: 'smooth' });
+                    const videoSection = document.getElementById('explainer-video');
+                    if (videoSection) {
+                        videoSection.scrollIntoView({ behavior: 'smooth' });
+                    }
                 }}
             />
 
-            <TestimonialSection testimonials={translations.testimonials} />
+            <ExplainerVideo />
+
+            <TestimonialSection />
 
             <BridgingStatement />
 
@@ -145,11 +144,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                 />
             </div>
 
-            <PropertyCarousel
-                language={language}
-                translations={translations.properties}
-                onPropertySelect={handlePropertySelect}
-            />
+            <PropertyCarousel />
 
             <Footer content={translations.footer} />
 

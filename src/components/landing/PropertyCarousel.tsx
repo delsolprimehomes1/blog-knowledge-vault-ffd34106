@@ -1,4 +1,5 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import PropertyCard, { Property } from './PropertyCard';
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import {
@@ -245,7 +246,54 @@ const PropertySection = ({ id, title, subtitle, properties, lang }: { id: string
     </section>
 );
 
-const PropertyCarousel: React.FC<PropertyCarouselProps> = ({ language }) => {
+const PropertyCarousel: React.FC = () => {
+    const { lang } = useParams();
+
+    const sectionHeadings = {
+        en: {
+            apartments: "Apartments & Penthouses",
+            villas: "Townhouses & Villas"
+        },
+        nl: {
+            apartments: "Appartementen & Penthouses",
+            villas: "Townhouses & Villa's"
+        },
+        fr: {
+            apartments: "Appartements & Penthouses",
+            villas: "Maisons de ville & Villas"
+        },
+        de: {
+            apartments: "Apartments & Penthäuser",
+            villas: "Reihenhäuser & Villen"
+        },
+        pl: {
+            apartments: "Apartamenty i Penthouse'y",
+            villas: "Domy szeregowe i Wille"
+        },
+        sv: {
+            apartments: "Lägenheter & Takvåningar",
+            villas: "Radhus & Villor"
+        },
+        da: {
+            apartments: "Lejligheder & Penthouselejligheder",
+            villas: "Rækkehuse & Villaer"
+        },
+        fi: {
+            apartments: "Huoneistot & Kattohuoneistot",
+            villas: "Rivitalot & Huvilat"
+        },
+        hu: {
+            apartments: "Apartmanok & Penthouse-ok",
+            villas: "Sorházak & Villák"
+        },
+        no: {
+            apartments: "Leiligheter & Penthouse",
+            villas: "Rekkehus & Villaer"
+        }
+    };
+
+    const currentHeadings = sectionHeadings[lang as keyof typeof sectionHeadings] || sectionHeadings.en;
+
     return (
         <div className="py-24 bg-[#FAFAFA]" id="properties-section">
             <div className="container mx-auto px-4">
@@ -263,17 +311,17 @@ const PropertyCarousel: React.FC<PropertyCarouselProps> = ({ language }) => {
                 {/* Apartments Section */}
                 <PropertySection
                     id="apartments-section"
-                    title="Apartments & Penthouses"
+                    title={currentHeadings.apartments}
                     properties={apartments}
-                    lang={language}
+                    lang={lang as LanguageCode}
                 />
 
                 {/* Villas Section */}
                 <PropertySection
                     id="villas-section"
-                    title="Townhouses & Villas"
+                    title={currentHeadings.villas}
                     properties={villas}
-                    lang={language}
+                    lang={lang as LanguageCode}
                 />
             </div>
         </div>
