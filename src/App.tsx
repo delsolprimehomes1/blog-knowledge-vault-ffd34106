@@ -98,6 +98,7 @@ const SystemAudit = lazy(() => import("./pages/admin/SystemAudit"));
 const ProductionAudit = lazy(() => import("./pages/admin/ProductionAudit"));
 const AEOAnswerFixer = lazy(() => import("./pages/admin/AEOAnswerFixer"));
 const AddProperty = lazy(() => import("./pages/AddProperty"));
+const EmmaConversations = lazy(() => import("./pages/admin/EmmaConversations"));
 
 // Landing Pages (Paid Traffic)
 const LandingEn = lazy(() => import("./pages/landing/en"));
@@ -158,6 +159,7 @@ const App = () => (
               {/* ========================================== */}
               <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/admin/properties" element={<ProtectedRoute><AdminProperties /></ProtectedRoute>} />
+              <Route path="/admin/emma" element={<ProtectedRoute><EmmaConversations /></ProtectedRoute>} />
               <Route path="/admin/properties/new" element={<ProtectedRoute><PropertyForm /></ProtectedRoute>} />
               <Route path="/admin/properties/edit/:id" element={<ProtectedRoute><PropertyForm /></ProtectedRoute>} />
               <Route path="/admin/articles" element={<ProtectedRoute><Articles /></ProtectedRoute>} />

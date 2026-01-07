@@ -21,6 +21,7 @@ import {
   Link2,
   Image,
   Home,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -35,6 +36,7 @@ const navigation = [
   // Core
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Properties", href: "/admin/properties", icon: Home },
+  { name: "Emma Conversations", href: "/admin/emma", icon: MessageCircle },
   { name: "Cluster Manager", href: "/admin/clusters", icon: FolderKanban },
   { name: "Articles", href: "/admin/articles", icon: FileText },
   { name: "Authors", href: "/admin/authors", icon: Users },

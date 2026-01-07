@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { PlayCircle, Check } from 'lucide-react';
+import { MessageCircle, Sparkles, Check, PlayCircle } from 'lucide-react';
+import EmmaChat from './EmmaChat';
 
 interface HeroProps {
     onStartChat: () => void;
@@ -9,11 +9,14 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ onStartChat, onOpenVideo }) => {
+    const [isChatOpen, setIsChatOpen] = useState(false);
+
     const params = useParams();
     const lang = params.lang || window.location.pathname.split('/')[1] || 'en';
 
     console.log('Hero - Language detected:', lang);
 
+    // Initial content object from previous version
     const content = {
         en: {
             headline: "Living on the Costa del Sol — guided, personal and pressure-free",
@@ -119,18 +122,34 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, onOpenVideo }) => {
 
     const currentContent = content[lang as keyof typeof content] || content.en;
 
+    // Emma CTA button text - MUST match page language
+    const emmaCTAs = {
+        en: "Chat with Emma Now",
+        nl: "Chat met Emma Nu",
+        fr: "Discutez avec Emma Maintenant",
+        de: "Jetzt mit Emma chatten",
+        pl: "Porozmawiaj z Emmą Teraz",
+        sv: "Chatta med Emma Nu",
+        da: "Chat med Emma Nu",
+        fi: "Keskustele Emman kanssa Nyt",
+        hu: "Csevegj Emmával Most",
+        no: "Chat med Emma Nå"
+    };
+
+    const currentCTA = emmaCTAs[lang as keyof typeof emmaCTAs] || emmaCTAs.en;
+
     // Curated luxury Costa del Sol images
     const heroImages = {
-        en: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=1200&q=80', // Marbella luxury villa
-        nl: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=80', // Mediterranean pool
-        fr: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80', // Modern villa exterior
-        de: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80', // Luxury terrace
-        pl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80', // Beach villa
-        sv: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80', // Infinity pool
-        da: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80', // Mediterranean garden
-        fi: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1200&q=80', // Coastal view
-        hu: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&q=80', // Marina yachts
-        no: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80'  // Luxury living
+        en: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=1200&q=80',
+        nl: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=80',
+        fr: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80',
+        de: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80',
+        pl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80',
+        sv: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80',
+        da: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80',
+        fi: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1200&q=80',
+        hu: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&q=80',
+        no: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80'
     };
 
     const currentImage = heroImages[lang as keyof typeof heroImages] || heroImages.en;
@@ -182,23 +201,25 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, onOpenVideo }) => {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                            <Button
-                                onClick={onStartChat}
-                                size="lg"
-                                className="px-8 py-6 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg shadow-lg transition-all text-lg h-auto"
+                            {/* EMMA CHAT TRIGGER BUTTON - PRIMARY CTA */}
+                            <button
+                                onClick={() => setIsChatOpen(true)}
+                                className="group relative px-8 py-4 bg-gradient-to-r from-primary via-blue-600 to-primary bg-[length:200%_100%] hover:bg-[position:100%_0] text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden text-lg"
                             >
-                                <span className="mr-2">👉</span>
-                                {currentContent.primaryCTA}
-                            </Button>
-                            <Button
+                                <span className="relative z-10 flex items-center justify-center gap-2">
+                                    <MessageCircle className="w-6 h-6" />
+                                    {currentCTA}
+                                    <Sparkles className="w-4 h-4 animate-pulse" />
+                                </span>
+                            </button>
+
+                            <button
                                 onClick={onOpenVideo}
-                                size="lg"
-                                variant="outline"
-                                className="px-8 py-6 border-2 border-primary text-primary hover:bg-primary/5 font-semibold rounded-lg transition-all text-lg h-auto"
+                                className="px-8 py-4 border-2 border-primary text-primary hover:bg-primary/5 font-semibold rounded-lg transition-all text-lg flex items-center justify-center"
                             >
                                 <PlayCircle className="w-5 h-5 mr-2" />
                                 {currentContent.secondaryCTA}
-                            </Button>
+                            </button>
                         </div>
 
                         <p className="text-sm text-gray-500">
@@ -227,6 +248,15 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, onOpenVideo }) => {
                     </div>
                 </div>
             </div>
+
+            {/* EMMA CHAT COMPONENT - Passes language prop */}
+            {isChatOpen && (
+                <EmmaChat
+                    isOpen={isChatOpen}
+                    onClose={() => setIsChatOpen(false)}
+                    language={lang}
+                />
+            )}
         </section>
     );
 };
