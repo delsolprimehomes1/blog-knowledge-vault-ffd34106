@@ -533,6 +533,19 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
     article.date_published = new Date().toISOString();
     article.date_modified = new Date().toISOString();
 
+    // Assign hreflang_group_id - check if existing articles with same cluster_number have one
+    const { data: siblingArticle } = await supabase
+      .from('blog_articles')
+      .select('hreflang_group_id')
+      .eq('cluster_id', clusterId)
+      .eq('cluster_number', nextClusterNumber)
+      .not('hreflang_group_id', 'is', null)
+      .limit(1)
+      .single();
+
+    article.hreflang_group_id = siblingArticle?.hreflang_group_id || crypto.randomUUID();
+    console.log(`[Missing] Assigned hreflang_group_id: ${article.hreflang_group_id}`);
+
     // Quality validation
     const quality = validateContentQuality(article, plan);
     console.log(`[Missing] Article quality: ${quality.score}/100`);
