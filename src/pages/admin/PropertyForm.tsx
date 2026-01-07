@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Home, Upload, Loader2, Languages } from 'lucide-react';
+import { Building2, Home, Plus, Loader2, Languages, X } from 'lucide-react';
 import { AdminLayout } from "@/components/AdminLayout";
 
 const PropertyForm: React.FC = () => {
@@ -16,7 +16,7 @@ const PropertyForm: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [translating, setTranslating] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const [imageUrl, setImageUrl] = useState('');
 
     const [formData, setFormData] = useState({
         internal_name: '',
@@ -199,43 +199,13 @@ Return format:
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-
-        setUploading(true);
-        const uploadedUrls: string[] = [];
-
-        try {
-            for (const file of Array.from(files)) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-
-                const { data, error } = await supabase.storage
-                    .from('property-images')
-                    .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-                if (error) {
-                    console.error('Upload error:', error);
-                    continue;
-                }
-
-                if (data) {
-                    const { data: urlData } = supabase.storage
-                        .from('property-images')
-                        .getPublicUrl(fileName);
-                    uploadedUrls.push(urlData.publicUrl);
-                }
-            }
-
+    const addImageUrl = () => {
+        if (imageUrl.trim() && formData.images.length < 4) {
             setFormData(prev => ({
                 ...prev,
-                images: [...prev.images, ...uploadedUrls].slice(0, 4)
+                images: [...prev.images, imageUrl.trim()]
             }));
-        } catch (error) {
-            console.error('Image upload failed:', error);
-        } finally {
-            setUploading(false);
+            setImageUrl('');
         }
     };
 
@@ -435,49 +405,43 @@ Return format:
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <div className="grid grid-cols-4 gap-4">
-                                    {formData.images.map((img, index) => (
-                                        <div key={index} className="relative aspect-square">
-                                            <img src={img} alt={`Property ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData(prev => ({
-                                                    ...prev,
-                                                    images: prev.images.filter((_, i) => i !== index)
-                                                }))}
-                                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    ))}
+                                {formData.images.length > 0 && (
+                                    <div className="grid grid-cols-4 gap-4">
+                                        {formData.images.map((img, index) => (
+                                            <div key={index} className="relative aspect-square">
+                                                <img src={img} alt={`Property ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({
+                                                        ...prev,
+                                                        images: prev.images.filter((_, i) => i !== index)
+                                                    }))}
+                                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
-                                    {formData.images.length < 4 && (
-                                        <label className={`aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:border-primary'}`}>
-                                            {uploading ? (
-                                                <>
-                                                    <Loader2 className="w-8 h-8 text-primary mb-2 animate-spin" />
-                                                    <span className="text-xs text-gray-500">Uploading...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                                                    <span className="text-xs text-gray-500">Upload</span>
-                                                </>
-                                            )}
-                                            <input
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                onChange={handleImageUpload}
-                                                className="hidden"
-                                                disabled={uploading}
-                                            />
-                                        </label>
-                                    )}
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                    Upload 3-4 high-quality images. First image will be the main thumbnail.
+                                {formData.images.length < 4 && (
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={imageUrl}
+                                            onChange={(e) => setImageUrl(e.target.value)}
+                                            placeholder="Paste image URL (e.g., https://example.com/image.jpg)"
+                                            className="flex-1"
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
+                                        />
+                                        <Button type="button" onClick={addImageUrl} variant="outline">
+                                            <Plus className="w-4 h-4 mr-1" /> Add
+                                        </Button>
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground">
+                                    Add 3-4 image URLs. First image will be the main thumbnail.
                                 </p>
                             </div>
                         </CardContent>
