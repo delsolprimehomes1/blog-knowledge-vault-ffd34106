@@ -100,6 +100,9 @@ export const ClusterQATab = ({
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [generateAllProgress, setGenerateAllProgress] = useState<string | null>(null);
   
+  // Refresh state for forcing reload
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   // Race safety: track latest refresh request
   const refreshCounterRef = useRef(0);
   
@@ -308,12 +311,27 @@ export const ClusterQATab = ({
     }
   };
 
+  // Refresh counts - forces reload of both local state and parent query
+  const handleRefreshCounts = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchQACounts();
+      await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
+      toast.success("Q&A counts refreshed");
+    } catch (error) {
+      console.error('Error refreshing counts:', error);
+      toast.error("Failed to refresh counts");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Phase 2: Translate all Q&As to a target language (ENHANCEMENT 3: Parallel support)
   const handleTranslateToLanguage = async (targetLanguage: string): Promise<boolean> => {
     setTranslatingLanguages(prev => new Set([...prev, targetLanguage]));
     
     try {
-      const currentCount = languageQACounts[targetLanguage] || 0;
+      const currentCount = cluster.qa_pages[targetLanguage]?.total || 0;
       const message = currentCount > 0 
         ? `Resuming ${targetLanguage.toUpperCase()} translation (${currentCount}/24)...`
         : `Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (2-3 minutes)`;
@@ -338,9 +356,9 @@ export const ClusterQATab = ({
           : `${targetLanguage.toUpperCase()}: ✅ Complete! 24/24 Q&As`;
         toast.success(msg);
         
-        // Refresh UI state from backend for accuracy
+        // Force refetch parent query AND local counts for immediate UI update
         await fetchQACounts();
-        await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
+        await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
         return true;
       } else {
         throw new Error(data?.error || 'Unknown error');
@@ -850,7 +868,17 @@ export const ClusterQATab = ({
           <CardTitle className="flex items-center gap-2 text-lg">
             <Languages className="h-5 w-5 text-purple-600" />
             Phase 2: Translate to Languages
-            {isPhase2Complete && <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshCounts}
+              disabled={isRefreshing}
+              className="ml-auto"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="ml-1 text-xs">Refresh</span>
+            </Button>
+            {isPhase2Complete && <CheckCircle className="h-5 w-5 text-green-500" />}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Translate all 24 English Q&As to each language. ~2-3 min per language (batch mode).
