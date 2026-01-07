@@ -1871,6 +1871,45 @@ export type Database = {
         }
         Relationships: []
       }
+      emma_conversations: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          language: string
+          messages: Json
+          name: string | null
+          sales_notes: string | null
+          status: string
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          language?: string
+          messages?: Json
+          name?: string | null
+          sales_notes?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          language?: string
+          messages?: Json
+          name?: string | null
+          sales_notes?: string | null
+          status?: string
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       external_citation_health: {
         Row: {
           authority_score: number | null
