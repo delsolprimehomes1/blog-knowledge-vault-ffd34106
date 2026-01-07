@@ -119,75 +119,111 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, onOpenVideo }) => {
 
     const currentContent = content[lang as keyof typeof content] || content.en;
 
-    return (
-        <section className="relative bg-gradient-to-br from-primary/10 via-blue-50 to-white py-12 md:py-24">
-            <div className="container mx-auto px-4">
-                <div className="flex flex-col md:flex-row md:items-center md:gap-12 lg:gap-16">
+    // Curated luxury Costa del Sol images
+    const heroImages = {
+        en: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=1200&q=80', // Marbella luxury villa
+        nl: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=80', // Mediterranean pool
+        fr: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80', // Modern villa exterior
+        de: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80', // Luxury terrace
+        pl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80', // Beach villa
+        sv: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80', // Infinity pool
+        da: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80', // Mediterranean garden
+        fi: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1200&q=80', // Coastal view
+        hu: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1200&q=80', // Marina yachts
+        no: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80'  // Luxury living
+    };
 
-                    {/* LEFT COLUMN */}
+    const currentImage = heroImages[lang as keyof typeof heroImages] || heroImages.en;
+
+    // Translations for alt text
+    const altTexts = {
+        en: 'Luxury coastal living on Costa del Sol',
+        nl: 'Luxe kustleven aan de Costa del Sol',
+        fr: 'Vie côtière de luxe sur la Costa del Sol',
+        de: 'Luxuriöses Küstenleben an der Costa del Sol',
+        pl: 'Luksusowe życie nadmorskie na Costa del Sol',
+        sv: 'Lyxigt kustliv på Costa del Sol',
+        da: 'Luksus kystliv på Costa del Sol',
+        fi: 'Ylellinen rannikkoelämä Costa del Solilla',
+        hu: 'Luxus tengerparti élet a Costa del Solon',
+        no: 'Luksuriøst kystliv på Costa del Sol'
+    };
+
+    const currentAlt = altTexts[lang as keyof typeof altTexts] || altTexts.en;
+
+    return (
+        <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-gray-50 to-white overflow-hidden">
+            <div className="container mx-auto px-4 py-12 md:py-20 relative z-10">
+                <div className="flex flex-col lg:flex-row items-center gap-12">
+
+                    {/* Left Column - Text Content */}
                     <div className="flex-1 space-y-6 md:space-y-8">
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-gray-900 leading-tight">
                             {currentContent.headline}
                         </h1>
 
-                        <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
+                        <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
                             {currentContent.subheadline}
                         </p>
 
-                        {/* Bullets - Desktop only */}
-                        <div className="hidden md:flex flex-col gap-3">
-                            <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3 text-gray-700">
                                 <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                                <span className="text-gray-700">{currentContent.bullet1}</span>
+                                {currentContent.bullet1}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 text-gray-700">
                                 <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                                <span className="text-gray-700">{currentContent.bullet2}</span>
+                                {currentContent.bullet2}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 text-gray-700">
                                 <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                                <span className="text-gray-700">{currentContent.bullet3}</span>
+                                {currentContent.bullet3}
                             </div>
                         </div>
 
-                        {/* CTAs */}
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-1 sm:flex-initial">
-                                <Button
-                                    onClick={onStartChat}
-                                    size="lg"
-                                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg rounded-lg shadow-xl"
-                                >
-                                    <span className="mr-2">👉</span>
-                                    {currentContent.primaryCTA}
-                                </Button>
-                                <p className="text-sm text-gray-600 mt-2 text-center sm:text-left">
-                                    {currentContent.primaryMicro}
-                                </p>
-                            </div>
-
+                        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                            <Button
+                                onClick={onStartChat}
+                                size="lg"
+                                className="px-8 py-6 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg shadow-lg transition-all text-lg h-auto"
+                            >
+                                <span className="mr-2">👉</span>
+                                {currentContent.primaryCTA}
+                            </Button>
                             <Button
                                 onClick={onOpenVideo}
                                 size="lg"
                                 variant="outline"
-                                className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-6 text-lg rounded-lg"
+                                className="px-8 py-6 border-2 border-primary text-primary hover:bg-primary/5 font-semibold rounded-lg transition-all text-lg h-auto"
                             >
                                 <PlayCircle className="w-5 h-5 mr-2" />
                                 {currentContent.secondaryCTA}
                             </Button>
                         </div>
+
+                        <p className="text-sm text-gray-500">
+                            {currentContent.primaryMicro}
+                        </p>
                     </div>
 
-                    {/* RIGHT COLUMN - Desktop only */}
-                    <div className="hidden md:block flex-1 mt-8 md:mt-0">
-                        <div className="rounded-3xl shadow-2xl w-full aspect-[4/3] bg-gradient-to-br from-primary/20 via-blue-100 to-primary/10 flex items-center justify-center overflow-hidden">
-                            <img
-                                src="/images/hero-desktop.jpg"
-                                alt="Luxury Costa del Sol lifestyle"
-                                className="w-full h-full object-cover"
-                                onError={(e) => e.currentTarget.style.display = 'none'}
-                            />
+                    {/* Right Column - Hero Image */}
+                    <div className="flex-1 w-full lg:w-auto mt-8 lg:mt-0 relative">
+                        <div className="relative rounded-2xl overflow-hidden shadow-2xl transform hover:scale-[1.01] transition-transform duration-500">
+                            <div className="aspect-[4/3] w-full relative">
+                                <img
+                                    src={currentImage}
+                                    alt={currentAlt}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    loading="eager"
+                                />
+                                {/* Gradient overlay for depth */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
+                            </div>
                         </div>
+
+                        {/* Decorative elements */}
+                        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10" />
+                        <div className="absolute -top-6 -left-6 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -z-10" />
                     </div>
                 </div>
             </div>
