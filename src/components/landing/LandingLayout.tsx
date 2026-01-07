@@ -153,7 +153,6 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             />
 
             <EmmaChat
-                content={translations.emma}
                 language={language}
                 isOpen={isEmmaOpen}
                 onClose={() => setIsEmmaOpen(false)}

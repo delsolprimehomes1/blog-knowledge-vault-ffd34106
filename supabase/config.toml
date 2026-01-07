@@ -251,3 +251,6 @@ verify_jwt = false
 
 [functions.regenerate-article]
 verify_jwt = false
+
+[functions.emma-chat]
+verify_jwt = false
