@@ -89,6 +89,8 @@ For EACH link, provide:
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${perplexityApiKey}`,
+      'Accept': 'application/json',
+      'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -109,8 +111,10 @@ For EACH link, provide:
   });
 
   if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    const isHtml = contentType.includes('text/html');
     const errorText = await response.text();
-    console.error('Perplexity API error:', response.status, errorText);
+    console.error(`Perplexity API error: ${response.status}, isHtml: ${isHtml}`, errorText.substring(0, 200));
     throw new Error(`Perplexity API error: ${response.status}`);
   }
 
@@ -191,6 +195,8 @@ Return ONLY a JSON array of URLs:
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${perplexityApiKey}`,
+      'Accept': 'application/json',
+      'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -205,6 +211,9 @@ Return ONLY a JSON array of URLs:
   });
 
   if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    const isHtml = contentType.includes('text/html');
+    console.error(`Perplexity API error: ${response.status}, isHtml: ${isHtml}`);
     throw new Error(`Perplexity API error: ${response.status}`);
   }
 

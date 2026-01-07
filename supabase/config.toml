@@ -254,3 +254,6 @@ verify_jwt = false
 
 [functions.emma-chat]
 verify_jwt = false
+
+[functions.perplexity-health]
+verify_jwt = false

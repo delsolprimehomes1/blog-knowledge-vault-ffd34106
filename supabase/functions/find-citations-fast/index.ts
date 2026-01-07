@@ -327,13 +327,24 @@ serve(async (req) => {
 
     const truncatedContent = articleContent.substring(0, 4000);
 
-    // Helper function to make Perplexity API call
+    // Standardized headers for Perplexity API calls
+    const PERPLEXITY_HEADERS = {
+      'Accept': 'application/json',
+      'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
+      'Content-Type': 'application/json',
+    };
+
+    // Track Perplexity errors for UI feedback
+    let perplexityErrorCode: string | null = null;
+    let perplexityErrorMessage: string | null = null;
+
+    // Helper function to make Perplexity API call with standardized headers
     async function callPerplexity(prompt: string): Promise<any[]> {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
+          ...PERPLEXITY_HEADERS,
           'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: 'sonar',
@@ -350,9 +361,30 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[find-citations-fast] Perplexity API error: ${response.status}`, errorText);
-        throw new Error(`Perplexity API error: ${response.status}`);
+        const contentType = response.headers.get('content-type') || '';
+        const responseText = await response.text();
+        const isHtml = contentType.includes('text/html') || responseText.trim().startsWith('<');
+        
+        // Set error codes for UI feedback
+        if (isHtml) {
+          perplexityErrorCode = 'PERPLEXITY_WAF_BLOCK';
+          perplexityErrorMessage = 'Perplexity is blocking requests with a security challenge. Try again in a few minutes.';
+        } else if (response.status === 401) {
+          perplexityErrorCode = 'PERPLEXITY_AUTH_FAILED';
+          perplexityErrorMessage = 'Perplexity rejected the API key. Verify your key and account subscription.';
+        } else if (response.status === 402) {
+          perplexityErrorCode = 'PERPLEXITY_PAYMENT_REQUIRED';
+          perplexityErrorMessage = 'Perplexity requires payment. Add billing to your API account.';
+        } else if (response.status === 429) {
+          perplexityErrorCode = 'PERPLEXITY_RATE_LIMIT';
+          perplexityErrorMessage = 'Rate limit exceeded. Wait a few minutes before trying again.';
+        } else {
+          perplexityErrorCode = 'PERPLEXITY_API_ERROR';
+          perplexityErrorMessage = `Perplexity API error: ${response.status}`;
+        }
+        
+        console.error(`[find-citations-fast] Perplexity API error: ${response.status}, isHtml: ${isHtml}, code: ${perplexityErrorCode}`);
+        throw new Error(perplexityErrorMessage);
       }
 
       const data = await response.json();
@@ -570,7 +602,8 @@ Only return the JSON array.`;
     if (formattedCitations.length === 0) {
       return new Response(JSON.stringify({
         success: false,
-        message: 'No valid citations passed all validation checks',
+        message: perplexityErrorMessage || 'No valid citations passed all validation checks',
+        error_code: perplexityErrorCode,
         citations: [],
         diagnostics
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -584,12 +617,17 @@ Only return the JSON array.`;
 
   } catch (error: any) {
     console.error('[find-citations-fast] Error:', error);
+    
+    // Check if this is a Perplexity-specific error
+    const isPerplexityError = error.message?.includes('Perplexity');
+    
     return new Response(JSON.stringify({
       success: false,
       message: error.message || 'Unknown error',
+      error_code: isPerplexityError ? 'PERPLEXITY_API_ERROR' : 'UNKNOWN_ERROR',
       citations: [],
     }), { 
-      status: 500,
+      status: isPerplexityError ? 200 : 500, // Return 200 for Perplexity errors so UI can show the message
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
   }

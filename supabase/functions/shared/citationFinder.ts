@@ -262,6 +262,8 @@ Return ONLY the JSON, nothing else.`;
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${perplexityApiKey}`,
+        'Accept': 'application/json',
+        'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -282,7 +284,9 @@ Return ONLY the JSON, nothing else.`;
     });
 
     if (!response.ok) {
-      console.warn(`⚠️ Competitor verification API error: ${response.status}`);
+      const contentType = response.headers.get('content-type') || '';
+      const isHtml = contentType.includes('text/html');
+      console.warn(`⚠️ Competitor verification API error: ${response.status}, isHtml: ${isHtml}`);
       return { isCompetitor: false, businessType: 'verification_failed', confidence: 0 };
     }
 
@@ -557,6 +561,8 @@ Return only the JSON array, nothing else.`;
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${perplexityApiKey}`,
+        'Accept': 'application/json',
+        'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -587,8 +593,10 @@ CRITICAL RULES (ZERO TOLERANCE):
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      const isHtml = contentType.includes('text/html');
       const errorText = await response.text();
-      console.error('Perplexity API error:', response.status, errorText);
+      console.error(`Perplexity API error: ${response.status}, isHtml: ${isHtml}`, errorText.substring(0, 200));
       throw new Error(`Perplexity API error: ${response.status}`);
     }
 

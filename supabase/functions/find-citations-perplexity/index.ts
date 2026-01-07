@@ -460,10 +460,13 @@ ANSWER ONLY with JSON in this exact format:
 Return ONLY the JSON, nothing else.`;
 
   try {
+    // Standardized headers for Perplexity API calls
     const response = await fetch(PERPLEXITY_BASE_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Accept': 'application/json',
+        'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -484,7 +487,9 @@ Return ONLY the JSON, nothing else.`;
     });
 
     if (!response.ok) {
-      console.warn(`⚠️ Competitor verification API error: ${response.status}`);
+      const contentType = response.headers.get('content-type') || '';
+      const isHtml = contentType.includes('text/html');
+      console.warn(`⚠️ Competitor verification API error: ${response.status}, isHtml: ${isHtml}`);
       return { isCompetitor: false, businessType: 'verification_failed', confidence: 0 };
     }
 
@@ -725,6 +730,8 @@ If NO suitable source exists, return:
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+          'Accept': 'application/json',
+          'User-Agent': 'LovableCitationBot/1.0 (https://delsolprimehomes.com)',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
