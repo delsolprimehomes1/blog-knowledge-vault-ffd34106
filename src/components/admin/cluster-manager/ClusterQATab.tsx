@@ -326,43 +326,66 @@ export const ClusterQATab = ({
     }
   };
 
-  // Phase 2: Translate all Q&As to a target language (ENHANCEMENT 3: Parallel support)
+  // Phase 2: Translate all Q&As to a target language (with auto-continuation loop)
   const handleTranslateToLanguage = async (targetLanguage: string): Promise<boolean> => {
     setTranslatingLanguages(prev => new Set([...prev, targetLanguage]));
     
     try {
-      const currentCount = cluster.qa_pages[targetLanguage]?.total || 0;
+      const currentCount = languageQACounts[targetLanguage] || 0;
       const message = currentCount > 0 
         ? `Resuming ${targetLanguage.toUpperCase()} translation (${currentCount}/24)...`
         : `Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (2-3 minutes)`;
       toast.info(message);
       
-      const { data, error } = await supabase.functions.invoke('translate-qas-to-language', {
-        body: { 
-          clusterId: cluster.cluster_id,
-          targetLanguage,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        // Use actualCount from response for immediate toast feedback
-        const newCount = data.actualCount ?? 0;
-        const remaining = 24 - newCount;
+      let batchCount = 0;
+      const MAX_BATCHES = 10; // Safety limit (10 batches × 4 = 40 max)
+      
+      while (batchCount < MAX_BATCHES) {
+        batchCount++;
+        console.log(`[TranslateQAs UI] Batch ${batchCount} for ${targetLanguage}...`);
         
-        const msg = remaining > 0
-          ? `${targetLanguage.toUpperCase()}: Now at ${newCount}/24 (${remaining} remaining)`
-          : `${targetLanguage.toUpperCase()}: ✅ Complete! 24/24 Q&As`;
-        toast.success(msg);
-        
-        // Force refetch parent query AND local counts for immediate UI update
-        await fetchQACounts();
-        await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
-        return true;
-      } else {
-        throw new Error(data?.error || 'Unknown error');
+        const { data, error } = await supabase.functions.invoke('translate-qas-to-language', {
+          body: { 
+            clusterId: cluster.cluster_id,
+            targetLanguage,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.success) {
+          const newCount = data.actualCount ?? 0;
+          const remaining = data.remaining ?? (24 - newCount);
+          
+          // Refresh counts after each batch
+          await fetchQACounts();
+          
+          // Check if complete
+          if (remaining <= 0 || !data.partial) {
+            toast.success(`${targetLanguage.toUpperCase()}: ✅ Complete! ${newCount}/24 Q&As`);
+            break;
+          }
+          
+          // Show progress every 2 batches
+          if (batchCount % 2 === 0) {
+            toast.info(`${targetLanguage.toUpperCase()}: ${newCount}/24 (${remaining} remaining)...`);
+          }
+          
+          // Delay between batches to avoid rate limiting
+          await new Promise(r => setTimeout(r, 1000));
+        } else {
+          throw new Error(data?.error || 'Unknown error');
+        }
       }
+      
+      if (batchCount >= MAX_BATCHES) {
+        toast.warning(`${targetLanguage.toUpperCase()}: Batch limit reached. Click Resume again.`);
+      }
+      
+      // Final refresh
+      await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
+      return true;
+      
     } catch (error) {
       console.error('Error translating Q&As:', error);
       toast.error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

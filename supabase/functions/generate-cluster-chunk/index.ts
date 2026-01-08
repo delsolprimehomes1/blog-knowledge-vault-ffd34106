@@ -38,7 +38,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CHUNK_SIZE = 3; // Articles per chunk
+const CHUNK_SIZE = 1; // One article per chunk to prevent timeouts
 const MAX_CHUNK_RUNTIME = 4 * 60 * 1000; // 4 minutes per chunk (safety margin)
 
 // Helper function to extract domain from URL
@@ -260,7 +260,7 @@ REMEMBER: Minimum 1,500 words in detailed_content is MANDATORY.`;
     // Generate content with retry loop for word count enforcement (3 attempts with escalating prompts)
     let contentJson: any = null;
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 2; // Reduced retries to stay within timeout
     let lastWordCount = 0;
     
     while (attempts < maxAttempts) {
@@ -394,28 +394,11 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
     article.qa_entities = contentJson.qa_entities || contentJson.faqs || [];
     article.cluster_theme = clusterTopic || '';
 
-    // 3. FEATURED IMAGE
-    const imagePrompt = `Professional real estate photo: ${plan.headline}. Costa del Sol, Spain. High quality, natural lighting.`;
-    
-    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: imagePrompt,
-        n: 1,
-        size: '1792x1024',
-        quality: 'standard',
-      }),
-    });
-
-    if (imageResponse.ok) {
-      const imageData = await imageResponse.json();
-      article.featured_image_url = imageData.data?.[0]?.url || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9';
-    } else {
-      article.featured_image_url = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9';
-    }
+    // 3. FEATURED IMAGE - Use placeholder to ensure completion within timeout
+    // DALL-E image generation is skipped for reliability (can be regenerated later)
+    article.featured_image_url = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1792&h=1024&fit=crop';
     article.featured_image_alt = `${plan.headline} - Costa del Sol real estate`;
+    console.log(`[Chunk ${jobId}] Using placeholder image (DALL-E skipped for reliability)`);
 
     // 4. AUTHOR & REVIEWER
     const randomAuthor = authors?.[Math.floor(Math.random() * (authors?.length || 1))] || { id: null };

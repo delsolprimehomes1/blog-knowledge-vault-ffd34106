@@ -820,7 +820,7 @@ Return ONLY the JSON object above, nothing else. No markdown, no explanations, n
     // Instead of processing all articles in this function (which times out),
     // we delegate to generate-cluster-chunk which self-chains for reliable processing
     
-    const CHUNK_SIZE = 3;
+    const CHUNK_SIZE = 1; // One article per chunk to prevent timeouts
     const totalChunks = Math.ceil(articleStructures.length / CHUNK_SIZE);
     
     console.log(`\n╔════════════════════════════════════════╗`);
@@ -987,6 +987,7 @@ serve(async (req) => {
           target_audience: targetAudience,
           primary_keyword: primaryKeyword,
           status: 'pending',
+          started_at: new Date().toISOString(), // Track when job started
         })
         .select()
         .single();
