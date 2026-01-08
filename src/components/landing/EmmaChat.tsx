@@ -41,18 +41,18 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     // Emma's avatar image
     const emmaAvatar = 'https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/695df9a00597dfcfb07a11d0.jpeg';
 
-    // Initial greeting - MUST be in page language
+    // Initial greeting - EXACT wording per conversation flow
     const greetings = {
-        en: "Hi! I'm Emma, your personal property consultant for Costa del Sol. I'm here to help you find your perfect home. What brings you here today?",
-        nl: "Hoi! Ik ben Emma, uw persoonlijke vastgoedadviseur voor de Costa del Sol. Ik ben hier om u te helpen uw perfecte huis te vinden. Wat brengt u hier vandaag?",
-        fr: "Bonjour! Je suis Emma, votre conseillère immobilière personnelle pour la Costa del Sol. Je suis là pour vous aider à trouver votre maison parfaite. Qu'est-ce qui vous amène ici aujourd'hui?",
-        de: "Hallo! Ich bin Emma, Ihre persönliche Immobilienberaterin für die Costa del Sol. Ich bin hier, um Ihnen zu helfen, Ihr perfektes Zuhause zu finden. Was führt Sie heute hierher?",
-        pl: "Cześć! Jestem Emma, Twój osobisty doradca nieruchomości na Costa del Sol. Jestem tutaj, aby pomóc Ci znaleźć idealny dom. Co Cię tu dzisiaj sprowadziło?",
-        sv: "Hej! Jag är Emma, din personliga fastighetskonsult för Costa del Sol. Jag är här för att hjälpa dig hitta ditt perfekta hem. Vad för dig hit idag?",
-        da: "Hej! Jeg er Emma, din personlige ejendomskonsulent for Costa del Sol. Jeg er her for at hjælpe dig med at finde dit perfekte hjem. Hvad bringer dig her i dag?",
-        fi: "Hei! Olen Emma, henkilökohtainen kiinteistöneuvojasi Costa del Solille. Olen täällä auttaakseni sinua löytämään täydellisen kodin. Mikä tuo sinut tänne tänään?",
-        hu: "Szia! Emma vagyok, személyes ingatlan tanácsadód a Costa del Solhoz. Azért vagyok itt, hogy segítsek megtalálni tökéletes otthonod. Mi hozott ide ma?",
-        no: "Hei! Jeg er Emma, din personlige eiendomskonsulent for Costa del Sol. Jeg er her for å hjelpe deg med å finne ditt perfekte hjem. Hva bringer deg hit i dag?"
+        en: "Hello, nice to meet you.",
+        nl: "Hallo, leuk je te ontmoeten.",
+        fr: "Bonjour, ravi de vous rencontrer.",
+        de: "Hallo, schön Sie kennenzulernen.",
+        pl: "Cześć, miło Cię poznać.",
+        sv: "Hej, trevligt att träffas.",
+        da: "Hej, dejligt at møde dig.",
+        fi: "Hei, hauska tavata.",
+        hu: "Helló, örülök, hogy találkozunk.",
+        no: "Hei, hyggelig å møte deg."
     };
 
     // "Online now" status text - MUST match page language
