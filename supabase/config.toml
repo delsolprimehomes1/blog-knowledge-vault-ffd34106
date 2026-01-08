@@ -257,3 +257,12 @@ verify_jwt = false
 
 [functions.perplexity-health]
 verify_jwt = false
+
+[functions.backfill-qa-canonicals]
+verify_jwt = false
+
+[functions.fix-aeo-compliance]
+verify_jwt = false
+
+[functions.fix-cluster-canonicals]
+verify_jwt = false
