@@ -680,10 +680,21 @@ const ClusterManager = () => {
         // Check current status before invoking
         const currentStatus = await pollJobStatus(clusterId);
         
-        // If completed, we're done
+        // If completed, verify actual article count before trusting status
         if (currentStatus.status === "completed") {
-          console.log(`[Translation] Already completed!`);
-          return { status: "completed", totalArticles: currentStatus.progress?.generated_articles || 60 };
+          const { count } = await supabase
+            .from('blog_articles')
+            .select('*', { count: 'exact', head: true })
+            .eq('cluster_id', clusterId);
+          
+          // If we have 60 articles (6 × 10 languages), truly complete
+          if (count && count >= 60) {
+            console.log(`[Translation] Verified complete with ${count} articles`);
+            return { status: "completed", totalArticles: count };
+          }
+          
+          // Otherwise, status is stale - continue translation
+          console.log(`[Translation] Status says complete but only ${count} articles. Continuing...`);
         }
         
         // If generating and recently updated, wait and poll instead of invoking
