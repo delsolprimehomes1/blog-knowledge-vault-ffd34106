@@ -580,11 +580,13 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
       const { error: updateError } = await supabase
         .from('cluster_generations')
         .update({ 
-          status: 'completed',
+          status: 'partial',  // Changed from 'completed' - translations still needed
           progress: {
             saved_articles: finalCount,
             timeout_stopped: false,
-            message: 'Cluster complete (recovered via Generate Missing)'
+            message: 'Source articles complete. Ready for translation.',
+            source_complete: true,
+            needs_translation: true
           }
         })
         .eq('id', clusterId);
@@ -592,7 +594,7 @@ TOTAL MINIMUM: 1,800 words. Do NOT submit under 1,500.`;
       if (updateError) {
         console.error(`[Missing] Failed to update cluster status:`, updateError);
       } else {
-        console.log(`[Missing] ✅ Updated cluster status to 'completed'`);
+        console.log(`[Missing] ✅ Updated cluster status to 'partial' (ready for translation)`);
       }
     }
 
