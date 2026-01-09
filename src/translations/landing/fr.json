@@ -2,7 +2,16 @@
   "hero": {
     "headline": "DÉCOUVREZ LA VIE DE LUXE SUR LA COSTA DEL SOL",
     "subheadline": "Vivez une approche personnalisée et sans stress pour trouver la maison de vos rêves dans le sud de l'Espagne.",
-    "cta": "Obtenez votre sélection de propriétés privée et sans pression"
+    "cta": "Obtenez votre sélection de propriétés privée et sans pression",
+    "unmutePrompt": {
+      "title": "Click to Unmute",
+      "subtitle": "Experience with sound"
+    },
+    "badge": "Costa del Sol's Premier Real Estate",
+    "trustIndicators": {
+      "experience": "15+ Years Experience",
+      "propertiesSold": "€500M+ Properties Sold"
+    }
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",

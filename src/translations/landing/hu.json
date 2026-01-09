@@ -2,7 +2,16 @@
   "hero": {
     "headline": "FEDEZZE FEL A LUXUS ÉLETSTÍLUST A COSTA DEL SOLON",
     "subheadline": "Tapasztalja meg a személyre szabott és stresszmentes megközelítést álmai otthonának megtalálásához Dél-Spanyolországban.",
-    "cta": "Get your private, pressure-free property shortlist"
+    "cta": "Get your private, pressure-free property shortlist",
+    "unmutePrompt": {
+      "title": "Click to Unmute",
+      "subtitle": "Experience with sound"
+    },
+    "badge": "Costa del Sol's Premier Real Estate",
+    "trustIndicators": {
+      "experience": "15+ Years Experience",
+      "propertiesSold": "€500M+ Properties Sold"
+    }
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",

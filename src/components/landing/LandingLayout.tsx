@@ -110,6 +110,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             {/* Main Content Sections */}
             <main>
                 <Hero
+                    language={language}
                     onStartChat={() => setIsEmmaOpen(true)}
                     translations={translations}
                 />

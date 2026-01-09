@@ -2,7 +2,16 @@
   "hero": {
     "headline": "UPPTÄCK LYXBOENDE PÅ COSTA DEL SOL",
     "subheadline": "Upplev ett personligt och stressfritt sätt att hitta ditt drömhem i södra Spanien.",
-    "cta": "Get your private, pressure-free property shortlist"
+    "cta": "Get your private, pressure-free property shortlist",
+    "unmutePrompt": {
+      "title": "Click to Unmute",
+      "subtitle": "Experience with sound"
+    },
+    "badge": "Costa del Sol's Premier Real Estate",
+    "trustIndicators": {
+      "experience": "15+ Years Experience",
+      "propertiesSold": "€500M+ Properties Sold"
+    }
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",

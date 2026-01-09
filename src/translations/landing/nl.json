@@ -2,7 +2,16 @@
   "hero": {
     "headline": "ONTDEK LUXE WONEN AAN DE COSTA DEL SOL",
     "subheadline": "Ervaar een persoonlijke en stressvrije aanpak bij het vinden van uw droomhuis in Zuid-Spanje.",
-    "cta": "Ontvang uw persoonlijke woningselectie zonder druk"
+    "cta": "Ontvang uw persoonlijke woningselectie zonder druk",
+    "unmutePrompt": {
+      "title": "Click to Unmute",
+      "subtitle": "Experience with sound"
+    },
+    "badge": "Costa del Sol's Premier Real Estate",
+    "trustIndicators": {
+      "experience": "15+ Years Experience",
+      "propertiesSold": "€500M+ Properties Sold"
+    }
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",
