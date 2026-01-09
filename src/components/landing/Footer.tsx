@@ -9,31 +9,25 @@ const Footer: React.FC<FooterProps> = ({ content }) => {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-gray-50 border-t border-gray-100 py-8">
+        <footer className="bg-gray-50 border-t border-gray-100 py-3">
             <div className="container mx-auto px-4">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
 
                     {/* Logo */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-lg font-serif font-bold text-landing-gold tracking-widest">
-                            DELSOLPRIMEHOMES
-                        </span>
-                    </div>
+                    <span className="text-sm font-serif font-bold text-landing-gold tracking-widest">
+                        DELSOLPRIMEHOMES
+                    </span>
 
                     {/* Copyright & Links */}
-                    <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm text-landing-text-secondary">
+                    <div className="flex flex-row items-center gap-3 md:gap-6 text-xs text-landing-text-secondary">
                         <span>© {currentYear} DelSolPrimeHomes</span>
-                        <a href="/privacy" className="hover:text-landing-navy transition-colors">{content?.privacy || "Privacy Policy"}</a>
-                        <a href="/terms" className="hover:text-landing-navy transition-colors">{content?.terms || "Terms of Service"}</a>
+                        <a href="/privacy" className="hover:text-landing-navy transition-colors">{content?.privacy || "Privacy"}</a>
+                        <a href="/terms" className="hover:text-landing-navy transition-colors">{content?.terms || "Terms"}</a>
                     </div>
 
                     {/* Language Selector */}
-                    <div className="flex items-center">
-                        {/* Assuming LanguageSelector handles its own minimal state now or we pass currentLang from context if needed */}
-                        {/* For now we just place it here. Using a simplified version ideally. */}
-                        <div className="scale-90 origin-right">
-                            <LanguageSelector currentLang={window.location.pathname.split('/')[1] as any || 'en'} />
-                        </div>
+                    <div className="scale-75 origin-right">
+                        <LanguageSelector currentLang={window.location.pathname.split('/')[1] as any || 'en'} />
                     </div>
 
                 </div>
