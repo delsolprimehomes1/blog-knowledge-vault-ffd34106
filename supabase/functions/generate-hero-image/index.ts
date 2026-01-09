@@ -29,17 +29,18 @@ serve(async (req) => {
 
     fal.config({ credentials: falKey.trim() });
 
-    // Bright daytime prompt - no sunset to avoid dark images
-    const prompt = `A photorealistic, high-end lifestyle photograph of an attractive, successful couple in their late 50s relaxing in the backyard of their luxury modern Mediterranean villa in Costa del Sol. They are standing by the edge of a sleek infinity pool in BRIGHT AFTERNOON SUNLIGHT with clear blue skies. The scene is flooded with natural daylight - crisp, clear, and vibrant. They are holding crystal champagne flutes and making a toast, looking happy and relaxed. The foreground features high-end beige outdoor lounge furniture and manicured potted olive trees. The background offers a breathtaking panoramic view of the sparkling turquoise Mediterranean Sea and rolling green mountains under bright blue skies. The atmosphere is serene, celebratory, and affluent. Shot in the style of Architectural Digest or Vogue Living, 8k resolution, bright natural daylight, crisp clear lighting, wide establishing shot, cinematic depth of field.
+    // Desktop prompt - couple on RIGHT side
+    const desktopPrompt = `A photorealistic, high-end lifestyle photograph of an attractive couple in their late 50s relaxing at a luxury modern Mediterranean villa in Costa del Sol. The couple is positioned on the RIGHT SIDE of the frame, sitting intimately together on a plush beige outdoor lounge sofa. They are holding champagne glasses and leaning into each other warmly. A champagne bottle in an ice bucket sits nearby with fruit. The villa features modern architecture with natural stone walls and large glass doors. The foreground has potted olive trees and Mediterranean plants. An infinity pool with sleek glass railing is visible, with a breathtaking panoramic view of the Mediterranean Sea and rolling hills in the background. WARM GOLDEN HOUR lighting - soft, luminous, and well-exposed with a gradient sky from soft peach to pale blue. Beige, cream, and taupe color palette. Shot in the style of Architectural Digest, 8k resolution, wide establishing shot, cinematic depth of field. IMPORTANT: Keep the LEFT side of the image clear of people - show villa architecture and landscaping there. Couple must be on the RIGHT third of the frame.`;
 
-IMPORTANT: This is a DAYTIME scene with bright, clear sunlight - NOT sunset or golden hour. Keep the image bright, vibrant, and well-exposed. Use a WIDE establishing shot showing the full villa setting - do not zoom in too close. Center the couple prominently in the middle third of the frame.`;
+    // Mobile prompt - couple CENTERED
+    const mobilePrompt = `A photorealistic, high-end lifestyle photograph of an attractive couple in their late 50s relaxing at a luxury modern Mediterranean villa in Costa del Sol. The couple is positioned in the CENTER of the frame, sitting intimately together on a plush beige outdoor lounge sofa. They are holding champagne glasses and leaning into each other warmly. A champagne bottle in an ice bucket sits nearby with fruit. The villa features modern architecture with natural stone walls. Potted olive trees frame the scene. An infinity pool with glass railing is visible, with Mediterranean Sea views in the background. WARM GOLDEN HOUR lighting - soft, luminous, and well-exposed. Beige, cream, and taupe color palette. Shot in the style of Architectural Digest, 8k resolution, portrait-friendly composition, cinematic depth of field. IMPORTANT: Couple must be CENTERED in the frame for portrait crop.`;
 
-    console.log('Generating brighter hero images for desktop and mobile...');
+    console.log('Generating hero images with couple positioning...');
     
-    // Generate desktop landscape images (16:9)
+    // Generate desktop landscape images (16:9) - couple on RIGHT
     const desktopResult = await fal.subscribe("fal-ai/flux/dev", {
       input: {
-        prompt: prompt,
+        prompt: desktopPrompt,
         image_size: "landscape_16_9",
         num_inference_steps: 35,
         num_images: 3,
@@ -48,10 +49,10 @@ IMPORTANT: This is a DAYTIME scene with bright, clear sunlight - NOT sunset or g
       logs: true,
     }) as FalResult;
 
-    // Generate mobile portrait images (4:3)
+    // Generate mobile portrait images (4:3) - couple CENTERED
     const mobileResult = await fal.subscribe("fal-ai/flux/dev", {
       input: {
-        prompt: prompt,
+        prompt: mobilePrompt,
         image_size: "portrait_4_3",
         num_inference_steps: 35,
         num_images: 3,
@@ -67,7 +68,8 @@ IMPORTANT: This is a DAYTIME scene with bright, clear sunlight - NOT sunset or g
       JSON.stringify({ 
         desktop: desktopResult.images,
         mobile: mobileResult.images,
-        prompt: prompt 
+        desktopPrompt: desktopPrompt,
+        mobilePrompt: mobilePrompt
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
