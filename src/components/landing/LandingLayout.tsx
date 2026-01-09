@@ -152,10 +152,11 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                 )}
             </Helmet>
 
-            {/* Fixed Minimal Header */}
+            {/* Fixed Minimal Header - Mobile Optimized */}
             <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-md shadow-sm transition-all duration-300 border-b border-gray-100">
-                <div className="container mx-auto px-4 h-20 flex justify-between items-center">
-            {/* Left: Apartments & Penthouses (Desktop Only) */}
+                <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 lg:h-20 flex justify-between items-center">
+                    
+                    {/* Left: Apartments & Penthouses (Desktop Only) */}
                     <nav className="hidden lg:flex items-center gap-4 text-landing-navy text-sm font-medium tracking-wide">
                         <button 
                             onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} 
@@ -172,21 +173,28 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                         </button>
                     </nav>
 
-                    {/* Left: Mobile Placeholder */}
-                    <div className="lg:hidden" />
-
-                    {/* Center: Logo */}
-                    <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    {/* Left: Logo on Mobile */}
+                    <div className="lg:hidden">
                         <span
-                            className="text-landing-gold font-serif text-xl md:text-2xl font-bold tracking-[0.15em] whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
+                            className="text-landing-gold font-serif text-sm sm:text-base font-bold tracking-[0.08em] sm:tracking-[0.1em] whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
                             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                         >
                             DELSOLPRIMEHOMES
                         </span>
                     </div>
 
-                    {/* Right: Townhouses, Villas + Language + CTA */}
-                    <div className="flex items-center gap-4 md:gap-6">
+                    {/* Center: Logo (Desktop Only - Absolute Centered) */}
+                    <div className="hidden lg:block absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <span
+                            className="text-landing-gold font-serif text-2xl font-bold tracking-[0.15em] whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        >
+                            DELSOLPRIMEHOMES
+                        </span>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
                         {/* Property Links (Desktop Only) */}
                         <nav className="hidden lg:flex items-center gap-4 text-landing-navy text-sm font-medium tracking-wide">
                             <button 
@@ -204,14 +212,18 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                             </button>
                         </nav>
                         
-                        <div className="hidden md:block">
+                        {/* Language Selector - Visible on all sizes */}
+                        <div className="scale-90 sm:scale-100">
                             <LanguageSelector currentLang={language} />
                         </div>
+                        
+                        {/* CTA Button - Responsive sizing */}
                         <button
                             onClick={() => setIsEmmaOpen(true)}
-                            className="bg-landing-gold hover:bg-landing-goldDark text-white px-4 md:px-6 py-2.5 rounded-sm text-sm font-bold tracking-wide shadow-md transition-all hover:-translate-y-0.5"
+                            className="bg-landing-gold hover:bg-landing-goldDark text-white px-3 py-1.5 sm:px-4 sm:py-2 lg:px-6 lg:py-2.5 rounded-sm text-xs sm:text-sm font-bold tracking-wide shadow-md transition-all hover:-translate-y-0.5"
                         >
-                            {t.header?.cta || "Speak with Emma"}
+                            <span className="hidden sm:inline">{t.header?.cta || "Speak with Emma"}</span>
+                            <span className="sm:hidden">Emma</span>
                         </button>
                     </div>
                 </div>
