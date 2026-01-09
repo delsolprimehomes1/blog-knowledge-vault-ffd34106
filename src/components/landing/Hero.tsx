@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+import heroImage from '@/assets/hero-landing-costa-del-sol.jpg';
 
 interface HeroProps {
     onStartChat: () => void;
@@ -34,7 +35,7 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, translations }) => {
             <div
                 className="absolute inset-0 bg-cover animate-ken-burns"
                 style={{
-                    backgroundImage: "url('https://storage.googleapis.com/msgsndr/TLhrYb7SRrWrly615tCI/media/69614adb5edd53f331f3d6b7.png')",
+                    backgroundImage: `url(${heroImage})`,
                     backgroundPosition: "center 30%"
                 }}
             />
