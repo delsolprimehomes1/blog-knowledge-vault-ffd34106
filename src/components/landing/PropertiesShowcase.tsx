@@ -141,8 +141,15 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                     ))}
                 </div>
 
-                <div className="mt-5 sm:mt-6 lg:mt-8 text-center sm:text-left">
-                    <button className="text-landing-navy font-semibold text-xs sm:text-sm hover:text-landing-gold transition-colors inline-flex items-center gap-1 group/btn mx-auto sm:mx-0">
+                <div className="mt-5 sm:mt-6 lg:mt-8 text-center">
+                    <button 
+                        onClick={() => {
+                            window.dispatchEvent(new CustomEvent('openLeadForm', { 
+                                detail: { interest: sectionType === 'apartments' ? 'Apartments & Penthouses' : 'Townhouses & Villas' } 
+                            }));
+                        }}
+                        className="text-landing-navy font-semibold text-xs sm:text-sm hover:text-landing-gold transition-colors inline-flex items-center gap-1 group/btn"
+                    >
                         {sectionT.cta || `View ${title}`}
                         <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform sm:w-4 sm:h-4" />
                     </button>
