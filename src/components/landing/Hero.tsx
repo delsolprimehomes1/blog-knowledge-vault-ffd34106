@@ -41,7 +41,7 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, translations }) => {
             />
             {/* Background Image - Mobile */}
             <div
-                className="absolute inset-0 bg-cover bg-center animate-ken-burns md:hidden"
+                className="absolute inset-0 bg-cover bg-top animate-ken-burns md:hidden"
                 style={{
                     backgroundImage: `url(${heroImageMobile})`
                 }}
