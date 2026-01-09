@@ -6,7 +6,7 @@ import EmmaChat from './EmmaChat';
 import ValueProposition from './ValueProposition';
 import ProcessSteps from './ProcessSteps';
 import PropertiesShowcase from './PropertiesShowcase';
-import ExplainerVideo from './ExplainerVideo';
+
 import TestimonialsGrid from './TestimonialsGrid';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
@@ -123,7 +123,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
 
                 <PropertiesShowcase />
 
-                <ExplainerVideo language={language} />
+                
 
                 <TestimonialsGrid content={testimonialsT} />
 
