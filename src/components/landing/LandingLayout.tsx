@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import Hero from './Hero';
+import AutoplayVideo from './AutoplayVideo';
 import EmmaChat from './EmmaChat';
 import ValueProposition from './ValueProposition';
 import ProcessSteps from './ProcessSteps';
@@ -110,10 +111,11 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             {/* Main Content Sections */}
             <main>
                 <Hero
-                    language={language}
                     onStartChat={() => setIsEmmaOpen(true)}
                     translations={translations}
                 />
+
+                <AutoplayVideo language={language} />
 
                 <ValueProposition content={valuePropT} />
 

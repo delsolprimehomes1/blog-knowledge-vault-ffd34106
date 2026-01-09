@@ -86,6 +86,12 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      scale: {
+        '103': '1.03',
+      },
+      backdropBlur: {
+        'xl': '24px',
+      },
       keyframes: {
         "accordion-down": {
           from: {
@@ -110,6 +116,10 @@ export default {
         pulseSubtle: {
           '0%, 100%': { transform: 'scale(1)', opacity: '1' },
           '50%': { transform: 'scale(1.02)', opacity: '0.95' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
         },
         "fade-in": {
           "0%": { opacity: "0" },
@@ -262,12 +272,12 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fadeIn 0.5s ease-in-out",
         "pulse-subtle": "pulseSubtle 2s ease-in-out infinite",
+        "float": "float 2s ease-in-out infinite",
         "fade-in-up": "fade-in-up 0.6s ease-out forwards",
         "fade-in-left": "fade-in-left 0.6s ease-out forwards",
         "scale-in": "scale-in 0.4s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "slide-in-up": "slide-in-up 0.4s ease-out",
-        float: 'float 6s ease-in-out infinite',
         'float-delayed': 'float-delayed 6s ease-in-out 3s infinite',
         shimmer: 'shimmer 2s linear infinite',
         "fade-in-down": "fade-in-down 0.6s ease-out",
