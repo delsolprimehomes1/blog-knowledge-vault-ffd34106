@@ -28,8 +28,6 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
     const [apartments, setApartments] = useState<Property[]>([]);
     const [villas, setVillas] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
-    const { elementRef: headerRef, isVisible: headerVisible } = useScrollAnimation({ threshold: 0.1 });
-
     const t = translations?.fallback || {};
 
     useEffect(() => {
@@ -158,13 +156,8 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
     return (
         <section id="properties-section" className="py-12 sm:py-16 lg:py-20 bg-gray-50/50">
             <div className="container mx-auto px-4 sm:px-6">
-                {/* Headline with scroll animation */}
-                <div 
-                    ref={headerRef as React.RefObject<HTMLDivElement>}
-                    className={`text-center mb-8 sm:mb-12 lg:mb-16 transition-all duration-700 ease-out ${
-                        headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    }`}
-                >
+                {/* Headline - always visible */}
+                <div className="text-center mb-8 sm:mb-12 lg:mb-16">
                     <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-sans text-landing-text-secondary font-normal px-2">
                         {t.headline || "Prefer to explore first? You can browse a small curated selection below."}
                     </h2>
