@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { VolumeX, Check } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Check } from 'lucide-react';
+import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
 interface AutoplayVideoProps {
     language: string;
     translations?: any;
 }
 
-// Language-specific video URLs
 const VIDEO_URLS: Record<string, string> = {
     en: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/695ecf9f49ed6234a3447f3c.mp4',
     nl: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/695ecf9f49ed6234cc447f3d.mp4',
@@ -22,25 +22,22 @@ const VIDEO_URLS: Record<string, string> = {
 
 const AutoplayVideo: React.FC<AutoplayVideoProps> = ({ language, translations }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const { elementRef, isVisible } = useScrollAnimation({ threshold: 0.1 });
     const t = translations?.video || {};
 
-    // Safe defaults for bullets
     const bullets = t.bullets || [
         "Emma answers questions first",
         "Human experts review everything",
         "You decide if and how to continue"
     ];
 
-    // Video URL
     const videoUrl = VIDEO_URLS[language] || VIDEO_URLS.en;
 
-    // Listen for play event from Hero
     useEffect(() => {
         const handlePlayVideo = () => {
             if (videoRef.current) {
                 videoRef.current.currentTime = 0;
-                videoRef.current.muted = false; // Ensure sound is on
-                // Promise handling for play
+                videoRef.current.muted = false;
                 const playPromise = videoRef.current.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => {
@@ -55,24 +52,31 @@ const AutoplayVideo: React.FC<AutoplayVideoProps> = ({ language, translations })
     }, []);
 
     return (
-        <section id="video-section" className="py-20 md:py-32 bg-white">
-            <div className="container mx-auto px-4">
-                {/* Soft Line Header */}
-                <div className="text-center mb-12 max-w-3xl mx-auto">
-                    <h2 className="text-2xl md:text-4xl font-serif text-landing-navy leading-tight">
+        <section id="video-section" className="py-12 sm:py-16 md:py-24 lg:py-32 bg-white">
+            <div className="container mx-auto px-4 sm:px-6">
+                {/* Header with scroll animation */}
+                <div 
+                    ref={elementRef as React.RefObject<HTMLDivElement>}
+                    className={`text-center mb-8 sm:mb-12 max-w-3xl mx-auto transition-all duration-700 ease-out ${
+                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                    }`}
+                >
+                    <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif text-landing-navy leading-tight px-2">
                         {t.softLine || "In one minute, you'll understand how we guide decisions — calmly and independently."}
                     </h2>
                 </div>
 
                 {/* Video Container */}
-                <div className="max-w-5xl mx-auto mb-12">
-                    <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gray-100 aspect-video">
+                <div className={`max-w-5xl mx-auto mb-8 sm:mb-12 transition-all duration-700 delay-100 ease-out ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                }`}>
+                    <div className="relative rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl bg-gray-100 aspect-video">
                         <video
                             ref={videoRef}
                             playsInline
-                            controls // Enable controls so user can manage playback
+                            controls
                             className="w-full h-full object-cover"
-                            poster="https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1600&q=80" // Generic poster if needed
+                            poster="https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1600&q=80"
                         >
                             <source src={videoUrl} type="video/mp4" />
                             Your browser does not support the video tag.
@@ -80,20 +84,22 @@ const AutoplayVideo: React.FC<AutoplayVideoProps> = ({ language, translations })
                     </div>
                 </div>
 
-                {/* Micro-bullets and Reassurance */}
-                <div className="flex flex-col items-center">
-                    <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-8">
+                {/* Bullets - Stack on mobile */}
+                <div className={`flex flex-col items-center transition-all duration-700 delay-200 ease-out ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                }`}>
+                    <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:gap-8 lg:gap-12 mb-6 sm:mb-8">
                         {bullets.map((bullet: string, idx: number) => (
-                            <div key={idx} className="flex items-center gap-3 text-landing-navy/80 text-lg">
-                                <div className="w-6 h-6 rounded-full bg-landing-gold/20 flex items-center justify-center shrink-0">
-                                    <Check size={14} className="text-landing-gold" strokeWidth={3} />
+                            <div key={idx} className="flex items-center gap-2 sm:gap-3 text-landing-navy/80 text-sm sm:text-base lg:text-lg">
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-landing-gold/20 flex items-center justify-center shrink-0">
+                                    <Check size={12} className="text-landing-gold sm:w-[14px] sm:h-[14px]" strokeWidth={3} />
                                 </div>
                                 <span>{bullet}</span>
                             </div>
                         ))}
                     </div>
 
-                    <p className="text-landing-navy/60 italic text-sm">
+                    <p className="text-landing-navy/60 italic text-xs sm:text-sm text-center px-4">
                         {t.reassurance || "You remain in control at every step."}
                     </p>
                 </div>
