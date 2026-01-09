@@ -106,16 +106,24 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                         </p>
                     )}
 
-                    <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                            <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.beds_min}</span>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                                <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.beds_min}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Bath size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.baths}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Square size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.size_sqm}m²</span>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Bath size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.baths}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Square size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.size_sqm}m²</span>
-                        </div>
+                        
+                        {/* CTA Button */}
+                        <span className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-landing-gold text-white text-[10px] sm:text-xs font-semibold rounded-md hover:bg-landing-gold/90 transition-colors">
+                            <span>View</span>
+                            <ArrowRight size={10} className="sm:w-3 sm:h-3" />
+                        </span>
                     </div>
                 </div>
             </div>
