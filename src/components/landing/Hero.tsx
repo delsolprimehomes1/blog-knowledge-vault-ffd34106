@@ -1,7 +1,8 @@
 import React from 'react';
 import { Play } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
-import heroImage from '@/assets/hero-landing-costa-del-sol.jpg';
+import heroImageDesktop from '@/assets/hero-landing-desktop.jpg';
+import heroImageMobile from '@/assets/hero-landing-mobile.jpg';
 
 interface HeroProps {
     onStartChat: () => void;
@@ -31,12 +32,18 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, translations }) => {
 
     return (
         <section className="relative min-h-[100svh] pt-14 sm:pt-16 lg:pt-20 flex items-center justify-center overflow-hidden">
-            {/* Background Image */}
+            {/* Background Image - Desktop */}
             <div
-                className="absolute inset-0 bg-cover animate-ken-burns"
+                className="absolute inset-0 bg-cover bg-center animate-ken-burns hidden md:block"
                 style={{
-                    backgroundImage: `url(${heroImage})`,
-                    backgroundPosition: "center 30%"
+                    backgroundImage: `url(${heroImageDesktop})`
+                }}
+            />
+            {/* Background Image - Mobile */}
+            <div
+                className="absolute inset-0 bg-cover bg-center animate-ken-burns md:hidden"
+                style={{
+                    backgroundImage: `url(${heroImageMobile})`
                 }}
             />
 
