@@ -1,109 +1,57 @@
 {
   "hero": {
-    "headline": "Discover Your Costa del Sol Investment",
-    "subheadline": "Curated luxury properties for discerning international investors",
-    "cta": "Begin Your Private Property Search",
-    "unmutePrompt": {
-      "title": "Click to Unmute",
-      "subtitle": "Experience with sound"
-    },
-    "badge": "Costa del Sol's Premier Real Estate",
-    "trustIndicators": {
-      "experience": "15+ Years Experience",
-      "propertiesSold": "€500M+ Properties Sold"
-    }
-  },
-  "valueProp": {
-    "headline": "A Guided, Pressure-Free Approach",
-    "pillars": [
-      {
-        "title": "Curated Selection",
-        "description": "Hand-picked properties matching your specific criteria and investment goals."
-      },
-      {
-        "title": "Market Expertise",
-        "description": "15+ years of specialized knowledge in Costa del Sol's luxury real estate market."
-      },
-      {
-        "title": "Discretion Assured",
-        "description": "Confidential, professional consultations with zero pressure tactics."
-      }
-    ]
-  },
-  "process": {
-    "headline": "Your Journey to Costa del Sol Ownership",
-    "steps": [
-      {
-        "title": "Discovery Call",
-        "description": "Share your investment goals and preferences with Emma, our dedicated specialist."
-      },
-      {
-        "title": "Curated Shortlist",
-        "description": "Receive a personalized selection of properties within 24 hours."
-      },
-      {
-        "title": "Exclusive Viewings",
-        "description": "Schedule private, accompanied tours of the properties that match your vision."
-      }
-    ]
-  },
-  "properties": {
-    "featured": "Featured Properties",
-    "apartmentsTitle": "Apartments & Penthouses",
-    "villasTitle": "Townhouses & Villas",
-    "viewDetails": "View Details",
-    "beds": "Beds",
-    "baths": "Baths",
-    "sqm": "m²",
-    "location": "Location"
+    "headline": "Get clarity first — before you look at property.",
+    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
+    "primaryCTA": "Watch the 60-second introduction",
+    "primaryCTAIcon": "play",
+    "microcopy": "No pressure · No obligation",
+    "secondaryCTA": "Or start with clear answers"
   },
   "video": {
-    "headline": "See How We Work",
-    "cta": "Ready to Start?"
+    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "bullets": [
+      "Emma answers questions first",
+      "Human experts review everything",
+      "You decide if and how to continue"
+    ],
+    "reassurance": "You remain in control at every step."
   },
-  "testimonials": {
-    "headline": "Trusted by International Investors",
-    "reviews": [
-      {
-        "quote": "Emma really understood our needs and offered us clear choices without any pressure.",
-        "author": "Peter & Anne",
-        "country": "Netherlands"
-      },
-      {
-        "quote": "The process was smooth, professional, and completely tailored to our schedule.",
-        "author": "Lars & Ingrid",
-        "country": "Sweden"
-      },
-      {
-        "quote": "Highly recommended for anyone wanting a discreet, guided property search.",
-        "author": "Thomas & Marie",
-        "country": "France"
+  "emma": {
+    "statement": "Start with clarity, not listings.",
+    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
+    "cta": "Get clarity with Emma",
+    "microcopy": "Private · Pressure-free"
+  },
+  "fallback": {
+    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "apartments": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View apartments & penthouses"
+    },
+    "villas": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View townhouses & villas"
+    }
+  },
+  "classicOptin": {
+    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "fields": {
+      "fullName": "Full Name",
+      "phone": "WhatsApp / SMS Number",
+      "interest": "I'm interested in",
+      "interestOptions": {
+        "apartments": "Apartments & Penthouses",
+        "villas": "Townhouses & Villas",
+        "both": "Both"
       }
-    ]
-  },
-  "finalCTA": {
-    "headline": "Begin Your Property Search Today",
-    "subtext": "Speak with Emma to receive your curated selection",
-    "button": "Start Conversation"
+    },
+    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
+    "button": "Send me the details",
+    "success": "Thank you! You'll receive details within 24 hours."
   },
   "footer": {
     "privacy": "Privacy Policy",
     "terms": "Terms of Service"
-  },
-  "form": {
-    "title": "Fill out the form to receive more information",
-    "fields": {
-      "fullName": "Full Name",
-      "phone": "Your Phone Number",
-      "comment": "Comment (optional)"
-    },
-    "consent": "I agree to receive relevant information and follow-up messages from DelSolPrimeHomes via WhatsApp and/or SMS.",
-    "submit": "Request WhatsApp / SMS Info",
-    "recaptcha": "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.",
-    "success": "Thank you! We'll contact you within 24 hours.",
-    "error": "Something went wrong. Please try again.",
-    "contactField": "WhatsApp / SMS number",
-    "contactFieldAlt": "Where can we message you? (WhatsApp/SMS)"
   },
   "header": {
     "apartments": "Apartments & Penthouses",

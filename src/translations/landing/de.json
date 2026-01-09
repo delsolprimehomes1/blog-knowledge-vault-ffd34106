@@ -1,128 +1,61 @@
 {
   "hero": {
-    "headline": "ENTDECKEN SIE LUXUSLEBEN AN DER COSTA DEL SOL",
-    "subheadline": "Erleben Sie einen persönlichen und stressfreien Ansatz, um Ihr Traumhaus in Südspanien zu finden.",
-    "cta": "Get your private, pressure-free property shortlist",
-    "unmutePrompt": {
-      "title": "Click to Unmute",
-      "subtitle": "Experience with sound"
-    },
-    "badge": "Costa del Sol's Premier Real Estate",
-    "trustIndicators": {
-      "experience": "15+ Years Experience",
-      "propertiesSold": "€500M+ Properties Sold"
-    }
-  },
-  "valueProp": {
-    "headline": "A Guided, Pressure-Free Approach",
-    "pillars": [
-      {
-        "title": "Curated Selection",
-        "description": "Hand-picked properties matching your specific criteria and investment goals."
-      },
-      {
-        "title": "Market Expertise",
-        "description": "15+ years of specialized knowledge in Costa del Sol's luxury real estate market."
-      },
-      {
-        "title": "Discretion Assured",
-        "description": "Confidential, professional consultations with zero pressure tactics."
-      }
-    ]
-  },
-  "process": {
-    "headline": "Your Journey to Costa del Sol Ownership",
-    "steps": [
-      {
-        "title": "Discovery Call",
-        "description": "Share your investment goals and preferences with Emma, our dedicated specialist."
-      },
-      {
-        "title": "Curated Shortlist",
-        "description": "Receive a personalized selection of properties within 24 hours."
-      },
-      {
-        "title": "Exclusive Viewings",
-        "description": "Schedule private, accompanied tours of the properties that match your vision."
-      }
-    ]
-  },
-  "properties": {
-    "featured": "Featured Properties",
-    "apartmentsTitle": "Apartments & Penthouses",
-    "villasTitle": "Stadthäuser & Villen",
-    "viewDetails": "View Details",
-    "beds": "Beds",
-    "baths": "Baths",
-    "sqm": "m²",
-    "location": "Location"
+    "headline": "Get clarity first — before you look at property.",
+    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
+    "primaryCTA": "Watch the 60-second introduction",
+    "primaryCTAIcon": "play",
+    "microcopy": "No pressure · No obligation",
+    "secondaryCTA": "Or start with clear answers"
   },
   "video": {
-    "headline": "See How We Work",
-    "cta": "Ready to Start?"
+    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "bullets": [
+      "Emma answers questions first",
+      "Human experts review everything",
+      "You decide if and how to continue"
+    ],
+    "reassurance": "You remain in control at every step."
   },
-  "testimonials": {
-    "headline": "A calm, pressure-free experience — according to our clients",
-    "reviews": [
-      {
-        "quote": "Emma hat unsere Bedürfnisse wirklich verstanden und uns klare Optionen geboten.",
-        "author": "— Peter & Anne, Niederlande",
-        "country": ""
-      },
-      {
-        "quote": "Der Prozess verlief reibungslos und wir fühlten uns nie unter Druck gesetzt.",
-        "author": "— Lars & Ingrid, Schweden",
-        "country": ""
-      },
-      {
-        "quote": "Sehr empfehlenswert für alle, die eine geführte Immobiliensuche wünschen.",
-        "author": "— Thomas & Marie, Frankreich",
-        "country": ""
+  "emma": {
+    "statement": "Start with clarity, not listings.",
+    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
+    "cta": "Get clarity with Emma",
+    "microcopy": "Private · Pressure-free"
+  },
+  "fallback": {
+    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "apartments": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View apartments & penthouses"
+    },
+    "villas": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View townhouses & villas"
+    }
+  },
+  "classicOptin": {
+    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "fields": {
+      "fullName": "Full Name",
+      "phone": "WhatsApp / SMS Number",
+      "interest": "I'm interested in",
+      "interestOptions": {
+        "apartments": "Apartments & Penthouses",
+        "villas": "Townhouses & Villas",
+        "both": "Both"
       }
-    ]
-  },
-  "finalCTA": {
-    "headline": "Begin Your Property Search Today",
-    "subtext": "Speak with Emma to receive your curated selection",
-    "button": "Start Conversation"
+    },
+    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
+    "button": "Send me the details",
+    "success": "Thank you! You'll receive details within 24 hours."
   },
   "footer": {
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen"
   },
-  "form": {
-    "title": "Füllen Sie das Formular aus, um weitere Informationen zu erhalten",
-    "fields": {
-      "fullName": "Vollständiger Name",
-      "phone": "Ihre Telefonnummer",
-      "comment": "Kommentar (optional)"
-    },
-    "consent": "I agree to receive relevant information and follow-up messages from DelSolPrimeHomes via WhatsApp and/or SMS.",
-    "submit": "WhatsApp / SMS Info anfordern",
-    "recaptcha": "Diese Website ist durch reCAPTCHA geschützt und es gelten die Google-Datenschutzerklärung und Nutzungsbedingungen.",
-    "success": "Danke! Wir melden uns innerhalb von 24 Stunden.",
-    "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
-    "contactField": "WhatsApp / SMS number",
-    "contactFieldAlt": "Where can we message you? (WhatsApp/SMS)"
-  },
   "header": {
     "apartments": "Apartments & Penthouses",
-    "villas": "Stadthäuser & Villen",
-    "cta": "Starten mit Emma"
-  },
-  "emma": {
-    "headline": "Stellen Sie Ihre Fragen. Teilen Sie Ihre Kriterien.",
-    "subheadline": "Erhalten Sie innerhalb von 24 Stunden eine erste maßgeschneiderte Auswahl.",
-    "status": "Jetzt online - Fragen Sie mich alles!",
-    "greeting": "Hallo! Wie kann ich Ihnen heute helfen?",
-    "quickActions": {
-      "question": "Eine Frage stellen",
-      "criteria": "Kriterien teilen",
-      "explore": "Apartments oder Villen entdecken"
-    },
-    "placeholder": "Geben Sie Ihre Nachricht ein...",
-    "title": "Emma",
-    "subtitle": "Your Property Assistant",
-    "intro": "Emma answers your questions and prepares a clear overview of your criteria for our team."
+    "villas": "Townhouses & Villas",
+    "cta": "Speak with Emma"
   }
 }

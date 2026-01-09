@@ -2,18 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import Hero from './Hero';
 import AutoplayVideo from './AutoplayVideo';
-import EmmaChat from './EmmaChat';
-import ValueProposition from './ValueProposition';
-import ProcessSteps from './ProcessSteps';
+import EmmaSection from './EmmaSection';
 import PropertiesShowcase from './PropertiesShowcase';
-
-import TestimonialsGrid from './TestimonialsGrid';
-import FinalCTA from './FinalCTA';
+import ClassicOptin from './ClassicOptin';
+import EmmaChat from './EmmaChat';
 import Footer from './Footer';
 import LanguageSelector from './LanguageSelector';
-import LeadCaptureForm from './LeadCaptureForm';
+// import LeadCaptureForm from './LeadCaptureForm'; // We might still need this for property clicks
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import { trackPageView } from '@/utils/landing/analytics';
+import LeadCaptureForm from './LeadCaptureForm';
 
 interface LandingLayoutProps {
     language: LanguageCode;
@@ -49,17 +47,13 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
     // Fallback for missing translations to prevent crash
     const t = translations || {};
     const heroT = t.hero || {};
-    const valuePropT = t.valueProp || { headline: "Why Choose Us", pillars: [] };
-    const processT = t.process || { headline: "How It Works", steps: [] };
-    const testimonialsT = t.testimonials || { headline: "Testimonials", reviews: [] };
-    const finalCTAT = t.finalCTA || { headline: "Start Now", subtext: "", button: "Contact Us" };
 
     return (
         <div className="min-h-screen bg-white font-sans text-landing-navy selection:bg-landing-gold selection:text-white">
             <Helmet>
                 <html lang={language} />
-                <title>{heroT.headline} | Del Sol Prime Homes</title>
-                <meta name="description" content={heroT.subheadline} />
+                <title>{heroT.headline ? `${heroT.headline} | Del Sol Prime Homes` : 'Del Sol Prime Homes'}</title>
+                <meta name="description" content={heroT.subheadline || "Independent guidance for Costa del Sol property"} />
                 <link rel="alternate" hrefLang="en" href="https://www.delsolprimehomes.com/en/landing" />
                 <link rel="alternate" hrefLang="nl" href="https://www.delsolprimehomes.com/nl/landing" />
                 {/* ... other hreflangs ... */}
@@ -69,14 +63,14 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             {/* Fixed Minimal Header */}
             <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-md shadow-sm transition-all duration-300 border-b border-gray-100">
                 <div className="container mx-auto px-4 h-20 flex justify-between items-center">
-                    {/* Left: Section Links (Desktop Only) */}
+                    {/* Left: Section Links (Desktop Only) - Updated links for new layout */}
                     <nav className="hidden lg:flex items-center gap-8 text-landing-navy text-sm font-medium tracking-wide">
-                        <button onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-landing-gold transition-colors">
-                            {t.header?.apartments || "Apartments & Penthouses"}
+                        <button onClick={() => document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-landing-gold transition-colors">
+                            {t.video?.headline || "How it works"}
                         </button>
                         <span className="text-landing-gold/30">|</span>
                         <button onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-landing-gold transition-colors">
-                            {t.header?.villas || "Townhouses & Villas"}
+                            {t.header?.apartments || "Properties"}
                         </button>
                     </nav>
 
@@ -108,28 +102,35 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                 </div>
             </header>
 
-            {/* Main Content Sections */}
+            {/* Main Content Sections - NEW ORDER */}
             <main>
+                {/* 1. HERO - Clarity First */}
                 <Hero
                     onStartChat={() => setIsEmmaOpen(true)}
                     translations={translations}
                 />
 
-                <AutoplayVideo language={language} />
+                {/* 2. VIDEO - Guidance Explanation */}
+                <AutoplayVideo
+                    language={language}
+                    translations={translations}
+                />
 
-                <ValueProposition content={valuePropT} />
+                {/* 3. EMMA SECTION - Primary Conversion */}
+                <EmmaSection
+                    onStartChat={() => setIsEmmaOpen(true)}
+                    translations={translations?.emma}
+                />
 
-                <ProcessSteps content={processT} />
+                {/* 4. FALLBACK PROPERTIES - De-emphasized */}
+                <PropertiesShowcase
+                    translations={translations}
+                />
 
-                <PropertiesShowcase />
-
-                
-
-                <TestimonialsGrid content={testimonialsT} />
-
-                <FinalCTA
-                    content={finalCTAT}
-                    onAction={() => setIsEmmaOpen(true)}
+                {/* 5. CLASSIC OPT-IN - Last Resort */}
+                <ClassicOptin
+                    language={language}
+                    translations={translations?.classicOptin}
                 />
             </main>
 

@@ -1,15 +1,35 @@
 import React from 'react';
-import { ArrowDown } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface HeroProps {
-    onStartChat: () => void;
-    // Translations are passed but might not be used if we hardcode for design fidelity or use them selectively
+    onStartChat: () => void; // Kept for interface compatibility but we use internal scrolling
     translations?: any;
 }
 
 const Hero: React.FC<HeroProps> = ({ onStartChat, translations }) => {
     // Safe access to translations
     const t = translations?.hero || {};
+
+    const scrollToVideo = () => {
+        const videoSection = document.getElementById('video-section');
+        if (videoSection) {
+            videoSection.scrollIntoView({ behavior: 'smooth' });
+            // Optional: Trigger video play if possible, but AutoplayVideo handles click-to-play now
+            // We can dispatch a custom event if needed, but let's stick to scroll first
+            const event = new CustomEvent('playHeroVideo');
+            window.dispatchEvent(event);
+        }
+    };
+
+    const scrollToEmma = () => {
+        const emmaSection = document.getElementById('emma-section');
+        if (emmaSection) {
+            emmaSection.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Fallback if section not found (e.g. during dev transitions)
+            onStartChat();
+        }
+    };
 
     return (
         <section className="relative h-[90vh] min-h-[700px] flex items-center justify-center overflow-hidden">
@@ -22,57 +42,52 @@ const Hero: React.FC<HeroProps> = ({ onStartChat, translations }) => {
             />
 
             {/* Dark Overlay for Text Readability */}
-            <div className="absolute inset-0 bg-landing-navy/40 mix-blend-multiply" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/20" />
+            <div className="absolute inset-0 bg-landing-navy/50 mix-blend-multiply" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/30" />
 
-            {/* Hero Content */}
-            <div className="container mx-auto px-4 relative z-10 text-center text-white">
-                <div className="max-w-4xl mx-auto opacity-0 animate-hero-title-reveal" style={{ animationDelay: '0.2s' }}>
-                    {/* Small Badge */}
-                    <div className="inline-block mb-6 px-4 py-2 bg-landing-gold/20 backdrop-blur-md rounded-full border border-landing-gold/30">
-                        <span className="text-landing-gold font-semibold text-sm tracking-wide">
-                            🏆 {t.badge || "Costa del Sol's Premier Real Estate"}
-                        </span>
-                    </div>
+            {/* Hero Content - Left Aligned for Clarity Focus */}
+            <div className="container mx-auto px-4 relative z-10 text-white">
+                <div className="max-w-4xl opacity-0 animate-hero-title-reveal" style={{ animationDelay: '0.2s' }}>
 
-                    <h1 className="text-4xl md:text-6xl lg:text-[64px] font-serif font-bold leading-tight mb-6 drop-shadow-lg">
-                        {t.headline || "Discover Your Costa del Sol Investment"}
+                    {/* H1 Headline */}
+                    <h1 className="text-4xl md:text-6xl lg:text-[64px] font-serif font-bold leading-tight mb-6 drop-shadow-xl text-center md:text-left">
+                        {t.headline || "Get clarity first — before you look at property."}
                     </h1>
-                </div>
 
-                <div className="max-w-2xl mx-auto opacity-0 animate-hero-title-reveal" style={{ animationDelay: '0.4s' }}>
-                    <p className="text-lg md:text-xl lg:text-2xl text-white/90 font-light mb-12 leading-relaxed">
-                        {t.subheadline || "Curated luxury properties for discerning international investors"}
+                    {/* Subheadline */}
+                    <p className="text-lg md:text-2xl text-white/95 font-light mb-10 leading-relaxed max-w-2xl text-center md:text-left drop-shadow-md">
+                        {t.subheadline || "Independent, pressure-free guidance for new-build property on the Costa del Sol."}
                     </p>
 
-                    <button
-                        onClick={onStartChat}
-                        className="group relative inline-flex items-center justify-center px-10 py-5 bg-white text-landing-navy text-lg font-bold tracking-wide rounded-sm hover:-translate-y-1 transition-all duration-300 shadow-xl hover:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.3)]"
-                    >
-                        <span>{t.cta || "Begin Your Private Property Search"}</span>
-                        <div className="absolute inset-0 border border-white/50 scale-105 opacity-0 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500 rounded-sm" />
-                    </button>
+                    <div className="flex flex-col items-center md:items-start gap-6">
+                        {/* Primary CTA Button - Links to Video */}
+                        <button
+                            onClick={scrollToVideo}
+                            className="group relative inline-flex items-center justify-center px-8 py-4 bg-white text-landing-navy text-lg font-bold tracking-wide rounded-sm hover:bg-landing-gold hover:text-white transition-all duration-300 shadow-xl"
+                        >
+                            <Play className="w-5 h-5 mr-3 fill-current" />
+                            <span>{t.primaryCTA || "Watch the 60-second introduction"}</span>
+                        </button>
 
-                    {/* Trust Indicators */}
-                    <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-white/80">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-landing-gold rounded-full animate-pulse" />
-                            <span className="text-sm font-medium">{t.trustIndicators?.experience || "15+ Years Experience"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-landing-gold rounded-full animate-pulse" />
-                            <span className="text-sm font-medium">{t.trustIndicators?.propertiesSold || "€500M+ Properties Sold"}</span>
-                        </div>
+                        {/* Microcopy */}
+                        <span className="text-sm text-white/80 font-medium tracking-wide">
+                            {t.microcopy || "No pressure · No obligation"}
+                        </span>
+
+                        {/* Secondary CTA - Text Link to Emma */}
+                        <button
+                            onClick={scrollToEmma}
+                            className="text-landing-gold hover:text-white text-base font-semibold transition-colors border-b border-landing-gold hover:border-white pb-0.5"
+                        >
+                            {t.secondaryCTA || "Or start with clear answers"} →
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Scroll Indicator */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/70 animate-bounce-subtle pointer-events-none">
-                <div className="flex flex-col items-center gap-2">
-                    <span className="text-xs uppercase tracking-[0.2em] font-light">Scroll</span>
-                    <ArrowDown size={20} className="opacity-70" />
-                </div>
+            {/* Subtle Scroll Indicator */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-60">
+                <div className="w-0.5 h-16 bg-gradient-to-b from-transparent via-white to-transparent" />
             </div>
         </section>
     );

@@ -1,128 +1,61 @@
 {
   "hero": {
-    "headline": "FEDEZZE FEL A LUXUS ÉLETSTÍLUST A COSTA DEL SOLON",
-    "subheadline": "Tapasztalja meg a személyre szabott és stresszmentes megközelítést álmai otthonának megtalálásához Dél-Spanyolországban.",
-    "cta": "Get your private, pressure-free property shortlist",
-    "unmutePrompt": {
-      "title": "Click to Unmute",
-      "subtitle": "Experience with sound"
-    },
-    "badge": "Costa del Sol's Premier Real Estate",
-    "trustIndicators": {
-      "experience": "15+ Years Experience",
-      "propertiesSold": "€500M+ Properties Sold"
-    }
-  },
-  "valueProp": {
-    "headline": "A Guided, Pressure-Free Approach",
-    "pillars": [
-      {
-        "title": "Curated Selection",
-        "description": "Hand-picked properties matching your specific criteria and investment goals."
-      },
-      {
-        "title": "Market Expertise",
-        "description": "15+ years of specialized knowledge in Costa del Sol's luxury real estate market."
-      },
-      {
-        "title": "Discretion Assured",
-        "description": "Confidential, professional consultations with zero pressure tactics."
-      }
-    ]
-  },
-  "process": {
-    "headline": "Your Journey to Costa del Sol Ownership",
-    "steps": [
-      {
-        "title": "Discovery Call",
-        "description": "Share your investment goals and preferences with Emma, our dedicated specialist."
-      },
-      {
-        "title": "Curated Shortlist",
-        "description": "Receive a personalized selection of properties within 24 hours."
-      },
-      {
-        "title": "Exclusive Viewings",
-        "description": "Schedule private, accompanied tours of the properties that match your vision."
-      }
-    ]
-  },
-  "properties": {
-    "featured": "Featured Properties",
-    "apartmentsTitle": "Apartmanok & Penthouse-ok",
-    "villasTitle": "Sorházak & Villák",
-    "viewDetails": "View Details",
-    "beds": "Beds",
-    "baths": "Baths",
-    "sqm": "m²",
-    "location": "Location"
+    "headline": "Get clarity first — before you look at property.",
+    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
+    "primaryCTA": "Watch the 60-second introduction",
+    "primaryCTAIcon": "play",
+    "microcopy": "No pressure · No obligation",
+    "secondaryCTA": "Or start with clear answers"
   },
   "video": {
-    "headline": "See How We Work",
-    "cta": "Ready to Start?"
+    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "bullets": [
+      "Emma answers questions first",
+      "Human experts review everything",
+      "You decide if and how to continue"
+    ],
+    "reassurance": "You remain in control at every step."
   },
-  "testimonials": {
-    "headline": "A calm, pressure-free experience — according to our clients",
-    "reviews": [
-      {
-        "quote": "Emma igazán megértette az igényeinket, és világos választási lehetőségeket kínált.",
-        "author": "— Peter & Anne, Hollandia",
-        "country": ""
-      },
-      {
-        "quote": "A folyamat zökkenőmentes volt, és soha nem éreztünk nyomást.",
-        "author": "— Lars & Ingrid, Svédország",
-        "country": ""
-      },
-      {
-        "quote": "Erősen ajánlott mindenkinek, aki vezetett ingatlankeresést szeretne.",
-        "author": "— Thomas & Marie, Franciaország",
-        "country": ""
+  "emma": {
+    "statement": "Start with clarity, not listings.",
+    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
+    "cta": "Get clarity with Emma",
+    "microcopy": "Private · Pressure-free"
+  },
+  "fallback": {
+    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "apartments": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View apartments & penthouses"
+    },
+    "villas": {
+      "subtitle": "6 carefully selected new-build projects",
+      "cta": "View townhouses & villas"
+    }
+  },
+  "classicOptin": {
+    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "fields": {
+      "fullName": "Full Name",
+      "phone": "WhatsApp / SMS Number",
+      "interest": "I'm interested in",
+      "interestOptions": {
+        "apartments": "Apartments & Penthouses",
+        "villas": "Townhouses & Villas",
+        "both": "Both"
       }
-    ]
-  },
-  "finalCTA": {
-    "headline": "Begin Your Property Search Today",
-    "subtext": "Speak with Emma to receive your curated selection",
-    "button": "Start Conversation"
+    },
+    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
+    "button": "Send me the details",
+    "success": "Thank you! You'll receive details within 24 hours."
   },
   "footer": {
     "privacy": "Adatvédelmi Irányelvek",
     "terms": "Szolgáltatási Feltételek"
   },
-  "form": {
-    "title": "Töltse ki az ürlapot további információkért",
-    "fields": {
-      "fullName": "Teljes Név",
-      "phone": "Telefonszáma",
-      "comment": "Megjegyzés (opcionális)"
-    },
-    "consent": "I agree to receive relevant information and follow-up messages from DelSolPrimeHomes via WhatsApp and/or SMS.",
-    "submit": "WhatsApp / SMS Infó Kérése",
-    "recaptcha": "Ezt az oldalt a reCAPTCHA védi, és a Google Adatvédelmi Irányelvei és Szolgáltatási Feltételei érvényesek.",
-    "success": "Köszönjük! 24 órán belül felvesszük Önnel a kapcsolatot.",
-    "error": "Valami hiba történt. Kérjük, próbálja újra.",
-    "contactField": "WhatsApp / SMS number",
-    "contactFieldAlt": "Where can we message you? (WhatsApp/SMS)"
-  },
   "header": {
-    "apartments": "Apartmanok & Penthouse-ok",
-    "villas": "Sorházak & Villák",
-    "cta": "Kezdés Emmával"
-  },
-  "emma": {
-    "headline": "Tegye fel kérdéseit. Ossza meg szempontjait.",
-    "subheadline": "Kapjon egy első, személyre szabott válogatást 24 órán belül.",
-    "status": "Online most - Kérdezzen bármit!",
-    "greeting": "Szia! Miben segíthetek ma?",
-    "quickActions": {
-      "question": "Kérdezzen egyet",
-      "criteria": "Ossza meg szempontjait",
-      "explore": "Fedezze fel az apartmanokat vagy villákat"
-    },
-    "placeholder": "Írja be üzenetét...",
-    "title": "Emma",
-    "subtitle": "Your Property Assistant",
-    "intro": "Emma answers your questions and prepares a clear overview of your criteria for our team."
+    "apartments": "Apartments & Penthouses",
+    "villas": "Townhouses & Villas",
+    "cta": "Speak with Emma"
   }
 }
