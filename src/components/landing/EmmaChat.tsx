@@ -243,48 +243,51 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-end p-4 md:p-6">
-            {/* Backdrop */}
+            {/* Backdrop - warm navy tint */}
             <div
-                className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+                className="absolute inset-0 bg-landing-navy/30 backdrop-blur-sm"
                 onClick={onClose}
             />
 
-            {/* Chat Window */}
+            {/* Chat Window - Luxury styling */}
             <div
-                className={`relative bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ${isMinimized
+                className={`relative bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] flex flex-col transition-all duration-300 animate-scale-in ${isMinimized
                     ? 'w-80 h-20'
                     : 'w-full max-w-md h-[600px] md:h-[700px]'
                     }`}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-primary to-blue-600 text-white rounded-t-2xl">
+                {/* Header - Navy gradient with gold accent */}
+                <div className="flex items-center justify-between p-4 border-b border-landing-gold/20 bg-gradient-to-r from-landing-navy via-landing-navy to-[#2A3342] text-white rounded-t-3xl relative">
+                    {/* Gold accent line */}
+                    <div className="absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-landing-gold/50 to-transparent" />
+                    
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <img
                                 src={emmaAvatar}
                                 alt="Emma"
-                                className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
+                                className="w-12 h-12 rounded-full object-cover border-2 border-landing-gold/80 shadow-lg"
                             />
-                            {/* Online indicator */}
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full" />
+                            {/* Online indicator - gold */}
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-landing-gold border-2 border-white rounded-full" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-lg">Emma</h3>
-                            <p className="text-xs text-white/90">{currentOnlineText}</p>
+                            <h3 className="font-serif text-xl tracking-wide">Emma</h3>
+                            <p className="text-xs text-white/80 font-light">{currentOnlineText}</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                         <button
                             onClick={() => setIsMinimized(!isMinimized)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 hover:bg-landing-gold/20 rounded-full transition-colors"
                             aria-label={isMinimized ? "Maximize" : "Minimize"}
                         >
                             {isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
                         </button>
                         <button
                             onClick={onClose}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 hover:bg-landing-gold/20 rounded-full transition-colors"
                             aria-label="Close"
                         >
                             <X className="w-5 h-5" />
@@ -294,32 +297,32 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
                 {!isMinimized && (
                     <>
-                        {/* Messages */}
+                        {/* Messages - Warm cream background */}
                         <div
                             ref={chatContainerRef}
-                            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+                            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#FDFBF7] to-[#F9F6F0]"
                         >
                             {messages.map((message) => (
                                 <div
                                     key={message.id}
-                                    className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                                    className={`flex gap-3 animate-fade-in ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                                 >
                                     {message.role === 'assistant' && (
                                         <img
                                             src={emmaAvatar}
                                             alt="Emma"
-                                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-landing-gold/30"
                                         />
                                     )}
 
                                     <div
-                                        className={`max-w-[75%] p-3 rounded-2xl shadow-sm ${message.role === 'user'
-                                            ? 'bg-primary text-white rounded-tr-none'
-                                            : 'bg-white text-gray-900 rounded-tl-none'
+                                        className={`max-w-[75%] p-3.5 rounded-2xl ${message.role === 'user'
+                                            ? 'bg-gradient-to-r from-landing-gold to-[#D4B366] text-white rounded-tr-sm shadow-lg'
+                                            : 'bg-white text-landing-navy rounded-tl-sm shadow-md border border-gray-100/80'
                                             }`}
                                     >
                                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                                        <span className="text-xs opacity-70 mt-1 block">
+                                        <span className={`text-xs mt-1.5 block ${message.role === 'user' ? 'text-white/70' : 'text-landing-gold/60'}`}>
                                             {message.timestamp.toLocaleTimeString(language, {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
@@ -330,17 +333,17 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                             ))}
 
                             {isLoading && (
-                                <div className="flex gap-3">
+                                <div className="flex gap-3 animate-fade-in">
                                     <img
                                         src={emmaAvatar}
                                         alt="Emma"
-                                        className="w-8 h-8 rounded-full object-cover"
+                                        className="w-8 h-8 rounded-full object-cover border border-landing-gold/30"
                                     />
-                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm">
-                                        <div className="flex gap-1">
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                                    <div className="bg-white p-4 rounded-2xl rounded-tl-sm shadow-md border border-gray-100/80">
+                                        <div className="flex gap-1.5">
+                                            <div className="w-2 h-2 bg-landing-gold rounded-full animate-bounce" />
+                                            <div className="w-2 h-2 bg-landing-gold rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                                            <div className="w-2 h-2 bg-landing-gold rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                                         </div>
                                     </div>
                                 </div>
@@ -349,22 +352,22 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input */}
-                        <div className="border-t bg-white p-4 rounded-b-2xl">
-                            <div className="flex gap-2">
+                        {/* Input - Refined styling */}
+                        <div className="border-t border-gray-100 bg-white p-4 rounded-b-3xl">
+                            <div className="flex gap-3">
                                 <input
                                     type="text"
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     placeholder={currentPlaceholder}
-                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-landing-gold/30 focus:border-landing-gold bg-white/80 backdrop-blur-sm transition-all text-landing-navy placeholder:text-gray-400"
                                     disabled={isLoading}
                                 />
                                 <button
                                     onClick={sendMessage}
                                     disabled={isLoading || !input.trim()}
-                                    className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                    className="p-3 bg-landing-gold hover:bg-landing-gold/90 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                                     aria-label="Send message"
                                 >
                                     <Send className="w-5 h-5" />
