@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, ArrowRight, Bed, Bath, Square } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+import { PropertyImageCarousel } from './PropertyImageCarousel';
 
 interface Property {
     id: string;
@@ -14,6 +15,7 @@ interface Property {
     price_eur: number;
     images: string[];
     title?: string;
+    descriptions?: Record<string, string>;
 }
 
 interface PropertiesShowcaseProps {
@@ -61,6 +63,9 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
     const PropertyCard = ({ property, index }: { property: Property; index: number }) => {
         const { elementRef, isVisible } = useScrollAnimation({ threshold: 0.05 });
         const displayTitle = property.title || `${property.category === 'apartment' ? 'Luxury Apartment' : 'Exclusive Villa'}`;
+        
+        // Get localized description (fallback to English if not available)
+        const description = property.descriptions?.[lang] || property.descriptions?.en || '';
 
         return (
             <div
@@ -74,15 +79,13 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                     window.dispatchEvent(event);
                 }}
             >
-                {/* Image */}
+                {/* Image Carousel */}
                 <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gray-100 cursor-pointer">
-                    <img
-                        src={property.images?.[0] || 'https://images.unsplash.com/photo-1600596542815-2495db9dc2c3?w=800'}
-                        alt={displayTitle}
-                        className="absolute inset-0 w-full h-full object-cover transition-opacity hover:opacity-90"
-                        loading="lazy"
+                    <PropertyImageCarousel 
+                        images={property.images || []} 
+                        alt={displayTitle} 
                     />
-                    <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 px-2 py-0.5 sm:px-3 sm:py-1 bg-white/95 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm">
+                    <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 px-2 py-0.5 sm:px-3 sm:py-1 bg-white/95 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm z-20">
                         <p className="font-bold text-landing-navy text-xs sm:text-sm">{formatPrice(property.price_eur)}</p>
                     </div>
                 </div>
@@ -93,10 +96,17 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                         {displayTitle}
                     </h3>
 
-                    <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-landing-text-secondary mb-2 sm:mb-3">
+                    <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-landing-text-secondary mb-2">
                         <MapPin size={12} className="text-gray-400 sm:w-[14px] sm:h-[14px]" />
                         <span className="truncate">{property.location}</span>
                     </div>
+
+                    {/* Localized Description */}
+                    {description && (
+                        <p className="text-[10px] sm:text-xs text-gray-600 mb-2 sm:mb-3 line-clamp-2 leading-relaxed">
+                            {description}
+                        </p>
+                    )}
 
                     <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
                         <div className="flex items-center gap-1">
