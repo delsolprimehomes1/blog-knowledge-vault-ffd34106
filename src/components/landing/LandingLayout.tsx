@@ -32,8 +32,17 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             setIsFormOpen(true);
         };
 
+        const handleOpenChat = () => {
+            setIsEmmaOpen(true);
+        };
+
         window.addEventListener('openLeadForm' as any, handleOpenForm);
-        return () => window.removeEventListener('openLeadForm' as any, handleOpenForm);
+        window.addEventListener('openEmmaChat' as any, handleOpenChat);
+
+        return () => {
+            window.removeEventListener('openLeadForm' as any, handleOpenForm);
+            window.removeEventListener('openEmmaChat' as any, handleOpenChat);
+        };
     }, [language]);
 
     // Fallback for missing translations to prevent crash
@@ -111,7 +120,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
 
                 <PropertiesShowcase />
 
-                <ExplainerVideo />
+                <ExplainerVideo language={language} />
 
                 <TestimonialsGrid content={testimonialsT} />
 
