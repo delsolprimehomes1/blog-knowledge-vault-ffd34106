@@ -29,17 +29,18 @@ serve(async (req) => {
 
     fal.config({ credentials: falKey.trim() });
 
-    // Mobile-optimized prompt with centered composition
-    const prompt = `A photorealistic, high-end lifestyle photograph of an attractive, successful couple in their late 50s relaxing in the backyard of their luxury modern Mediterranean villa in Costa del Sol. They are standing by the edge of a sleek infinity pool during golden hour, holding crystal champagne flutes and making a toast, looking happy and relaxed. The foreground features high-end beige outdoor lounge furniture and manicured potted olive trees. The background offers a breathtaking panoramic view of the Mediterranean Sea and rolling mountains bathed in warm sunset light. The atmosphere is serene, celebratory, and affluent. Shot in the style of Architectural Digest or Vogue Living, 8k resolution, warm lighting, cinematic depth of field.
+    // Brighter prompt with luminous lighting
+    const prompt = `A photorealistic, high-end lifestyle photograph of an attractive, successful couple in their late 50s relaxing in the backyard of their luxury modern Mediterranean villa in Costa del Sol. They are standing by the edge of a sleek infinity pool during BRIGHT golden hour with warm, luminous sunlight. The scene is BRIGHTLY LIT with soft, glowing ambient light - not dark or shadowy. They are holding crystal champagne flutes and making a toast, looking happy and relaxed. The foreground features high-end beige outdoor lounge furniture and manicured potted olive trees. The background offers a breathtaking panoramic view of the Mediterranean Sea and rolling mountains bathed in warm, BRIGHT sunset light with golden and amber tones. The atmosphere is serene, celebratory, and affluent. Shot in the style of Architectural Digest or Vogue Living, 8k resolution, bright warm lighting, soft shadows, cinematic depth of field.
 
-IMPORTANT COMPOSITION: Center the couple prominently in the middle of the frame. Keep them in the center third of the image so they remain visible when cropped for mobile devices. Do not place subjects on the edges.`;
+IMPORTANT: Keep the lighting BRIGHT and LUMINOUS, avoid dark or moody shadows. The couple should be well-lit and clearly visible. Center the couple prominently in the middle of the frame.`;
 
-    console.log('Generating mobile-optimized hero image...');
+    console.log('Generating brighter hero images for desktop and mobile...');
     
-    const result = await fal.subscribe("fal-ai/flux/dev", {
+    // Generate desktop landscape images (16:9)
+    const desktopResult = await fal.subscribe("fal-ai/flux/dev", {
       input: {
         prompt: prompt,
-        image_size: "square_hd",
+        image_size: "landscape_16_9",
         num_inference_steps: 35,
         num_images: 3,
         guidance_scale: 7.5,
@@ -47,11 +48,25 @@ IMPORTANT COMPOSITION: Center the couple prominently in the middle of the frame.
       logs: true,
     }) as FalResult;
 
-    console.log('Image generation complete:', result);
+    // Generate mobile portrait images (4:3)
+    const mobileResult = await fal.subscribe("fal-ai/flux/dev", {
+      input: {
+        prompt: prompt,
+        image_size: "portrait_4_3",
+        num_inference_steps: 35,
+        num_images: 3,
+        guidance_scale: 7.5,
+      },
+      logs: true,
+    }) as FalResult;
+
+    console.log('Desktop images generated:', desktopResult.images.length);
+    console.log('Mobile images generated:', mobileResult.images.length);
 
     return new Response(
       JSON.stringify({ 
-        images: result.images,
+        desktop: desktopResult.images,
+        mobile: mobileResult.images,
         prompt: prompt 
       }),
       { 
