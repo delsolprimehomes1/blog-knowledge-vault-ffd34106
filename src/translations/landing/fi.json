@@ -57,5 +57,21 @@
     "apartments": "Huoneistot & Kattohuoneistot",
     "villas": "Rivitalot & Huvilat",
     "cta": "Keskustele Emman kanssa"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Mitä palveluita DelSolPrimeHomes tarjoaa?",
+        "answer": "Tarjoamme riippumatonta ja paineetonta ohjausta uudiskohteiden löytämiseen Costa del Solilta. Palvelumme sisältää kiinteistöhaun, oikeudellisen tuen ja asiantuntijakonsultaation."
+      },
+      {
+        "question": "Mitä Costa del Solin alueita katatte?",
+        "answer": "Katamme kaikki tärkeimmät alueet mukaan lukien Marbella, Estepona, Mijas, Benalmádena, Fuengirola ja Sotogrande."
+      },
+      {
+        "question": "Mikä on kiinteistöjen hintahaitari?",
+        "answer": "Valikoimamme vaihtelee 350 000 eurosta yli 5 000 000 euroon, keskittyen laadukkaisiin uudisrakennuskohteisiin."
+      }
+    ]
   }
 }

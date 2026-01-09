@@ -57,5 +57,21 @@
     "apartments": "Wohnungen & Penthäuser",
     "villas": "Reihenhäuser & Villen",
     "cta": "Sprechen Sie mit Emma"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Welche Dienstleistungen bietet DelSolPrimeHomes an?",
+        "answer": "Wir bieten unabhängige, druckfreie Beratung bei der Suche nach Neubauimmobilien an der Costa del Sol. Unser Service umfasst Immobiliensuche, rechtliche Unterstützung und Expertenberatung."
+      },
+      {
+        "question": "Welche Bereiche der Costa del Sol decken Sie ab?",
+        "answer": "Wir decken alle wichtigen Bereiche ab, einschließlich Marbella, Estepona, Mijas, Benalmádena, Fuengirola und Sotogrande."
+      },
+      {
+        "question": "Wie ist die Preisspanne der Immobilien?",
+        "answer": "Unsere kuratierte Auswahl reicht von 350.000 € bis 5.000.000 €+, mit Fokus auf hochwertige Neubauprojekte."
+      }
+    ]
   }
 }

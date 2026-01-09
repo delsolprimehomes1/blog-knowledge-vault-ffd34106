@@ -57,5 +57,21 @@
     "apartments": "Apartmanok és Penthouse-ok",
     "villas": "Sorházak és Villák",
     "cta": "Beszélj Emmával"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Milyen szolgáltatásokat kínál a DelSolPrimeHomes?",
+        "answer": "Független, nyomásmentes útmutatást nyújtunk új építésű ingatlanok kereséséhez a Costa del Solon. Szolgáltatásunk magában foglalja az ingatlankeresést, a jogi támogatást és a szakértői konzultációt."
+      },
+      {
+        "question": "A Costa del Sol mely területeit fedik le?",
+        "answer": "Lefedjük az összes főbb területet, beleértve Marbellát, Esteponát, Mijast, Benalmádenát, Fuengirolát és Sotograndét."
+      },
+      {
+        "question": "Milyen árkategóriában vannak az ingatlanok?",
+        "answer": "Válogatott kínálatunk 350 000 €-tól 5 000 000 €-ig terjed, a magas minőségű új építésű fejlesztésekre összpontosítva."
+      }
+    ]
   }
 }

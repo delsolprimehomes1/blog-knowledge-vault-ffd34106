@@ -57,5 +57,21 @@
     "apartments": "Appartementen & Penthouses",
     "villas": "Herenhuizen & Villa's",
     "cta": "Spreek met Emma"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Welke diensten biedt DelSolPrimeHomes aan?",
+        "answer": "Wij bieden onafhankelijke, drukvrije begeleiding bij het vinden van nieuwbouwvastgoed aan de Costa del Sol. Onze service omvat het zoeken naar vastgoed, juridische ondersteuning en deskundig advies."
+      },
+      {
+        "question": "Welke gebieden van de Costa del Sol dekt u?",
+        "answer": "Wij dekken alle belangrijke gebieden, waaronder Marbella, Estepona, Mijas, Benalmádena, Fuengirola en Sotogrande."
+      },
+      {
+        "question": "Wat is de prijsklasse van de eigendommen?",
+        "answer": "Onze samengestelde selectie varieert van €350.000 tot €5.000.000+, gericht op hoogwaardige nieuwbouwprojecten."
+      }
+    ]
   }
 }

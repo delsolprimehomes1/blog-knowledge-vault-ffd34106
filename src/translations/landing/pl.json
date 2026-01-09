@@ -57,5 +57,21 @@
     "apartments": "Apartamenty i Penthouse'y",
     "villas": "Domy szeregowe i Wille",
     "cta": "Porozmawiaj z Emmą"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Jakie usługi oferuje DelSolPrimeHomes?",
+        "answer": "Zapewniamy niezależne doradztwo bez presji w zakresie poszukiwania nowych nieruchomości na Costa del Sol. Nasza usługa obejmuje wyszukiwanie nieruchomości, wsparcie prawne i konsultacje eksperckie."
+      },
+      {
+        "question": "Jakie obszary Costa del Sol obejmujecie?",
+        "answer": "Obejmujemy wszystkie główne obszary, w tym Marbellę, Esteponę, Mijas, Benalmádenę, Fuengirolę i Sotogrande."
+      },
+      {
+        "question": "Jaki jest przedział cenowy nieruchomości?",
+        "answer": "Nasza wyselekcjonowana oferta waha się od 350 000 € do 5 000 000 €+, koncentrując się na wysokiej jakości nowych inwestycjach."
+      }
+    ]
   }
 }

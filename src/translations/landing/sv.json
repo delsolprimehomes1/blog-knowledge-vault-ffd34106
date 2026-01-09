@@ -57,5 +57,21 @@
     "apartments": "Lägenheter & Takvåningar",
     "villas": "Radhus & Villor",
     "cta": "Prata med Emma"
+  },
+  "faq": {
+    "questions": [
+      {
+        "question": "Vilka tjänster erbjuder DelSolPrimeHomes?",
+        "answer": "Vi erbjuder oberoende, trycklös vägledning för att hitta nybyggda fastigheter på Costa del Sol. Vår tjänst inkluderar fastighetssökning, juridiskt stöd och expertkonsultation."
+      },
+      {
+        "question": "Vilka områden på Costa del Sol täcker ni?",
+        "answer": "Vi täcker alla större områder, inklusive Marbella, Estepona, Mijas, Benalmádena, Fuengirola och Sotogrande."
+      },
+      {
+        "question": "Vad är prisklassen för fastigheter?",
+        "answer": "Vårt urval sträcker sig från 350 000 € till 5 000 000 €+, med fokus på högkvalitativa nybyggnadsprojekt."
+      }
+    ]
   }
 }
