@@ -106,44 +106,7 @@ function cleanResponse(text: string): string {
         .trim();
 }
 
-// Split long responses into multiple messages (max 300 chars each)
-function splitMessages(text: string, maxLength: number = 300): string[] {
-    if (text.length <= maxLength) {
-        return [text];
-    }
-
-    const messages: string[] = [];
-    let remaining = text;
-
-    while (remaining.length > 0) {
-        if (remaining.length <= maxLength) {
-            messages.push(remaining);
-            break;
-        }
-
-        // Find natural break point (sentence end) before maxLength
-        let breakPoint = maxLength;
-        const sentenceEnd = remaining.substring(0, maxLength).lastIndexOf('. ');
-        const questionEnd = remaining.substring(0, maxLength).lastIndexOf('? ');
-        const exclamationEnd = remaining.substring(0, maxLength).lastIndexOf('! ');
-
-        // Use the last sentence ending found
-        breakPoint = Math.max(sentenceEnd, questionEnd, exclamationEnd);
-
-        if (breakPoint > 0) {
-            breakPoint += 2; // Include the punctuation and space
-        } else {
-            // No sentence end found, break at last space
-            breakPoint = remaining.substring(0, maxLength).lastIndexOf(' ');
-            if (breakPoint <= 0) breakPoint = maxLength;
-        }
-
-        messages.push(remaining.substring(0, breakPoint).trim());
-        remaining = remaining.substring(breakPoint).trim();
-    }
-
-    return messages;
-}
+// Message splitting removed - Emma now sends complete responses in single messages
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -164,8 +127,8 @@ CRITICAL RULES:
 1. Follow the conversation flow EXACTLY word-for-word
 2. Never deviate from the scripted responses
 3. Use the exact wording provided - no paraphrasing
-4. Keep messages under 300 characters (split if needed)
-5. Wait 1.5 seconds between split messages
+4. Provide complete, well-structured responses
+5. Use natural paragraph breaks for readability
 6. Speak in the page's language: ${languageName} (${language})
 
 ---
@@ -432,7 +395,7 @@ COLLECTED_INFO: {"name": "first_name", "family_name": "last_name", "phone": "num
 1. **EXACT WORDING ONLY** - Use the exact phrases from the flow
 2. **NO ANSWERS BEFORE OPT-IN** - Must collect name, family name, phone first
 3. **MAX 3 QUESTIONS** - After question 3, transition to role shift
-4. **300 CHAR LIMIT** - Split messages if needed, 1.5s delay between
+4. **COMPLETE RESPONSES** - Provide full answers in a single message
 5. **NO DEVIATIONS** - Follow the script word-for-word
 6. **CONTROL THE FLOW** - Emma leads, not the user
 7. **LANGUAGE MATCH** - Speak in page's language: ${languageName}
@@ -455,8 +418,8 @@ Track these throughout conversation:
 
 Every response should:
 1. Use exact wording from flow
-2. Stay under 300 characters per message
-3. Add 1.5s delay between split messages
+2. Provide complete responses in a single message
+3. Use natural paragraph breaks for readability
 4. Extract relevant custom fields
 5. Update conversation state
 
@@ -519,68 +482,13 @@ Current language: ${languageName}
         // Clean response for user
         const cleanedResponse = cleanResponse(responseText);
         
-        // Split into messages if needed
-        const messages = splitMessages(cleanedResponse, 300);
-        const firstMessage = messages[0];
-
-        console.log(`📊 Custom fields extracted:`, customFields);
-        console.log(`📝 Collected info:`, collectedInfo);
-
-        // Save to database with merged custom fields
-        try {
-            // Get existing conversation data
-            const { data: existing } = await supabase
-                .from('emma_conversations')
-                .select('custom_fields, name, whatsapp, messages')
-                .eq('conversation_id', conversationId)
-                .single();
-
-            // Merge custom fields (new fields override existing)
-            const mergedCustomFields = {
-                ...(existing?.custom_fields || {}),
-                ...(customFields || {})
-            };
-
-            // Build updated messages array
-            const existingMessages = existing?.messages || [];
-            const updatedMessages = [
-                ...existingMessages,
-                { role: 'user', content: message, timestamp: new Date().toISOString() },
-                { role: 'assistant', content: cleanedResponse, timestamp: new Date().toISOString() }
-            ];
-
-            // Upsert conversation
-            const { error: upsertError } = await supabase
-                .from('emma_conversations')
-                .upsert({
-                    conversation_id: conversationId,
-                    language: language,
-                    messages: updatedMessages,
-                    custom_fields: mergedCustomFields,
-                    name: collectedInfo?.name || existing?.name || null,
-                    whatsapp: collectedInfo?.whatsapp || existing?.whatsapp || null,
-                    status: collectedInfo?.whatsapp ? 'qualified' : (existing?.whatsapp ? 'qualified' : 'new'),
-                    updated_at: new Date().toISOString()
-                }, { 
-                    onConflict: 'conversation_id'
-                });
-
-            if (upsertError) {
-                console.error('❌ Database upsert error:', upsertError);
-            } else {
-                console.log(`✅ Conversation saved to database - ID: ${conversationId}`);
-            }
-        } catch (dbError) {
-            console.error('❌ Database operation failed:', dbError);
-        }
-
         return new Response(JSON.stringify({
-            response: firstMessage,
+            response: cleanedResponse,
             collectedInfo: collectedInfo,
             customFields: customFields,
             language: language,
-            hasMore: messages.length > 1,
-            remainingMessages: messages.slice(1)
+            hasMore: false,
+            remainingMessages: []
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

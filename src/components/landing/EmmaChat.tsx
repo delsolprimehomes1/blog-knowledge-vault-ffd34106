@@ -22,8 +22,6 @@ interface ChatResponse {
         whatsapp?: string;
     };
     language: string;
-    hasMore?: boolean;
-    remainingMessages?: string[];
 }
 
 const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
@@ -151,23 +149,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // If there are more messages, send them with delay
-            if (data.remainingMessages && data.remainingMessages.length > 0) {
-                for (let i = 0; i < data.remainingMessages.length; i++) {
-                    setIsLoading(true);
-                    // Wait 1.5 seconds between messages (natural typing delay)
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-
-                    const followUpMessage: Message = {
-                        id: (Date.now() + i + 2).toString(),
-                        role: 'assistant',
-                        content: data.remainingMessages[i],
-                        timestamp: new Date()
-                    };
-
-                    setMessages(prev => [...prev, followUpMessage]);
-                }
-            }
+            // Single message response - no splitting
 
             // Check if Emma collected contact info
             if (data.collectedInfo) {
