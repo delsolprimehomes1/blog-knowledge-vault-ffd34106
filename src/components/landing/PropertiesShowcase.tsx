@@ -128,8 +128,8 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
 
         return (
             <div className="mb-12 sm:mb-16 lg:mb-20 last:mb-0">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-6 lg:mb-8 gap-2 sm:gap-4 pb-3 sm:pb-4 border-b border-gray-100">
-                    <div>
+                <div className="flex flex-col items-center justify-center mb-5 sm:mb-6 lg:mb-8 gap-2 pb-3 sm:pb-4 border-b border-gray-100">
+                    <div className="text-center">
                         <h3 className="text-lg sm:text-xl md:text-2xl font-serif font-bold text-landing-navy/80">{title}</h3>
                         <p className="text-xs sm:text-sm text-landing-text-secondary mt-0.5 sm:mt-1">{sectionT.subtitle || "6 carefully selected new-build projects"}</p>
                     </div>
