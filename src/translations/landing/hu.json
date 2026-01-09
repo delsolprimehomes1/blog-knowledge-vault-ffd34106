@@ -1,61 +1,61 @@
 {
   "hero": {
-    "headline": "Get clarity first — before you look at property.",
-    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
-    "primaryCTA": "Watch the 60-second introduction",
+    "headline": "Először tisztázás — mielőtt ingatlant néznél.",
+    "subheadline": "Független, nyomásmentes útmutatás új építésű ingatlanokhoz a Costa del Solon.",
+    "primaryCTA": "Nézd meg a 60 másodperces bemutatót",
     "primaryCTAIcon": "play",
-    "microcopy": "No pressure · No obligation",
-    "secondaryCTA": "Or start with clear answers"
+    "microcopy": "Nincs nyomás · Kötelezettség nélkül",
+    "secondaryCTA": "Vagy kezdj világos válaszokkal"
   },
   "video": {
-    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "softLine": "Egy perc alatt megérted, hogyan vezetjük a döntéseket — nyugodtan és függetlenül.",
     "bullets": [
-      "Emma answers questions first",
-      "Human experts review everything",
-      "You decide if and how to continue"
+      "Emma először válaszol a kérdésekre",
+      "Emberi szakértők mindent átnéznek",
+      "Te döntöd el, hogy és hogyan folytatsz"
     ],
-    "reassurance": "You remain in control at every step."
+    "reassurance": "Minden lépésnél te irányítasz."
   },
   "emma": {
-    "statement": "Start with clarity, not listings.",
-    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
-    "cta": "Get clarity with Emma",
-    "microcopy": "Private · Pressure-free"
+    "statement": "Kezdd a tisztázással, ne az ajánlatokkal.",
+    "explanation": "Emma végigvezet téged az életmóddal, jogi lépésekkel, dokumentumokkal és a vásárlási folyamattal kapcsolatos kérdéseken — mielőtt a projektekről beszélnénk.",
+    "cta": "Tisztázd Emmával",
+    "microcopy": "Privát · Nyomás nélkül"
   },
   "fallback": {
-    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "headline": "Inkább először felfedeznél? Böngészhetsz egy kis válogatott kollekciót lent.",
     "apartments": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View apartments & penthouses"
+      "subtitle": "6 gondosan kiválasztott új építésű projekt",
+      "cta": "Lakások és penthouse-ok megtekintése"
     },
     "villas": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View townhouses & villas"
+      "subtitle": "6 gondosan kiválasztott új építésű projekt",
+      "cta": "Sorházak és villák megtekintése"
     }
   },
   "classicOptin": {
-    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "headline": "Fogadj projektrészleteket WhatsAppon vagy SMS-ben — a saját tempódban.",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "WhatsApp / SMS Number",
-      "interest": "I'm interested in",
+      "fullName": "Teljes név",
+      "phone": "WhatsApp / SMS szám",
+      "interest": "Érdekel",
       "interestOptions": {
-        "apartments": "Apartments & Penthouses",
-        "villas": "Townhouses & Villas",
-        "both": "Both"
+        "apartments": "Apartmanok és Penthouse-ok",
+        "villas": "Sorházak és Villák",
+        "both": "Mindkettő"
       }
     },
-    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
-    "button": "Send me the details",
-    "success": "Thank you! You'll receive details within 24 hours."
+    "checkbox": "Elfogadom az ingatlanfrissítések fogadását WhatsAppon/SMS-ben",
+    "button": "Küldd el a részleteket",
+    "success": "Köszönjük! 24 órán belül megkapod a részleteket."
   },
   "footer": {
-    "privacy": "Adatvédelmi Irányelvek",
-    "terms": "Szolgáltatási Feltételek"
+    "privacy": "Adatvédelmi irányelvek",
+    "terms": "Szolgáltatási feltételek"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Apartmanok és Penthouse-ok",
+    "villas": "Sorházak és Villák",
+    "cta": "Beszélj Emmával"
   }
 }

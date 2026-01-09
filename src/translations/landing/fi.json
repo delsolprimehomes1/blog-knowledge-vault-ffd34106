@@ -1,61 +1,61 @@
 {
   "hero": {
-    "headline": "Get clarity first — before you look at property.",
-    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
-    "primaryCTA": "Watch the 60-second introduction",
+    "headline": "Ensin selkeys — ennen kuin katsot kiinteistöjä.",
+    "subheadline": "Riippumaton, paineetón neuvonta uudiskohteisiin Costa del Solilla.",
+    "primaryCTA": "Katso 60 sekunnin esittely",
     "primaryCTAIcon": "play",
-    "microcopy": "No pressure · No obligation",
-    "secondaryCTA": "Or start with clear answers"
+    "microcopy": "Ei painetta · Sitoutumaton",
+    "secondaryCTA": "Tai aloita selkeillä vastauksilla"
   },
   "video": {
-    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "softLine": "Yhdessä minuutissa ymmärrät, kuinka ohjaamme päätöksiä — rauhallisesti ja riippumattomasti.",
     "bullets": [
-      "Emma answers questions first",
-      "Human experts review everything",
-      "You decide if and how to continue"
+      "Emma vastaa ensin kysymyksiin",
+      "Ihmisasiantuntijat tarkistavat kaiken",
+      "Sinä päätät, jatkatko ja miten"
     ],
-    "reassurance": "You remain in control at every step."
+    "reassurance": "Sinä olet hallinnassa joka vaiheessa."
   },
   "emma": {
-    "statement": "Start with clarity, not listings.",
-    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
-    "cta": "Get clarity with Emma",
-    "microcopy": "Private · Pressure-free"
+    "statement": "Aloita selkeydestä, ei kohteista.",
+    "explanation": "Emma ohjaa sinua kysymysten läpi elämäntavasta, oikeudellisista vaiheista, asiakirjoista ja ostoprosessista — ennen kuin hankkeista keskustellaan.",
+    "cta": "Saa selkeyttä Emman kanssa",
+    "microcopy": "Yksityinen · Paineetón"
   },
   "fallback": {
-    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "headline": "Haluatko tutkia ensin? Voit selata pientä valikoitua valikoimaa alla.",
     "apartments": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View apartments & penthouses"
+      "subtitle": "6 huolellisesti valittua uudiskohde",
+      "cta": "Katso huoneistot & kattohuoneistot"
     },
     "villas": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View townhouses & villas"
+      "subtitle": "6 huolellisesti valittua uudiskohde",
+      "cta": "Katso rivitalot & huvilat"
     }
   },
   "classicOptin": {
-    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "headline": "Vastaanota hanketiedot WhatsAppilla tai tekstiviestillä — omaan tahtiisi.",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "WhatsApp / SMS Number",
-      "interest": "I'm interested in",
+      "fullName": "Koko nimi",
+      "phone": "WhatsApp / SMS-numero",
+      "interest": "Olen kiinnostunut",
       "interestOptions": {
-        "apartments": "Apartments & Penthouses",
-        "villas": "Townhouses & Villas",
-        "both": "Both"
+        "apartments": "Huoneistot & Kattohuoneistot",
+        "villas": "Rivitalot & Huvilat",
+        "both": "Molemmat"
       }
     },
-    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
-    "button": "Send me the details",
-    "success": "Thank you! You'll receive details within 24 hours."
+    "checkbox": "Hyväksyn kiinteistöpäivitysten vastaanottamisen WhatsAppilla/tekstiviestillä",
+    "button": "Lähetä minulle tiedot",
+    "success": "Kiitos! Saat tiedot 24 tunnin kuluessa."
   },
   "footer": {
     "privacy": "Tietosuojakäytäntö",
     "terms": "Käyttöehdot"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Huoneistot & Kattohuoneistot",
+    "villas": "Rivitalot & Huvilat",
+    "cta": "Keskustele Emman kanssa"
   }
 }

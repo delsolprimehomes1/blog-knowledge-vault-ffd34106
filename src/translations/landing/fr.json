@@ -1,61 +1,61 @@
 {
   "hero": {
-    "headline": "Get clarity first — before you look at property.",
-    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
-    "primaryCTA": "Watch the 60-second introduction",
+    "headline": "D'abord la clarté — avant de regarder des biens.",
+    "subheadline": "Accompagnement indépendant et sans pression pour les biens neufs sur la Costa del Sol.",
+    "primaryCTA": "Regardez l'introduction de 60 secondes",
     "primaryCTAIcon": "play",
-    "microcopy": "No pressure · No obligation",
-    "secondaryCTA": "Or start with clear answers"
+    "microcopy": "Sans pression · Sans engagement",
+    "secondaryCTA": "Ou commencez avec des réponses claires"
   },
   "video": {
-    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "softLine": "En une minute, vous comprendrez comment nous guidons les décisions — calmement et indépendamment.",
     "bullets": [
-      "Emma answers questions first",
-      "Human experts review everything",
-      "You decide if and how to continue"
+      "Emma répond d'abord aux questions",
+      "Des experts humains examinent tout",
+      "Vous décidez si et comment continuer"
     ],
-    "reassurance": "You remain in control at every step."
+    "reassurance": "Vous gardez le contrôle à chaque étape."
   },
   "emma": {
-    "statement": "Start with clarity, not listings.",
-    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
-    "cta": "Get clarity with Emma",
-    "microcopy": "Private · Pressure-free"
+    "statement": "Commencez par la clarté, pas par les annonces.",
+    "explanation": "Emma vous guide à travers des questions sur le mode de vie, les démarches légales, les documents et le processus d'achat — avant que les projets ne soient discutés.",
+    "cta": "Obtenez de la clarté avec Emma",
+    "microcopy": "Privé · Sans pression"
   },
   "fallback": {
-    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "headline": "Vous préférez explorer d'abord ? Vous pouvez parcourir une petite sélection ci-dessous.",
     "apartments": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View apartments & penthouses"
+      "subtitle": "6 projets neufs soigneusement sélectionnés",
+      "cta": "Voir appartements & penthouses"
     },
     "villas": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View townhouses & villas"
+      "subtitle": "6 projets neufs soigneusement sélectionnés",
+      "cta": "Voir maisons de ville & villas"
     }
   },
   "classicOptin": {
-    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "headline": "Recevez les détails du projet par WhatsApp ou SMS — à votre convenance.",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "WhatsApp / SMS Number",
-      "interest": "I'm interested in",
+      "fullName": "Nom complet",
+      "phone": "Numéro WhatsApp / SMS",
+      "interest": "Je suis intéressé par",
       "interestOptions": {
-        "apartments": "Apartments & Penthouses",
-        "villas": "Townhouses & Villas",
-        "both": "Both"
+        "apartments": "Appartements & Penthouses",
+        "villas": "Maisons de ville & Villas",
+        "both": "Les deux"
       }
     },
-    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
-    "button": "Send me the details",
-    "success": "Thank you! You'll receive details within 24 hours."
+    "checkbox": "J'accepte de recevoir des mises à jour immobilières par WhatsApp/SMS",
+    "button": "Envoyez-moi les détails",
+    "success": "Merci ! Vous recevrez les détails dans les 24 heures."
   },
   "footer": {
     "privacy": "Politique de confidentialité",
     "terms": "Conditions d'utilisation"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Appartements & Penthouses",
+    "villas": "Maisons de ville & Villas",
+    "cta": "Parler à Emma"
   }
 }

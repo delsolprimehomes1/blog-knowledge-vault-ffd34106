@@ -1,61 +1,61 @@
 {
   "hero": {
-    "headline": "Get clarity first — before you look at property.",
-    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
-    "primaryCTA": "Watch the 60-second introduction",
+    "headline": "Eerst duidelijkheid — voordat u naar vastgoed kijkt.",
+    "subheadline": "Onafhankelijke, drukvrije begeleiding voor nieuwbouwvastgoed aan de Costa del Sol.",
+    "primaryCTA": "Bekijk de introductie van 60 seconden",
     "primaryCTAIcon": "play",
-    "microcopy": "No pressure · No obligation",
-    "secondaryCTA": "Or start with clear answers"
+    "microcopy": "Geen druk · Vrijblijvend",
+    "secondaryCTA": "Of begin met duidelijke antwoorden"
   },
   "video": {
-    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "softLine": "In één minuut begrijpt u hoe wij beslissingen begeleiden — rustig en onafhankelijk.",
     "bullets": [
-      "Emma answers questions first",
-      "Human experts review everything",
-      "You decide if and how to continue"
+      "Emma beantwoordt eerst vragen",
+      "Menselijke experts beoordelen alles",
+      "U beslist of en hoe u verder gaat"
     ],
-    "reassurance": "You remain in control at every step."
+    "reassurance": "U blijft bij elke stap in controle."
   },
   "emma": {
-    "statement": "Start with clarity, not listings.",
-    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
-    "cta": "Get clarity with Emma",
-    "microcopy": "Private · Pressure-free"
+    "statement": "Begin met duidelijkheid, niet met aanbiedingen.",
+    "explanation": "Emma begeleidt u door vragen over levensstijl, juridische stappen, documenten en het aankoopproces — voordat er projecten worden besproken.",
+    "cta": "Krijg duidelijkheid met Emma",
+    "microcopy": "Privé · Drukvrij"
   },
   "fallback": {
-    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "headline": "Liever eerst verkennen? U kunt hieronder een kleine geselecteerde selectie bekijken.",
     "apartments": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View apartments & penthouses"
+      "subtitle": "6 zorgvuldig geselecteerde nieuwbouwprojecten",
+      "cta": "Bekijk appartementen & penthouses"
     },
     "villas": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View townhouses & villas"
+      "subtitle": "6 zorgvuldig geselecteerde nieuwbouwprojecten",
+      "cta": "Bekijk herenhuizen & villa's"
     }
   },
   "classicOptin": {
-    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "headline": "Ontvang projectdetails via WhatsApp of SMS — op uw gemak.",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "WhatsApp / SMS Number",
-      "interest": "I'm interested in",
+      "fullName": "Volledige naam",
+      "phone": "WhatsApp / SMS-nummer",
+      "interest": "Ik ben geïnteresseerd in",
       "interestOptions": {
-        "apartments": "Apartments & Penthouses",
-        "villas": "Townhouses & Villas",
-        "both": "Both"
+        "apartments": "Appartementen & Penthouses",
+        "villas": "Herenhuizen & Villa's",
+        "both": "Beide"
       }
     },
-    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
-    "button": "Send me the details",
-    "success": "Thank you! You'll receive details within 24 hours."
+    "checkbox": "Ik ga akkoord met het ontvangen van vastgoedupdates via WhatsApp/SMS",
+    "button": "Stuur me de details",
+    "success": "Dank u! U ontvangt binnen 24 uur details."
   },
   "footer": {
     "privacy": "Privacybeleid",
     "terms": "Servicevoorwaarden"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Appartementen & Penthouses",
+    "villas": "Herenhuizen & Villa's",
+    "cta": "Spreek met Emma"
   }
 }

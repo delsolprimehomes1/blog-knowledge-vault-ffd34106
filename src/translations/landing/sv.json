@@ -1,61 +1,61 @@
 {
   "hero": {
-    "headline": "Get clarity first — before you look at property.",
-    "subheadline": "Independent, pressure-free guidance for new-build property on the Costa del Sol.",
-    "primaryCTA": "Watch the 60-second introduction",
+    "headline": "Få klarhet först — innan du tittar på fastigheter.",
+    "subheadline": "Oberoende, trycklös vägledning för nybyggda fastigheter på Costa del Sol.",
+    "primaryCTA": "Se 60-sekundersintroduktionen",
     "primaryCTAIcon": "play",
-    "microcopy": "No pressure · No obligation",
-    "secondaryCTA": "Or start with clear answers"
+    "microcopy": "Ingen press · Ingen förpliktelse",
+    "secondaryCTA": "Eller börja med tydliga svar"
   },
   "video": {
-    "softLine": "In one minute, you'll understand how we guide decisions — calmly and independently.",
+    "softLine": "På en minut förstår du hur vi vägleder beslut — lugnt och oberoende.",
     "bullets": [
-      "Emma answers questions first",
-      "Human experts review everything",
-      "You decide if and how to continue"
+      "Emma svarar först på frågor",
+      "Mänskliga experter granskar allt",
+      "Du bestämmer om och hur du fortsätter"
     ],
-    "reassurance": "You remain in control at every step."
+    "reassurance": "Du har kontroll vid varje steg."
   },
   "emma": {
-    "statement": "Start with clarity, not listings.",
-    "explanation": "Emma guides you through questions about lifestyle, legal steps, documents, and the buying process — before any projects are discussed.",
-    "cta": "Get clarity with Emma",
-    "microcopy": "Private · Pressure-free"
+    "statement": "Börja med klarhet, inte listor.",
+    "explanation": "Emma guidar dig genom frågor om livsstil, juridiska steg, dokument och köpprocessen — innan projekt diskuteras.",
+    "cta": "Få klarhet med Emma",
+    "microcopy": "Privat · Trycklös"
   },
   "fallback": {
-    "headline": "Prefer to explore first? You can browse a small curated selection below.",
+    "headline": "Föredrar du att utforska först? Du kan bläddra i ett litet urval nedan.",
     "apartments": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View apartments & penthouses"
+      "subtitle": "6 noggrant utvalda nybyggnadsprojekt",
+      "cta": "Se lägenheter & takvåningar"
     },
     "villas": {
-      "subtitle": "6 carefully selected new-build projects",
-      "cta": "View townhouses & villas"
+      "subtitle": "6 noggrant utvalda nybyggnadsprojekt",
+      "cta": "Se radhus & villor"
     }
   },
   "classicOptin": {
-    "headline": "Receive project details via WhatsApp or SMS — at your convenience.",
+    "headline": "Ta emot projektdetaljer via WhatsApp eller SMS — i din egen takt.",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "WhatsApp / SMS Number",
-      "interest": "I'm interested in",
+      "fullName": "Fullständigt namn",
+      "phone": "WhatsApp / SMS-nummer",
+      "interest": "Jag är intresserad av",
       "interestOptions": {
-        "apartments": "Apartments & Penthouses",
-        "villas": "Townhouses & Villas",
-        "both": "Both"
+        "apartments": "Lägenheter & Takvåningar",
+        "villas": "Radhus & Villor",
+        "both": "Båda"
       }
     },
-    "checkbox": "I agree to receive property updates via WhatsApp/SMS",
-    "button": "Send me the details",
-    "success": "Thank you! You'll receive details within 24 hours."
+    "checkbox": "Jag godkänner att ta emot fastighetsuppdateringar via WhatsApp/SMS",
+    "button": "Skicka mig detaljerna",
+    "success": "Tack! Du får detaljer inom 24 timmar."
   },
   "footer": {
     "privacy": "Integritetspolicy",
     "terms": "Användarvillkor"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Lägenheter & Takvåningar",
+    "villas": "Radhus & Villor",
+    "cta": "Prata med Emma"
   }
 }
