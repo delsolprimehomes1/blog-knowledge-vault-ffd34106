@@ -54,8 +54,10 @@
     "terms": "Conditions d'utilisation"
   },
   "header": {
-    "apartments": "Appartements & Penthouses",
-    "villas": "Maisons de ville & Villas",
+    "apartments": "Appartements",
+    "penthouses": "Penthouses",
+    "townhouses": "Maisons",
+    "villas": "Villas",
     "cta": "Parler à Emma"
   },
   "faq": {

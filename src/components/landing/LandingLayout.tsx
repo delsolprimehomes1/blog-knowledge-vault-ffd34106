@@ -155,14 +155,20 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
             {/* Fixed Minimal Header */}
             <header className="fixed top-0 left-0 w-full z-50 bg-white/95 backdrop-blur-md shadow-sm transition-all duration-300 border-b border-gray-100">
                 <div className="container mx-auto px-4 h-20 flex justify-between items-center">
-                    {/* Left: Section Links (Desktop Only) - Updated links for new layout */}
-                    <nav className="hidden lg:flex items-center gap-8 text-landing-navy text-sm font-medium tracking-wide">
-                        <button onClick={() => document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-landing-gold transition-colors">
-                            {t.video?.headline || "How it works"}
+            {/* Left: Apartments & Penthouses (Desktop Only) */}
+                    <nav className="hidden lg:flex items-center gap-4 text-landing-navy text-sm font-medium tracking-wide">
+                        <button 
+                            onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} 
+                            className="hover:text-landing-gold transition-colors"
+                        >
+                            {t.header?.apartments || "Apartments"}
                         </button>
                         <span className="text-landing-gold/30">|</span>
-                        <button onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-landing-gold transition-colors">
-                            {t.header?.apartments || "Properties"}
+                        <button 
+                            onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} 
+                            className="hover:text-landing-gold transition-colors"
+                        >
+                            {t.header?.penthouses || "Penthouses"}
                         </button>
                     </nav>
 
@@ -179,14 +185,31 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                         </span>
                     </div>
 
-                    {/* Right: Actions */}
+                    {/* Right: Townhouses, Villas + Language + CTA */}
                     <div className="flex items-center gap-4 md:gap-6">
+                        {/* Property Links (Desktop Only) */}
+                        <nav className="hidden lg:flex items-center gap-4 text-landing-navy text-sm font-medium tracking-wide">
+                            <button 
+                                onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} 
+                                className="hover:text-landing-gold transition-colors"
+                            >
+                                {t.header?.townhouses || "Townhouses"}
+                            </button>
+                            <span className="text-landing-gold/30">|</span>
+                            <button 
+                                onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })} 
+                                className="hover:text-landing-gold transition-colors"
+                            >
+                                {t.header?.villas || "Villas"}
+                            </button>
+                        </nav>
+                        
                         <div className="hidden md:block">
                             <LanguageSelector currentLang={language} />
                         </div>
                         <button
                             onClick={() => setIsEmmaOpen(true)}
-                            className="bg-landing-gold hover:bg-landing-goldDark text-white px-6 py-2.5 rounded-sm text-sm font-bold tracking-wide shadow-md transition-all hover:-translate-y-0.5"
+                            className="bg-landing-gold hover:bg-landing-goldDark text-white px-4 md:px-6 py-2.5 rounded-sm text-sm font-bold tracking-wide shadow-md transition-all hover:-translate-y-0.5"
                         >
                             {t.header?.cta || "Speak with Emma"}
                         </button>

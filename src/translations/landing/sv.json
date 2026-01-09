@@ -54,8 +54,10 @@
     "terms": "Användarvillkor"
   },
   "header": {
-    "apartments": "Lägenheter & Takvåningar",
-    "villas": "Radhus & Villor",
+    "apartments": "Lägenheter",
+    "penthouses": "Takvåningar",
+    "townhouses": "Radhus",
+    "villas": "Villor",
     "cta": "Prata med Emma"
   },
   "faq": {

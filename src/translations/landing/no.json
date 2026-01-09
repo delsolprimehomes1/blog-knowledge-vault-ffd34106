@@ -54,8 +54,10 @@
     "terms": "Vilkår for bruk"
   },
   "header": {
-    "apartments": "Leiligheter & Penthouse",
-    "villas": "Rekkehus & Villaer",
+    "apartments": "Leiligheter",
+    "penthouses": "Penthouse",
+    "townhouses": "Rekkehus",
+    "villas": "Villaer",
     "cta": "Snakk med Emma"
   },
   "faq": {

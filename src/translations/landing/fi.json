@@ -54,8 +54,10 @@
     "terms": "Käyttöehdot"
   },
   "header": {
-    "apartments": "Huoneistot & Kattohuoneistot",
-    "villas": "Rivitalot & Huvilat",
+    "apartments": "Huoneistot",
+    "penthouses": "Kattohuoneistot",
+    "townhouses": "Rivitalot",
+    "villas": "Huvilat",
     "cta": "Keskustele Emman kanssa"
   },
   "faq": {

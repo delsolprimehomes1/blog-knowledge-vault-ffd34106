@@ -54,8 +54,10 @@
     "terms": "Terms of Service"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
+    "apartments": "Apartments",
+    "penthouses": "Penthouses",
+    "townhouses": "Townhouses",
+    "villas": "Villas",
     "cta": "Speak with Emma"
   },
   "faq": {

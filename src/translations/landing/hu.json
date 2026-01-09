@@ -54,8 +54,10 @@
     "terms": "Szolgáltatási feltételek"
   },
   "header": {
-    "apartments": "Apartmanok és Penthouse-ok",
-    "villas": "Sorházak és Villák",
+    "apartments": "Lakások",
+    "penthouses": "Penthouse-ok",
+    "townhouses": "Sorházak",
+    "villas": "Villák",
     "cta": "Beszélj Emmával"
   },
   "faq": {

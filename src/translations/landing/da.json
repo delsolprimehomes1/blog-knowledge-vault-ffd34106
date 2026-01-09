@@ -54,8 +54,10 @@
     "terms": "Servicevilkår"
   },
   "header": {
-    "apartments": "Lejligheder & Penthouselejligheder",
-    "villas": "Rækkehuse & Villaer",
+    "apartments": "Lejligheder",
+    "penthouses": "Penthouse",
+    "townhouses": "Rækkehuse",
+    "villas": "Villaer",
     "cta": "Tal med Emma"
   },
   "faq": {

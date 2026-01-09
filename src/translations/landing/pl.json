@@ -54,8 +54,10 @@
     "terms": "Warunki korzystania"
   },
   "header": {
-    "apartments": "Apartamenty i Penthouse'y",
-    "villas": "Domy szeregowe i Wille",
+    "apartments": "Apartamenty",
+    "penthouses": "Penthouse'y",
+    "townhouses": "Domy",
+    "villas": "Wille",
     "cta": "Porozmawiaj z Emmą"
   },
   "faq": {

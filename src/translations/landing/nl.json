@@ -54,8 +54,10 @@
     "terms": "Servicevoorwaarden"
   },
   "header": {
-    "apartments": "Appartementen & Penthouses",
-    "villas": "Herenhuizen & Villa's",
+    "apartments": "Appartementen",
+    "penthouses": "Penthouses",
+    "townhouses": "Huizen",
+    "villas": "Villa's",
     "cta": "Spreek met Emma"
   },
   "faq": {
