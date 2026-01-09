@@ -29,10 +29,10 @@ serve(async (req) => {
 
     fal.config({ credentials: falKey.trim() });
 
-    // Brighter prompt with luminous lighting
-    const prompt = `A photorealistic, high-end lifestyle photograph of an attractive, successful couple in their late 50s relaxing in the backyard of their luxury modern Mediterranean villa in Costa del Sol. They are standing by the edge of a sleek infinity pool during BRIGHT golden hour with warm, luminous sunlight. The scene is BRIGHTLY LIT with soft, glowing ambient light - not dark or shadowy. They are holding crystal champagne flutes and making a toast, looking happy and relaxed. The foreground features high-end beige outdoor lounge furniture and manicured potted olive trees. The background offers a breathtaking panoramic view of the Mediterranean Sea and rolling mountains bathed in warm, BRIGHT sunset light with golden and amber tones. The atmosphere is serene, celebratory, and affluent. Shot in the style of Architectural Digest or Vogue Living, 8k resolution, bright warm lighting, soft shadows, cinematic depth of field.
+    // Bright daytime prompt - no sunset to avoid dark images
+    const prompt = `A photorealistic, high-end lifestyle photograph of an attractive, successful couple in their late 50s relaxing in the backyard of their luxury modern Mediterranean villa in Costa del Sol. They are standing by the edge of a sleek infinity pool in BRIGHT AFTERNOON SUNLIGHT with clear blue skies. The scene is flooded with natural daylight - crisp, clear, and vibrant. They are holding crystal champagne flutes and making a toast, looking happy and relaxed. The foreground features high-end beige outdoor lounge furniture and manicured potted olive trees. The background offers a breathtaking panoramic view of the sparkling turquoise Mediterranean Sea and rolling green mountains under bright blue skies. The atmosphere is serene, celebratory, and affluent. Shot in the style of Architectural Digest or Vogue Living, 8k resolution, bright natural daylight, crisp clear lighting, wide establishing shot, cinematic depth of field.
 
-IMPORTANT: Keep the lighting BRIGHT and LUMINOUS, avoid dark or moody shadows. The couple should be well-lit and clearly visible. Center the couple prominently in the middle of the frame.`;
+IMPORTANT: This is a DAYTIME scene with bright, clear sunlight - NOT sunset or golden hour. Keep the image bright, vibrant, and well-exposed. Use a WIDE establishing shot showing the full villa setting - do not zoom in too close. Center the couple prominently in the middle third of the frame.`;
 
     console.log('Generating brighter hero images for desktop and mobile...');
     
