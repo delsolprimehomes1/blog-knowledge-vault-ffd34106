@@ -1,8 +1,8 @@
 {
   "hero": {
-    "headline": "Discover Your Costa del Sol Investment",
-    "subheadline": "Curated luxury properties for discerning international investors",
-    "cta": "Begin Your Private Property Search"
+    "headline": "FEDEZZE FEL A LUXUS ÉLETSTÍLUST A COSTA DEL SOLON",
+    "subheadline": "Tapasztalja meg a személyre szabott és stresszmentes megközelítést álmai otthonának megtalálásához Dél-Spanyolországban.",
+    "cta": "Get your private, pressure-free property shortlist"
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",
@@ -40,8 +40,8 @@
   },
   "properties": {
     "featured": "Featured Properties",
-    "apartmentsTitle": "Apartments & Penthouses",
-    "villasTitle": "Townhouses & Villas",
+    "apartmentsTitle": "Apartmanok & Penthouse-ok",
+    "villasTitle": "Sorházak & Villák",
     "viewDetails": "View Details",
     "beds": "Beds",
     "baths": "Baths",
@@ -53,22 +53,22 @@
     "cta": "Ready to Start?"
   },
   "testimonials": {
-    "headline": "Trusted by International Investors",
+    "headline": "A calm, pressure-free experience — according to our clients",
     "reviews": [
       {
-        "quote": "Emma really understood our needs and offered us clear choices without any pressure.",
-        "author": "Peter & Anne",
-        "country": "Netherlands"
+        "quote": "Emma igazán megértette az igényeinket, és világos választási lehetőségeket kínált.",
+        "author": "— Peter & Anne, Hollandia",
+        "country": ""
       },
       {
-        "quote": "The process was smooth, professional, and completely tailored to our schedule.",
-        "author": "Lars & Ingrid",
-        "country": "Sweden"
+        "quote": "A folyamat zökkenőmentes volt, és soha nem éreztünk nyomást.",
+        "author": "— Lars & Ingrid, Svédország",
+        "country": ""
       },
       {
-        "quote": "Highly recommended for anyone wanting a discreet, guided property search.",
-        "author": "Thomas & Marie",
-        "country": "France"
+        "quote": "Erősen ajánlott mindenkinek, aki vezetett ingatlankeresést szeretne.",
+        "author": "— Thomas & Marie, Franciaország",
+        "country": ""
       }
     ]
   },
@@ -78,27 +78,42 @@
     "button": "Start Conversation"
   },
   "footer": {
-    "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "privacy": "Adatvédelmi Irányelvek",
+    "terms": "Szolgáltatási Feltételek"
   },
   "form": {
-    "title": "Fill out the form to receive more information",
+    "title": "Töltse ki az ürlapot további információkért",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "Your Phone Number",
-      "comment": "Comment (optional)"
+      "fullName": "Teljes Név",
+      "phone": "Telefonszáma",
+      "comment": "Megjegyzés (opcionális)"
     },
     "consent": "I agree to receive relevant information and follow-up messages from DelSolPrimeHomes via WhatsApp and/or SMS.",
-    "submit": "Request WhatsApp / SMS Info",
-    "recaptcha": "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.",
-    "success": "Thank you! We'll contact you within 24 hours.",
-    "error": "Something went wrong. Please try again.",
+    "submit": "WhatsApp / SMS Infó Kérése",
+    "recaptcha": "Ezt az oldalt a reCAPTCHA védi, és a Google Adatvédelmi Irányelvei és Szolgáltatási Feltételei érvényesek.",
+    "success": "Köszönjük! 24 órán belül felvesszük Önnel a kapcsolatot.",
+    "error": "Valami hiba történt. Kérjük, próbálja újra.",
     "contactField": "WhatsApp / SMS number",
     "contactFieldAlt": "Where can we message you? (WhatsApp/SMS)"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Apartmanok & Penthouse-ok",
+    "villas": "Sorházak & Villák",
+    "cta": "Kezdés Emmával"
+  },
+  "emma": {
+    "headline": "Tegye fel kérdéseit. Ossza meg szempontjait.",
+    "subheadline": "Kapjon egy első, személyre szabott válogatást 24 órán belül.",
+    "status": "Online most - Kérdezzen bármit!",
+    "greeting": "Szia! Miben segíthetek ma?",
+    "quickActions": {
+      "question": "Kérdezzen egyet",
+      "criteria": "Ossza meg szempontjait",
+      "explore": "Fedezze fel az apartmanokat vagy villákat"
+    },
+    "placeholder": "Írja be üzenetét...",
+    "title": "Emma",
+    "subtitle": "Your Property Assistant",
+    "intro": "Emma answers your questions and prepares a clear overview of your criteria for our team."
   }
 }

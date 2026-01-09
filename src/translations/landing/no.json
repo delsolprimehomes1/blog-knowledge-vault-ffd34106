@@ -1,8 +1,8 @@
 {
   "hero": {
-    "headline": "Discover Your Costa del Sol Investment",
-    "subheadline": "Curated luxury properties for discerning international investors",
-    "cta": "Begin Your Private Property Search"
+    "headline": "OPPDAG LUKSUSLIV PÅ COSTA DEL SOL",
+    "subheadline": "Opplev en personlig og stressfri tilnærming til å finne drømmeboligen din i Sør-Spania.",
+    "cta": "Get your private, pressure-free property shortlist"
   },
   "valueProp": {
     "headline": "A Guided, Pressure-Free Approach",
@@ -40,8 +40,8 @@
   },
   "properties": {
     "featured": "Featured Properties",
-    "apartmentsTitle": "Apartments & Penthouses",
-    "villasTitle": "Townhouses & Villas",
+    "apartmentsTitle": "Leiligheter & Toppleiligheter",
+    "villasTitle": "Rekkehus & Villaer",
     "viewDetails": "View Details",
     "beds": "Beds",
     "baths": "Baths",
@@ -53,22 +53,22 @@
     "cta": "Ready to Start?"
   },
   "testimonials": {
-    "headline": "Trusted by International Investors",
+    "headline": "A calm, pressure-free experience — according to our clients",
     "reviews": [
       {
-        "quote": "Emma really understood our needs and offered us clear choices without any pressure.",
-        "author": "Peter & Anne",
-        "country": "Netherlands"
+        "quote": "Emma forsto virkelig våre behov og tilbød oss klare valgmuligheter.",
+        "author": "— Peter & Anne, Nederland",
+        "country": ""
       },
       {
-        "quote": "The process was smooth, professional, and completely tailored to our schedule.",
-        "author": "Lars & Ingrid",
-        "country": "Sweden"
+        "quote": "Prosessen var smidig og vi følte oss aldri presset.",
+        "author": "— Lars & Ingrid, Sverige",
+        "country": ""
       },
       {
-        "quote": "Highly recommended for anyone wanting a discreet, guided property search.",
-        "author": "Thomas & Marie",
-        "country": "France"
+        "quote": "Anbefales på det sterkeste for alle som ønsker et veiledet boligsøk.",
+        "author": "— Thomas & Marie, Frankrike",
+        "country": ""
       }
     ]
   },
@@ -78,27 +78,42 @@
     "button": "Start Conversation"
   },
   "footer": {
-    "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "privacy": "Personvernregler",
+    "terms": "Vilkår for bruk"
   },
   "form": {
-    "title": "Fill out the form to receive more information",
+    "title": "Fyll ut skjemaet for å motta mer informasjon",
     "fields": {
-      "fullName": "Full Name",
-      "phone": "Your Phone Number",
-      "comment": "Comment (optional)"
+      "fullName": "Fullt Navn",
+      "phone": "Ditt Telefonnummer",
+      "comment": "Kommentar (valgfritt)"
     },
     "consent": "I agree to receive relevant information and follow-up messages from DelSolPrimeHomes via WhatsApp and/or SMS.",
-    "submit": "Request WhatsApp / SMS Info",
-    "recaptcha": "This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.",
-    "success": "Thank you! We'll contact you within 24 hours.",
-    "error": "Something went wrong. Please try again.",
+    "submit": "Be om WhatsApp / SMS Info",
+    "recaptcha": "Dette nettstedet beskyttes av reCAPTCHA og Googles personvernregler og vilkår gjelder.",
+    "success": "Takk! Vi kontakter deg innen 24 timer.",
+    "error": "Noe gikk galt. Vennligst prøv igjen.",
     "contactField": "WhatsApp / SMS number",
     "contactFieldAlt": "Where can we message you? (WhatsApp/SMS)"
   },
   "header": {
-    "apartments": "Apartments & Penthouses",
-    "villas": "Townhouses & Villas",
-    "cta": "Speak with Emma"
+    "apartments": "Leiligheter & Toppleiligheter",
+    "villas": "Rekkehus & Villaer",
+    "cta": "Start med Emma"
+  },
+  "emma": {
+    "headline": "Still dine spørsmål. Del dine kriterier.",
+    "subheadline": "Motta et første skreddersydd utvalg innen 24 timer.",
+    "status": "På nett nå - Spør meg om hva som helst!",
+    "greeting": "Hei! Hvordan kan jeg hjelpe deg i dag?",
+    "quickActions": {
+      "question": "Still et spørsmål",
+      "criteria": "Del dine kriterier",
+      "explore": "Utforsk leiligheter eller villaer"
+    },
+    "placeholder": "Skriv din melding...",
+    "title": "Emma",
+    "subtitle": "Your Property Assistant",
+    "intro": "Emma answers your questions and prepares a clear overview of your criteria for our team."
   }
 }
