@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+import videoThumbnail from '@/assets/video-thumbnail.jpg';
 
 interface AutoplayVideoProps {
     language: string;
@@ -76,7 +77,7 @@ const AutoplayVideo: React.FC<AutoplayVideoProps> = ({ language, translations })
                             playsInline
                             controls
                             className="w-full h-full object-cover"
-                            poster="https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1600&q=80"
+                            poster={videoThumbnail}
                         >
                             <source src={videoUrl} type="video/mp4" />
                             Your browser does not support the video tag.
