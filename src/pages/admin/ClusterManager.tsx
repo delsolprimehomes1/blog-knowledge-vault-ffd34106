@@ -759,12 +759,12 @@ const ClusterManager = () => {
             // More work to do - update progress and continue
             const remaining = data.remainingLanguages || [];
             const completedCount = data.completedLanguages?.length || 0;
-            setTranslationProgress({ 
-              current: data.language?.toUpperCase() || 'Processing', 
-              remaining: remaining.length,
-              articlesCompleted: completedCount * 6 + (data.articlesGenerated || 0),
-              totalArticles: 60
-            });
+setTranslationProgress({ 
+  current: data.language?.toUpperCase() || 'Processing', 
+  remaining: remaining.length,
+  articlesCompleted: data.articlesTranslated || 0,
+  totalArticles: data.totalArticles || 60
+});
             
             if (remaining.length === 0) {
               // Actually complete
