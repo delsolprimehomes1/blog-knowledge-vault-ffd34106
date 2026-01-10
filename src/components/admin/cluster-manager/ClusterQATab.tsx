@@ -612,7 +612,7 @@ export const ClusterQATab = ({
   const getQAStatusForLanguage = (lang: string) => {
     const articleCount = cluster.languages[lang]?.total || 0;
     const expectedQAs = articleCount * QAS_PER_ARTICLE;
-    const actualQAs = cluster.qa_pages[lang]?.total || 0;
+    const actualQAs = languageQACounts[lang] ?? (cluster.qa_pages[lang]?.total || 0);
     const publishedQAs = cluster.qa_pages[lang]?.published || 0;
 
     return {
@@ -728,9 +728,9 @@ export const ClusterQATab = ({
   };
 
   const isPhase1Complete = englishQACount >= 24;
-  // Use cluster.qa_pages as single source of truth for Phase 2 completion
-  const isPhase2Complete = TARGET_LANGUAGES.every(lang => (cluster.qa_pages[lang]?.total || 0) >= 24);
-  const totalQAsCreated = englishQACount + TARGET_LANGUAGES.reduce((sum, lang) => sum + (cluster.qa_pages[lang]?.total || 0), 0);
+  // Use local state for real-time updates, fallback to cluster prop for initial load
+  const isPhase2Complete = TARGET_LANGUAGES.every(lang => (languageQACounts[lang] ?? cluster.qa_pages[lang]?.total ?? 0) >= 24);
+  const totalQAsCreated = englishQACount + TARGET_LANGUAGES.reduce((sum, lang) => sum + (languageQACounts[lang] ?? cluster.qa_pages[lang]?.total ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -918,11 +918,11 @@ export const ClusterQATab = ({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Language Translation Grid - using cluster.qa_pages as single source of truth */}
+          {/* Language Translation Grid - using local state for real-time updates */}
           <div className="grid grid-cols-3 gap-3">
             {TARGET_LANGUAGES.map((lang) => {
-              // Use cluster.qa_pages for consistency with mismatch warnings
-              const count = cluster.qa_pages[lang]?.total || 0;
+              // Use local state for real-time updates, fallback to cluster prop for initial load
+              const count = languageQACounts[lang] ?? (cluster.qa_pages[lang]?.total || 0);
               const isCompleted = count >= 24;
               const isTranslating = translatingLanguages.has(lang);
               const canStartMore = translatingLanguages.size < MAX_PARALLEL_TRANSLATIONS;
