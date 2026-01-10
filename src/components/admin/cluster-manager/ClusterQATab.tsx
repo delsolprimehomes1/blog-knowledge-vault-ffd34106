@@ -91,6 +91,7 @@ export const ClusterQATab = ({
   const [completedLanguages, setCompletedLanguages] = useState<Set<string>>(new Set());
   const [englishQACount, setEnglishQACount] = useState(0);
   const [languageQACounts, setLanguageQACounts] = useState<Record<string, number>>({});
+  const [languagePublishedCounts, setLanguagePublishedCounts] = useState<Record<string, number>>({});
   
   // ENHANCEMENT 5: Verification
   const [isVerifying, setIsVerifying] = useState(false);
@@ -137,10 +138,10 @@ export const ClusterQATab = ({
   const fetchQACounts = useCallback(async () => {
     const requestId = ++refreshCounterRef.current;
     
-    // Single query to get all Q&A data for this cluster
+    // Single query to get all Q&A data for this cluster (including status for published counts)
     const { data: allQAs, error } = await supabase
       .from('qa_pages')
-      .select('language, source_article_id, hreflang_group_id')
+      .select('language, source_article_id, hreflang_group_id, status')
       .eq('cluster_id', cluster.cluster_id);
 
     // Race safety: only apply if this is still the latest request
@@ -161,10 +162,13 @@ export const ClusterQATab = ({
 
     // Count Q&As per target language (use distinct hreflang_group_id for accuracy)
     const langCounts: Record<string, number> = {};
+    const langPublishedCounts: Record<string, number> = {};
     const langGroupIds: Record<string, Set<string>> = {};
+    const langPublishedGroupIds: Record<string, Set<string>> = {};
     
     for (const lang of TARGET_LANGUAGES) {
       langGroupIds[lang] = new Set();
+      langPublishedGroupIds[lang] = new Set();
     }
     
     qaList.forEach(qa => {
@@ -172,9 +176,15 @@ export const ClusterQATab = ({
         // Use hreflang_group_id for unique group counting (preferred) or just count rows
         if (qa.hreflang_group_id) {
           langGroupIds[qa.language].add(qa.hreflang_group_id);
+          if (qa.status === 'published') {
+            langPublishedGroupIds[qa.language].add(qa.hreflang_group_id);
+          }
         } else {
           // Fallback: count rows if no hreflang_group_id
           langCounts[qa.language] = (langCounts[qa.language] || 0) + 1;
+          if (qa.status === 'published') {
+            langPublishedCounts[qa.language] = (langPublishedCounts[qa.language] || 0) + 1;
+          }
         }
       }
     });
@@ -182,11 +192,18 @@ export const ClusterQATab = ({
     // Merge: prefer distinct group count, fallback to row count
     for (const lang of TARGET_LANGUAGES) {
       const groupCount = langGroupIds[lang].size;
+      const publishedGroupCount = langPublishedGroupIds[lang].size;
       // If we have group IDs, use that count; otherwise use raw row count
       langCounts[lang] = groupCount > 0 ? groupCount : (langCounts[lang] || 0);
+      langPublishedCounts[lang] = publishedGroupCount > 0 ? publishedGroupCount : (langPublishedCounts[lang] || 0);
     }
     
+    // Also count English published
+    const englishPublished = englishQAs.filter(qa => qa.status === 'published').length;
+    langPublishedCounts['en'] = englishPublished;
+    
     setLanguageQACounts(langCounts);
+    setLanguagePublishedCounts(langPublishedCounts);
 
     // Count English Q&As per source article
     const articleCounts: Record<string, number> = {};
@@ -613,7 +630,8 @@ export const ClusterQATab = ({
     const articleCount = cluster.languages[lang]?.total || 0;
     const expectedQAs = articleCount * QAS_PER_ARTICLE;
     const actualQAs = languageQACounts[lang] ?? (cluster.qa_pages[lang]?.total || 0);
-    const publishedQAs = cluster.qa_pages[lang]?.published || 0;
+    // Use local state for real-time published count updates
+    const publishedQAs = languagePublishedCounts[lang] ?? (cluster.qa_pages[lang]?.published || 0);
 
     return {
       articleCount,
