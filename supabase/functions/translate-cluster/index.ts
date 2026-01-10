@@ -1,10 +1,40 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { fal } from "https://esm.sh/@fal-ai/client@1.2.1";
+
+// Configure Fal.ai
+fal.config({
+  credentials: Deno.env.get("FAL_KEY")
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/**
+ * Generate unique image for translated article
+ */
+async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
+  try {
+    const result = await fal.subscribe("fal-ai/flux/schnell", {
+      input: {
+        prompt,
+        image_size: "landscape_16_9",
+        num_inference_steps: 4,
+        num_images: 1
+      }
+    });
+    
+    if (result.data?.images?.[0]?.url) {
+      console.log(`✅ Generated unique image`);
+      return result.data.images[0].url;
+    }
+  } catch (error) {
+    console.error(`⚠️ Image generation failed, using fallback:`, error);
+  }
+  return fallbackUrl;
+}
 
 const LANGUAGE_NAMES: Record<string, string> = {
   'de': 'German',
@@ -283,6 +313,10 @@ async function translateArticleWithRetry(
       .trim()
       .slice(0, 70);
 
+    // Generate unique image for this language article
+    const imagePrompt = `Professional Costa del Sol real estate photograph. Headline: ${metadata.headline}. Style: Modern luxury Mediterranean property, bright natural lighting, high-end marketing quality. Language context: ${targetLanguageName}`;
+    const generatedImageUrl = await generateUniqueImage(imagePrompt, englishArticle.featured_image_url);
+
     return {
       language: targetLanguage,
       headline: metadata.headline,
@@ -294,7 +328,7 @@ async function translateArticleWithRetry(
       qa_entities: metadata.qa_entities,
       featured_image_alt: metadata.featured_image_alt,
       featured_image_caption: metadata.featured_image_caption || englishArticle.featured_image_caption,
-      featured_image_url: englishArticle.featured_image_url,
+      featured_image_url: generatedImageUrl,
       diagram_url: englishArticle.diagram_url,
       diagram_description: englishArticle.diagram_description,
       diagram_alt: englishArticle.diagram_alt,

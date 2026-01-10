@@ -1,11 +1,41 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fal } from "https://esm.sh/@fal-ai/client@1.2.1";
+
+// Configure Fal.ai
+fal.config({
+  credentials: Deno.env.get("FAL_KEY")
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/**
+ * Generate unique image for translated Q&A
+ */
+async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
+  try {
+    const result = await fal.subscribe("fal-ai/flux/schnell", {
+      input: {
+        prompt,
+        image_size: "landscape_16_9",
+        num_inference_steps: 4,
+        num_images: 1
+      }
+    });
+    
+    if (result.data?.images?.[0]?.url) {
+      console.log(`✅ Generated unique Q&A image`);
+      return result.data.images[0].url;
+    }
+  } catch (error) {
+    console.error(`⚠️ Q&A image generation failed, using fallback:`, error);
+  }
+  return fallbackUrl;
+}
 
 const LANGUAGE_NAMES: Record<string, string> = {
   de: 'German',
@@ -538,6 +568,11 @@ serve(async (req) => {
 
         // Build translated Q&A record
         const now = new Date().toISOString();
+        
+        // Generate unique image for this Q&A
+        const qaImagePrompt = `Professional Costa del Sol real estate Q&A photograph. Question: ${translation.question}. Style: Modern luxury property, educational guidance imagery, Mediterranean aesthetic. Language: ${LANGUAGE_NAMES[targetLanguage] || targetLanguage}`;
+        const generatedImageUrl = await generateUniqueImage(qaImagePrompt, englishQA.featured_image_url);
+        
         const translatedQARecord = {
           source_article_id: targetArticle.id,
           cluster_id: clusterId,
@@ -550,7 +585,7 @@ serve(async (req) => {
           meta_title: translation.metaTitle,
           meta_description: translation.metaDescription,
           speakable_answer: translation.speakableAnswer,
-          featured_image_url: englishQA.featured_image_url,
+          featured_image_url: generatedImageUrl,
           featured_image_alt: translation.imageAlt,
           hreflang_group_id: englishQA.hreflang_group_id,
           source_language: 'en',

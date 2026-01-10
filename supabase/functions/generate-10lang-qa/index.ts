@@ -1,10 +1,40 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fal } from "https://esm.sh/@fal-ai/client@1.2.1";
+
+// Configure Fal.ai
+fal.config({
+  credentials: Deno.env.get("FAL_KEY")
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/**
+ * Generate unique image for Q&A
+ */
+async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
+  try {
+    const result = await fal.subscribe("fal-ai/flux/schnell", {
+      input: {
+        prompt,
+        image_size: "landscape_16_9",
+        num_inference_steps: 4,
+        num_images: 1
+      }
+    });
+    
+    if (result.data?.images?.[0]?.url) {
+      console.log(`✅ Generated unique Q&A image`);
+      return result.data.images[0].url;
+    }
+  } catch (error) {
+    console.error(`⚠️ Q&A image generation failed, using fallback:`, error);
+  }
+  return fallbackUrl;
+}
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
@@ -319,6 +349,11 @@ serve(async (req) => {
             }
           }
           
+          // Generate unique image for this Q&A
+          const qaImagePrompt = `Professional Costa del Sol real estate Q&A photograph. Question: ${qaData.question_main}. Style: Costa del Sol luxury property, educational guidance imagery. Language: ${LANGUAGE_NAMES[lang] || lang}`;
+          const fallbackImageUrl = langArticle?.featured_image_url || englishArticle.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200';
+          const generatedImageUrl = await generateUniqueImage(qaImagePrompt, fallbackImageUrl);
+          
           const pageData = {
             source_article_id: langArticle?.id || englishArticle.id,
             source_article_slug: langArticle?.slug || englishArticle.slug,
@@ -336,7 +371,7 @@ serve(async (req) => {
             speakable_answer: qaData.speakable_answer,
             meta_title: (qaData.meta_title || '').substring(0, 60),
             meta_description: (qaData.meta_description || '').substring(0, 160),
-            featured_image_url: langArticle?.featured_image_url || englishArticle.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200',
+            featured_image_url: generatedImageUrl,
             featured_image_alt: imageAlt, // Now language-specific
             category: sourceContent.category,
             status: 'published',
