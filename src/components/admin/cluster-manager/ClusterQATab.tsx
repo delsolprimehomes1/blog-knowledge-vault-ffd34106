@@ -399,8 +399,9 @@ export const ClusterQATab = ({
         toast.warning(`${targetLanguage.toUpperCase()}: Batch limit reached. Click Resume again.`);
       }
       
-      // Final refresh
+      // Final refresh - update both QA tab data AND parent cluster data for header badges
       await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
+      await queryClient.invalidateQueries({ queryKey: ['cluster-generations'] });
       return true;
       
     } catch (error) {
@@ -561,6 +562,9 @@ export const ClusterQATab = ({
       await handleVerifyHreflang();
       
       toast.success('🎉 All 240 Q&As generated and verified!');
+      
+      // Invalidate parent cluster data to update header badges
+      await queryClient.invalidateQueries({ queryKey: ['cluster-generations'] });
       
     } catch (error) {
       console.error('Generate all error:', error);
@@ -742,6 +746,7 @@ export const ClusterQATab = ({
       setRepairProgress(null);
       await fetchQACounts();
       await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
+      await queryClient.invalidateQueries({ queryKey: ['cluster-generations'] });
     }
   };
 
