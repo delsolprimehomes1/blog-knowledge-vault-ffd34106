@@ -75,5 +75,29 @@
         "answer": "Onze samengestelde selectie varieert van €350.000 tot €5.000.000+, gericht op hoogwaardige nieuwbouwprojecten."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Wat Onze Klanten Zeggen",
+    "subheading": "Echte ervaringen van kopers uit heel Europa",
+    "reviews": [
+      {
+        "country": "Nederland",
+        "headline": "Duidelijkheid, geen druk.",
+        "body": "Emma gaf ons eerst duidelijke antwoorden in het Nederlands. Een stressvrije en professionele start.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Frankrijk",
+        "headline": "Deskundige hulp in het Frans.",
+        "body": "Begonnen met Emma, daarna nam Nathalie het over in onze eigen taal. Absolute gemoedsrust.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Zweden",
+        "headline": "Vertrouwen langs de kust.",
+        "body": "De Zweedse video was geweldig, maar het onafhankelijke advies van de experts was de echte doorbraak.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

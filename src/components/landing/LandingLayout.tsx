@@ -12,6 +12,7 @@ import LanguageSelector from './LanguageSelector';
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import { trackPageView } from '@/utils/landing/analytics';
 import LeadCaptureForm from './LeadCaptureForm';
+import TestimonialsSection from './TestimonialsSection';
 
 interface LandingLayoutProps {
     language: LanguageCode;
@@ -243,7 +244,10 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                     translations={translations}
                 />
 
-                {/* 3. EMMA SECTION - Primary Conversion */}
+                {/* 3. TESTIMONIALS - Social Proof */}
+                <TestimonialsSection language={language} />
+
+                {/* 4. EMMA SECTION - Primary Conversion */}
                 <EmmaSection
                     onStartChat={() => setIsEmmaOpen(true)}
                     translations={translations?.emma}

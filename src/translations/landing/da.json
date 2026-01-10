@@ -75,5 +75,29 @@
         "answer": "Vores kuraterede udvalg spænder fra €350.000 til €5.000.000+, med fokus på nybyggeriprojekter af høj kvalitet."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Hvad Vores Kunder Siger",
+    "subheading": "Rigtige oplevelser fra købere i hele Europa",
+    "reviews": [
+      {
+        "country": "Holland",
+        "headline": "Klarhed, intet pres.",
+        "body": "Emma gav os klare svar på hollandsk først. En stressfri og professionel måde at starte på.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Frankrig",
+        "headline": "Eksperthjælp på fransk.",
+        "body": "Startede med Emma, så tog Nathalie over på vores eget sprog. Fuldstændig ro i sindet.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Sverige",
+        "headline": "Tillid langs kysten.",
+        "body": "Den svenske video var fantastisk, men den uafhængige rådgivning fra eksperterne var den virkelige game-changer.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

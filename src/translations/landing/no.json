@@ -75,5 +75,29 @@
         "answer": "Vårt utvalg varierer fra € 350 000 til € 5 000 000+, med fokus på høykvalitets nybyggprosjekter."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Hva Våre Kunder Sier",
+    "subheading": "Ekte erfaringer fra kjøpere over hele Europa",
+    "reviews": [
+      {
+        "country": "Nederland",
+        "headline": "Klarhet, ikke press.",
+        "body": "Emma ga oss klare svar på nederlandsk først. En stressfri og profesjonell måte å starte på.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Frankrike",
+        "headline": "Eksperthjelp på fransk.",
+        "body": "Startet med Emma, så tok Nathalie over på vårt eget språk. Fullstendig trygghet.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Sverige",
+        "headline": "Tillit langs kysten.",
+        "body": "Den svenske videoen var flott, men de uavhengige rådene fra ekspertene var den store forskjellen.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

@@ -75,5 +75,29 @@
         "answer": "Unsere kuratierte Auswahl reicht von 350.000 € bis 5.000.000 €+, mit Fokus auf hochwertige Neubauprojekte."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Was Unsere Kunden Sagen",
+    "subheading": "Echte Erfahrungen von Käufern aus ganz Europa",
+    "reviews": [
+      {
+        "country": "Niederlande",
+        "headline": "Klarheit, kein Druck.",
+        "body": "Emma gab uns zuerst klare Antworten auf Niederländisch. Ein stressfreier und professioneller Start.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Frankreich",
+        "headline": "Expertenhilfe auf Französisch.",
+        "body": "Begonnen mit Emma, dann übernahm Nathalie in unserer eigenen Sprache. Absolute Sorgenfreiheit.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Schweden",
+        "headline": "Vertrauen an der Küste.",
+        "body": "Das schwedische Video war großartig, aber die unabhängige Beratung der Experten war der eigentliche Game-Changer.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

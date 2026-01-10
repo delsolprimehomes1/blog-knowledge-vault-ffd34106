@@ -75,5 +75,29 @@
         "answer": "Vårt urval sträcker sig från 350 000 € till 5 000 000 €+, med fokus på högkvalitativa nybyggnadsprojekt."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Vad Våra Kunder Säger",
+    "subheading": "Verkliga upplevelser från köpare över hela Europa",
+    "reviews": [
+      {
+        "country": "Nederländerna",
+        "headline": "Tydlighet, inget tryck.",
+        "body": "Emma gav oss tydliga svar på nederländska först. Ett stressfritt och professionellt sätt att börja.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Frankrike",
+        "headline": "Experthjälp på franska.",
+        "body": "Började med Emma, sedan tog Nathalie över på vårt eget språk. Fullständig sinnesfrid.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Sverige",
+        "headline": "Förtroende längs kusten.",
+        "body": "Den svenska videon var bra, men experternas oberoende råd var den verkliga avgörande faktorn.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

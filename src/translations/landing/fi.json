@@ -75,5 +75,29 @@
         "answer": "Valikoimamme vaihtelee 350 000 eurosta yli 5 000 000 euroon, keskittyen laadukkaisiin uudisrakennuskohteisiin."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Mitä Asiakkaamme Sanovat",
+    "subheading": "Todellisia kokemuksia ostajilta ympäri Eurooppaa",
+    "reviews": [
+      {
+        "country": "Alankomaat",
+        "headline": "Selkeyttä, ei painostusta.",
+        "body": "Emma antoi meille ensin selkeät vastaukset hollanniksi. Stressitön ja ammattimainen tapa aloittaa.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Ranska",
+        "headline": "Asiantuntija-apua ranskaksi.",
+        "body": "Aloitimme Emman kanssa, sitten Nathalie otti ohjat omalla kielellämme. Täysi mielenrauha.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Ruotsi",
+        "headline": "Luottamusta rannikolla.",
+        "body": "Ruotsalainen video oli hieno, mutta asiantuntijoiden riippumaton neuvonta oli todellinen käännekohta.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

@@ -75,5 +75,29 @@
         "answer": "Nasza wyselekcjonowana oferta waha się od 350 000 € do 5 000 000 €+, koncentrując się na wysokiej jakości nowych inwestycjach."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Co Mówią Nasi Klienci",
+    "subheading": "Prawdziwe doświadczenia kupujących z całej Europy",
+    "reviews": [
+      {
+        "country": "Holandia",
+        "headline": "Jasność, bez presji.",
+        "body": "Emma najpierw udzieliła nam jasnych odpowiedzi po holendersku. Bezstresowy i profesjonalny sposób na start.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Francja",
+        "headline": "Fachowa pomoc w języku francuskim.",
+        "body": "Zaczęliśmy z Emmą, potem Nathalie przejęła sprawę w naszym własnym języku. Całkowity spokój ducha.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Szwecja",
+        "headline": "Zaufanie na całym wybrzeżu.",
+        "body": "Szwedzkie wideo było świetne, ale niezależne porady ekspertów były prawdziwym przełomem.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

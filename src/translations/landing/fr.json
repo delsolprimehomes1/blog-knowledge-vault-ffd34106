@@ -75,5 +75,29 @@
         "answer": "Notre sélection s'étend de 350 000 € à 5 000 000 €+, en se concentrant sur des projets neufs de haute qualité."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Ce Que Disent Nos Clients",
+    "subheading": "Expériences réelles d'acheteurs de toute l'Europe",
+    "reviews": [
+      {
+        "country": "Pays-Bas",
+        "headline": "Clarté, pas de pression.",
+        "body": "Emma nous a donné des réponses claires en néerlandais d'abord. Une façon professionnelle et sans stress de commencer.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "France",
+        "headline": "Aide experte en français.",
+        "body": "Commencé avec Emma, puis Nathalie a pris le relais dans notre propre langue. Une tranquillité d'esprit absolue.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Suède",
+        "headline": "Confiance sur toute la côte.",
+        "body": "La vidéo suédoise était géniale, mais les conseils indépendants des experts ont vraiment fait la différence.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

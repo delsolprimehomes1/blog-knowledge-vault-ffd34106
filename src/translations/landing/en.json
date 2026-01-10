@@ -75,5 +75,29 @@
         "answer": "Our curated selection ranges from €350,000 to €5,000,000+, focusing on high-quality new-build developments."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "What Our Clients Say",
+    "subheading": "Real experiences from buyers across Europe",
+    "reviews": [
+      {
+        "country": "Netherlands",
+        "headline": "Clarity, not pressure.",
+        "body": "Emma gave us clear answers in Dutch first. A stress-free and professional way to start.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "France",
+        "headline": "Expert help in French.",
+        "body": "Started with Emma, then Nathalie took over in our own language. Absolute peace of mind.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Sweden",
+        "headline": "Trust across the coast.",
+        "body": "The Swedish video was great, but the independent advice from the experts was the real game-changer.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }

@@ -75,5 +75,29 @@
         "answer": "Válogatott kínálatunk 350 000 €-tól 5 000 000 €-ig terjed, a magas minőségű új építésű fejlesztésekre összpontosítva."
       }
     ]
+  },
+  "testimonials": {
+    "heading": "Mit Mondanak Ügyfeleink",
+    "subheading": "Valós tapasztalatok vevőktől egész Európából",
+    "reviews": [
+      {
+        "country": "Hollandia",
+        "headline": "Tisztánlátás, nem nyomás.",
+        "body": "Emma először hollandul adott nekünk világos válaszokat. Stresszmentes és professzionális kezdés.",
+        "name": "Jan & Linda"
+      },
+      {
+        "country": "Franciaország",
+        "headline": "Szakértői segítség franciául.",
+        "body": "Emmával kezdtünk, majd Nathalie vette át a saját nyelvünkön. Teljes nyugalom.",
+        "name": "Pierre & Marie"
+      },
+      {
+        "country": "Svédország",
+        "headline": "Bizalom a part mentén.",
+        "body": "A svéd videó nagyszerű volt, de a szakértők független tanácsai jelentették az igazi áttörést.",
+        "name": "Sven & Ingrid"
+      }
+    ]
   }
 }
