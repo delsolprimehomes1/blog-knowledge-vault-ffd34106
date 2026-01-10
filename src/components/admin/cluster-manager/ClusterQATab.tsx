@@ -102,6 +102,7 @@ export const ClusterQATab = ({
   const [isFixingQALinking, setIsFixingQALinking] = useState(false);
   const [isUnifyingOrphanQAs, setIsUnifyingOrphanQAs] = useState(false);
   const [orphanedQACount, setOrphanedQACount] = useState<number>(0);
+  const [isSyncingTranslations, setIsSyncingTranslations] = useState(false);
   
   // ENHANCEMENT 5: Verification
   const [isVerifying, setIsVerifying] = useState(false);
@@ -803,6 +804,43 @@ export const ClusterQATab = ({
       toast.error('Verification failed');
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  // SYNC ALL TRANSLATIONS JSONB (for this cluster + globally)
+  const handleSyncTranslationsJsonb = async () => {
+    setIsSyncingTranslations(true);
+    
+    try {
+      toast.info('Syncing translations JSONB for this cluster...');
+      
+      // First sync this cluster's articles
+      const { error: articleError } = await supabase.functions.invoke('sync-translations-jsonb', {
+        body: { clusterId: cluster.cluster_id },
+      });
+      
+      if (articleError) {
+        console.error('Article sync error:', articleError);
+      }
+      
+      // Then sync this cluster's Q&As
+      const { data: qaData, error: qaError } = await supabase.functions.invoke('sync-qa-translations-jsonb', {
+        body: { /* no filter = sync all groups for this cluster's Q&As */ },
+      });
+      
+      if (qaError) {
+        console.error('Q&A sync error:', qaError);
+      }
+      
+      // Re-verify after sync
+      await handleVerifyHreflang();
+      
+      toast.success('Translations JSONB synced! Re-verified results.');
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error('Sync failed');
+    } finally {
+      setIsSyncingTranslations(false);
     }
   };
 
@@ -1545,6 +1583,27 @@ export const ClusterQATab = ({
                   <div className="text-xl font-bold">
                     {verificationResults.jsonbComplete ? 'Complete ✅' : `${verificationResults.missingJsonbCount} incomplete`}
                   </div>
+                  {!verificationResults.jsonbComplete && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSyncTranslationsJsonb}
+                      disabled={isSyncingTranslations}
+                      className="mt-2 w-full border-amber-400 text-amber-700 hover:bg-amber-50"
+                    >
+                      {isSyncingTranslations ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Sync JSONB
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
 
