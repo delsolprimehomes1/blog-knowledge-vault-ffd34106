@@ -19,6 +19,16 @@ const LANGUAGE_NAMES: Record<string, string> = {
   no: 'Norwegian',
 };
 
+// BULLETPROOF: Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [2000, 5000, 10000]; // 2s, 5s, 10s exponential backoff
+const REQUEST_TIMEOUT = 60000; // 60s timeout (smaller payload = faster)
+const DELAY_BETWEEN_QAS = 1500; // 1.5s delay between Q&A translations
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -50,7 +60,7 @@ function generateSlug(headline: string, qaType: string, lang: string): string {
   return `${baseSlug}-${qaType}-${lang}-${suffix}`;
 }
 
-// ENHANCEMENT 1: Batch translation - translate 4 Q&As in a single API call
+// Single Q&A content for translation
 interface QAContent {
   id: string;
   question_main: string;
@@ -63,7 +73,6 @@ interface QAContent {
 }
 
 interface TranslatedQAContent {
-  id: string;
   question: string;
   answer: string;
   metaTitle: string;
@@ -72,85 +81,101 @@ interface TranslatedQAContent {
   imageAlt: string;
 }
 
-async function translateQABatch(
-  qaGroup: QAContent[],
-  targetLanguage: string
-): Promise<TranslatedQAContent[]> {
+// BULLETPROOF: Translate a SINGLE Q&A with retry logic
+async function translateSingleQA(
+  qa: QAContent,
+  targetLanguage: string,
+  retryCount: number = 0
+): Promise<TranslatedQAContent> {
   const languageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
   
-  const qasForPrompt = qaGroup.map(qa => ({
-    id: qa.id,
-    question: qa.question_main,
-    answer: qa.answer_main,
-    metaTitle: qa.meta_title,
-    metaDescription: qa.meta_description,
-    speakableAnswer: qa.speakable_answer,
-    imageAlt: qa.featured_image_alt || 'Property image',
-  }));
+  const prompt = `Translate this Q&A to ${languageName}. Keep the same meaning and SEO optimization.
 
-  const prompt = `Translate these ${qaGroup.length} Q&As to ${languageName}. Keep the same meaning and SEO optimization.
+ORIGINAL Q&A:
+Question: ${qa.question_main}
+Answer: ${qa.answer_main}
+Meta Title: ${qa.meta_title}
+Meta Description: ${qa.meta_description}
+Speakable Answer: ${qa.speakable_answer}
+Image Alt: ${qa.featured_image_alt || 'Property image'}
 
-INPUT Q&As:
-${JSON.stringify(qasForPrompt, null, 2)}
-
-Return a JSON object with "translations" array containing each translated Q&A with SAME id:
+Return ONLY a JSON object (no markdown, no code blocks):
 {
-  "translations": [
-    {
-      "id": "original-id-here",
-      "question": "translated question",
-      "answer": "translated answer (keep same structure and length)",
-      "metaTitle": "translated SEO title under 60 chars",
-      "metaDescription": "translated SEO description 120-155 chars",
-      "speakableAnswer": "translated voice answer under 100 words",
-      "imageAlt": "translated alt text"
-    }
-  ]
+  "question": "translated question",
+  "answer": "translated answer (keep same structure and length)",
+  "metaTitle": "translated SEO title under 60 chars",
+  "metaDescription": "translated SEO description 120-155 chars",
+  "speakableAnswer": "translated voice answer under 100 words",
+  "imageAlt": "translated alt text"
 }`;
 
-  // Use Lovable AI Gateway instead of direct OpenAI
-  const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: `You are an expert translator. Translate content to ${languageName} while maintaining SEO quality. Always respond with valid JSON only, no markdown.` },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 6000,
-    }),
-  }, 120000);
+  try {
+    console.log(`[TranslateSingle] Translating ${qa.qa_type} to ${targetLanguage}...`);
+    
+    const response = await fetchWithTimeout('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: `You are an expert translator. Translate content to ${languageName} while maintaining SEO quality. Always respond with valid JSON only, no markdown.` },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1500,
+      }),
+    }, REQUEST_TIMEOUT);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again in a moment.');
+    if (!response.ok) {
+      const errorText = await response.text();
+      const isRetryable = response.status === 503 || response.status === 429 || response.status >= 500;
+      
+      if (isRetryable && retryCount < MAX_RETRIES) {
+        console.log(`[TranslateSingle] ⚠️ ${response.status} error, retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAYS[retryCount]}ms...`);
+        await sleep(RETRY_DELAYS[retryCount]);
+        return translateSingleQA(qa, targetLanguage, retryCount + 1);
+      }
+      
+      if (response.status === 402) {
+        throw new Error('AI credits exhausted. Please add credits to continue.');
+      }
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
-    if (response.status === 402) {
-      throw new Error('AI credits exhausted. Please add credits to continue.');
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('No content in translation response');
     }
-    throw new Error(`AI API error: ${response.status} - ${errorText}`);
-  }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  
-  if (!content) {
-    throw new Error('No content in translation response');
-  }
+    // Parse JSON - handle potential markdown code blocks
+    let jsonContent = content.trim();
+    if (jsonContent.startsWith('```')) {
+      jsonContent = jsonContent.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    }
 
-  // Parse JSON - handle potential markdown code blocks
-  let jsonContent = content.trim();
-  if (jsonContent.startsWith('```')) {
-    jsonContent = jsonContent.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    const parsed = JSON.parse(jsonContent);
+    console.log(`[TranslateSingle] ✅ Translated ${qa.qa_type} successfully`);
+    return parsed;
+    
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isRetryable = errorMessage.includes('timeout') || 
+                        errorMessage.includes('503') || 
+                        errorMessage.includes('network') ||
+                        errorMessage.includes('connect');
+    
+    if (isRetryable && retryCount < MAX_RETRIES) {
+      console.log(`[TranslateSingle] ⚠️ ${errorMessage}, retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAYS[retryCount]}ms...`);
+      await sleep(RETRY_DELAYS[retryCount]);
+      return translateSingleQA(qa, targetLanguage, retryCount + 1);
+    }
+    
+    throw error;
   }
-
-  const parsed = JSON.parse(jsonContent);
-  return parsed.translations || [];
 }
 
 // Rephrase a question to make it unique when collision is detected
@@ -169,7 +194,7 @@ ORIGINAL QUESTION (must rephrase):
 "${originalQuestion}"
 
 EXISTING QUESTIONS (the rephrased version must NOT match any of these):
-${existingQuestions.map((q, i) => `${i + 1}. "${q}"`).join('\n')}
+${existingQuestions.slice(0, 10).map((q, i) => `${i + 1}. "${q}"`).join('\n')}
 
 Q&A TYPE: ${qaType}
 ${articleHeadline ? `ARTICLE CONTEXT: ${articleHeadline}` : ''}
@@ -234,7 +259,7 @@ serve(async (req) => {
       throw new Error(`Invalid target language: ${targetLanguage}. Valid: ${Object.keys(LANGUAGE_NAMES).join(', ')}`);
     }
 
-    console.log(`[TranslateQAs] Starting BATCH translation to ${targetLanguage} for cluster ${clusterId}`);
+    console.log(`[TranslateQAs] 🚀 Starting BULLETPROOF translation to ${targetLanguage} for cluster ${clusterId}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -266,7 +291,7 @@ serve(async (req) => {
       });
     }
 
-    // ENHANCEMENT 2: Resume capability - check which Q&As already exist
+    // Resume capability - check which Q&As already exist
     const { data: existingQAs } = await supabase
       .from('qa_pages')
       .select('hreflang_group_id')
@@ -317,82 +342,58 @@ serve(async (req) => {
 
     const translatedQAs: string[] = [];
     const errors: string[] = [];
+    const failedQAIds: string[] = [];
 
-    // Process fixed batch of 4 Q&As regardless of which article they belong to
-    const BATCH_SIZE = 4;
+    // BULLETPROOF: Process Q&As ONE AT A TIME with retry logic
+    const BATCH_SIZE = 6; // Process 6 Q&As per function invocation (safe limit)
     const qaGroup = qasToTranslate.slice(0, BATCH_SIZE);
     const qasRemaining = qasToTranslate.length - qaGroup.length;
     
-    console.log(`[TranslateQAs] Processing batch of ${qaGroup.length} Q&As (${qasRemaining} remaining after this batch)`);
+    console.log(`[TranslateQAs] Processing ${qaGroup.length} Q&As one-at-a-time (${qasRemaining} remaining after this batch)`);
 
-    try {
-      // Prepare Q&As for batch translation
-      const qaContents: QAContent[] = qaGroup.map(qa => ({
-        id: qa.id,
-        question_main: qa.question_main,
-        answer_main: qa.answer_main,
-        meta_title: qa.meta_title,
-        meta_description: qa.meta_description,
-        speakable_answer: qa.speakable_answer,
-        featured_image_alt: qa.featured_image_alt || 'Property image',
-        qa_type: qa.qa_type,
-      }));
+    for (let i = 0; i < qaGroup.length; i++) {
+      const englishQA = qaGroup[i];
+      const qaIndex = skippedCount + i + 1;
+      
+      console.log(`[TranslateQAs] ━━━ Q&A ${qaIndex}/24: ${englishQA.qa_type} ━━━`);
 
-      // Batch translate all Q&As in this batch
-      const translations = await translateQABatch(qaContents, targetLanguage);
-      console.log(`[TranslateQAs] Received ${translations.length} translations`);
-      console.log(`[TranslateQAs] Sent IDs: ${qaContents.map(q => q.id).join(', ')}`);
-      console.log(`[TranslateQAs] Received IDs: ${translations.map(t => t.id).join(', ')}`);
+      try {
+        // Prepare Q&A content for translation
+        const qaContent: QAContent = {
+          id: englishQA.id,
+          question_main: englishQA.question_main,
+          answer_main: englishQA.answer_main,
+          meta_title: englishQA.meta_title,
+          meta_description: englishQA.meta_description,
+          speakable_answer: englishQA.speakable_answer,
+          featured_image_alt: englishQA.featured_image_alt || 'Property image',
+          qa_type: englishQA.qa_type,
+        };
 
-      // Create translation lookup by ID
-      const translationMap = new Map(translations.map(t => [t.id, t]));
+        // BULLETPROOF: Translate single Q&A with retry
+        const translation = await translateSingleQA(qaContent, targetLanguage);
 
-      // Insert each translated Q&A (may be from different articles)
-      for (let i = 0; i < qaGroup.length; i++) {
-        const englishQA = qaGroup[i];
-        let translation = translationMap.get(englishQA.id);
-        
-        // Fallback: If ID lookup fails but array lengths match, use index-based matching
-        if (!translation && translations.length === qaGroup.length) {
-          console.log(`[TranslateQAs] Using index-based fallback for ${englishQA.qa_type} (index ${i})`);
-          translation = translations[i];
-        }
-        
-        // Fallback for single item
-        if (!translation && qaGroup.length === 1 && translations.length === 1) {
-          console.log(`[TranslateQAs] Using single-item fallback for ${englishQA.qa_type}`);
-          translation = translations[0];
-        }
-        
-        if (!translation) {
-          console.error(`[TranslateQAs] ❌ No translation found for ${englishQA.qa_type} (ID: ${englishQA.id})`);
-          errors.push(`Missing translation for ${englishQA.qa_type}`);
-          continue;
-        }
-
-        // Find target article for THIS specific Q&A
+        // Find target article for this Q&A
         const englishArticleHreflang = englishArticleHreflangMap.get(englishQA.source_article_id);
-        const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
+        let targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
 
+        // Fallback to any target article if no hreflang match
         if (!targetArticle) {
-          // FALLBACK: Use the English article's source_article_id and find ANY target language article
-          console.log(`[TranslateQAs] ⚠️ No hreflang match for article ${englishQA.source_article_id}, trying fallback...`);
+          console.log(`[TranslateQAs] ⚠️ No hreflang match for article ${englishQA.source_article_id}, using fallback...`);
+          targetArticle = targetArticles?.[0];
           
-          // Try to find a target article by cluster_id directly
-          const fallbackArticle = targetArticles?.[0];
-          if (!fallbackArticle) {
-            console.error(`[TranslateQAs] ❌ No ${targetLanguage} article found at all for cluster ${clusterId}`);
-            errors.push(`No ${targetLanguage} article found for Q&A from article ${englishQA.source_article_id}`);
+          if (!targetArticle) {
+            console.error(`[TranslateQAs] ❌ No ${targetLanguage} article found at all`);
+            errors.push(`No ${targetLanguage} article found for Q&A ${englishQA.qa_type}`);
+            failedQAIds.push(englishQA.id);
             continue;
           }
           
-          console.log(`[TranslateQAs] Using fallback article: ${fallbackArticle.id}`);
-          
-          // CHECK: Does a Q&A already exist for this (source_article_id, qa_type, language) combination?
+          // Check if Q&A already exists for fallback article
           const { data: existingFallbackQA } = await supabase
             .from('qa_pages')
             .select('id')
-            .eq('source_article_id', fallbackArticle.id)
+            .eq('source_article_id', targetArticle.id)
             .eq('qa_type', englishQA.qa_type)
             .eq('language', targetLanguage)
             .neq('status', 'archived')
@@ -400,62 +401,14 @@ serve(async (req) => {
             .maybeSingle();
           
           if (existingFallbackQA) {
-            console.log(`[TranslateQAs] ⚠️ Skipping - Q&A already exists for fallback article (${englishQA.qa_type}/${targetLanguage})`);
-            continue; // Skip, don't count as error
+            console.log(`[TranslateQAs] ⚠️ Skipping - Q&A already exists for fallback article`);
+            continue;
           }
-          
-          // Use fallback article
-          const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
-          
-          // Build translated Q&A record with fallback article
-          const now = new Date().toISOString();
-          const translatedQARecord = {
-            source_article_id: fallbackArticle.id,
-            cluster_id: clusterId,
-            language: targetLanguage,
-            qa_type: englishQA.qa_type,
-            title: translation.question,
-            slug: slug,
-            question_main: translation.question,
-            answer_main: translation.answer,
-            meta_title: translation.metaTitle,
-            meta_description: translation.metaDescription,
-            speakable_answer: translation.speakableAnswer,
-            featured_image_url: englishQA.featured_image_url,
-            featured_image_alt: translation.imageAlt,
-            hreflang_group_id: englishQA.hreflang_group_id,
-            source_language: 'en',
-            translations: {},
-            related_qas: [],
-            internal_links: englishQA.internal_links || [],
-            funnel_stage: englishQA.funnel_stage,
-            status: 'published',
-            source_article_slug: fallbackArticle.slug,
-            author_id: '738c1e24-025b-4f15-ac7c-541bb8a5dade',
-            date_published: now,
-            date_modified: now,
-          };
-
-          // Insert directly with fallback
-          const { data: insertedQA, error: insertError } = await supabase
-            .from('qa_pages')
-            .insert(translatedQARecord)
-            .select('id')
-            .single();
-
-          if (insertError) {
-            console.error(`[TranslateQAs] ❌ Insert error (fallback):`, insertError);
-            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
-          } else {
-            console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A (fallback): ${slug}`);
-            translatedQAs.push(insertedQA.id);
-          }
-          continue;
         }
 
         const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
 
-        // Build translated Q&A record with authority signals (Hans' E-E-A-T requirements)
+        // Build translated Q&A record
         const now = new Date().toISOString();
         const translatedQARecord = {
           source_article_id: targetArticle.id,
@@ -479,13 +432,12 @@ serve(async (req) => {
           funnel_stage: englishQA.funnel_stage,
           status: 'published',
           source_article_slug: targetArticle.slug,
-          // Authority signals for AI ranking
-          author_id: '738c1e24-025b-4f15-ac7c-541bb8a5dade', // Hans Beeckman
+          author_id: '738c1e24-025b-4f15-ac7c-541bb8a5dade',
           date_published: now,
           date_modified: now,
         };
 
-        // Fetch ALL existing question_main texts for this cluster/language to check for collisions
+        // Check for question collisions
         const { data: allExistingQAs } = await supabase
           .from('qa_pages')
           .select('id, hreflang_group_id, question_main')
@@ -493,8 +445,6 @@ serve(async (req) => {
           .eq('language', targetLanguage);
 
         const existingQuestionTexts = new Set((allExistingQAs || []).map(q => q.question_main));
-        
-        // Check if this specific question already exists
         const existingByQuestion = (allExistingQAs || []).filter(q => q.question_main === translation.question);
         
         const safeToAdopt = existingByQuestion.find(q => 
@@ -505,61 +455,44 @@ serve(async (req) => {
           q.hreflang_group_id && q.hreflang_group_id !== englishQA.hreflang_group_id
         );
 
-        // Determine final question text (may need rephrasing if collision)
         let finalQuestion = translation.question;
         
         if (belongsToDifferentGroup && !safeToAdopt) {
-          // Collision detected: same question text belongs to a DIFFERENT hreflang group
-          // We need to REPHRASE the question to make it unique
-          console.log(`[TranslateQAs] ⚠️ Question collision detected! "${translation.question}" already exists for group ${belongsToDifferentGroup.hreflang_group_id}, but we need group ${englishQA.hreflang_group_id}`);
+          console.log(`[TranslateQAs] ⚠️ Question collision detected, rephrasing...`);
           
-          const MAX_REPHRASE_ATTEMPTS = 3;
-          let rephraseAttempt = 0;
           let rephrased = false;
-          
-          while (rephraseAttempt < MAX_REPHRASE_ATTEMPTS && !rephrased) {
-            rephraseAttempt++;
-            console.log(`[TranslateQAs] 🔄 Rephrase attempt ${rephraseAttempt}/${MAX_REPHRASE_ATTEMPTS}...`);
-            
+          for (let attempt = 1; attempt <= 3 && !rephrased; attempt++) {
             try {
               const newQuestion = await rephraseQuestion(
                 translation.question,
                 Array.from(existingQuestionTexts),
                 targetLanguage,
                 englishQA.qa_type,
-                englishQA.question_main // English headline as context
+                englishQA.question_main
               );
               
               if (!existingQuestionTexts.has(newQuestion)) {
-                console.log(`[TranslateQAs] ✅ Rephrased successfully: "${newQuestion}"`);
                 finalQuestion = newQuestion;
                 rephrased = true;
-              } else {
-                console.log(`[TranslateQAs] ⚠️ Rephrased question still collides: "${newQuestion}"`);
+                console.log(`[TranslateQAs] ✅ Rephrased successfully`);
               }
             } catch (rephraseError) {
-              console.error(`[TranslateQAs] Rephrase attempt ${rephraseAttempt} failed:`, rephraseError);
+              console.error(`[TranslateQAs] Rephrase attempt ${attempt} failed`);
             }
           }
           
-          // If rephrasing failed, add deterministic suffix
           if (!rephrased) {
             const suffix = ` (${englishQA.qa_type})`;
             finalQuestion = translation.question + suffix;
-            console.log(`[TranslateQAs] ⚠️ Rephrasing failed, using fallback suffix: "${finalQuestion}"`);
-            
-            // If STILL colliding, add UUID fragment
             if (existingQuestionTexts.has(finalQuestion)) {
               const uuidFragment = englishQA.hreflang_group_id.substring(0, 8);
               finalQuestion = translation.question + ` [${uuidFragment}]`;
-              console.log(`[TranslateQAs] ⚠️ Still colliding, using UUID suffix: "${finalQuestion}"`);
             }
           }
         }
 
         if (safeToAdopt) {
-          // Update existing orphan record with correct hreflang_group_id
-          console.log(`[TranslateQAs] Adopting orphan Q&A ${safeToAdopt.id} for group ${englishQA.hreflang_group_id}`);
+          // Update existing orphan record
           const { error: updateError } = await supabase
             .from('qa_pages')
             .update({
@@ -571,57 +504,53 @@ serve(async (req) => {
             .eq('id', safeToAdopt.id);
 
           if (updateError) {
-            console.error(`[TranslateQAs] Update error:`, updateError);
+            console.error(`[TranslateQAs] ❌ Update error:`, updateError);
             errors.push(`${englishQA.qa_type}: ${updateError.message}`);
-            continue;
+            failedQAIds.push(englishQA.id);
+          } else {
+            console.log(`[TranslateQAs] ✅ Adopted existing Q&A`);
+            translatedQAs.push(safeToAdopt.id);
           }
-
-          console.log(`[TranslateQAs] ✅ Adopted existing ${targetLanguage} Q&A: ${slug}`);
-          translatedQAs.push(safeToAdopt.id);
         } else {
-          // Insert new record (either no collision, or we rephrased to avoid it)
-          const recordToInsert = {
-            ...translatedQARecord,
-            question_main: finalQuestion,
-            title: finalQuestion,
-          };
-          
+          // Insert new record
           const { data: insertedQA, error: insertError } = await supabase
             .from('qa_pages')
-            .insert(recordToInsert)
+            .insert({
+              ...translatedQARecord,
+              question_main: finalQuestion,
+              title: finalQuestion,
+            })
             .select('id')
             .single();
 
           if (insertError) {
-            // Check if it's a unique constraint violation
-            const isUniqueViolation = insertError.code === '23505' || 
-              insertError.message?.includes('unique') || 
-              insertError.message?.includes('duplicate');
-            
-            if (isUniqueViolation) {
-              console.error(`[TranslateQAs] ❌ Unique constraint violation even after rephrasing! Question: "${finalQuestion}"`);
-              errors.push(`${englishQA.qa_type}: Duplicate question - ${insertError.message}`);
-            } else {
-              console.error(`[TranslateQAs] Insert error:`, insertError);
-              errors.push(`${englishQA.qa_type}: ${insertError.message}`);
-            }
-            continue;
+            console.error(`[TranslateQAs] ❌ Insert error:`, insertError);
+            errors.push(`${englishQA.qa_type}: ${insertError.message}`);
+            failedQAIds.push(englishQA.id);
+          } else {
+            console.log(`[TranslateQAs] ✅ Created Q&A: ${slug}`);
+            translatedQAs.push(insertedQA.id);
           }
-
-          console.log(`[TranslateQAs] ✅ Created ${targetLanguage} Q&A: ${slug} (group: ${englishQA.hreflang_group_id})`);
-          translatedQAs.push(insertedQA.id);
         }
-      }
 
-    } catch (error) {
-      console.error(`[TranslateQAs] Error translating batch:`, error);
-      errors.push(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Delay between Q&As to avoid rate limiting
+        if (i < qaGroup.length - 1) {
+          await sleep(DELAY_BETWEEN_QAS);
+        }
+
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`[TranslateQAs] ❌ Failed ${englishQA.qa_type} after all retries:`, errorMessage);
+        errors.push(`${englishQA.qa_type}: ${errorMessage}`);
+        failedQAIds.push(englishQA.id);
+        // Continue with next Q&A instead of stopping
+      }
     }
 
-    // After all translations, sync the translations JSONB for all affected hreflang groups
+    // Sync translations JSONB for all affected hreflang groups
     console.log(`[TranslateQAs] Syncing translations JSONB...`);
 
-    const affectedGroupIds = [...new Set(qasToTranslate.map(qa => qa.hreflang_group_id))];
+    const affectedGroupIds = [...new Set(qaGroup.map(qa => qa.hreflang_group_id))];
     
     for (const groupId of affectedGroupIds) {
       try {
@@ -637,22 +566,16 @@ serve(async (req) => {
           translations[qa.language] = qa.slug;
         }
 
-        const { error: updateError } = await supabase
+        await supabase
           .from('qa_pages')
           .update({ translations })
           .eq('hreflang_group_id', groupId);
-
-        if (updateError) {
-          console.error(`[TranslateQAs] Error syncing translations for group ${groupId}:`, updateError);
-        } else {
-          console.log(`[TranslateQAs] ✅ Synced translations for group ${groupId}: ${Object.keys(translations).length} languages`);
-        }
       } catch (error) {
         console.error(`[TranslateQAs] Error syncing group ${groupId}:`, error);
       }
     }
 
-    // ENHANCEMENT 4: Update cluster progress in database
+    // Update cluster progress in database
     try {
       const { data: progressData } = await supabase
         .from('cluster_completion_progress')
@@ -682,8 +605,6 @@ serve(async (req) => {
           },
           last_updated: new Date().toISOString(),
         });
-
-      console.log(`[TranslateQAs] Updated progress: ${translatedLangs.length} languages translated`);
     } catch (error) {
       console.error(`[TranslateQAs] Error updating progress:`, error);
     }
@@ -696,21 +617,23 @@ serve(async (req) => {
       .eq('language', targetLanguage);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const isPartial = qasRemaining > 0;
     const currentCount = actualCount || 0;
     const remaining = 24 - currentCount;
+    const isPartial = remaining > 0;
     
-    if (isPartial) {
-      console.log(`[TranslateQAs] ✅ Batch complete in ${duration}s: ${translatedQAs.length} Q&As translated, now at ${currentCount}/24 (${remaining} remaining)`);
-    } else {
-      console.log(`[TranslateQAs] ✅ All done in ${duration}s: ${currentCount}/24 Q&As in ${targetLanguage}`);
-    }
+    console.log(`[TranslateQAs] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`[TranslateQAs] ✅ Batch complete in ${duration}s`);
+    console.log(`[TranslateQAs]    Translated: ${translatedQAs.length}`);
+    console.log(`[TranslateQAs]    Failed: ${failedQAIds.length}`);
+    console.log(`[TranslateQAs]    Total: ${currentCount}/24 (${remaining} remaining)`);
+    console.log(`[TranslateQAs] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     return new Response(JSON.stringify({
       success: true,
-      partial: isPartial || remaining > 0,
+      partial: isPartial,
       targetLanguage,
       translated: translatedQAs.length,
+      failed: failedQAIds.length,
       actualCount: currentCount,
       remaining,
       qasRemaining,
