@@ -15,6 +15,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface TranslationProgress {
+  current: string;
+  remaining: number;
+  articlesCompleted?: number;
+  totalArticles?: number;
+}
+
 interface ClusterArticlesTabProps {
   cluster: ClusterData;
   onPublish: () => void;
@@ -26,6 +33,7 @@ interface ClusterArticlesTabProps {
   missingLanguages: string[];
   incompleteLanguages: { lang: string; count: number }[];
   sourceInfo: { sourceLanguage: string; sourceCount: number; needsMoreSource: boolean };
+  translationProgress?: TranslationProgress | null;
 }
 
 export const ClusterArticlesTab = ({
@@ -39,6 +47,7 @@ export const ClusterArticlesTab = ({
   missingLanguages,
   incompleteLanguages,
   sourceInfo,
+  translationProgress,
 }: ClusterArticlesTabProps) => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -587,13 +596,25 @@ export const ClusterArticlesTab = ({
           size="sm"
           onClick={onTranslate}
           disabled={(missingLanguages.length === 0 && incompleteLanguages.length === 0) || isTranslating || sourceInfo.needsMoreSource}
+          className={isTranslating ? "min-w-[300px]" : ""}
         >
           {isTranslating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Globe className="mr-2 h-4 w-4" />
           )}
-          Complete Translations ({missingLanguages.length + incompleteLanguages.length} incomplete)
+          {isTranslating && translationProgress ? (
+            <span className="flex items-center gap-1">
+              Translating {getLanguageFlag(translationProgress.current.toLowerCase())} {translationProgress.current}...
+              {translationProgress.articlesCompleted !== undefined && (
+                <span className="text-muted-foreground">
+                  ({translationProgress.articlesCompleted}/{translationProgress.totalArticles || 60})
+                </span>
+              )}
+            </span>
+          ) : (
+            `Complete Translations (${missingLanguages.length + incompleteLanguages.length} incomplete)`
+          )}
         </Button>
 
         <Button

@@ -39,7 +39,12 @@ const ClusterManager = () => {
   const [clusterToPublishQAs, setClusterToPublishQAs] = useState<string | null>(null);
   const [clusterToTranslate, setClusterToTranslate] = useState<string | null>(null);
   const [translatingCluster, setTranslatingCluster] = useState<string | null>(null);
-  const [translationProgress, setTranslationProgress] = useState<{ current: string; remaining: number } | null>(null);
+  const [translationProgress, setTranslationProgress] = useState<{ 
+    current: string; 
+    remaining: number;
+    articlesCompleted?: number;
+    totalArticles?: number;
+  } | null>(null);
   const [regeneratingLinks, setRegeneratingLinks] = useState<string | null>(null);
   const [regeneratingAllLinks, setRegeneratingAllLinks] = useState(false);
   const [generatingQALanguage, setGeneratingQALanguage] = useState<{ clusterId: string; lang: string } | null>(null);
@@ -702,11 +707,14 @@ const ClusterManager = () => {
           const timeSinceUpdate = Date.now() - new Date(currentStatus.updated_at).getTime();
           if (timeSinceUpdate < STUCK_THRESHOLD_MS) {
             console.log(`[Translation] Job generating (${Math.round(timeSinceUpdate / 1000)}s ago), polling...`);
+            const completedLangs = currentStatus.completed_languages?.length || 0;
             setTranslationProgress({ 
               current: currentStatus.progress?.current_language?.toUpperCase() || 'Processing', 
               remaining: currentStatus.languages_queue?.filter((l: string) => 
                 !currentStatus.completed_languages?.includes(l)
-              ).length || 0
+              ).length || 0,
+              articlesCompleted: completedLangs * 6 + (currentStatus.progress?.generated_articles || 0),
+              totalArticles: 60
             });
             await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
             continue;
@@ -750,9 +758,12 @@ const ClusterManager = () => {
           if (data.status === "partial") {
             // More work to do - update progress and continue
             const remaining = data.remainingLanguages || [];
+            const completedCount = data.completedLanguages?.length || 0;
             setTranslationProgress({ 
               current: data.language?.toUpperCase() || 'Processing', 
-              remaining: remaining.length 
+              remaining: remaining.length,
+              articlesCompleted: completedCount * 6 + (data.articlesGenerated || 0),
+              totalArticles: 60
             });
             
             if (remaining.length === 0) {
@@ -1057,6 +1068,7 @@ const ClusterManager = () => {
                 isPublishing={clusterToPublish === cluster.cluster_id && publishMutation.isPending}
                 isDeleting={clusterToDelete === cluster.cluster_id && deleteMutation.isPending}
                 isTranslating={translatingCluster === cluster.cluster_id}
+                translationProgress={translatingCluster === cluster.cluster_id ? translationProgress : null}
                 isRegeneratingLinks={regeneratingLinks === cluster.cluster_id}
                 isAuditing={false}
                 generatingQALanguage={generatingQALanguage?.clusterId === cluster.cluster_id ? generatingQALanguage : null}

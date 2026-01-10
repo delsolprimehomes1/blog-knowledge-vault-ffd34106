@@ -14,6 +14,13 @@ import { ClusterCitationsTab } from "./ClusterCitationsTab";
 import { ClusterSEOTab } from "./ClusterSEOTab";
 import { ClusterHreflangTab } from "./ClusterHreflangTab";
 
+interface TranslationProgress {
+  current: string;
+  remaining: number;
+  articlesCompleted?: number;
+  totalArticles?: number;
+}
+
 interface ClusterCardProps {
   cluster: ClusterData;
   onPublish: (clusterId: string) => void;
@@ -30,6 +37,7 @@ interface ClusterCardProps {
   isAuditing: boolean;
   generatingQALanguage: { clusterId: string; lang: string } | null;
   publishingQAs: string | null;
+  translationProgress?: TranslationProgress | null;
 }
 
 export const ClusterCard = ({
@@ -48,6 +56,7 @@ export const ClusterCard = ({
   isAuditing,
   generatingQALanguage,
   publishingQAs,
+  translationProgress,
 }: ClusterCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("articles");
@@ -261,6 +270,7 @@ export const ClusterCard = ({
                     missingLanguages={missingLanguages}
                     incompleteLanguages={incompleteLanguages}
                     sourceInfo={sourceInfo}
+                    translationProgress={translationProgress}
                   />
                 </TabsContent>
 
