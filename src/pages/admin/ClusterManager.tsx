@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -51,6 +51,9 @@ const ClusterManager = () => {
   const [qaJobProgress, setQaJobProgress] = useState<QAJobProgress | null>(null);
   const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  
+  // Realtime subscription ref
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Fetch articles grouped by cluster
   const { data: articles, isLoading } = useQuery({
@@ -624,6 +627,60 @@ const ClusterManager = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Real-time subscription for translation progress updates
+  useEffect(() => {
+    if (!translatingCluster) {
+      // Clean up subscription when not translating
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+      return;
+    }
+
+    console.log(`[Realtime] Subscribing to translation updates for ${translatingCluster}`);
+
+    const channel = supabase
+      .channel(`translation-${translatingCluster}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'cluster_generations',
+          filter: `id=eq.${translatingCluster}`,
+        },
+        (payload: any) => {
+          console.log('[Realtime] Received update:', payload.new?.progress);
+          const progress = payload.new?.progress;
+          if (progress) {
+            setTranslationProgress({
+              current: progress.current_language?.toUpperCase() || 'Processing',
+              remaining: progress.remaining_languages?.length || 0,
+              articlesCompleted: progress.generated_articles || 0,
+              totalArticles: progress.total_articles || 60,
+            });
+          }
+
+          // Refresh article list for live grid updates
+          queryClient.invalidateQueries({ 
+            queryKey: ["cluster-articles", translatingCluster] 
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[Realtime] Subscription status: ${status}`);
+      });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      console.log(`[Realtime] Cleaning up subscription for ${translatingCluster}`);
+      supabase.removeChannel(channel);
+      realtimeChannelRef.current = null;
+    };
+  }, [translatingCluster, queryClient]);
 
   // Poll job status with quick intervals for responsive UI
   const pollJobStatus = async (clusterId: string): Promise<{ 
