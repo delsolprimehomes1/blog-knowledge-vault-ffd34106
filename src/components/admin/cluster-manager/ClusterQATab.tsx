@@ -433,7 +433,22 @@ export const ClusterQATab = ({
           },
         });
 
-        if (error) throw error;
+        // DEFENSIVE: Check if error contains blocked info (in case of non-200 response)
+        if (error) {
+          const ctx = (error as any)?.context;
+          if (ctx?.blocked) {
+            setBlockedLanguages(prev => ({
+              ...prev,
+              [targetLanguage]: {
+                reason: ctx.blockedReason || 'unknown',
+                missingArticleIds: ctx.missingEnglishArticleIds,
+              }
+            }));
+            toast.error(`${targetLanguage.toUpperCase()}: Blocked - click "Fix Article Linking" to repair.`);
+            break;
+          }
+          throw error;
+        }
 
         // Handle missing articles error from edge function
         if (data?.missingArticles) {
@@ -441,7 +456,7 @@ export const ClusterQATab = ({
           break;
         }
 
-        // PHASE 3: Handle blocked response with clear messaging
+        // PHASE 3: Handle blocked response with clear messaging (now works with 200 status)
         if (data?.blocked) {
           console.log(`[TranslateQAs UI] BLOCKED: ${data.blockedReason}`);
           setBlockedLanguages(prev => ({

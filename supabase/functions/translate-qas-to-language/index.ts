@@ -433,7 +433,7 @@ serve(async (req) => {
         actualCount: skippedCount,
         remaining: 24 - skippedCount,
       }), {
-        status: 400,
+        status: 200, // Return 200 so frontend can read blocked:true from body
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
