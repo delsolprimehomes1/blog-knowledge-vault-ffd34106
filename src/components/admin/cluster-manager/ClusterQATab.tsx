@@ -57,9 +57,10 @@ const EXPECTED_QAS_PER_CLUSTER = EXPECTED_QAS_PER_LANGUAGE * TOTAL_LANGUAGES;
 
 const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'] as const;
 const MAX_PARALLEL_TRANSLATIONS = 3;
+const REQUIRED_ARTICLES_PER_LANGUAGE = 6;
 
 const STALLED_THRESHOLD_MS = 5 * 60 * 1000;
-const AUTO_REFRESH_INTERVAL_MS = 8000;
+const AUTO_REFRESH_INTERVAL_MS = 5000; // Faster refresh for better real-time feel
 
 interface MismatchInfo {
   hasMismatch: boolean;
@@ -93,6 +94,7 @@ export const ClusterQATab = ({
   const [languageQACounts, setLanguageQACounts] = useState<Record<string, number>>({});
   const [translationProgress, setTranslationProgress] = useState<Record<string, { current: number; total: number }>>({}); // Real-time progress
   const [languagePublishedCounts, setLanguagePublishedCounts] = useState<Record<string, number>>({});
+  const [languageArticleCounts, setLanguageArticleCounts] = useState<Record<string, number>>({}); // Track articles per language
   
   // ENHANCEMENT 5: Verification
   const [isVerifying, setIsVerifying] = useState(false);
@@ -139,23 +141,39 @@ export const ClusterQATab = ({
   const fetchQACounts = useCallback(async () => {
     const requestId = ++refreshCounterRef.current;
     
-    // Single query to get all Q&A data for this cluster (including status for published counts)
-    const { data: allQAs, error } = await supabase
-      .from('qa_pages')
-      .select('language, source_article_id, hreflang_group_id, status')
-      .eq('cluster_id', cluster.cluster_id);
+    // Parallel queries for Q&As and article counts per language
+    const [qaResult, articleResult] = await Promise.all([
+      supabase
+        .from('qa_pages')
+        .select('language, source_article_id, hreflang_group_id, status')
+        .eq('cluster_id', cluster.cluster_id),
+      supabase
+        .from('blog_articles')
+        .select('language')
+        .eq('cluster_id', cluster.cluster_id)
+        .eq('status', 'published')
+    ]);
 
     // Race safety: only apply if this is still the latest request
     if (requestId !== refreshCounterRef.current) {
       return;
     }
 
-    if (error) {
-      console.error('Error fetching Q&A counts:', error);
+    if (qaResult.error) {
+      console.error('Error fetching Q&A counts:', qaResult.error);
       return;
     }
 
-    const qaList = allQAs || [];
+    // Count articles per language
+    const artCounts: Record<string, number> = {};
+    (articleResult.data || []).forEach(article => {
+      if (article.language) {
+        artCounts[article.language] = (artCounts[article.language] || 0) + 1;
+      }
+    });
+    setLanguageArticleCounts(artCounts);
+
+    const qaList = qaResult.data || [];
 
     // Count English Q&As
     const englishQAs = qaList.filter(qa => qa.language === 'en');
@@ -173,7 +191,7 @@ export const ClusterQATab = ({
     }
     
     qaList.forEach(qa => {
-      if (qa.language && qa.language !== 'en' && TARGET_LANGUAGES.includes(qa.language as any)) {
+      if (qa.language && qa.language !== 'en' && TARGET_LANGUAGES.includes(qa.language as typeof TARGET_LANGUAGES[number])) {
         // Use hreflang_group_id for unique group counting (preferred) or just count rows
         if (qa.hreflang_group_id) {
           langGroupIds[qa.language].add(qa.hreflang_group_id);
@@ -228,18 +246,41 @@ export const ClusterQATab = ({
     fetchQACounts();
   }, [fetchQACounts, cluster.total_qa_pages]);
 
-  // Auto-refresh while translations are running
+  // REALTIME: Subscribe to Q&A inserts for instant progress updates
   useEffect(() => {
     if (translatingLanguages.size === 0 && !generatingArticle && !isGeneratingAll) {
       return;
     }
 
+    // Subscribe to new Q&A insertions for real-time updates
+    const channel = supabase
+      .channel(`qa-translation-${cluster.cluster_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'qa_pages',
+          filter: `cluster_id=eq.${cluster.cluster_id}`
+        },
+        (payload) => {
+          console.log('[QA Realtime] New Q&A inserted:', payload.new);
+          // Immediately refresh counts when new Q&A is inserted
+          fetchQACounts();
+        }
+      )
+      .subscribe();
+
+    // Also keep interval as backup (in case realtime misses something)
     const interval = setInterval(() => {
       fetchQACounts();
     }, AUTO_REFRESH_INTERVAL_MS);
 
-    return () => clearInterval(interval);
-  }, [translatingLanguages.size, generatingArticle, isGeneratingAll, fetchQACounts]);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [translatingLanguages.size, generatingArticle, isGeneratingAll, fetchQACounts, cluster.cluster_id]);
 
   // Poll for active job status
   useEffect(() => {
@@ -346,6 +387,13 @@ export const ClusterQATab = ({
 
   // Phase 2: Translate all Q&As to a target language (with auto-continuation loop)
   const handleTranslateToLanguage = async (targetLanguage: string): Promise<boolean> => {
+    // PRE-CHECK: Verify articles exist before starting
+    const articleCount = languageArticleCounts[targetLanguage] || 0;
+    if (articleCount < REQUIRED_ARTICLES_PER_LANGUAGE) {
+      toast.error(`Cannot translate Q&As: Only ${articleCount}/${REQUIRED_ARTICLES_PER_LANGUAGE} ${targetLanguage.toUpperCase()} articles exist. Translate articles first.`);
+      return false;
+    }
+    
     setTranslatingLanguages(prev => new Set([...prev, targetLanguage]));
     // Initialize progress tracking
     const startCount = languageQACounts[targetLanguage] || 0;
@@ -374,15 +422,18 @@ export const ClusterQATab = ({
 
         if (error) throw error;
 
+        // Handle missing articles error from edge function
+        if (data?.missingArticles) {
+          toast.error(`${targetLanguage.toUpperCase()}: ${data.error}`);
+          break;
+        }
+
         if (data?.success) {
           const newCount = data.actualCount ?? 0;
           const remaining = data.remaining ?? (24 - newCount);
           
           // Update real-time progress indicator
           setTranslationProgress(prev => ({ ...prev, [targetLanguage]: { current: newCount, total: 24 } }));
-          
-          // Refresh counts after each batch
-          await fetchQACounts();
           
           // Check if complete
           if (remaining <= 0 || !data.partial) {
@@ -402,6 +453,7 @@ export const ClusterQATab = ({
       }
       
       // Final refresh - update both QA tab data AND parent cluster data for header badges
+      await fetchQACounts();
       await queryClient.refetchQueries({ queryKey: ['cluster-qa-pages'] });
       await queryClient.invalidateQueries({ queryKey: ['cluster-generations'] });
       return true;
@@ -954,10 +1006,12 @@ export const ClusterQATab = ({
             {TARGET_LANGUAGES.map((lang) => {
               // Use local state for real-time updates, fallback to cluster prop for initial load
               const count = languageQACounts[lang] ?? (cluster.qa_pages[lang]?.total || 0);
+              const articleCount = languageArticleCounts[lang] || 0;
+              const hasEnoughArticles = articleCount >= REQUIRED_ARTICLES_PER_LANGUAGE;
               const isCompleted = count >= 24;
               const isTranslating = translatingLanguages.has(lang);
               const canStartMore = translatingLanguages.size < MAX_PARALLEL_TRANSLATIONS;
-              const isDisabled = !isPhase1Complete || isTranslating || (!canStartMore && !isCompleted) || isGeneratingAll;
+              const isDisabled = !isPhase1Complete || isTranslating || (!canStartMore && !isCompleted) || isGeneratingAll || !hasEnoughArticles;
               const isPartial = count > 0 && count < 24;
               
               const progress = translationProgress[lang];
@@ -967,7 +1021,9 @@ export const ClusterQATab = ({
                 <div 
                   key={lang}
                   className={`p-3 rounded-lg border ${
-                    isCompleted 
+                    !hasEnoughArticles
+                      ? 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'
+                      : isCompleted 
                       ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
                       : isTranslating
                       ? 'bg-purple-50 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
@@ -978,10 +1034,17 @@ export const ClusterQATab = ({
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg">{getLanguageFlag(lang)}</span>
-                    <span className={`font-bold ${isCompleted ? 'text-green-600' : isTranslating ? 'text-purple-600' : isPartial ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                      {isTranslating && progress ? `${progress.current}/${progress.total}` : `${count}/24`}
-                      {isCompleted && ' ✅'}
-                    </span>
+                    <div className="text-right">
+                      <span className={`font-bold ${isCompleted ? 'text-green-600' : isTranslating ? 'text-purple-600' : isPartial ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                        {isTranslating && progress ? `${progress.current}/${progress.total}` : `${count}/24`}
+                        {isCompleted && ' ✅'}
+                      </span>
+                      {!hasEnoughArticles && (
+                        <div className="text-xs text-red-600 dark:text-red-400">
+                          {articleCount}/{REQUIRED_ARTICLES_PER_LANGUAGE} articles
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Real-time progress bar when translating */}
@@ -994,37 +1057,43 @@ export const ClusterQATab = ({
                     </div>
                   )}
                   
-                  <Button
-                    size="sm"
-                    variant={isCompleted ? "outline" : "default"}
-                    disabled={isDisabled || isCompleted}
-                    onClick={() => handleTranslateToLanguage(lang)}
-                    className={`w-full ${
-                      isCompleted 
-                        ? 'border-green-400 text-green-700' 
-                        : isTranslating
-                        ? 'bg-purple-600 hover:bg-purple-700'
-                        : isPartial
-                        ? 'bg-amber-500 hover:bg-amber-600'
-                        : 'bg-purple-600 hover:bg-purple-700'
-                    }`}
-                  >
-                    {isTranslating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        Translating...
-                      </>
-                    ) : isCompleted ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Complete
-                      </>
-                    ) : isPartial ? (
-                      `Resume ${lang.toUpperCase()} (${count}/24)`
-                    ) : (
-                      `Translate to ${lang.toUpperCase()}`
-                    )}
-                  </Button>
+                  {!hasEnoughArticles ? (
+                    <div className="text-xs text-center text-red-600 dark:text-red-400 py-2 font-medium">
+                      ⚠️ Translate articles first
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant={isCompleted ? "outline" : "default"}
+                      disabled={isDisabled || isCompleted}
+                      onClick={() => handleTranslateToLanguage(lang)}
+                      className={`w-full ${
+                        isCompleted 
+                          ? 'border-green-400 text-green-700' 
+                          : isTranslating
+                          ? 'bg-purple-600 hover:bg-purple-700'
+                          : isPartial
+                          ? 'bg-amber-500 hover:bg-amber-600'
+                          : 'bg-purple-600 hover:bg-purple-700'
+                      }`}
+                    >
+                      {isTranslating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          Translating...
+                        </>
+                      ) : isCompleted ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Complete
+                        </>
+                      ) : isPartial ? (
+                        `Resume ${lang.toUpperCase()} (${count}/24)`
+                      ) : (
+                        `Translate to ${lang.toUpperCase()}`
+                      )}
+                    </Button>
+                  )}
                 </div>
               );
             })}

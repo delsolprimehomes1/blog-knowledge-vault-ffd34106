@@ -323,7 +323,27 @@ serve(async (req) => {
       .from('blog_articles')
       .select('id, hreflang_group_id, featured_image_alt, slug')
       .eq('cluster_id', clusterId)
-      .eq('language', targetLanguage);
+      .eq('language', targetLanguage)
+      .eq('status', 'published');
+
+    const targetArticleCount = targetArticles?.length || 0;
+    
+    // FAIL FAST: Require 6 target language articles before translation can proceed
+    if (targetArticleCount < 6) {
+      console.error(`[TranslateQAs] ❌ PREREQUISITE FAILED: Only ${targetArticleCount}/6 ${targetLanguage.toUpperCase()} articles exist`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Cannot translate Q&As: Only ${targetArticleCount}/6 ${targetLanguage.toUpperCase()} articles exist. Translate articles first.`,
+        missingArticles: true,
+        targetArticleCount,
+        requiredArticleCount: 6,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[TranslateQAs] ✅ Prerequisite check passed: ${targetArticleCount}/6 ${targetLanguage.toUpperCase()} articles found`);
 
     const articlesByHreflang = new Map(
       (targetArticles || []).map(a => [a.hreflang_group_id, a])
@@ -373,37 +393,16 @@ serve(async (req) => {
         // BULLETPROOF: Translate single Q&A with retry
         const translation = await translateSingleQA(qaContent, targetLanguage);
 
-        // Find target article for this Q&A
+        // STRICT MATCHING: Find target article via hreflang link (NO FALLBACK)
         const englishArticleHreflang = englishArticleHreflangMap.get(englishQA.source_article_id);
-        let targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
+        const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
 
-        // Fallback to any target article if no hreflang match
+        // STRICT: Require exact hreflang match - no fallback to prevent collisions
         if (!targetArticle) {
-          console.log(`[TranslateQAs] ⚠️ No hreflang match for article ${englishQA.source_article_id}, using fallback...`);
-          targetArticle = targetArticles?.[0];
-          
-          if (!targetArticle) {
-            console.error(`[TranslateQAs] ❌ No ${targetLanguage} article found at all`);
-            errors.push(`No ${targetLanguage} article found for Q&A ${englishQA.qa_type}`);
-            failedQAIds.push(englishQA.id);
-            continue;
-          }
-          
-          // Check if Q&A already exists for fallback article
-          const { data: existingFallbackQA } = await supabase
-            .from('qa_pages')
-            .select('id')
-            .eq('source_article_id', targetArticle.id)
-            .eq('qa_type', englishQA.qa_type)
-            .eq('language', targetLanguage)
-            .neq('status', 'archived')
-            .limit(1)
-            .maybeSingle();
-          
-          if (existingFallbackQA) {
-            console.log(`[TranslateQAs] ⚠️ Skipping - Q&A already exists for fallback article`);
-            continue;
-          }
+          console.error(`[TranslateQAs] ❌ No ${targetLanguage} article linked via hreflang to English article ${englishQA.source_article_id}`);
+          errors.push(`Missing hreflang-linked ${targetLanguage} article for Q&A ${englishQA.qa_type} (English article: ${englishQA.source_article_id})`);
+          failedQAIds.push(englishQA.id);
+          continue;
         }
 
         const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
