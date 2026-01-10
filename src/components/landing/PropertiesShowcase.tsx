@@ -61,7 +61,7 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
     const PropertyCard = ({ property, index }: { property: Property; index: number }) => {
         const { elementRef, isVisible } = useScrollAnimation({ threshold: 0.05 });
         const displayTitle = property.title || `${property.category === 'apartment' ? 'Luxury Apartment' : 'Exclusive Villa'}`;
-        
+
         // Get localized description (fallback to English if not available)
         const description = property.descriptions?.[lang] || property.descriptions?.en || '';
 
@@ -69,19 +69,14 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
             <div
                 ref={elementRef as React.RefObject<HTMLDivElement>}
                 style={{ transitionDelay: `${index * 75}ms` }}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-gray-100 hover:border-gray-200 transition-all duration-500 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-                }`}
-                onClick={() => {
-                    const event = new CustomEvent('openLeadForm', { detail: { interest: property.id } });
-                    window.dispatchEvent(event);
-                }}
+                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-gray-100 hover:border-gray-200 transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                    }`}
             >
                 {/* Image Carousel */}
                 <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-gray-100 cursor-pointer">
-                    <PropertyImageCarousel 
-                        images={property.images || []} 
-                        alt={displayTitle} 
+                    <PropertyImageCarousel
+                        images={property.images || []}
+                        alt={displayTitle}
                     />
                     <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 px-2 py-0.5 sm:px-3 sm:py-1 bg-white/95 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm z-20">
                         <p className="font-bold text-landing-navy text-xs sm:text-sm">{formatPrice(property.price_eur)}</p>
@@ -89,7 +84,7 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                 </div>
 
                 {/* Content */}
-                <div className="p-3 sm:p-4 cursor-pointer">
+                <div className="p-3 sm:p-4">
                     <h3 className="text-sm sm:text-base lg:text-lg font-bold text-landing-navy mb-1 line-clamp-1 group-hover:text-landing-gold transition-colors">
                         {displayTitle}
                     </h3>
@@ -118,12 +113,19 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                                 <Square size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.size_sqm}m²</span>
                             </div>
                         </div>
-                        
+
                         {/* CTA Button */}
-                        <span className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-landing-gold text-white text-[10px] sm:text-xs font-semibold rounded-md hover:bg-landing-gold/90 transition-colors">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const event = new CustomEvent('openLeadForm', { detail: { interest: property.id } });
+                                window.dispatchEvent(event);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-landing-gold text-white text-[10px] sm:text-xs font-semibold rounded-md hover:bg-landing-gold/90 transition-colors"
+                        >
                             <span>View</span>
                             <ArrowRight size={10} className="sm:w-3 sm:h-3" />
-                        </span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -143,17 +145,17 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations })
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {items.map((property, idx) => (
                         <PropertyCard key={property.id} property={property} index={idx} />
                     ))}
                 </div>
 
                 <div className="mt-5 sm:mt-6 lg:mt-8 text-center">
-                    <button 
+                    <button
                         onClick={() => {
-                            window.dispatchEvent(new CustomEvent('openLeadForm', { 
-                                detail: { interest: sectionType === 'apartments' ? 'Apartments & Penthouses' : 'Townhouses & Villas' } 
+                            window.dispatchEvent(new CustomEvent('openLeadForm', {
+                                detail: { interest: sectionType === 'apartments' ? 'Apartments & Penthouses' : 'Townhouses & Villas' }
                             }));
                         }}
                         className="text-landing-navy font-semibold text-xs sm:text-sm hover:text-landing-gold transition-colors inline-flex items-center gap-1 group/btn"
