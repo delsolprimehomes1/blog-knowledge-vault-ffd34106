@@ -100,6 +100,8 @@ export const ClusterQATab = ({
   const [blockedLanguages, setBlockedLanguages] = useState<Record<string, { reason: string; missingArticleIds?: string[]; mismatchCount?: number }>>({});
   const [isFixingLinking, setIsFixingLinking] = useState(false);
   const [isFixingQALinking, setIsFixingQALinking] = useState(false);
+  const [isUnifyingOrphanQAs, setIsUnifyingOrphanQAs] = useState(false);
+  const [orphanedQACount, setOrphanedQACount] = useState<number>(0);
   
   // ENHANCEMENT 5: Verification
   const [isVerifying, setIsVerifying] = useState(false);
@@ -244,8 +246,18 @@ export const ClusterQATab = ({
       if (count >= 24) completedLangs.add(lang);
     });
     setCompletedLanguages(completedLangs);
+    
+    // ORPHAN DETECTION: Check for non-English Q&As with isolated hreflang_group_ids
+    // An orphan is a non-English Q&A whose hreflang_group_id is NOT shared with any English Q&A
+    const englishGroupIds = new Set(englishQAs.map(qa => qa.hreflang_group_id).filter(Boolean));
+    const nonEnglishQAs = qaList.filter(qa => qa.language !== 'en' && qa.hreflang_group_id);
+    const orphanedQAs = nonEnglishQAs.filter(qa => !englishGroupIds.has(qa.hreflang_group_id));
+    setOrphanedQACount(orphanedQAs.length);
+    
+    if (orphanedQAs.length > 0) {
+      console.log(`[QATab] Detected ${orphanedQAs.length} orphaned Q&As with isolated hreflang_group_ids`);
+    }
   }, [cluster.cluster_id]);
-
   // Initial fetch and when cluster data changes
   useEffect(() => {
     fetchQACounts();
@@ -642,6 +654,59 @@ export const ClusterQATab = ({
       toast.error(`Failed to fix Q&A linking: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsFixingQALinking(false);
+    }
+  };
+
+  // PHASE 3c: Unify orphaned Q&As with their English counterparts
+  const handleUnifyOrphanedQAs = async () => {
+    setIsUnifyingOrphanQAs(true);
+    try {
+      toast.info('Analyzing orphaned Q&As...');
+      
+      // First do a dry run to see what will be fixed
+      const { data: dryRunData, error: dryRunError } = await supabase.functions.invoke('repair-cluster-qa-hreflang-unification', {
+        body: { 
+          clusterId: cluster.cluster_id,
+          dryRun: true,
+        },
+      });
+
+      if (dryRunError) throw dryRunError;
+
+      if (dryRunData?.orphansFound === 0) {
+        toast.info('No orphaned Q&As found - all correctly linked!');
+        setOrphanedQACount(0);
+        return;
+      }
+
+      toast.info(`Found ${dryRunData.orphansFound} orphaned Q&As. Unifying...`);
+
+      // Now apply the fix
+      const { data, error } = await supabase.functions.invoke('repair-cluster-qa-hreflang-unification', {
+        body: { 
+          clusterId: cluster.cluster_id,
+          dryRun: false,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Unified ${data.unified} orphaned Q&As across ${data.groupsAffected} groups`);
+        setOrphanedQACount(0);
+        
+        // Refresh counts
+        await fetchQACounts();
+        await queryClient.invalidateQueries({ queryKey: ['cluster-generations'] });
+        await queryClient.invalidateQueries({ queryKey: ['cluster-qa-pages'] });
+      } else {
+        throw new Error(data?.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error unifying orphaned Q&As:', error);
+      toast.error(`Failed to unify Q&As: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUnifyingOrphanQAs(false);
     }
   };
 
@@ -1238,6 +1303,41 @@ export const ClusterQATab = ({
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Orphaned Q&As Detection - show when orphans exist */}
+          {orphanedQACount > 0 && (
+            <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-400">
+                    🔗 {orphanedQACount} Orphaned Q&As Detected
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Non-English Q&As have isolated hreflang groups. Unify them with their English counterparts.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleUnifyOrphanedQAs}
+                  disabled={isUnifyingOrphanQAs || isFixingLinking || isFixingQALinking}
+                  className="border-purple-400 text-purple-700 hover:bg-purple-100"
+                >
+                  {isUnifyingOrphanQAs ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Unifying...
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-4 w-4 mr-1" />
+                      Unify Orphaned Q&As
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 

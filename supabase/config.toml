@@ -275,3 +275,6 @@ verify_jwt = false
 
 [functions.repair-cluster-qa-article-linking]
 verify_jwt = false
+
+[functions.repair-cluster-qa-hreflang-unification]
+verify_jwt = false
