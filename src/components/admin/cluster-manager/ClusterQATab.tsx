@@ -91,6 +91,7 @@ export const ClusterQATab = ({
   const [completedLanguages, setCompletedLanguages] = useState<Set<string>>(new Set());
   const [englishQACount, setEnglishQACount] = useState(0);
   const [languageQACounts, setLanguageQACounts] = useState<Record<string, number>>({});
+  const [translationProgress, setTranslationProgress] = useState<Record<string, { current: number; total: number }>>({}); // Real-time progress
   const [languagePublishedCounts, setLanguagePublishedCounts] = useState<Record<string, number>>({});
   
   // ENHANCEMENT 5: Verification
@@ -346,16 +347,19 @@ export const ClusterQATab = ({
   // Phase 2: Translate all Q&As to a target language (with auto-continuation loop)
   const handleTranslateToLanguage = async (targetLanguage: string): Promise<boolean> => {
     setTranslatingLanguages(prev => new Set([...prev, targetLanguage]));
+    // Initialize progress tracking
+    const startCount = languageQACounts[targetLanguage] || 0;
+    setTranslationProgress(prev => ({ ...prev, [targetLanguage]: { current: startCount, total: 24 } }));
     
     try {
       const currentCount = languageQACounts[targetLanguage] || 0;
       const message = currentCount > 0 
         ? `Resuming ${targetLanguage.toUpperCase()} translation (${currentCount}/24)...`
-        : `Translating 24 Q&As to ${targetLanguage.toUpperCase()}... (2-3 minutes)`;
+        : `Translating 24 Q&As to ${targetLanguage.toUpperCase()}...`;
       toast.info(message);
       
       let batchCount = 0;
-      const MAX_BATCHES = 10; // Safety limit (10 batches × 4 = 40 max)
+      const MAX_BATCHES = 10; // Safety limit (10 batches × 6 = 60 max)
       
       while (batchCount < MAX_BATCHES) {
         batchCount++;
@@ -374,6 +378,9 @@ export const ClusterQATab = ({
           const newCount = data.actualCount ?? 0;
           const remaining = data.remaining ?? (24 - newCount);
           
+          // Update real-time progress indicator
+          setTranslationProgress(prev => ({ ...prev, [targetLanguage]: { current: newCount, total: 24 } }));
+          
           // Refresh counts after each batch
           await fetchQACounts();
           
@@ -381,11 +388,6 @@ export const ClusterQATab = ({
           if (remaining <= 0 || !data.partial) {
             toast.success(`${targetLanguage.toUpperCase()}: ✅ Complete! ${newCount}/24 Q&As`);
             break;
-          }
-          
-          // Show progress every 2 batches
-          if (batchCount % 2 === 0) {
-            toast.info(`${targetLanguage.toUpperCase()}: ${newCount}/24 (${remaining} remaining)...`);
           }
           
           // Delay between batches to avoid rate limiting
@@ -412,6 +414,12 @@ export const ClusterQATab = ({
       setTranslatingLanguages(prev => {
         const next = new Set(prev);
         next.delete(targetLanguage);
+        return next;
+      });
+      // Clear progress on completion
+      setTranslationProgress(prev => {
+        const next = { ...prev };
+        delete next[targetLanguage];
         return next;
       });
     }
@@ -952,12 +960,17 @@ export const ClusterQATab = ({
               const isDisabled = !isPhase1Complete || isTranslating || (!canStartMore && !isCompleted) || isGeneratingAll;
               const isPartial = count > 0 && count < 24;
               
+              const progress = translationProgress[lang];
+              const progressPercent = progress ? Math.round((progress.current / progress.total) * 100) : 0;
+              
               return (
                 <div 
                   key={lang}
                   className={`p-3 rounded-lg border ${
                     isCompleted 
                       ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                      : isTranslating
+                      ? 'bg-purple-50 border-purple-300 dark:bg-purple-950/30 dark:border-purple-700'
                       : isPartial
                       ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
                       : 'bg-background border-border'
@@ -965,11 +978,22 @@ export const ClusterQATab = ({
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg">{getLanguageFlag(lang)}</span>
-                    <span className={`font-bold ${isCompleted ? 'text-green-600' : isPartial ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                      {count}/24
+                    <span className={`font-bold ${isCompleted ? 'text-green-600' : isTranslating ? 'text-purple-600' : isPartial ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                      {isTranslating && progress ? `${progress.current}/${progress.total}` : `${count}/24`}
                       {isCompleted && ' ✅'}
                     </span>
                   </div>
+                  
+                  {/* Real-time progress bar when translating */}
+                  {isTranslating && progress && (
+                    <div className="mb-2 space-y-1">
+                      <Progress value={progressPercent} className="h-2" />
+                      <div className="text-xs text-center text-purple-600 dark:text-purple-400 font-medium">
+                        {progressPercent}% complete
+                      </div>
+                    </div>
+                  )}
+                  
                   <Button
                     size="sm"
                     variant={isCompleted ? "outline" : "default"}
@@ -978,6 +1002,8 @@ export const ClusterQATab = ({
                     className={`w-full ${
                       isCompleted 
                         ? 'border-green-400 text-green-700' 
+                        : isTranslating
+                        ? 'bg-purple-600 hover:bg-purple-700'
                         : isPartial
                         ? 'bg-amber-500 hover:bg-amber-600'
                         : 'bg-purple-600 hover:bg-purple-700'
