@@ -20,10 +20,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 const TARGET_LANGUAGES = ['de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 
-const MAX_RUNTIME = 50 * 1000; // 50 seconds - keep requests short
-const MAX_ARTICLES_PER_RUN = 2; // Translate at most 2 articles per invocation to avoid timeouts
+const MAX_RUNTIME = 50 * 1000; // 50 seconds
+const MAX_ARTICLES_PER_RUN = 4; // Increased from 2 - faster AI allows more
 const MAX_RETRIES = 2;
-const RECENT_LOCK_MS = 90 * 1000; // 90 seconds - if job updated recently, don't start another run
+const RECENT_LOCK_MS = 90 * 1000;
 
 /**
  * Clean HTML content - remove markdown fences and normalize
@@ -41,14 +41,11 @@ function cleanHtmlContent(html: string): string {
  */
 function safeJsonParse(text: string, context: string): any {
   let cleanText = text.trim();
-  
-  // Remove markdown code fences
   cleanText = cleanText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
   
   try {
     return JSON.parse(cleanText);
   } catch (e1) {
-    // Try to extract JSON object
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -62,17 +59,21 @@ function safeJsonParse(text: string, context: string): any {
 }
 
 /**
- * Call AI gateway with better error handling
+ * Call Lovable AI Gateway - 3-4x faster than direct OpenAI
  */
 async function callAI(
   prompt: string,
-  apiKey: string,
   options: { maxTokens?: number; tools?: any[]; toolChoice?: any } = {}
 ): Promise<any> {
   const { maxTokens = 4000, tools, toolChoice } = options;
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
   
   const body: any = {
-    model: 'gpt-4o-mini',
+    model: 'google/gemini-2.5-flash', // Fast & high quality
     messages: [{ role: 'user', content: prompt }],
     max_tokens: maxTokens,
   };
@@ -84,19 +85,24 @@ async function callAI(
     }
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
     },
     body: JSON.stringify(body),
   });
 
-  // Read response as text first for better error handling
   const responseText = await response.text();
   
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error('AI rate limit exceeded. Please try again in a moment.');
+    }
+    if (response.status === 402) {
+      throw new Error('AI credits exhausted. Please add credits to continue.');
+    }
     throw new Error(`AI API error (${response.status}): ${responseText.slice(0, 500)}`);
   }
   
@@ -111,12 +117,11 @@ async function callAI(
 }
 
 /**
- * STEP 1: Translate metadata using tool calling (structured output)
+ * Translate metadata using tool calling (structured output)
  */
 async function translateMetadata(
   englishArticle: any,
-  targetLanguage: string,
-  apiKey: string
+  targetLanguage: string
 ): Promise<{
   headline: string;
   meta_title: string;
@@ -176,16 +181,14 @@ Call the translate_metadata function with your translations.`;
     }
   }];
 
-  const data = await callAI(prompt, apiKey, {
+  const data = await callAI(prompt, {
     maxTokens: 3000,
     tools,
     toolChoice: { type: "function", function: { name: "translate_metadata" } }
   });
 
-  // Extract tool call arguments
   const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall?.function?.arguments) {
-    // Fallback: try to parse from content
     const content = data?.choices?.[0]?.message?.content;
     if (content) {
       return safeJsonParse(content, 'metadata-fallback');
@@ -209,12 +212,11 @@ Call the translate_metadata function with your translations.`;
 }
 
 /**
- * STEP 2: Translate HTML content separately (plain text output, no JSON wrapper)
+ * Translate HTML content separately
  */
 async function translateHtmlContent(
   englishHtml: string,
-  targetLanguage: string,
-  apiKey: string
+  targetLanguage: string
 ): Promise<string> {
   const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
   const cleanedHtml = cleanHtmlContent(englishHtml);
@@ -232,24 +234,22 @@ CRITICAL REQUIREMENTS:
 HTML TO TRANSLATE:
 ${cleanedHtml}`;
 
-  const data = await callAI(prompt, apiKey, { maxTokens: 12000 });
+  const data = await callAI(prompt, { maxTokens: 12000 });
 
   const content = data?.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error(`Empty HTML translation response`);
   }
 
-  // Clean any accidental code fences from response
   return cleanHtmlContent(content);
 }
 
 /**
- * Translate article with retry logic
+ * Translate article with PARALLEL metadata + content translation and retry logic
  */
 async function translateArticleWithRetry(
   englishArticle: any,
   targetLanguage: string,
-  apiKey: string,
   retryCount = 0
 ): Promise<any> {
   const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
@@ -257,15 +257,11 @@ async function translateArticleWithRetry(
   console.log(`[Translation] Translating "${englishArticle.headline}" to ${targetLanguageName} (attempt ${retryCount + 1})...`);
 
   try {
-    // Step 1: Translate metadata via tool calling
-    const metadata = await translateMetadata(englishArticle, targetLanguage, apiKey);
-    
-    // Step 2: Translate HTML content separately
-    const translatedHtml = await translateHtmlContent(
-      englishArticle.detailed_content,
-      targetLanguage,
-      apiKey
-    );
+    // PARALLEL: Translate metadata AND content simultaneously
+    const [metadata, translatedHtml] = await Promise.all([
+      translateMetadata(englishArticle, targetLanguage),
+      translateHtmlContent(englishArticle.detailed_content, targetLanguage)
+    ]);
 
     // Generate slug from translated headline
     const slug = metadata.headline
@@ -276,10 +272,8 @@ async function translateArticleWithRetry(
       .replace(/^-+|-+$/g, '')
       .slice(0, 80);
 
-    // Add random suffix for uniqueness
     const uniqueSlug = `${slug}-${englishArticle.cluster_number || 0}-${Math.random().toString(36).slice(2, 6)}`;
 
-    // Truncate fields
     const truncatedMetaDescription = String(metadata.meta_description ?? '')
       .replace(/\s+/g, ' ')
       .trim()
@@ -300,15 +294,11 @@ async function translateArticleWithRetry(
       qa_entities: metadata.qa_entities,
       featured_image_alt: metadata.featured_image_alt,
       featured_image_caption: metadata.featured_image_caption || englishArticle.featured_image_caption,
-      
-      // Keep same images
       featured_image_url: englishArticle.featured_image_url,
       diagram_url: englishArticle.diagram_url,
       diagram_description: englishArticle.diagram_description,
       diagram_alt: englishArticle.diagram_alt,
       diagram_caption: englishArticle.diagram_caption,
-      
-      // Set proper metadata
       source_language: 'en',
       is_primary: false,
       hreflang_group_id: englishArticle.hreflang_group_id,
@@ -330,7 +320,7 @@ async function translateArticleWithRetry(
     if (retryCount < MAX_RETRIES) {
       console.log(`[Translation] Retrying in 2 seconds...`);
       await new Promise(resolve => setTimeout(resolve, 2000));
-      return translateArticleWithRetry(englishArticle, targetLanguage, apiKey, retryCount + 1);
+      return translateArticleWithRetry(englishArticle, targetLanguage, retryCount + 1);
     }
     
     throw error;
@@ -354,7 +344,6 @@ async function linkTranslations(supabase: any, clusterId: string) {
   
   console.log(`[Link Translations] Found ${articles.length} articles to link`);
   
-  // Group by cluster_number
   const groups: Record<number, Record<string, { id: string; slug: string }>> = {};
   for (const article of articles) {
     if (!groups[article.cluster_number]) {
@@ -366,7 +355,6 @@ async function linkTranslations(supabase: any, clusterId: string) {
     };
   }
   
-  // Build update payloads
   const updates: Array<{ id: string; translations: Record<string, string> }> = [];
   for (const article of articles) {
     const siblings: Record<string, string> = {};
@@ -378,7 +366,6 @@ async function linkTranslations(supabase: any, clusterId: string) {
     updates.push({ id: article.id, translations: siblings });
   }
   
-  // Process updates with concurrency limit (10 at a time for speed)
   const CONCURRENCY = 10;
   for (let i = 0; i < updates.length; i += CONCURRENCY) {
     const batch = updates.slice(i, i + CONCURRENCY);
@@ -393,6 +380,33 @@ async function linkTranslations(supabase: any, clusterId: string) {
   }
   
   console.log(`[Link Translations] ✅ Complete: ${articles.length} articles linked`);
+}
+
+/**
+ * Update job progress after each article for real-time UI
+ */
+async function updateArticleProgress(
+  supabase: any, 
+  jobId: string, 
+  currentLanguage: string, 
+  articleIndex: number, 
+  expectedCount: number,
+  totalArticlesInDb: number
+) {
+  await supabase
+    .from('cluster_generations')
+    .update({
+      progress: {
+        message: `Translating ${LANGUAGE_NAMES[currentLanguage] || currentLanguage}: article ${articleIndex}/${expectedCount}`,
+        current_language: currentLanguage,
+        current_article: articleIndex,
+        articles_for_language: expectedCount,
+        generated_articles: totalArticlesInDb,
+        total_articles: 60,
+      },
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', jobId);
 }
 
 /**
@@ -438,17 +452,14 @@ serve(async (req) => {
     }
     currentJobId = jobId;
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY not configured');
     
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     console.log(`[translate-cluster] Starting translation for job ${jobId}`);
 
-    // ===== PHASE 1: Check for recent lock (prevent overlapping runs) =====
+    // ===== PHASE 1: Check for recent lock =====
     const { data: lockCheck } = await supabase
       .from('cluster_generations')
       .select('status, updated_at, progress')
@@ -471,7 +482,6 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
-        // Stale "generating" - reset to partial so we can continue
         console.log(`[translate-cluster] Job stuck in generating for ${Math.round(timeSinceUpdate / 1000)}s, resetting to partial...`);
         await supabase
           .from('cluster_generations')
@@ -484,20 +494,18 @@ serve(async (req) => {
       }
     }
 
-    // Fetch job details - first try cluster_generations
+    // Fetch job details
     let { data: job, error: jobError } = await supabase
       .from('cluster_generations')
       .select('*')
       .eq('id', jobId)
       .single();
 
-    // If job not found, check if this is a valid cluster_id with articles
     let sourceLanguage = 'en';
     
     if (jobError || !job) {
       console.log(`[translate-cluster] Job record not found, checking for cluster articles...`);
       
-      // Find ANY article in this cluster (not just English)
       const { data: clusterArticles, error: clusterError } = await supabase
         .from('blog_articles')
         .select('id, cluster_theme, cluster_id, language')
@@ -508,19 +516,16 @@ serve(async (req) => {
         throw new Error(`No job or cluster found: ${jobId}`);
       }
       
-      // Use the found article's language as source
       sourceLanguage = clusterArticles[0].language || 'en';
       console.log(`[translate-cluster] Found cluster with source language: ${sourceLanguage}`);
       
-      // Filter target languages to exclude source language
       const filteredTargetLanguages = TARGET_LANGUAGES.filter(lang => lang !== sourceLanguage);
       
-      // Create a job record for this cluster
       console.log(`[translate-cluster] Creating job record for existing cluster...`);
       const { data: newJob, error: createError } = await supabase
         .from('cluster_generations')
         .insert({
-          id: jobId, // Use cluster_id as job_id
+          id: jobId,
           topic: clusterArticles[0].cluster_theme || 'Translation Job',
           primary_keyword: clusterArticles[0].cluster_theme || 'translation',
           target_audience: 'Property buyers',
@@ -543,11 +548,10 @@ serve(async (req) => {
       job = newJob;
       console.log(`[translate-cluster] Created job record for cluster ${jobId}`);
     } else {
-      // Job exists, use its language as source
       sourceLanguage = job.language || 'en';
     }
 
-    // Fetch source articles for this cluster
+    // Fetch source articles
     const { data: sourceArticles, error: articlesError } = await supabase
       .from('blog_articles')
       .select('*')
@@ -566,13 +570,11 @@ serve(async (req) => {
     const languagesQueue = job.languages_queue || TARGET_LANGUAGES;
     const languageStatus = { ...(job.language_status || {}) };
 
-    // Find next language to translate
     currentLanguage = targetLanguage || '';
     if (!currentLanguage) {
       for (const lang of languagesQueue) {
         if (lang === sourceLanguage) continue;
 
-        // Check if this language is already done
         const { count } = await supabase
           .from('blog_articles')
           .select('*', { count: 'exact', head: true })
@@ -587,7 +589,6 @@ serve(async (req) => {
     }
 
     if (!currentLanguage) {
-      // All translations complete
       await linkTranslations(supabase, jobId);
 
       await supabase
@@ -614,19 +615,12 @@ serve(async (req) => {
 
     console.log(`[translate-cluster] Translating to: ${currentLanguage}`);
 
-    // Fetch existing translations for this language so the function can safely resume
-    const { data: existingForLang, error: existingForLangError } = await supabase
+    // Fetch existing translations for safe resume
+    const { data: existingForLang } = await supabase
       .from('blog_articles')
       .select('id, cluster_number')
       .eq('cluster_id', jobId)
       .eq('language', currentLanguage);
-
-    if (existingForLangError) {
-      console.warn(
-        `[translate-cluster] Could not fetch existing translations for ${currentLanguage}:`,
-        existingForLangError
-      );
-    }
 
     const existingClusterNumbers = new Set<number>(
       (existingForLang ?? [])
@@ -650,6 +644,8 @@ serve(async (req) => {
         progress: {
           message: `Translating to ${LANGUAGE_NAMES[currentLanguage] || currentLanguage}...`,
           current_language: currentLanguage,
+          generated_articles: initialExistingCount,
+          total_articles: 60,
         },
         updated_at: new Date().toISOString()
       })
@@ -659,14 +655,20 @@ serve(async (req) => {
     const translatedArticles: any[] = [];
     let stoppedEarly = false;
 
-    // Translate source articles (max MAX_ARTICLES_PER_RUN per invocation)
+    // Translate source articles
     for (let i = 0; i < sourceArticles.length; i++) {
       currentArticleIndex = i + 1;
       
-      // Check if we've hit our per-run article limit
+      // Check article limit
       if (translatedCount >= MAX_ARTICLES_PER_RUN) {
         console.log(`[translate-cluster] ⏸️ Hit max articles per run (${MAX_ARTICLES_PER_RUN}). Returning partial.`);
         stoppedEarly = true;
+        
+        // Count total articles in DB for accurate progress
+        const { count: totalInDb } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', jobId);
         
         await supabase
           .from('cluster_generations')
@@ -677,6 +679,8 @@ serve(async (req) => {
               current_language: currentLanguage,
               articles_translated: initialExistingCount + translatedCount,
               articles_this_run: translatedCount,
+              generated_articles: totalInDb || 0,
+              total_articles: 60,
             },
             updated_at: new Date().toISOString()
           })
@@ -685,10 +689,15 @@ serve(async (req) => {
         break;
       }
       
-      // Check timeout - set status to partial immediately so frontend knows to retry
+      // Check timeout
       if (Date.now() - FUNCTION_START_TIME > MAX_RUNTIME) {
         console.log(`[translate-cluster] ⚠️ Timeout approaching at ${translatedCount} articles`);
         stoppedEarly = true;
+        
+        const { count: totalInDb } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', jobId);
         
         await supabase
           .from('cluster_generations')
@@ -699,6 +708,8 @@ serve(async (req) => {
               current_language: currentLanguage,
               articles_translated: initialExistingCount + translatedCount,
               timeout_at_article: i + 1,
+              generated_articles: totalInDb || 0,
+              total_articles: 60,
             },
             updated_at: new Date().toISOString()
           })
@@ -710,7 +721,7 @@ serve(async (req) => {
       const sourceArticle = sourceArticles[i];
       const clusterNumber = sourceArticle.cluster_number;
 
-      // Skip if already translated for this language (safe resume)
+      // Skip if already translated
       if (typeof clusterNumber === 'number' && existingClusterNumbers.has(clusterNumber)) {
         console.log(
           `[translate-cluster] ⏭️ Skipping article ${i + 1}/${expectedCount} (cluster_number ${clusterNumber}) - already exists for ${currentLanguage}`
@@ -723,7 +734,7 @@ serve(async (req) => {
           `[translate-cluster] Translating article ${i + 1}/${expectedCount}: ${sourceArticle.headline}`
         );
 
-        const translated = await translateArticleWithRetry(sourceArticle, currentLanguage, OPENAI_API_KEY);
+        const translated = await translateArticleWithRetry(sourceArticle, currentLanguage);
 
         // Save to database
         const { data: savedArticle, error: saveError } = await supabase
@@ -764,9 +775,8 @@ serve(async (req) => {
           .single();
 
         if (saveError) {
-          // If the button is pressed again mid-run, we may hit duplicates.
           if (saveError.code === '23505') {
-            const { data: existingArticle, error: existingFetchError } = await supabase
+            const { data: existingArticle } = await supabase
               .from('blog_articles')
               .select('*')
               .eq('cluster_id', translated.cluster_id)
@@ -774,7 +784,7 @@ serve(async (req) => {
               .eq('cluster_number', translated.cluster_number)
               .maybeSingle();
 
-            if (!existingFetchError && existingArticle) {
+            if (existingArticle) {
               console.warn(
                 `[translate-cluster] Duplicate detected for ${currentLanguage} cluster_number ${translated.cluster_number}. Using existing row.`
               );
@@ -804,23 +814,17 @@ serve(async (req) => {
 
         console.log(`[translate-cluster] ✅ Article ${i + 1}/${expectedCount} saved: ${translated.headline}`);
 
-        // Update progress
-        await supabase
-          .from('cluster_generations')
-          .update({
-            progress: {
-              message: `Translating to ${LANGUAGE_NAMES[currentLanguage] || currentLanguage}: ${totalNow}/${expectedCount} articles...`,
-              current_language: currentLanguage,
-              articles_translated: totalNow,
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', jobId);
+        // Update progress after each article for real-time UI
+        const { count: totalInDb } = await supabase
+          .from('blog_articles')
+          .select('*', { count: 'exact', head: true })
+          .eq('cluster_id', jobId);
+
+        await updateArticleProgress(supabase, jobId, currentLanguage, totalNow, expectedCount, totalInDb || 0);
 
       } catch (error: any) {
         console.error(`[translate-cluster] Error translating article ${i + 1}:`, error);
         
-        // Log error to job for visibility in UI
         await updateJobError(supabase, jobId, error.message || String(error), {
           language: currentLanguage,
           articleIndex: i + 1
@@ -830,7 +834,7 @@ serve(async (req) => {
       }
     }
 
-    // Determine language completion based on what's in the database (idempotent)
+    // Determine language completion
     const { count: languageCount } = await supabase
       .from('blog_articles')
       .select('*', { count: 'exact', head: true })
@@ -846,7 +850,7 @@ serve(async (req) => {
         completedLanguages.push(currentLanguage);
       }
     } else {
-      languageStatus[currentLanguage] = (languageCount || 0) > 0 ? 'partial' : 'partial';
+      languageStatus[currentLanguage] = 'partial';
     }
 
     // Count total translated articles
@@ -921,7 +925,6 @@ serve(async (req) => {
             ? String((error as any).message)
             : JSON.stringify(error);
 
-    // Try to update job with error if we have jobId
     if (currentJobId) {
       try {
         const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
