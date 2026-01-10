@@ -12,32 +12,65 @@ serve(async (req) => {
   }
 
   try {
-    const { hreflangGroupId, dryRun = false } = await req.json();
+    const { hreflangGroupId, clusterId, dryRun = false } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log(`[sync-qa-translations-jsonb] Starting sync${hreflangGroupId ? ` for group ${hreflangGroupId}` : ' for all groups'}`);
+    const filterDesc = hreflangGroupId 
+      ? `for group ${hreflangGroupId}` 
+      : clusterId 
+        ? `for cluster ${clusterId}` 
+        : 'for all groups (paginated)';
+    console.log(`[sync-qa-translations-jsonb] Starting sync ${filterDesc}`);
 
-    // Build query for qa_pages
-    let query = supabase
-      .from('qa_pages')
-      .select('id, slug, language, hreflang_group_id, translations')
-      .not('hreflang_group_id', 'is', null)
-      .eq('status', 'published');
+    // Fetch Q&A pages with pagination to avoid 1000-row limit
+    const allQaPages: Array<{
+      id: string;
+      slug: string;
+      language: string;
+      hreflang_group_id: string;
+      translations: Record<string, string> | null;
+    }> = [];
+    
+    const fetchBatchSize = 1000;
+    let offset = 0;
+    
+    while (true) {
+      let query = supabase
+        .from('qa_pages')
+        .select('id, slug, language, hreflang_group_id, translations')
+        .not('hreflang_group_id', 'is', null)
+        .eq('status', 'published')
+        .range(offset, offset + fetchBatchSize - 1);
 
-    if (hreflangGroupId) {
-      query = query.eq('hreflang_group_id', hreflangGroupId);
+      // Apply filters
+      if (hreflangGroupId) {
+        query = query.eq('hreflang_group_id', hreflangGroupId);
+      }
+      if (clusterId) {
+        query = query.eq('cluster_id', clusterId);
+      }
+
+      const { data: batch, error: fetchError } = await query;
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch Q&A pages: ${fetchError.message}`);
+      }
+
+      if (!batch || batch.length === 0) break;
+      
+      allQaPages.push(...batch);
+      console.log(`[sync-qa-translations-jsonb] Fetched batch: ${batch.length} rows (total: ${allQaPages.length})`);
+      
+      if (batch.length < fetchBatchSize) break;
+      offset += fetchBatchSize;
     }
 
-    const { data: qaPages, error: fetchError } = await query;
+    const qaPages = allQaPages;
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch Q&A pages: ${fetchError.message}`);
-    }
-
-    if (!qaPages || qaPages.length === 0) {
+    if (qaPages.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: 'No Q&A pages found', updated: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

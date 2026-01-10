@@ -823,9 +823,9 @@ export const ClusterQATab = ({
         console.error('Article sync error:', articleError);
       }
       
-      // Then sync this cluster's Q&As
+      // Then sync this cluster's Q&As (pass clusterId to avoid 1000-row limit)
       const { data: qaData, error: qaError } = await supabase.functions.invoke('sync-qa-translations-jsonb', {
-        body: { /* no filter = sync all groups for this cluster's Q&As */ },
+        body: { clusterId: cluster.cluster_id },
       });
       
       if (qaError) {
