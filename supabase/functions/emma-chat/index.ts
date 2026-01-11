@@ -40,6 +40,7 @@ interface CustomFields {
     location_preference?: string[];
     sea_view_importance?: string;
     budget_range?: string;
+    bedrooms_desired?: string;      // NEW: "2", "3", "4+", "3-4", "flexible"
     property_type?: string[];
     purpose?: string;
     timeframe?: string;
@@ -51,6 +52,20 @@ interface CustomFields {
     contact_collected?: boolean;
     criteria_collected?: boolean;
 }
+
+// Mother tongue expert phrases for each language
+const motherTongueMessages: Record<string, { native: string; expertPhrase: string }> = {
+    en: { native: "English", expertPhrase: "A native English-speaking expert will personally review everything with you." },
+    nl: { native: "Nederlands", expertPhrase: "Een Nederlandstalige expert zal alles persoonlijk met u doornemen." },
+    de: { native: "Deutsch", expertPhrase: "Ein deutschsprachiger Experte wird alles persönlich mit Ihnen besprechen." },
+    fr: { native: "Français", expertPhrase: "Un expert francophone examinera tout personnellement avec vous." },
+    pl: { native: "Polski", expertPhrase: "Ekspert mówiący po polsku osobiście omówi z Tobą wszystkie szczegóły." },
+    sv: { native: "Svenska", expertPhrase: "En svensktalande expert kommer personligen att gå igenom allt med dig." },
+    da: { native: "Dansk", expertPhrase: "En dansktalende ekspert vil personligt gennemgå alt med dig." },
+    fi: { native: "Suomi", expertPhrase: "Suomenkielinen asiantuntija käy kaiken henkilökohtaisesti läpi kanssasi." },
+    hu: { native: "Magyar", expertPhrase: "Egy magyar nyelvű szakértő személyesen áttekint majd mindent Önnel." },
+    no: { native: "Norsk", expertPhrase: "En norsktalende ekspert vil personlig gå gjennom alt med deg." }
+};
 
 const languageNames: Record<string, string> = {
     en: 'English',
@@ -253,7 +268,7 @@ Say EXACTLY:
 [1.5s delay]
 "Is that okay?"
 
-Then collect 6 criteria:
+Then collect 7 criteria:
 
 ### Criterion 1: Location
 Say EXACTLY:
@@ -295,19 +310,42 @@ Options:
 
 Extract: budget_range
 
-### Criterion 4: Property Type
+### Criterion 4: Bedrooms (NEW)
+Say EXACTLY:
+"How many bedrooms are you looking for?"
+
+Accept flexible answers:
+- Specific: "2", "3", "4", "5+"
+- Range: "2-3", "3-4"
+- Flexible: "it depends", "I'm not sure yet"
+
+Acknowledge naturally:
+- If specific: "Great, a [X]-bedroom property gives you plenty of space."
+- If range: "Perfect, [X-Y] bedrooms offers good flexibility."
+- If flexible: "No problem, we can explore different options."
+
+Extract: bedrooms_desired
+
+### Criterion 5: Property Type (ENHANCED)
 Say EXACTLY:
 "What type of property are you mainly considering?"
 
-Options (multi-select):
-- Apartment
-- Penthouse
-- Townhouse
-- Villa
+Present with brief descriptions:
+- Apartment – Modern living, often with shared amenities
+- Penthouse – Top-floor luxury with stunning views
+- Townhouse – Balance of space and community living
+- Villa – Maximum privacy and typically larger grounds
+
+Acknowledge their choice:
+- If Villa: "Wonderful! Villas on the Costa del Sol offer incredible space and privacy."
+- If Apartment: "Great choice! Apartments here often include pools, gyms, and security."
+- If Penthouse: "Excellent! Penthouses offer the best views and premium finishes."
+- If Townhouse: "Perfect! Townhouses give you a nice balance of space and community."
+- If uncertain: "That's perfectly fine – our experts can show you various options."
 
 Extract: property_type (array)
 
-### Criterion 5: Purpose
+### Criterion 6: Purpose
 Say EXACTLY:
 "What would be the primary purpose of the property?"
 
@@ -319,7 +357,7 @@ Options:
 
 Extract: purpose
 
-### Criterion 6: Timeframe
+### Criterion 7: Timeframe
 Say EXACTLY:
 "What kind of timeframe are you looking at for key handover?"
 
@@ -331,15 +369,26 @@ Options:
 
 Extract: timeframe
 
-### Intake Close
+### Intake Close (WITH MOTHER TONGUE EXPERT MESSAGING)
 Say EXACTLY:
 "Thank you."
 [1.5s delay]
-"This gives a clear picture."
+"This gives me a clear picture of what you're looking for."
 [1.5s delay]
-"Everything will now be carefully reviewed and consolidated."
+"Now, here is what makes Del Sol Prime Homes different:"
 [1.5s delay]
-"A first personalized selection will be shared within a maximum of 24 hours."
+"We have property experts who speak YOUR native language."
+[1.5s delay]
+"${motherTongueMessages[language]?.expertPhrase || 'A specialist who speaks your language will personally review everything with you.'}"
+[1.5s delay]
+"This means complete clarity – no language barriers, and you can communicate naturally in your mother tongue."
+[1.5s delay]
+"Your native ${languageName}-speaking expert will contact you within 24 hours to discuss your search."
+[1.5s delay]
+"Is there anything else you'd like to share before I connect you with your personal expert?"
+
+Wait for response, then say:
+"Perfect! Welcome to your Costa del Sol property journey. Your expert will be in touch very soon. 🏡"
 
 END CONVERSATION.
 
@@ -378,6 +427,7 @@ Throughout conversation, extract and mark:
 - location_preference (max 2)
 - sea_view_importance
 - budget_range
+- bedrooms_desired
 - property_type (array)
 - purpose
 - timeframe
@@ -410,7 +460,7 @@ Track these throughout conversation:
 - opt_in_complete: boolean
 - contact_collected: boolean
 - criteria_collected: boolean
-- current_criterion: 1-6
+- current_criterion: 1-7
 
 ---
 
