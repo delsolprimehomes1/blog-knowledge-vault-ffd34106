@@ -22,7 +22,7 @@ import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import { BlogArticle as BlogArticleType, Author, ExternalCitation, QAEntity, FunnelStage, InternalLink } from "@/types/blog";
 import { ExpertInsight } from "@/components/blog-article/ExpertInsight";
 import { DecisionSnapshot } from "@/components/blog-article/DecisionSnapshot";
-import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import PersonSchema from '@/components/schema/PersonSchema';
 import ArticleSchema from '@/components/schema/ArticleSchema';
 import AuthorByline from '@/components/blog-article/AuthorByline';
@@ -290,8 +290,8 @@ const BlogArticle = () => {
       {/* Sticky Mobile CTA Footer */}
       <StickyMobileCTA />
 
-      {/* Chatbot Widget - Available on all blog pages */}
-      <ChatbotWidget articleSlug={article.slug} language={article.language} />
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={article.language} />
     </>
   );
 };
