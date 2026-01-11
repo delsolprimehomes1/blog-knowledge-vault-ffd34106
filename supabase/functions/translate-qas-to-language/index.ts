@@ -569,8 +569,21 @@ serve(async (req) => {
         // Build translated Q&A record
         const now = new Date().toISOString();
         
-        // Generate unique image for this Q&A
-        const qaImagePrompt = `Professional Costa del Sol real estate Q&A photograph. Question: ${translation.question}. Style: Modern luxury property, educational guidance imagery, Mediterranean aesthetic. Language: ${LANGUAGE_NAMES[targetLanguage] || targetLanguage}`;
+        // Generate unique image for this Q&A (NO question text in prompt to avoid text baked into images)
+        const sceneVariations = [
+          'luxury villa exterior with pool',
+          'modern apartment interior design',
+          'Mediterranean garden terrace',
+          'beachfront property view',
+          'contemporary living room',
+          'penthouse balcony panorama',
+          'Spanish courtyard with tiles',
+          'golf resort property',
+          'marina view apartment',
+          'mountain backdrop villa'
+        ];
+        const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
+        const qaImagePrompt = `Professional Costa del Sol real estate photograph, ${randomScene}, bright natural lighting, educational visual style, no text, no watermarks, no logos, clean composition, high-end quality, ${LANGUAGE_NAMES[targetLanguage] || targetLanguage} market aesthetic`;
         const generatedImageUrl = await generateUniqueImage(qaImagePrompt, englishQA.featured_image_url);
         
         const translatedQARecord = {

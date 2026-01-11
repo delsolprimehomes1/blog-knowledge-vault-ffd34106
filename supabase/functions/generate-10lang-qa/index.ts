@@ -349,8 +349,21 @@ serve(async (req) => {
             }
           }
           
-          // Generate unique image for this Q&A
-          const qaImagePrompt = `Professional Costa del Sol real estate Q&A photograph. Question: ${qaData.question_main}. Style: Costa del Sol luxury property, educational guidance imagery. Language: ${LANGUAGE_NAMES[lang] || lang}`;
+          // Generate unique image for this Q&A (NO question text in prompt to avoid text baked into images)
+          const sceneVariations = [
+            'luxury villa exterior with pool',
+            'modern apartment interior design',
+            'Mediterranean garden terrace',
+            'beachfront property view',
+            'contemporary living room',
+            'penthouse balcony panorama',
+            'Spanish courtyard with tiles',
+            'golf resort property',
+            'marina view apartment',
+            'mountain backdrop villa'
+          ];
+          const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
+          const qaImagePrompt = `Professional Costa del Sol real estate photograph, ${randomScene}, bright natural lighting, educational visual style, no text, no watermarks, no logos, clean composition, high-end quality, ${LANGUAGE_NAMES[lang] || lang} market aesthetic`;
           const fallbackImageUrl = langArticle?.featured_image_url || englishArticle.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200';
           const generatedImageUrl = await generateUniqueImage(qaImagePrompt, fallbackImageUrl);
           

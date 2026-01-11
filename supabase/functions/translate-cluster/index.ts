@@ -313,8 +313,21 @@ async function translateArticleWithRetry(
       .trim()
       .slice(0, 70);
 
-    // Generate unique image for this language article
-    const imagePrompt = `Professional Costa del Sol real estate photograph. Headline: ${metadata.headline}. Style: Modern luxury Mediterranean property, bright natural lighting, high-end marketing quality. Language context: ${targetLanguageName}`;
+    // Generate unique image for this language article (NO headline text in prompt to avoid text baked into images)
+    const sceneVariations = [
+      'infinity pool overlooking Mediterranean sea',
+      'panoramic mountain and sea views',
+      'manicured Mediterranean garden with palm trees',
+      'contemporary interior with floor-to-ceiling windows',
+      'beachfront terrace at golden hour',
+      'golf course villa setting',
+      'rooftop terrace with sunset views',
+      'luxury outdoor living space',
+      'modern kitchen with marble countertops',
+      'private courtyard with fountain'
+    ];
+    const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
+    const imagePrompt = `Professional Costa del Sol real estate photograph, luxury Mediterranean villa with ${randomScene}, bright natural lighting, Architectural Digest style, no text, no watermarks, no logos, clean composition, high-end marketing quality, ${targetLanguageName} market aesthetic`;
     const generatedImageUrl = await generateUniqueImage(imagePrompt, englishArticle.featured_image_url);
 
     return {

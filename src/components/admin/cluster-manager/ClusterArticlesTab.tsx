@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2, RefreshCw } from "lucide-react";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2, RefreshCw, ImageIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
@@ -70,6 +70,9 @@ export const ClusterArticlesTab = ({
   // Delete article state
   const [articleToDelete, setArticleToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Regenerate images state
+  const [isRegeneratingImages, setIsRegeneratingImages] = useState(false);
 
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
@@ -629,6 +632,42 @@ export const ClusterArticlesTab = ({
             <Link2 className="mr-2 h-4 w-4" />
           )}
           Regenerate Links
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            setIsRegeneratingImages(true);
+            try {
+              toast.info(`Regenerating ${cluster.total_articles} unique images... This will take several minutes.`);
+              const { data, error } = await supabase.functions.invoke('regenerate-cluster-images', {
+                body: { clusterId: cluster.cluster_id }
+              });
+              
+              if (error) throw error;
+              
+              if (data.success) {
+                toast.success(`✅ Regenerated ${data.successCount}/${data.totalArticles} images!`);
+                queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+              } else {
+                toast.error(data.error || 'Image regeneration failed');
+              }
+            } catch (error: any) {
+              console.error('Image regeneration failed:', error);
+              toast.error(`Failed: ${error.message}`);
+            } finally {
+              setIsRegeneratingImages(false);
+            }
+          }}
+          disabled={isRegeneratingImages || cluster.total_articles === 0}
+        >
+          {isRegeneratingImages ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ImageIcon className="mr-2 h-4 w-4" />
+          )}
+          {isRegeneratingImages ? 'Regenerating Images...' : 'Regenerate Images'}
         </Button>
 
         <Link to={`/admin/articles?cluster=${cluster.cluster_id}`}>

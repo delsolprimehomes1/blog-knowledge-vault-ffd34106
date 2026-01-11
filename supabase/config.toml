@@ -281,3 +281,6 @@ verify_jwt = false
 
 [functions.sync-all-translations-jsonb]
 verify_jwt = false
+
+[functions.regenerate-cluster-images]
+verify_jwt = false
