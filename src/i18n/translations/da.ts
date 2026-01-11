@@ -13,7 +13,7 @@ export const da = {
     yearsExperience: "Over {years} års kombineret erfaring i vores stifterteam",
     professionalCredentials: "Professionelle Kvalifikationer",
     linkedinProfile: "LinkedIn Profil",
-    contactAgent: "Kontakt Agent",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Hurtigt Svar",

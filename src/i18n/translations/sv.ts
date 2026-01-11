@@ -13,7 +13,7 @@ export const sv = {
     yearsExperience: "Över {years} års kombinerad erfarenhet inom vårt grundarteam",
     professionalCredentials: "Professionella Kvalifikationer",
     linkedinProfile: "LinkedIn-profil",
-    contactAgent: "Kontakta Agent",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Snabbt Svar",

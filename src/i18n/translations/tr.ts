@@ -13,7 +13,7 @@ export const tr = {
     yearsExperience: "Kurucu ekibimizde {years} yılı aşkın birleşik deneyim",
     professionalCredentials: "Profesyonel Yeterlilikler",
     linkedinProfile: "LinkedIn Profili",
-    contactAgent: "Acenteyle İletişime Geç",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Hızlı Cevap",

@@ -13,7 +13,7 @@ export const en = {
     yearsExperience: "Over {years} years of combined experience within our founding team",
     professionalCredentials: "Professional Credentials",
     linkedinProfile: "LinkedIn Profile",
-    contactAgent: "Contact Agent",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Quick Answer",

@@ -13,7 +13,7 @@ export const hu = {
     yearsExperience: "Több mint {years} év kombinált tapasztalat alapító csapatunkban",
     professionalCredentials: "Szakmai Képesítések",
     linkedinProfile: "LinkedIn Profil",
-    contactAgent: "Kapcsolat az Ügynökkel",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Gyors Válasz",

@@ -290,10 +290,8 @@ const BlogArticle = () => {
       {/* Sticky Mobile CTA Footer */}
       <StickyMobileCTA />
 
-      {/* Chatbot Widget - Only for BOFU articles */}
-      {article.funnel_stage === "BOFU" && (
-        <ChatbotWidget articleSlug={article.slug} language={article.language} />
-      )}
+      {/* Chatbot Widget - Available on all blog pages */}
+      <ChatbotWidget articleSlug={article.slug} language={article.language} />
     </>
   );
 };

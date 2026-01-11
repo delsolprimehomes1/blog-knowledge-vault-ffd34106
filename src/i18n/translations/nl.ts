@@ -13,7 +13,7 @@ export const nl = {
     yearsExperience: "Meer dan {years} jaar gecombineerde ervaring binnen ons oprichtersteam",
     professionalCredentials: "Professionele Referenties",
     linkedinProfile: "LinkedIn Profiel",
-    contactAgent: "Contact Agent",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Snel Antwoord",
