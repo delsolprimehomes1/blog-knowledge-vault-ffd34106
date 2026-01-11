@@ -183,8 +183,10 @@ const BlogArticle = () => {
         description={article.meta_description}
         datePublished={article.date_published || article.created_at}
         dateModified={article.date_modified || article.updated_at}
-        articleUrl={`https://www.delsolprimehomes.com/blog/${article.slug}`}
+        articleUrl={`https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}`}
         imageUrl={article.featured_image_url}
+        imageCaption={article.featured_image_caption}
+        imageAlt={article.featured_image_alt}
         context="blog"
       />
 

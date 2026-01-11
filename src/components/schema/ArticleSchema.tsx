@@ -7,6 +7,8 @@ interface ArticleSchemaProps {
     dateModified: string;  // ISO 8601 format
     articleUrl: string;
     imageUrl?: string;
+    imageCaption?: string;
+    imageAlt?: string;
     context: 'blog' | 'qa';
 }
 
@@ -17,6 +19,8 @@ const ArticleSchema: React.FC<ArticleSchemaProps> = ({
     dateModified,
     articleUrl,
     imageUrl,
+    imageCaption,
+    imageAlt,
     context
 }) => {
     const articleType = context === 'qa' ? 'FAQPage' : 'Article';
@@ -41,7 +45,9 @@ const ArticleSchema: React.FC<ArticleSchemaProps> = ({
         ...(imageUrl && {
             "image": {
                 "@type": "ImageObject",
-                "url": imageUrl
+                "url": imageUrl,
+                ...(imageCaption && { "caption": imageCaption }),
+                ...(imageAlt && { "description": imageAlt })
             }
         })
     };

@@ -182,9 +182,9 @@ export const ArticleContent = ({
             className="w-full aspect-[16/9] object-cover rounded-none sm:rounded-3xl shadow-2xl"
           />
           {featuredImageCaption && (
-            <div className="relative -mt-16 mx-5 sm:mx-8 backdrop-blur-xl bg-white/90 dark:bg-gray-900/90 border border-white/30 rounded-2xl p-4 shadow-xl">
-              <p className="text-sm text-center font-medium">{featuredImageCaption}</p>
-            </div>
+            <figcaption className="text-center text-sm italic text-muted-foreground pt-2 pb-4">
+              {featuredImageCaption}
+            </figcaption>
           )}
         </figure>
       )}
