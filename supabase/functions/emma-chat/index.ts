@@ -369,7 +369,7 @@ Options:
 
 Extract: timeframe
 
-### Intake Close (WITH MOTHER TONGUE EXPERT MESSAGING)
+### Intake Close (WITH NATIVE LANGUAGE EXPERT MESSAGING)
 Say EXACTLY:
 "Thank you."
 [1.5s delay]
@@ -381,7 +381,7 @@ Say EXACTLY:
 [1.5s delay]
 "${motherTongueMessages[language]?.expertPhrase || 'A specialist who speaks your language will personally review everything with you.'}"
 [1.5s delay]
-"This means complete clarity – no language barriers, and you can communicate naturally in your mother tongue."
+"This means complete clarity – no language barriers, and you can communicate naturally in your native language."
 [1.5s delay]
 "Your native ${languageName}-speaking expert will contact you within 24 hours to discuss your search."
 [1.5s delay]
