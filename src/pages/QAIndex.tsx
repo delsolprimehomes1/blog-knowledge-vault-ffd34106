@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, ChevronRight, Sparkles, HelpCircle, BookOpen, TrendingUp, Scale, MapPin, BarChart3, Building } from 'lucide-react';
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -291,6 +292,9 @@ export default function QAIndex() {
       </main>
 
       <Footer />
+      
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={lang || 'en'} />
     </>
   );
 }

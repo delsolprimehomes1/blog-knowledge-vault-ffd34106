@@ -7,6 +7,7 @@ import NotFound from "@/pages/NotFound";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, FileText, Clock, ArrowRight, Sparkles, TrendingUp, Users, Home as HomeIcon, DollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
+import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 
 // Intent type icons and colors
 const INTENT_CONFIG: Record<string, { icon: typeof FileText; color: string; bgColor: string }> = {
@@ -232,6 +233,9 @@ const LocationIndex = () => {
       </main>
 
       <Footer />
+      
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={lang || 'en'} />
     </>
   );
 };

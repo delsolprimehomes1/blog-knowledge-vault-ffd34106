@@ -12,6 +12,7 @@ import { ChevronRight, Calendar, ExternalLink, Sparkles, Linkedin, CheckCircle2 
 import { format } from 'date-fns';
 import { Author, QAEntity } from '@/types/blog';
 import { translations } from '@/i18n/translations';
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
@@ -381,6 +382,9 @@ export default function QAPage() {
       </main>
 
       <Footer />
+      
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={qaPage.language || 'en'} />
     </>
   );
 }

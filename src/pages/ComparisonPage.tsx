@@ -12,7 +12,7 @@ import { VerdictSection } from "@/components/comparison/VerdictSection";
 import { ComparisonFAQ } from "@/components/comparison/ComparisonFAQ";
 import { CTASection } from "@/components/comparison/CTASection";
 import { TLDRSummary } from "@/components/comparison/TLDRSummary";
-import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import { ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
@@ -254,11 +254,8 @@ export default function ComparisonPage() {
 
       <Footer />
       
-      {/* Chatbot Widget */}
-      <ChatbotWidget 
-        articleSlug={comparison.slug} 
-        language={comparison.language || 'en'} 
-      />
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={comparison.language || 'en'} />
     </>
   );
 }

@@ -12,7 +12,7 @@ import { LocationFAQSection } from "@/components/location/LocationFAQSection";
 import { UseCaseSection } from "@/components/location/UseCaseSection";
 import { LocationCTASection } from "@/components/location/LocationCTASection";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
-import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
+import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import { TrendingUp, Building, Info } from "lucide-react";
 import { 
   type LocationPage as LocationPageType,
@@ -229,8 +229,8 @@ const LocationPage = () => {
       {/* Sticky Mobile CTA */}
       <StickyMobileCTA />
       
-      {/* EMMA Chatbot */}
-      <ChatbotWidget articleSlug={`location-${citySlug}-${topicSlug}`} language={page.language || 'en'} />
+      {/* Emma Chat - Same as landing pages */}
+      <BlogEmmaChat language={page.language || 'en'} />
     </>
   );
 };
