@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2, RefreshCw, ImageIcon } from "lucide-react";
+import { CheckCircle, Globe, Link2, Loader2, AlertTriangle, ExternalLink, Search, Eye, Edit, Sparkles, Plus, Trash2, RefreshCw, ImageIcon, Wand2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { ClusterData, getLanguageFlag } from "./types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ArticleImageRegenerationDialog } from "./ArticleImageRegenerationDialog";
 
 interface TranslationProgress {
   current: string;
@@ -73,6 +74,12 @@ export const ClusterArticlesTab = ({
   
   // Regenerate images state
   const [isRegeneratingImages, setIsRegeneratingImages] = useState(false);
+  
+  // Smart image regeneration dialog state
+  const [showImageRegenerationDialog, setShowImageRegenerationDialog] = useState(false);
+  
+  // Individual article image regeneration state
+  const [regeneratingImageArticle, setRegeneratingImageArticle] = useState<string | null>(null);
 
   const totalExpected = 60; // 6 articles × 10 languages
   const completionPercent = Math.round((cluster.total_articles / totalExpected) * 100);
@@ -322,6 +329,37 @@ export const ClusterArticlesTab = ({
     }
   };
 
+  // Handle individual article image regeneration
+  const handleRegenerateArticleImage = async (article: any) => {
+    setRegeneratingImageArticle(article.id);
+    
+    toast.info(`Generating content-based image for "${article.headline.substring(0, 40)}..."`, {
+      description: "This takes about 30-60 seconds",
+    });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-article-image', {
+        body: { articleId: article.id }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast.success(`Image regenerated!`, {
+          description: `Alt: "${data.altText?.substring(0, 50)}..."`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
+      } else {
+        throw new Error(data.error || 'Regeneration failed');
+      }
+    } catch (error: any) {
+      console.error('Image regeneration failed:', error);
+      toast.error(`Failed: ${error.message}`);
+    } finally {
+      setRegeneratingImageArticle(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Summary Stats */}
@@ -475,6 +513,20 @@ export const ClusterArticlesTab = ({
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleRegenerateArticleImage(article)}
+                    disabled={regeneratingImageArticle === article.id}
+                    title="Regenerate Image (Content-Based)"
+                  >
+                    {regeneratingImageArticle === article.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-3.5 w-3.5" />
                     )}
                   </Button>
                   <Button
@@ -667,7 +719,17 @@ export const ClusterArticlesTab = ({
           ) : (
             <ImageIcon className="mr-2 h-4 w-4" />
           )}
-          {isRegeneratingImages ? 'Regenerating Images...' : 'Regenerate Images'}
+          {isRegeneratingImages ? 'Regenerating Images...' : 'Bulk Regenerate Images'}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowImageRegenerationDialog(true)}
+          disabled={cluster.total_articles === 0}
+        >
+          <Wand2 className="mr-2 h-4 w-4" />
+          Smart Image Regeneration
         </Button>
 
         <Link to={`/admin/articles?cluster=${cluster.cluster_id}`}>
@@ -783,6 +845,14 @@ export const ClusterArticlesTab = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Smart Image Regeneration Dialog */}
+      <ArticleImageRegenerationDialog
+        open={showImageRegenerationDialog}
+        onOpenChange={setShowImageRegenerationDialog}
+        clusterId={cluster.cluster_id}
+        clusterTheme={cluster.cluster_theme}
+      />
     </div>
   );
 };

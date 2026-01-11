@@ -61,11 +61,12 @@ async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise
         num_images: 1,
         output_format: "png"
       }
-    }) as { data?: { images?: Array<{ url?: string }> } };
+    }) as { images?: Array<{ url?: string }> };
     
-    if (result.data?.images?.[0]?.url) {
+    // Fixed: Correct response structure - result.images, not result.data.images
+    if (result.images?.[0]?.url) {
       console.log(`✅ Generated unique image with Nano Banana Pro`);
-      return result.data.images[0].url;
+      return result.images[0].url;
     }
   } catch (error) {
     console.error(`⚠️ Image generation failed:`, error);
