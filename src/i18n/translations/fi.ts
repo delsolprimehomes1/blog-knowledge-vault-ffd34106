@@ -13,7 +13,7 @@ export const fi = {
     yearsExperience: "Yli {years} vuoden yhdistetty kokemus perustajatiimissämme",
     professionalCredentials: "Ammattipätevyydet",
     linkedinProfile: "LinkedIn-profiili",
-    contactAgent: "Ota Yhteyttä Agenttiin",
+    whatsappContact: "WhatsApp",
   },
   qa: {
     quickAnswer: "Nopea Vastaus",

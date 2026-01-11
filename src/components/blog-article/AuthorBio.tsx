@@ -2,7 +2,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Linkedin, Mail, Star, ShieldCheck, Award } from "lucide-react";
+import { Linkedin, MessageCircle, Star, ShieldCheck, Award } from "lucide-react";
 import { Author } from "@/types/blog";
 import { translations } from "@/i18n/translations";
 
@@ -124,10 +124,17 @@ export const AuthorBio = ({ author, language = 'en', localizedBio }: AuthorBioPr
               <Button 
                 variant="default" 
                 size="lg"
-                className="flex-1 min-h-[48px] bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-[0.98]"
+                asChild
+                className="flex-1 min-h-[48px] bg-[#25D366] hover:bg-[#1fb355] text-white shadow-md hover:shadow-lg active:scale-[0.98]"
               >
-                <Mail className="h-4 w-4 mr-2" />
-                {t.contactAgent}
+                <a
+                  href="https://wa.me/34672320772?text=Hi,%20I%20have%20a%20question%20about%20Costa%20del%20Sol%20properties"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  {t.whatsappContact}
+                </a>
               </Button>
             </div>
           </div>
