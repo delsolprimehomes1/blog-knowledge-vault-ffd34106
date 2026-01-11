@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, ArrowRight, Bed, Bath, Square } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
@@ -20,11 +19,11 @@ interface Property {
 
 interface PropertiesShowcaseProps {
     translations?: any;
+    language?: string;
 }
 
-const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations }) => {
-    const params = useParams();
-    const lang = params.lang || 'en';
+const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations, language }) => {
+    const lang = language || 'en';
     const [apartments, setApartments] = useState<Property[]>([]);
     const [villas, setVillas] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);

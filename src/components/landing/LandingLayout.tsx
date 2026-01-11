@@ -256,6 +256,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                 {/* 4. FALLBACK PROPERTIES - De-emphasized */}
                 <PropertiesShowcase
                     translations={translations}
+                    language={language}
                 />
 
                 {/* 5. CLASSIC OPT-IN - Last Resort */}
