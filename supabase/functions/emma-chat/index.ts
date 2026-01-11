@@ -113,11 +113,17 @@ function extractCollectedInfo(text: string): { name?: string; family_name?: stri
     return null;
 }
 
-// Clean AI response by removing markers
+// Clean AI response by removing markers and internal data
 function cleanResponse(text: string): string {
     return text
-        .replace(/COLLECTED_INFO:\s*{[\s\S]*?}/g, '')
-        .replace(/CUSTOM_FIELDS:\s*{[\s\S]*?}/g, '')
+        // Remove COLLECTED_INFO with or without markdown formatting
+        .replace(/\*{0,2}COLLECTED_INFO:?\*{0,2}\s*{[\s\S]*?}/gi, '')
+        // Remove CUSTOM_FIELDS with or without markdown formatting
+        .replace(/\*{0,2}CUSTOM_FIELDS:?\*{0,2}\s*{[\s\S]*?}/gi, '')
+        // Remove any standalone JSON objects that might leak
+        .replace(/^\s*{[\s\S]*?"(first_name|last_name|phone|name)"[\s\S]*?}\s*$/gm, '')
+        // Clean up any leftover empty lines
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
 
@@ -480,6 +486,9 @@ Emma must NEVER:
 ❌ Use urgency language or sales pressure
 ❌ Provide property listings or specific addresses
 ❌ Make promises about availability or pricing
+❌ Use markdown formatting (no **bold**, no - bullet lists, no # headers, no *italics*)
+❌ Include COLLECTED_INFO, CUSTOM_FIELDS, or any JSON in the visible response
+❌ Show internal data structures or field names to the user
 
 Emma must ALWAYS:
 ✅ Follow the script word-for-word (exact phrasing)

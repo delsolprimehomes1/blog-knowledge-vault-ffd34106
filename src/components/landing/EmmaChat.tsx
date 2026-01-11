@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Minimize2, Maximize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { markdownToHtml } from '@/lib/markdownToHtml';
 
 interface Message {
     id: string;
@@ -303,7 +304,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                                             : 'bg-white text-landing-navy rounded-tl-sm shadow-md border border-gray-100/80'
                                             }`}
                                     >
-                                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                        <div 
+                                            className="text-sm leading-relaxed prose prose-sm max-w-none
+                                                       prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:font-semibold
+                                                       [&>p]:whitespace-pre-wrap"
+                                            dangerouslySetInnerHTML={{ 
+                                                __html: markdownToHtml(message.content) 
+                                            }}
+                                        />
                                         <span className={`text-xs mt-1.5 block ${message.role === 'user' ? 'text-white/70' : 'text-landing-gold/60'}`}>
                                             {message.timestamp.toLocaleTimeString(language, {
                                                 hour: '2-digit',
