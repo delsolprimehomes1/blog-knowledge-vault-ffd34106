@@ -46,13 +46,13 @@ export async function generateCostaDelSolImages(): Promise<CostaDelSolImage[]> {
     // Parallel processing for faster loading, but with individual error handling
     const promises = imagePrompts.map(async ({ prompt, title, description }) => {
         try {
-            const result = await fal.subscribe("fal-ai/flux/schnell", {
+            const result = await fal.subscribe("fal-ai/nano-banana-pro", {
                 input: {
                     prompt: prompt,
-                    image_size: "landscape_16_9",
-                    num_inference_steps: 4,
+                    aspect_ratio: "16:9",
+                    resolution: "2K",
                     num_images: 1,
-                    enable_safety_checker: true
+                    output_format: "png"
                 }
             });
 

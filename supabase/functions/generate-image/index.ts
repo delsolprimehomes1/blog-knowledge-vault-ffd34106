@@ -292,26 +292,29 @@ serve(async (req) => {
     let result: FalResult;
 
     if (imageUrl) {
-      // Editing mode - use nano-banana/edit with contextual prompt
+      // Editing mode - use nano-banana-pro/edit with contextual prompt
       console.log('Editing existing image:', imageUrl);
-      result = await fal.subscribe("fal-ai/nano-banana/edit", {
+      result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
         input: {
           prompt: finalPrompt,
-          image_size: "landscape_16_9",
+          aspect_ratio: "16:9",
+          resolution: "2K",
           num_images: 1,
-          image_urls: [imageUrl]
+          image_urls: [imageUrl],
+          output_format: "png"
         },
         logs: true,
       }) as FalResult;
     } else {
-      // Generation mode - use flux/dev with contextual prompt
-      console.log('Generating new image with contextual prompt');
-      result = await fal.subscribe("fal-ai/flux/dev", {
+      // Generation mode - use nano-banana-pro with contextual prompt
+      console.log('Generating new image with Nano Banana Pro');
+      result = await fal.subscribe("fal-ai/nano-banana-pro", {
         input: {
           prompt: finalPrompt,
-          image_size: "landscape_16_9",
-          num_inference_steps: 28,
+          aspect_ratio: "16:9",
+          resolution: "2K",
           num_images: 1,
+          output_format: "png"
         },
         logs: true,
       }) as FalResult;

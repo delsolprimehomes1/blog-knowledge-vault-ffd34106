@@ -53,17 +53,18 @@ const LANGUAGE_AESTHETICS: Record<string, string> = {
 
 async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
   try {
-    const result = await fal.subscribe("fal-ai/flux/schnell", {
+    const result = await fal.subscribe("fal-ai/nano-banana-pro", {
       input: {
         prompt,
-        image_size: "landscape_16_9",
-        num_inference_steps: 4,
-        num_images: 1
+        aspect_ratio: "16:9",
+        resolution: "2K",
+        num_images: 1,
+        output_format: "png"
       }
     }) as { data?: { images?: Array<{ url?: string }> } };
     
     if (result.data?.images?.[0]?.url) {
-      console.log(`✅ Generated unique image`);
+      console.log(`✅ Generated unique image with Nano Banana Pro`);
       return result.data.images[0].url;
     }
   } catch (error) {
