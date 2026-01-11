@@ -20,7 +20,8 @@ import {
   ChevronDown,
   ExternalLink,
   ClipboardCheck,
-  XCircle
+  XCircle,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,7 @@ interface ImageIssue {
   details: Record<string, unknown>;
   analyzed_at: string;
   resolved_at: string | null;
+  resolved_by: string | null;
   article?: {
     id: string;
     headline: string;
@@ -49,6 +51,7 @@ interface IssueCounts {
   textIssues: number;
   expiredUrls: number;
   total: number;
+  fixed: number;
 }
 
 interface AuditItem {
@@ -182,10 +185,102 @@ const AuditChecklist = ({ items }: { items: AuditItem[] }) => (
   </div>
 );
 
+const BeforeAfterComparison = ({ 
+  beforeUrl, 
+  afterUrl, 
+  issueType 
+}: { 
+  beforeUrl: string | null; 
+  afterUrl: string; 
+  issueType: string;
+}) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* Before */}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <XCircle className="h-4 w-4 text-red-500" />
+        <span className="font-medium text-sm">BEFORE</span>
+      </div>
+      <div className="aspect-video bg-muted rounded-lg overflow-hidden border-2 border-red-200 dark:border-red-900">
+        {beforeUrl ? (
+          <img 
+            src={beforeUrl} 
+            alt="Previous image"
+            className="w-full h-full object-cover opacity-75" 
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/placeholder.svg';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-red-50 dark:bg-red-950">
+            <div className="text-center text-muted-foreground">
+              <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Original image unavailable</p>
+            </div>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {issueType === 'duplicate' && '⚠️ Duplicate shared with other articles'}
+        {issueType === 'text_detected' && '⚠️ Contained gibberish/text'}
+        {issueType === 'expired_url' && '⚠️ Temporary DALL-E URL (expired)'}
+      </p>
+    </div>
+    
+    {/* After */}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className="h-4 w-4 text-green-500" />
+        <span className="font-medium text-sm">AFTER</span>
+      </div>
+      <div className="aspect-video bg-muted rounded-lg overflow-hidden border-2 border-green-200 dark:border-green-900">
+        <img 
+          src={afterUrl} 
+          alt="New image"
+          className="w-full h-full object-cover" 
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/placeholder.svg';
+          }}
+        />
+      </div>
+      <p className="text-xs text-green-600 dark:text-green-400">
+        ✅ Unique AI-generated image with language-matched metadata
+      </p>
+    </div>
+  </div>
+);
+
+const formatResolvedTime = (resolvedAt: string): string => {
+  const diff = Date.now() - new Date(resolvedAt).getTime();
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  return 'Just now';
+};
+
+const getOriginalUrl = (issue: ImageIssue): string | null => {
+  const details = issue.details as Record<string, unknown>;
+  if (issue.issue_type === 'duplicate') {
+    return (details?.shared_url as string) || (details?.original_url as string) || null;
+  }
+  if (issue.issue_type === 'expired_url') {
+    return (details?.expired_url as string) || (details?.original_url as string) || null;
+  }
+  if (issue.issue_type === 'text_detected') {
+    return (details?.original_url as string) || null;
+  }
+  return null;
+};
+
 export default function ImageHealthDashboard() {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<ImageIssue[]>([]);
-  const [counts, setCounts] = useState<IssueCounts>({ duplicates: 0, textIssues: 0, expiredUrls: 0, total: 0 });
+  const [resolvedIssues, setResolvedIssues] = useState<ImageIssue[]>([]);
+  const [counts, setCounts] = useState<IssueCounts>({ duplicates: 0, textIssues: 0, expiredUrls: 0, total: 0, fixed: 0 });
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
@@ -195,7 +290,8 @@ export default function ImageHealthDashboard() {
   const fetchIssues = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch unresolved issues
+      const { data: unresolvedData, error: unresolvedError } = await supabase
         .from('article_image_issues')
         .select(`
           *,
@@ -214,17 +310,43 @@ export default function ImageHealthDashboard() {
         .order('severity', { ascending: false })
         .order('analyzed_at', { ascending: false });
 
-      if (error) throw error;
+      if (unresolvedError) throw unresolvedError;
 
-      const issuesData = (data || []) as unknown as ImageIssue[];
+      // Fetch resolved issues
+      const { data: resolvedData, error: resolvedError } = await supabase
+        .from('article_image_issues')
+        .select(`
+          *,
+          article:blog_articles(
+            id, 
+            headline, 
+            language, 
+            slug,
+            featured_image_url, 
+            featured_image_alt,
+            featured_image_caption,
+            cluster_id
+          )
+        `)
+        .not('resolved_at', 'is', null)
+        .order('resolved_at', { ascending: false })
+        .limit(100);
+
+      if (resolvedError) throw resolvedError;
+
+      const issuesData = (unresolvedData || []) as unknown as ImageIssue[];
+      const resolvedIssuesData = (resolvedData || []) as unknown as ImageIssue[];
+      
       setIssues(issuesData);
+      setResolvedIssues(resolvedIssuesData);
 
       // Calculate counts
       const newCounts = {
         duplicates: issuesData.filter(i => i.issue_type === 'duplicate').length,
         textIssues: issuesData.filter(i => i.issue_type === 'text_detected').length,
         expiredUrls: issuesData.filter(i => i.issue_type === 'expired_url').length,
-        total: issuesData.length
+        total: issuesData.length,
+        fixed: resolvedIssuesData.length
       };
       setCounts(newCounts);
     } catch (error) {
@@ -261,6 +383,9 @@ export default function ImageHealthDashboard() {
   const handleRegenerate = async (issue: ImageIssue) => {
     if (!issue.article) return;
     
+    // Store original URL before regeneration
+    const originalUrl = issue.article.featured_image_url;
+    
     setRegeneratingId(issue.article_id);
     try {
       const { data, error } = await supabase.functions.invoke('regenerate-article-image', {
@@ -269,12 +394,18 @@ export default function ImageHealthDashboard() {
 
       if (error) throw error;
 
-      // Mark issue as resolved
+      // Mark issue as resolved with original URL in details
+      const updatedDetails = {
+        ...issue.details,
+        original_url: originalUrl
+      };
+      
       await supabase
         .from('article_image_issues')
         .update({ 
           resolved_at: new Date().toISOString(),
-          resolved_by: 'regeneration'
+          resolved_by: 'regeneration',
+          details: updatedDetails
         })
         .eq('id', issue.id);
 
@@ -331,12 +462,14 @@ export default function ImageHealthDashboard() {
     return flags[lang] || '🌐';
   };
 
-  const filteredIssues = issues.filter(issue => {
-    if (activeTab === 'duplicates') return issue.issue_type === 'duplicate';
-    if (activeTab === 'text') return issue.issue_type === 'text_detected';
-    if (activeTab === 'expired') return issue.issue_type === 'expired_url';
-    return true;
-  });
+  const filteredIssues = activeTab === 'fixed' 
+    ? resolvedIssues 
+    : issues.filter(issue => {
+        if (activeTab === 'duplicates') return issue.issue_type === 'duplicate';
+        if (activeTab === 'text') return issue.issue_type === 'text_detected';
+        if (activeTab === 'expired') return issue.issue_type === 'expired_url';
+        return true;
+      });
 
   const getAuditScore = (article: ImageIssue['article']): { passed: number; total: number } => {
     if (!article) return { passed: 0, total: 5 };
@@ -345,6 +478,15 @@ export default function ImageHealthDashboard() {
       passed: items.filter(i => i.passed).length,
       total: items.length
     };
+  };
+
+  const getIssueTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      duplicate: 'Duplicate',
+      text_detected: 'Text Issue',
+      expired_url: 'Expired URL'
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -378,7 +520,7 @@ export default function ImageHealthDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Duplicates</CardTitle>
@@ -422,6 +564,17 @@ export default function ImageHealthDashboard() {
             <p className="text-xs text-muted-foreground">Need attention</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-400">Fixed Images</CardTitle>
+            <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700 dark:text-green-400">{counts.fixed}</div>
+            <p className="text-xs text-green-600 dark:text-green-500">Successfully regenerated</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Issues Tabs */}
@@ -439,6 +592,10 @@ export default function ImageHealthDashboard() {
             <Clock className="h-4 w-4" />
             Expired URLs ({counts.expiredUrls})
           </TabsTrigger>
+          <TabsTrigger value="fixed" className="gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+            Fixed ({counts.fixed})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
@@ -449,11 +606,23 @@ export default function ImageHealthDashboard() {
           ) : filteredIssues.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-                <h3 className="text-lg font-medium">All Clear!</h3>
-                <p className="text-muted-foreground">
-                  No {activeTab === 'duplicates' ? 'duplicate' : activeTab === 'text' ? 'text' : 'expired URL'} issues found.
-                </p>
+                {activeTab === 'fixed' ? (
+                  <>
+                    <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium">No Fixed Images Yet</h3>
+                    <p className="text-muted-foreground">
+                      Regenerate images from other tabs to see them here.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
+                    <h3 className="text-lg font-medium">All Clear!</h3>
+                    <p className="text-muted-foreground">
+                      No {activeTab === 'duplicates' ? 'duplicate' : activeTab === 'text' ? 'text' : 'expired URL'} issues found.
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -461,6 +630,8 @@ export default function ImageHealthDashboard() {
               {filteredIssues.map((issue) => {
                 const auditScore = getAuditScore(issue.article);
                 const isExpanded = expandedId === issue.id;
+                const isFixed = activeTab === 'fixed';
+                const originalUrl = getOriginalUrl(issue);
                 
                 return (
                   <Collapsible 
@@ -468,11 +639,17 @@ export default function ImageHealthDashboard() {
                     open={isExpanded}
                     onOpenChange={(open) => setExpandedId(open ? issue.id : null)}
                   >
-                    <Card className="overflow-hidden">
+                    <Card className={cn(
+                      "overflow-hidden",
+                      isFixed && "border-green-200 dark:border-green-900"
+                    )}>
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                           {/* Thumbnail */}
-                          <div className="w-20 h-14 rounded overflow-hidden bg-muted flex-shrink-0">
+                          <div className={cn(
+                            "w-20 h-14 rounded overflow-hidden bg-muted flex-shrink-0",
+                            isFixed && "ring-2 ring-green-500"
+                          )}>
                             {issue.article?.featured_image_url ? (
                               <img 
                                 src={issue.article.featured_image_url} 
@@ -497,19 +674,35 @@ export default function ImageHealthDashboard() {
                                 {issue.article?.headline || 'Unknown Article'}
                               </h4>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              {getSeverityBadge(issue.severity)}
-                              <span>
-                                {issue.issue_type === 'duplicate' && (
-                                  <>Shared with {(issue.details as { shared_with_count?: number }).shared_with_count || 0} articles</>
-                                )}
-                                {issue.issue_type === 'text_detected' && (
-                                  <>{(issue.details as { description?: string }).description || 'Text detected in image'}</>
-                                )}
-                                {issue.issue_type === 'expired_url' && (
-                                  <>DALL-E temporary URL (expired)</>
-                                )}
-                              </span>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                              {isFixed ? (
+                                <>
+                                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+                                    ✅ FIXED
+                                  </Badge>
+                                  <span className="text-xs">
+                                    {issue.resolved_at && formatResolvedTime(issue.resolved_at)}
+                                  </span>
+                                  <span className="text-xs">
+                                    • Was: {getIssueTypeLabel(issue.issue_type)}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  {getSeverityBadge(issue.severity)}
+                                  <span>
+                                    {issue.issue_type === 'duplicate' && (
+                                      <>Shared with {(issue.details as { shared_with_count?: number }).shared_with_count || 0} articles</>
+                                    )}
+                                    {issue.issue_type === 'text_detected' && (
+                                      <>{(issue.details as { description?: string }).description || 'Text detected in image'}</>
+                                    )}
+                                    {issue.issue_type === 'expired_url' && (
+                                      <>DALL-E temporary URL (expired)</>
+                                    )}
+                                  </span>
+                                </>
+                              )}
                               <span className="text-xs">
                                 • SEO Audit: {auditScore.passed}/{auditScore.total}
                               </span>
@@ -522,49 +715,64 @@ export default function ImageHealthDashboard() {
                             isExpanded && "rotate-180"
                           )} />
 
-                          {/* Actions */}
-                          <Button
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRegenerate(issue);
-                            }}
-                            disabled={regeneratingId === issue.article_id}
-                          >
-                            {regeneratingId === issue.article_id ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Regenerating...
-                              </>
-                            ) : (
-                              <>
-                                <Wand2 className="mr-2 h-4 w-4" />
-                                Regenerate
-                              </>
-                            )}
-                          </Button>
+                          {/* Actions - only show for unresolved issues */}
+                          {!isFixed && (
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRegenerate(issue);
+                              }}
+                              disabled={regeneratingId === issue.article_id}
+                            >
+                              {regeneratingId === issue.article_id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Regenerating...
+                                </>
+                              ) : (
+                                <>
+                                  <Wand2 className="mr-2 h-4 w-4" />
+                                  Regenerate
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </CollapsibleTrigger>
 
                       <CollapsibleContent>
                         <div className="border-t p-6 space-y-6 bg-muted/20">
-                          {/* Large image preview */}
-                          <div className="aspect-video bg-muted rounded-lg overflow-hidden max-w-2xl mx-auto">
-                            <img 
-                              src={issue.article?.featured_image_url || '/placeholder.svg'} 
-                              alt={issue.article?.featured_image_alt || ''}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.svg';
-                              }}
+                          {/* Before/After comparison for fixed issues, or just image for unresolved */}
+                          {isFixed && issue.article?.featured_image_url ? (
+                            <BeforeAfterComparison 
+                              beforeUrl={originalUrl}
+                              afterUrl={issue.article.featured_image_url}
+                              issueType={issue.issue_type}
                             />
-                          </div>
+                          ) : (
+                            <div className="aspect-video bg-muted rounded-lg overflow-hidden max-w-2xl mx-auto">
+                              <img 
+                                src={issue.article?.featured_image_url || '/placeholder.svg'} 
+                                alt={issue.article?.featured_image_alt || ''}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                }}
+                              />
+                            </div>
+                          )}
 
                           {/* Audit checklist */}
                           <div>
                             <h4 className="font-semibold mb-3 flex items-center gap-2">
                               <ClipboardCheck className="h-5 w-5" />
                               SEO / AEO / GEO Image Metadata Audit
+                              {isFixed && auditScore.passed === auditScore.total && (
+                                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+                                  All Passed
+                                </Badge>
+                              )}
                             </h4>
                             <AuditChecklist items={buildAuditItems(issue.article)} />
                           </div>
@@ -583,23 +791,25 @@ export default function ImageHealthDashboard() {
                                 </a>
                               </Button>
                             )}
-                            <Button 
-                              size="sm"
-                              onClick={() => handleRegenerate(issue)}
-                              disabled={regeneratingId === issue.article_id}
-                            >
-                              {regeneratingId === issue.article_id ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Regenerating...
-                                </>
-                              ) : (
-                                <>
-                                  <Wand2 className="mr-2 h-4 w-4" />
-                                  Regenerate Image
-                                </>
-                              )}
-                            </Button>
+                            {!isFixed && (
+                              <Button 
+                                size="sm"
+                                onClick={() => handleRegenerate(issue)}
+                                disabled={regeneratingId === issue.article_id}
+                              >
+                                {regeneratingId === issue.article_id ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Regenerating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 className="mr-2 h-4 w-4" />
+                                    Regenerate Image
+                                  </>
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CollapsibleContent>
