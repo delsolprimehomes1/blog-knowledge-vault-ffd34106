@@ -293,3 +293,6 @@ verify_jwt = false
 
 [functions.scan-article-images]
 verify_jwt = false
+
+[functions.send-emma-lead]
+verify_jwt = false

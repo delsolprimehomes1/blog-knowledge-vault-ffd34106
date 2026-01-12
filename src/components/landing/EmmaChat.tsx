@@ -33,7 +33,8 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [conversationId, setConversationId] = useState<string>('');
     const [userData, setUserData] = useState({ name: '', whatsapp: '' });
     const [hasCollectedInfo, setHasCollectedInfo] = useState(false);
-
+    const [accumulatedFields, setAccumulatedFields] = useState<Record<string, any>>({});
+    const [hasSubmittedLead, setHasSubmittedLead] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -125,7 +126,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
         try {
             // Call Emma AI backend (Supabase Edge Function) with STRICT language parameter
-            const { data, error } = await supabase.functions.invoke<ChatResponse>('emma-chat', {
+            const { data, error } = await supabase.functions.invoke<ChatResponse & { customFields?: Record<string, any> }>('emma-chat', {
                 body: {
                     conversationId,
                     message: input.trim(),
@@ -150,7 +151,20 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Single message response - no splitting
+            // Accumulate custom fields from each response
+            if (data.customFields) {
+                const newAccumulatedFields = {
+                    ...accumulatedFields,
+                    ...data.customFields
+                };
+                setAccumulatedFields(newAccumulatedFields);
+                
+                // Check if intake is complete and we haven't already submitted
+                if (!hasSubmittedLead && (data.customFields.intake_complete || data.customFields.declined_selection)) {
+                    setHasSubmittedLead(true);
+                    await sendToGHL(newAccumulatedFields);
+                }
+            }
 
             // Check if Emma collected contact info
             if (data.collectedInfo) {
@@ -209,6 +223,50 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             console.log(`✅ Conversation saved - Language: ${language}, Name: ${info.name}`);
         } catch (error) {
             console.error('Error saving conversation:', error);
+        }
+    };
+
+    // Send lead data to GoHighLevel webhook
+    const sendToGHL = async (fields: Record<string, any>) => {
+        try {
+            const payload = {
+                contact_info: {
+                    first_name: fields.name || '',
+                    last_name: fields.family_name || '',
+                    phone_number: fields.phone || '',
+                    country_prefix: fields.country_prefix || ''
+                },
+                content_phase: {
+                    question_1: fields.question_1 || '',
+                    answer_1: fields.answer_1 || '',
+                    question_2: fields.question_2 || '',
+                    answer_2: fields.answer_2 || '',
+                    question_3: fields.question_3 || '',
+                    answer_3: fields.answer_3 || ''
+                },
+                property_criteria: {
+                    location_preference: Array.isArray(fields.location_preference) ? fields.location_preference : [],
+                    sea_view_importance: fields.sea_view_importance || '',
+                    budget_range: fields.budget_range || '',
+                    bedrooms_desired: fields.bedrooms_desired || '',
+                    property_type: Array.isArray(fields.property_type) ? fields.property_type : [],
+                    property_purpose: fields.purpose || '',
+                    timeframe: fields.timeframe || ''
+                },
+                system_data: {
+                    detected_language: language,
+                    intake_complete: fields.intake_complete || false,
+                    declined_selection: fields.declined_selection || false,
+                    conversation_date: new Date().toISOString()
+                }
+            };
+
+            console.log('📤 Sending lead to GHL...');
+            await supabase.functions.invoke('send-emma-lead', { body: payload });
+            console.log('✅ Lead sent to GHL');
+        } catch (error) {
+            console.error('❌ Failed to send lead to GHL:', error);
+            // Don't block conversation if webhook fails
         }
     };
 
