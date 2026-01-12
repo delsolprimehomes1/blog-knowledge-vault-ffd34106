@@ -603,19 +603,18 @@ Current date: ${new Date().toISOString().split('T')[0]}
 Current language: ${languageName}
 `;
 
-        // Call Claude API
-        const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        // Call OpenAI API
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
-                'anthropic-version': '2023-06-01'
+                'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
+                model: 'gpt-4o',
                 max_tokens: 1024,
-                system: systemPrompt,
                 messages: [
+                    { role: 'system', content: systemPrompt },
                     ...conversationHistory.map(msg => ({
                         role: msg.role === 'assistant' ? 'assistant' : 'user',
                         content: msg.content
@@ -625,14 +624,14 @@ Current language: ${languageName}
             })
         });
 
-        if (!anthropicResponse.ok) {
-            const errorText = await anthropicResponse.text();
-            console.error('Anthropic API error:', anthropicResponse.status, errorText);
-            throw new Error(`Anthropic API error: ${anthropicResponse.status}`);
+        if (!openaiResponse.ok) {
+            const errorText = await openaiResponse.text();
+            console.error('OpenAI API error:', openaiResponse.status, errorText);
+            throw new Error(`OpenAI API error: ${openaiResponse.status}`);
         }
 
-        const response = await anthropicResponse.json();
-        const responseText = response.content?.[0]?.text || '';
+        const response = await openaiResponse.json();
+        const responseText = response.choices?.[0]?.message?.content || '';
 
         console.log(`✅ Emma raw response: "${responseText.substring(0, 100)}..."`);
 
