@@ -25,6 +25,13 @@ interface ChatResponse {
     language: string;
 }
 
+// Helper function to validate phone numbers (minimum 7 digits)
+const isValidPhoneNumber = (value: string | undefined): boolean => {
+    if (!value) return false;
+    const cleaned = value.replace(/[^\d]/g, '');
+    return cleaned.length >= 7;
+};
+
 const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -159,6 +166,20 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     ...(data.collectedInfo || {}) // CRITICAL: Include contact info in accumulated fields
                 };
                 
+                // VALIDATE phone numbers from AI tags - reject invalid values like "yes", "ok"
+                if (newAccumulatedFields.phone_number && !isValidPhoneNumber(newAccumulatedFields.phone_number)) {
+                    console.log('⚠️ Rejecting invalid phone_number from AI:', newAccumulatedFields.phone_number);
+                    delete newAccumulatedFields.phone_number;
+                }
+                if (newAccumulatedFields.phone && !isValidPhoneNumber(newAccumulatedFields.phone)) {
+                    console.log('⚠️ Rejecting invalid phone from AI:', newAccumulatedFields.phone);
+                    delete newAccumulatedFields.phone;
+                }
+                if (newAccumulatedFields.whatsapp && !isValidPhoneNumber(newAccumulatedFields.whatsapp)) {
+                    console.log('⚠️ Rejecting invalid whatsapp from AI:', newAccumulatedFields.whatsapp);
+                    delete newAccumulatedFields.whatsapp;
+                }
+                
                 // Debug logging for accumulated fields
                 console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
                 
@@ -186,13 +207,13 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                         console.log('📊 Fields after Q&A extraction:', JSON.stringify(newAccumulatedFields, null, 2));
                     }
                     
-                    // Also merge userData if available (from database record)
+                    // Also merge userData if available (from database record) - but validate phone
                     if (userData.name || userData.whatsapp) {
                         console.log('📊 Merging userData into fields:', JSON.stringify(userData, null, 2));
                         if (!newAccumulatedFields.first_name && !newAccumulatedFields.name && userData.name) {
                             newAccumulatedFields.first_name = userData.name;
                         }
-                        if (!newAccumulatedFields.phone_number && !newAccumulatedFields.phone && userData.whatsapp) {
+                        if (!newAccumulatedFields.phone_number && !newAccumulatedFields.phone && userData.whatsapp && isValidPhoneNumber(userData.whatsapp)) {
                             newAccumulatedFields.phone_number = userData.whatsapp;
                         }
                     }
