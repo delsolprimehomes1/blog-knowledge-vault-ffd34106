@@ -233,8 +233,50 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         }
     };
 
-    // Send lead data to GoHighLevel webhook
+    // Helper function to determine where user exited in conversation
+    const determineExitPoint = (fields: Record<string, any>): string => {
+        if (fields.timeframe) return 'completed';
+        if (fields.property_purpose || fields.purpose) return 'property_criteria_purpose';
+        if (fields.property_type) return 'property_criteria_type';
+        if (fields.bedrooms_desired) return 'property_criteria_bedrooms';
+        if (fields.budget_range) return 'property_criteria_budget';
+        if (fields.sea_view_importance) return 'property_criteria_seaview';
+        if (fields.location_preference) return 'property_criteria_location';
+        if (fields.question_3 || fields.answer_3) return 'question_3';
+        if (fields.question_2 || fields.answer_2) return 'question_2';
+        if (fields.question_1 || fields.answer_1) return 'question_1';
+        if (fields.phone || fields.phone_number) return 'contact_collection';
+        if (fields.name || fields.first_name) return 'name_collection';
+        return 'greeting';
+    };
+
+    // Count questions answered
+    const countQuestionsAnswered = (fields: Record<string, any>): number => {
+        let count = 0;
+        if (fields.question_1 && fields.answer_1) count++;
+        if (fields.question_2 && fields.answer_2) count++;
+        if (fields.question_3 && fields.answer_3) count++;
+        return count;
+    };
+
+    // Send lead data to GoHighLevel webhook with ALL 24 fields
     const sendToGHL = async (fields: Record<string, any>) => {
+        console.log('📤 Preparing to send to GHL webhook...');
+        console.log('📤 Raw fields received:', JSON.stringify(fields, null, 2));
+
+        // Determine conversation status
+        let conversationStatus = 'in_progress';
+        if (fields.intake_complete) {
+            conversationStatus = 'completed';
+        } else if (fields.declined_selection) {
+            conversationStatus = 'declined';
+        } else if (fields.closed_early) {
+            conversationStatus = 'abandoned';
+        }
+
+        // Determine exit point
+        const exitPoint = fields.exit_point || determineExitPoint(fields);
+
         try {
             const payload = {
                 contact_info: {
@@ -249,35 +291,48 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     question_2: fields.question_2 || '',
                     answer_2: fields.answer_2 || '',
                     question_3: fields.question_3 || '',
-                    answer_3: fields.answer_3 || ''
+                    answer_3: fields.answer_3 || '',
+                    questions_answered: countQuestionsAnswered(fields)
                 },
                 property_criteria: {
-                    location_preference: Array.isArray(fields.location_preference) ? fields.location_preference : [],
+                    location_preference: Array.isArray(fields.location_preference) 
+                        ? fields.location_preference 
+                        : (fields.location_preference ? [fields.location_preference] : []),
                     sea_view_importance: fields.sea_view_importance || '',
                     budget_range: fields.budget_range || '',
                     bedrooms_desired: fields.bedrooms_desired || '',
-                    property_type: Array.isArray(fields.property_type) ? fields.property_type : [],
-                    property_purpose: fields.purpose || '',
+                    property_type: Array.isArray(fields.property_type)
+                        ? fields.property_type
+                        : (fields.property_type ? [fields.property_type] : []),
+                    property_purpose: fields.purpose || fields.property_purpose || '',
                     timeframe: fields.timeframe || ''
                 },
                 system_data: {
-                    detected_language: language,
+                    detected_language: language.toUpperCase() || 'English',
                     intake_complete: fields.intake_complete || false,
                     declined_selection: fields.declined_selection || false,
-                    closed_early: fields.closed_early || false,
-                    submission_type: fields.intake_complete ? 'complete' : 
-                                     fields.declined_selection ? 'declined' : 'partial',
-                    conversation_date: new Date().toISOString()
+                    conversation_date: new Date().toISOString(),
+                    conversation_status: conversationStatus,
+                    exit_point: exitPoint
                 }
             };
 
-            console.log('📤 GHL Payload being sent:', JSON.stringify(payload, null, 2));
+            console.log('📤 Complete GHL Payload (24 fields):', JSON.stringify(payload, null, 2));
             console.log('📤 Sending lead to GHL...');
-            await supabase.functions.invoke('send-emma-lead', { body: payload });
-            console.log('✅ Lead sent to GHL');
+            
+            const { error } = await supabase.functions.invoke('send-emma-lead', { body: payload });
+            
+            if (error) {
+                console.error('❌ GHL webhook error:', error);
+                return false;
+            }
+            
+            console.log('✅ Lead sent to GHL successfully');
+            return true;
         } catch (error) {
             console.error('❌ Failed to send lead to GHL:', error);
             // Don't block conversation if webhook fails
+            return false;
         }
     };
 
@@ -288,21 +343,28 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         }
     };
 
-    // Handle close with partial lead capture
+    // Handle close with partial lead capture - ALWAYS send whatever data we have
     const handleClose = async () => {
-        // If we have any meaningful data and haven't already submitted, send partial lead
-        const hasContactInfo = accumulatedFields.first_name || 
-                               accumulatedFields.name || 
-                               accumulatedFields.phone ||
-                               accumulatedFields.phone_number;
+        // Send partial lead if we have ANY accumulated data and haven't already submitted
+        const hasAnyData = Object.keys(accumulatedFields).length > 0;
         
-        if (hasContactInfo && !hasSubmittedLead) {
-            console.log('🚪 CLOSE: Sending partial lead webhook on chat close');
+        if (hasAnyData && !hasSubmittedLead) {
+            console.log('🚪 CLOSE: User closing chat, sending partial data to GHL...');
+            console.log('🚪 CLOSE: Data collected so far:', JSON.stringify(accumulatedFields, null, 2));
+            
+            const exitPoint = determineExitPoint(accumulatedFields);
+            console.log('🚪 CLOSE: Exit point determined:', exitPoint);
+            
             setHasSubmittedLead(true);
             await sendToGHL({
                 ...accumulatedFields,
-                closed_early: true  // Mark as closed before completion
+                closed_early: true,
+                exit_point: exitPoint
             });
+        } else if (!hasAnyData) {
+            console.log('🚪 CLOSE: No data collected, skipping webhook');
+        } else {
+            console.log('🚪 CLOSE: Already submitted lead, skipping duplicate');
         }
         
         onClose();

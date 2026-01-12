@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/281Nzx90nVL8424QY4Af/webhook-trigger/b0cb6ef6-244c-4f31-9bf6-a153e246caf1';
+const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/281Nzx90nVL8424QY4Af/webhook-trigger/9d43a68c-fd67-4371-8ebb-81cbb47df3e6';
 
 interface LeadPayload {
   contact_info: {
@@ -21,6 +21,7 @@ interface LeadPayload {
     answer_2: string;
     question_3: string;
     answer_3: string;
+    questions_answered: number;
   };
   property_criteria: {
     location_preference: string[];
@@ -36,17 +37,56 @@ interface LeadPayload {
     intake_complete: boolean;
     declined_selection: boolean;
     conversation_date: string;
+    conversation_status: string;
+    exit_point: string;
   };
 }
 
 async function sendToGHL(payload: LeadPayload): Promise<boolean> {
+  // Build flattened GHL payload with ALL 24 fields
+  const ghlPayload = {
+    // Contact Information (4 fields)
+    first_name: payload.contact_info?.first_name || '',
+    last_name: payload.contact_info?.last_name || '',
+    phone_number: payload.contact_info?.phone_number || '',
+    country_prefix: payload.contact_info?.country_prefix || '',
+    
+    // Content Phase Q&A (7 fields)
+    question_1: payload.content_phase?.question_1 || '',
+    answer_1: payload.content_phase?.answer_1 || '',
+    question_2: payload.content_phase?.question_2 || '',
+    answer_2: payload.content_phase?.answer_2 || '',
+    question_3: payload.content_phase?.question_3 || '',
+    answer_3: payload.content_phase?.answer_3 || '',
+    questions_answered: payload.content_phase?.questions_answered || 0,
+    
+    // Property Criteria (7 fields)
+    location_preference: JSON.stringify(payload.property_criteria?.location_preference || []),
+    sea_view_importance: payload.property_criteria?.sea_view_importance || '',
+    budget_range: payload.property_criteria?.budget_range || '',
+    bedrooms_desired: payload.property_criteria?.bedrooms_desired || '',
+    property_type: JSON.stringify(payload.property_criteria?.property_type || []),
+    property_purpose: payload.property_criteria?.property_purpose || '',
+    timeframe: payload.property_criteria?.timeframe || '',
+    
+    // System Data (6 fields)
+    detected_language: payload.system_data?.detected_language || 'English',
+    intake_complete: payload.system_data?.intake_complete || false,
+    declined_selection: payload.system_data?.declined_selection || false,
+    conversation_date: payload.system_data?.conversation_date || new Date().toISOString(),
+    conversation_status: payload.system_data?.conversation_status || 'unknown',
+    exit_point: payload.system_data?.exit_point || 'unknown'
+  };
+
+  console.log('📤 Flattened GHL payload (24 fields):', JSON.stringify(ghlPayload, null, 2));
+
   try {
     const response = await fetch(GHL_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(ghlPayload)
     });
 
     if (!response.ok) {
@@ -55,7 +95,7 @@ async function sendToGHL(payload: LeadPayload): Promise<boolean> {
       return false;
     }
     
-    console.log('✅ GHL webhook sent successfully');
+    console.log('✅ GHL webhook sent successfully with 24 fields');
     return true;
   } catch (error) {
     console.error('❌ GHL webhook error:', error);
