@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,7 @@ const corsHeaders = {
 const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/281Nzx90nVL8424QY4Af/webhook-trigger/9d43a68c-fd67-4371-8ebb-81cbb47df3e6';
 
 interface LeadPayload {
+  conversation_id?: string;
   contact_info: {
     first_name: string;
     last_name: string;
@@ -42,7 +44,7 @@ interface LeadPayload {
   };
 }
 
-async function sendToGHL(payload: LeadPayload): Promise<boolean> {
+async function sendToGHL(payload: LeadPayload): Promise<{ success: boolean; error?: string }> {
   // Build flattened GHL payload with ALL 24 fields
   const ghlPayload = {
     // Contact Information (4 fields)
@@ -92,14 +94,66 @@ async function sendToGHL(payload: LeadPayload): Promise<boolean> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ GHL webhook failed:', response.status, errorText);
-      return false;
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
     }
     
     console.log('✅ GHL webhook sent successfully with 24 fields');
-    return true;
+    return { success: true };
   } catch (error) {
-    console.error('❌ GHL webhook error:', error);
-    return false;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ GHL webhook error:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+async function updateLeadWebhookStatus(
+  supabase: any,
+  conversationId: string,
+  success: boolean,
+  payload: any,
+  errorMessage?: string
+) {
+  if (!conversationId) {
+    console.log('⚠️ No conversation_id provided, skipping lead tracking update');
+    return;
+  }
+
+  try {
+    // First, try to get existing record to increment attempts
+    const { data: existing } = await supabase
+      .from('emma_leads')
+      .select('webhook_attempts')
+      .eq('conversation_id', conversationId)
+      .single();
+
+    const currentAttempts = existing?.webhook_attempts || 0;
+
+    const updateData: Record<string, any> = {
+      webhook_attempts: currentAttempts + 1,
+      webhook_payload: payload,
+      updated_at: new Date().toISOString()
+    };
+
+    if (success) {
+      updateData.webhook_sent = true;
+      updateData.webhook_sent_at = new Date().toISOString();
+      updateData.webhook_last_error = null;
+    } else {
+      updateData.webhook_last_error = errorMessage || 'Unknown error';
+    }
+
+    const { error } = await supabase
+      .from('emma_leads')
+      .update(updateData)
+      .eq('conversation_id', conversationId);
+
+    if (error) {
+      console.error('❌ Failed to update lead webhook status:', error);
+    } else {
+      console.log(`✅ Lead webhook status updated: ${conversationId}, success=${success}, attempts=${currentAttempts + 1}`);
+    }
+  } catch (error) {
+    console.error('❌ Error updating lead webhook status:', error);
   }
 }
 
@@ -108,10 +162,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Initialize Supabase client for tracking
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
     const payload: LeadPayload = await req.json();
+    const conversationId = payload.conversation_id;
     
     console.log('📤 Sending lead to GHL webhook...');
+    console.log(`   Conversation ID: ${conversationId || 'N/A'}`);
     console.log(`   Name: ${payload.contact_info.first_name} ${payload.contact_info.last_name}`);
     console.log(`   Phone: ${payload.contact_info.country_prefix}${payload.contact_info.phone_number}`);
     console.log(`   Language: ${payload.system_data.detected_language}`);
@@ -119,19 +180,24 @@ serve(async (req) => {
     console.log(`   Declined: ${payload.system_data.declined_selection}`);
 
     // First attempt
-    let success = await sendToGHL(payload);
+    let result = await sendToGHL(payload);
     
     // Retry once if failed
-    if (!success) {
+    if (!result.success) {
       console.log('⚠️ Webhook failed, retrying in 2 seconds...');
       await new Promise(resolve => setTimeout(resolve, 2000));
-      success = await sendToGHL(payload);
+      result = await sendToGHL(payload);
       
-      if (!success) {
+      if (!result.success) {
         console.error('❌ GHL webhook failed after retry');
+        
+        // Update lead tracking with failure
+        await updateLeadWebhookStatus(supabase, conversationId || '', false, payload, result.error);
+        
         return new Response(JSON.stringify({ 
           success: false, 
-          error: 'Webhook failed after retry' 
+          error: result.error || 'Webhook failed after retry',
+          will_retry: true
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -139,6 +205,9 @@ serve(async (req) => {
       }
       console.log('✅ GHL webhook succeeded on retry');
     }
+
+    // Update lead tracking with success
+    await updateLeadWebhookStatus(supabase, conversationId || '', true, payload);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
