@@ -177,13 +177,13 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                         console.log('📊 Fields after contact fallback:', JSON.stringify(newAccumulatedFields, null, 2));
                     }
                     
-                    // FALLBACK: If Q&A is missing, extract from conversation history
-                    const hasQA = newAccumulatedFields.question_1 || newAccumulatedFields.answer_1;
-                    if (!hasQA) {
-                        console.log('⚠️ Q&A missing from CUSTOM_FIELDS, using fallback extraction...');
-                        const extractedQA = extractQAFromHistory([...messages, assistantMessage]);
+                    // ALWAYS extract Q&A from conversation history (don't rely on Emma's CUSTOM_FIELDS for Q&A)
+                    console.log('📋 Running Q&A extraction from conversation history...');
+                    const extractedQA = extractQAFromHistory([...messages, assistantMessage]);
+                    // Only overwrite if extraction found data (preserve any Emma-provided Q&A)
+                    if (extractedQA.questions_answered && parseInt(extractedQA.questions_answered) > 0) {
                         newAccumulatedFields = { ...newAccumulatedFields, ...extractedQA };
-                        console.log('📊 Fields after Q&A fallback:', JSON.stringify(newAccumulatedFields, null, 2));
+                        console.log('📊 Fields after Q&A extraction:', JSON.stringify(newAccumulatedFields, null, 2));
                     }
                     
                     // Also merge userData if available (from database record)
@@ -392,70 +392,99 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         return contact;
     };
 
-    // FALLBACK: Extract Q&A from conversation history when CUSTOM_FIELDS doesn't include them
+    // Extract Q&A from conversation history - captures RAW sequential turns during content phase
     const extractQAFromHistory = (msgs: Message[]): Record<string, string> => {
         const qa: Record<string, string> = {};
         
-        // Patterns that indicate content phase transition (after contact, before property criteria)
+        // Patterns that indicate content phase start (after contact collection, before property criteria)
         const contentPhaseStartPatterns = [
             'what is currently the main thing on your mind',
             'what would you like to know',
             'i can now handle your questions',
             'wat houdt je momenteel het meest bezig',
             'ich kann jetzt ihre fragen bearbeiten',
-            'je peux maintenant traiter vos questions'
+            'je peux maintenant traiter vos questions',
+            'co jest obecnie główną rzeczą',
+            'vad har du för huvudfrågor',
+            'hvad har du mest på sinde',
+            'mikä on tällä hetkellä tärkein asia',
+            'mi a legfontosabb dolog',
+            'hva er det viktigste'
         ];
         
+        // Patterns that indicate transition OUT of content phase (into property criteria intake)
         const transitionPatterns = [
             'to avoid staying too general',
             'switching to a more focused approach',
             'personalized selection',
+            'based on what you\'ve shared',
+            'seven quick questions',
             'om te voorkomen dat we te algemeen blijven',
             'um nicht zu allgemein zu bleiben',
-            'pour éviter de rester trop général'
+            'pour éviter de rester trop général',
+            'aby uniknąć zbyt ogólnych',
+            'för att undvika att vara för allmän',
+            'for at undgå at blive for generel',
+            'välttääksemme liian yleistä',
+            'hogy ne maradjunk túl általánosak',
+            'for å unngå å bli for generell',
+            'which area or areas along the costa del sol',
+            'which location or locations'
         ];
         
-        let questionCount = 0;
-        let inContentPhase = false;
+        let contentPhaseStart = -1;
+        let transitionPoint = msgs.length;
         
+        // Find content phase boundaries
         for (let i = 0; i < msgs.length; i++) {
             const msg = msgs[i];
+            if (msg.role !== 'assistant') continue;
+            
             const content = msg.content.toLowerCase();
             
-            // Detect content phase start
-            if (msg.role === 'assistant' && contentPhaseStartPatterns.some(p => content.includes(p))) {
-                inContentPhase = true;
-                console.log('📋 Q&A FALLBACK: Detected content phase start');
-                continue;
+            // Find start of content phase
+            if (contentPhaseStart === -1 && contentPhaseStartPatterns.some(p => content.includes(p))) {
+                contentPhaseStart = i;
+                console.log(`📋 Q&A: Content phase starts at index ${i}`);
             }
             
-            // Detect transition out of content phase
-            if (msg.role === 'assistant' && transitionPatterns.some(p => content.includes(p))) {
-                console.log('📋 Q&A FALLBACK: Detected transition out of content phase');
+            // Find end of content phase (transition to property criteria)
+            if (contentPhaseStart !== -1 && transitionPatterns.some(p => content.includes(p))) {
+                transitionPoint = i;
+                console.log(`📋 Q&A: Content phase ends at index ${i}`);
                 break;
-            }
-            
-            // In content phase, capture user questions followed by Emma's answers
-            if (inContentPhase && msg.role === 'user' && questionCount < 3) {
-                const nextMsg = msgs[i + 1];
-                if (nextMsg && nextMsg.role === 'assistant') {
-                    questionCount++;
-                    const qKey = `question_${questionCount}`;
-                    const aKey = `answer_${questionCount}`;
-                    
-                    qa[qKey] = msg.content.trim().substring(0, 300);
-                    qa[aKey] = nextMsg.content.trim().substring(0, 300);
-                    
-                    console.log(`📋 Q&A FALLBACK: Stored ${qKey}="${qa[qKey].substring(0, 50)}..."`);
-                    i++; // Skip the answer message we just processed
-                }
             }
         }
         
-        if (questionCount > 0) {
-            qa.questions_answered = questionCount.toString();
-            console.log(`📋 Q&A FALLBACK: Total questions extracted: ${questionCount}`);
+        // If no content phase found, return empty
+        if (contentPhaseStart === -1) {
+            console.log('📋 Q&A: No content phase detected');
+            return qa;
         }
+        
+        // Capture RAW sequential user-assistant turns during content phase (up to 3)
+        let turnCount = 0;
+        for (let i = contentPhaseStart + 1; i < transitionPoint && turnCount < 3; i++) {
+            const msg = msgs[i];
+            const nextMsg = msgs[i + 1];
+            
+            // Capture user message followed by assistant response
+            if (msg.role === 'user' && nextMsg && nextMsg.role === 'assistant') {
+                turnCount++;
+                const qKey = `question_${turnCount}`;
+                const aKey = `answer_${turnCount}`;
+                
+                // Capture raw content (including short responses like "yes", "ok", etc.)
+                qa[qKey] = msg.content.trim().substring(0, 500);
+                qa[aKey] = nextMsg.content.trim().substring(0, 500);
+                
+                console.log(`📋 Q&A: Turn ${turnCount} - User: "${qa[qKey].substring(0, 50)}..." → Emma: "${qa[aKey].substring(0, 50)}..."`);
+                i++; // Skip the assistant message we just processed
+            }
+        }
+        
+        qa.questions_answered = turnCount.toString();
+        console.log(`📋 Q&A: Total turns captured: ${turnCount}`);
         
         return qa;
     };
