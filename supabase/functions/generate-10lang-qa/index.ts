@@ -13,6 +13,71 @@ const corsHeaders = {
 };
 
 /**
+ * Upload image from Fal.ai to Supabase Storage
+ */
+async function uploadToStorage(
+  falImageUrl: string,
+  supabase: any,
+  bucket: string = 'article-images',
+  prefix: string = 'img'
+): Promise<string> {
+  try {
+    if (!falImageUrl || !falImageUrl.includes('fal.media')) {
+      return falImageUrl;
+    }
+
+    console.log(`📥 Downloading image from Fal.ai...`);
+    const imageResponse = await fetch(falImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`❌ Failed to download image: ${imageResponse.status}`);
+      return falImageUrl;
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const sanitizedPrefix = prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .substring(0, 50);
+    const filename = `${sanitizedPrefix}-${timestamp}-${randomSuffix}.png`;
+    
+    console.log(`📤 Uploading to Supabase Storage: ${bucket}/${filename}`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filename, imageBuffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error(`❌ Upload failed:`, uploadError);
+      return falImageUrl;
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+    
+    const supabaseUrl = publicUrlData?.publicUrl;
+    
+    if (supabaseUrl) {
+      console.log(`✅ Image uploaded to Supabase: ${supabaseUrl}`);
+      return supabaseUrl;
+    }
+    
+    return falImageUrl;
+    
+  } catch (error) {
+    console.error(`❌ Storage upload error:`, error);
+    return falImageUrl;
+  }
+}
+
+/**
  * Generate unique image for Q&A using Nano Banana Pro
  */
 async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
@@ -329,7 +394,7 @@ serve(async (req) => {
                   'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                  model: 'gpt-4o-mini', // Fast + cheap for simple translation
+                  model: 'gpt-4o-mini',
                   messages: [
                     { role: 'system', content: `Translate to ${LANGUAGE_NAMES[lang]}. Return ONLY the translation, nothing else.` },
                     { role: 'user', content: englishArticle.featured_image_alt }
@@ -346,11 +411,10 @@ serve(async (req) => {
               }
             } catch (err) {
               console.warn(`[Generate] Alt translation failed for ${lang}:`, err);
-              // Falls back to English alt
             }
           }
           
-          // Generate unique image for this Q&A (NO question text in prompt to avoid text baked into images)
+          // Generate unique image for this Q&A
           const sceneVariations = [
             'luxury villa exterior with pool',
             'modern apartment interior design',
@@ -366,7 +430,17 @@ serve(async (req) => {
           const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
           const qaImagePrompt = `Professional Costa del Sol real estate photograph, ${randomScene}, bright natural lighting, educational visual style, no text, no watermarks, no logos, clean composition, high-end quality, ${LANGUAGE_NAMES[lang] || lang} market aesthetic`;
           const fallbackImageUrl = langArticle?.featured_image_url || englishArticle.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200';
-          const generatedImageUrl = await generateUniqueImage(qaImagePrompt, fallbackImageUrl);
+          let generatedImageUrl = await generateUniqueImage(qaImagePrompt, fallbackImageUrl);
+          
+          // Upload to Supabase Storage if it's a Fal.ai URL
+          if (generatedImageUrl && generatedImageUrl.includes('fal.media')) {
+            generatedImageUrl = await uploadToStorage(
+              generatedImageUrl,
+              supabase,
+              'article-images',
+              `qa-${finalSlug}`
+            );
+          }
           
           const pageData = {
             source_article_id: langArticle?.id || englishArticle.id,
@@ -386,10 +460,10 @@ serve(async (req) => {
             meta_title: (qaData.meta_title || '').substring(0, 60),
             meta_description: (qaData.meta_description || '').substring(0, 160),
             featured_image_url: generatedImageUrl,
-            featured_image_alt: imageAlt, // Now language-specific
+            featured_image_alt: imageAlt,
             category: sourceContent.category,
             status: 'published',
-            translations: {}, // Will be filled after all languages created
+            translations: {},
           };
 
           createdPages.push(pageData);
@@ -403,7 +477,7 @@ serve(async (req) => {
         }
       }
 
-      // Now update all pages with complete translations JSONB (including self-reference)
+      // Now update all pages with complete translations JSONB
       console.log(`[Generate] Built translations JSONB with ${Object.keys(languageSlugs).length} languages:`, Object.keys(languageSlugs));
       for (const page of createdPages) {
         page.translations = { ...languageSlugs };
@@ -449,7 +523,7 @@ serve(async (req) => {
       clusterTheme: englishArticle.cluster_theme,
       created: results.created,
       failed: results.failed,
-      expected: QA_TYPES.length * ALL_LANGUAGES.length, // 40 pages
+      expected: QA_TYPES.length * ALL_LANGUAGES.length,
       qaPages: dryRun ? [] : results.qaPages.map(p => ({ 
         language: p.language, 
         qa_type: p.qa_type, 

@@ -51,6 +51,71 @@ const LANGUAGE_AESTHETICS: Record<string, string> = {
   no: 'Norwegian natural harmony'
 };
 
+/**
+ * Upload image from Fal.ai to Supabase Storage
+ */
+async function uploadToStorage(
+  falImageUrl: string,
+  supabase: any,
+  bucket: string = 'article-images',
+  prefix: string = 'img'
+): Promise<string> {
+  try {
+    if (!falImageUrl || !falImageUrl.includes('fal.media')) {
+      return falImageUrl;
+    }
+
+    console.log(`📥 Downloading image from Fal.ai...`);
+    const imageResponse = await fetch(falImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`❌ Failed to download image: ${imageResponse.status}`);
+      return falImageUrl;
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const sanitizedPrefix = prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .substring(0, 50);
+    const filename = `${sanitizedPrefix}-${timestamp}-${randomSuffix}.png`;
+    
+    console.log(`📤 Uploading to Supabase Storage: ${bucket}/${filename}`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filename, imageBuffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error(`❌ Upload failed:`, uploadError);
+      return falImageUrl;
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+    
+    const supabaseUrl = publicUrlData?.publicUrl;
+    
+    if (supabaseUrl) {
+      console.log(`✅ Image uploaded to Supabase: ${supabaseUrl}`);
+      return supabaseUrl;
+    }
+    
+    return falImageUrl;
+    
+  } catch (error) {
+    console.error(`❌ Storage upload error:`, error);
+    return falImageUrl;
+  }
+}
+
 async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
   try {
     const result = await fal.subscribe("fal-ai/nano-banana-pro", {
@@ -98,7 +163,7 @@ serve(async (req) => {
     // Fetch all articles for this cluster
     const { data: articles, error: fetchError } = await supabase
       .from('blog_articles')
-      .select('id, headline, language, featured_image_url, funnel_stage')
+      .select('id, headline, language, featured_image_url, funnel_stage, slug')
       .eq('cluster_id', clusterId)
       .order('language')
       .order('funnel_stage');
@@ -146,10 +211,20 @@ serve(async (req) => {
       console.log(`[${i + 1}/${articles.length}] Generating image for ${article.language} article: ${article.id.slice(0, 8)}...`);
       
       try {
-        const newImageUrl = await generateUniqueImage(
+        let newImageUrl = await generateUniqueImage(
           imagePrompt, 
           article.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200'
         );
+        
+        // Upload to Supabase Storage if it's a Fal.ai URL
+        if (newImageUrl && newImageUrl.includes('fal.media')) {
+          newImageUrl = await uploadToStorage(
+            newImageUrl,
+            supabase,
+            'article-images',
+            `cluster-${article.language}-${article.slug || i}`
+          );
+        }
         
         // Only update if we got a new URL (not the fallback)
         if (newImageUrl !== article.featured_image_url) {
@@ -195,7 +270,7 @@ serve(async (req) => {
         totalArticles: articles.length,
         successCount,
         failCount,
-        results: results.slice(0, 20) // Only return first 20 for response size
+        results: results.slice(0, 20)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

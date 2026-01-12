@@ -26,6 +26,71 @@ interface FalResult {
   images?: Array<{ url?: string }>;
 }
 
+/**
+ * Upload image from Fal.ai to Supabase Storage
+ */
+async function uploadToStorage(
+  falImageUrl: string,
+  supabase: any,
+  bucket: string = 'article-images',
+  prefix: string = 'img'
+): Promise<string> {
+  try {
+    if (!falImageUrl || !falImageUrl.includes('fal.media')) {
+      return falImageUrl;
+    }
+
+    console.log(`📥 Downloading image from Fal.ai...`);
+    const imageResponse = await fetch(falImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`❌ Failed to download image: ${imageResponse.status}`);
+      return falImageUrl;
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const sanitizedPrefix = prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .substring(0, 50);
+    const filename = `${sanitizedPrefix}-${timestamp}-${randomSuffix}.png`;
+    
+    console.log(`📤 Uploading to Supabase Storage: ${bucket}/${filename}`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filename, imageBuffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error(`❌ Upload failed:`, uploadError);
+      return falImageUrl;
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+    
+    const supabaseUrl = publicUrlData?.publicUrl;
+    
+    if (supabaseUrl) {
+      console.log(`✅ Image uploaded to Supabase: ${supabaseUrl}`);
+      return supabaseUrl;
+    }
+    
+    return falImageUrl;
+    
+  } catch (error) {
+    console.error(`❌ Storage upload error:`, error);
+    return falImageUrl;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -65,7 +130,7 @@ serve(async (req) => {
     // Step 1: Fetch the article
     const { data: article, error: fetchError } = await supabase
       .from('blog_articles')
-      .select('id, headline, meta_description, detailed_content, language, funnel_stage, cluster_theme')
+      .select('id, headline, meta_description, detailed_content, language, funnel_stage, cluster_theme, slug')
       .eq('id', articleId)
       .single();
 
@@ -151,7 +216,7 @@ ${contentForAnalysis}`
     }) as FalResult;
 
     // Fixed: Correct response structure - result.images, not result.data.images
-    const generatedImageUrl = result.images?.[0]?.url;
+    let generatedImageUrl = result.images?.[0]?.url;
 
     if (!generatedImageUrl) {
       console.error('Fal.ai response:', JSON.stringify(result));
@@ -159,6 +224,16 @@ ${contentForAnalysis}`
     }
 
     console.log(`✅ Image generated successfully`);
+
+    // Upload to Supabase Storage if it's a Fal.ai URL
+    if (generatedImageUrl && generatedImageUrl.includes('fal.media')) {
+      generatedImageUrl = await uploadToStorage(
+        generatedImageUrl,
+        supabase,
+        'article-images',
+        `article-${article.slug || article.id.slice(0, 8)}`
+      );
+    }
 
     // Step 4: Generate language-matched alt text and caption
     console.log(`📝 Generating ${languageName} metadata (alt text & caption)...`);

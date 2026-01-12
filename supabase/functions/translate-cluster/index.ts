@@ -13,6 +13,78 @@ const corsHeaders = {
 };
 
 /**
+ * Upload image from Fal.ai to Supabase Storage
+ * @param falImageUrl - The Fal.ai CDN URL
+ * @param supabase - Supabase client instance
+ * @param bucket - Storage bucket name
+ * @param prefix - Filename prefix (e.g., article slug)
+ * @returns Supabase public URL or original URL if upload fails
+ */
+async function uploadToStorage(
+  falImageUrl: string,
+  supabase: any,
+  bucket: string = 'article-images',
+  prefix: string = 'img'
+): Promise<string> {
+  try {
+    // Skip if not a Fal.ai URL
+    if (!falImageUrl || !falImageUrl.includes('fal.media')) {
+      return falImageUrl;
+    }
+
+    console.log(`📥 Downloading image from Fal.ai...`);
+    const imageResponse = await fetch(falImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`❌ Failed to download image: ${imageResponse.status}`);
+      return falImageUrl;
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const sanitizedPrefix = prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .substring(0, 50);
+    const filename = `${sanitizedPrefix}-${timestamp}-${randomSuffix}.png`;
+    
+    console.log(`📤 Uploading to Supabase Storage: ${bucket}/${filename}`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filename, imageBuffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error(`❌ Upload failed:`, uploadError);
+      return falImageUrl;
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+    
+    const supabaseUrl = publicUrlData?.publicUrl;
+    
+    if (supabaseUrl) {
+      console.log(`✅ Image uploaded to Supabase: ${supabaseUrl}`);
+      return supabaseUrl;
+    }
+    
+    return falImageUrl;
+    
+  } catch (error) {
+    console.error(`❌ Storage upload error:`, error);
+    return falImageUrl;
+  }
+}
+
+/**
  * Generate unique image for translated article using Nano Banana Pro
  */
 async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
@@ -281,6 +353,7 @@ ${cleanedHtml}`;
 async function translateArticleWithRetry(
   englishArticle: any,
   targetLanguage: string,
+  supabase: any,
   retryCount = 0
 ): Promise<any> {
   const targetLanguageName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
@@ -329,7 +402,17 @@ async function translateArticleWithRetry(
     ];
     const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
     const imagePrompt = `Professional Costa del Sol real estate photograph, luxury Mediterranean villa with ${randomScene}, bright natural lighting, Architectural Digest style, no text, no watermarks, no logos, clean composition, high-end marketing quality, ${targetLanguageName} market aesthetic`;
-    const generatedImageUrl = await generateUniqueImage(imagePrompt, englishArticle.featured_image_url);
+    let generatedImageUrl = await generateUniqueImage(imagePrompt, englishArticle.featured_image_url);
+
+    // Upload to Supabase Storage if it's a Fal.ai URL
+    if (generatedImageUrl && generatedImageUrl.includes('fal.media')) {
+      generatedImageUrl = await uploadToStorage(
+        generatedImageUrl,
+        supabase,
+        'article-images',
+        uniqueSlug
+      );
+    }
 
     return {
       language: targetLanguage,
@@ -368,7 +451,7 @@ async function translateArticleWithRetry(
     if (retryCount < MAX_RETRIES) {
       console.log(`[Translation] Retrying in 2 seconds...`);
       await new Promise(resolve => setTimeout(resolve, 2000));
-      return translateArticleWithRetry(englishArticle, targetLanguage, retryCount + 1);
+      return translateArticleWithRetry(englishArticle, targetLanguage, supabase, retryCount + 1);
     }
     
     throw error;
@@ -782,7 +865,7 @@ serve(async (req) => {
           `[translate-cluster] Translating article ${i + 1}/${expectedCount}: ${sourceArticle.headline}`
         );
 
-        const translated = await translateArticleWithRetry(sourceArticle, currentLanguage);
+        const translated = await translateArticleWithRetry(sourceArticle, currentLanguage, supabase);
 
         // Save to database
         const { data: savedArticle, error: saveError } = await supabase
@@ -969,32 +1052,22 @@ serve(async (req) => {
         ? error.message
         : typeof error === 'string'
           ? error
-          : (error && typeof error === 'object' && 'message' in (error as any))
-            ? String((error as any).message)
-            : JSON.stringify(error);
+          : 'Unknown error';
 
     if (currentJobId) {
-      try {
-        const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-        if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-          const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-          await updateJobError(supabase, currentJobId, errorMessage, {
-            language: currentLanguage,
-            articleIndex: currentArticleIndex
-          });
-        }
-      } catch (e) {
-        console.error('[translate-cluster] Failed to update job error:', e);
-      }
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+      
+      await updateJobError(supabase, currentJobId, errorMessage, {
+        language: currentLanguage || undefined,
+        articleIndex: currentArticleIndex || undefined
+      });
     }
 
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

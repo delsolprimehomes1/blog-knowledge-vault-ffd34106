@@ -14,6 +14,71 @@ const corsHeaders = {
 };
 
 /**
+ * Upload image from Fal.ai to Supabase Storage
+ */
+async function uploadToStorage(
+  falImageUrl: string,
+  supabase: any,
+  bucket: string = 'article-images',
+  prefix: string = 'img'
+): Promise<string> {
+  try {
+    if (!falImageUrl || !falImageUrl.includes('fal.media')) {
+      return falImageUrl;
+    }
+
+    console.log(`📥 Downloading image from Fal.ai...`);
+    const imageResponse = await fetch(falImageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`❌ Failed to download image: ${imageResponse.status}`);
+      return falImageUrl;
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const sanitizedPrefix = prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .substring(0, 50);
+    const filename = `${sanitizedPrefix}-${timestamp}-${randomSuffix}.png`;
+    
+    console.log(`📤 Uploading to Supabase Storage: ${bucket}/${filename}`);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filename, imageBuffer, {
+        contentType: 'image/png',
+        cacheControl: '31536000',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error(`❌ Upload failed:`, uploadError);
+      return falImageUrl;
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+    
+    const supabaseUrl = publicUrlData?.publicUrl;
+    
+    if (supabaseUrl) {
+      console.log(`✅ Image uploaded to Supabase: ${supabaseUrl}`);
+      return supabaseUrl;
+    }
+    
+    return falImageUrl;
+    
+  } catch (error) {
+    console.error(`❌ Storage upload error:`, error);
+    return falImageUrl;
+  }
+}
+
+/**
  * Generate unique image for translated Q&A using Nano Banana Pro
  */
 async function generateUniqueImage(prompt: string, fallbackUrl: string): Promise<string> {
@@ -426,7 +491,6 @@ serve(async (req) => {
     const qaLinkingMismatches: { qaId: string; currentArticle: string; correctArticle: string }[] = [];
 
     // PHASE 2.1: PRE-CHECK all Q&As for article linking BEFORE any AI calls
-    // This prevents wasted AI calls on Q&As that can't be inserted
     console.log(`[TranslateQAs] 🔍 Pre-checking article linking for ${qasToTranslate.length} Q&As...`);
     
     // Also fetch existing target-language Q&As to check for mismatch
@@ -461,8 +525,6 @@ serve(async (req) => {
         const existingQA = existingQAByArticleAndType.get(existingKey);
         
         if (existingQA && existingQA.hreflang_group_id !== englishQA.hreflang_group_id) {
-          // This existing Q&A is attached to the correct article but has wrong hreflang group
-          // OR: another existing Q&A from different group occupies this slot
           console.warn(`[TranslateQAs] ⚠️ Conflict: ${englishQA.qa_type} slot on article ${targetArticle.id} occupied by Q&A with different hreflang group`);
           qaLinkingMismatches.push({
             qaId: existingQA.id,
@@ -479,7 +541,6 @@ serve(async (req) => {
     if (validQAs.length === 0 && missingArticleLinks.length > 0) {
       console.error(`[TranslateQAs] ❌ BLOCKED: All ${qasToTranslate.length} Q&As blocked due to missing article hreflang links`);
       
-      // Get unique missing article IDs
       const uniqueMissingIds = [...new Set(missingArticleLinks)];
       
       return new Response(JSON.stringify({
@@ -495,7 +556,7 @@ serve(async (req) => {
         actualCount: skippedCount,
         remaining: 24 - skippedCount,
       }), {
-        status: 200, // Return 200 so frontend can read blocked:true from body
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -525,7 +586,7 @@ serve(async (req) => {
     console.log(`[TranslateQAs] ✅ Pre-check passed: ${validQAs.length} Q&As ready, ${missingArticleLinks.length} blocked, ${qaLinkingMismatches.length} mismatches`);
 
     // BULLETPROOF: Process Q&As ONE AT A TIME with retry logic
-    const BATCH_SIZE = 6; // Process 6 Q&As per function invocation (safe limit)
+    const BATCH_SIZE = 6;
     const qaGroup = validQAs.slice(0, BATCH_SIZE);
     const qasRemaining = validQAs.length - qaGroup.length;
     
@@ -538,11 +599,10 @@ serve(async (req) => {
       console.log(`[TranslateQAs] ━━━ Q&A ${qaIndex}/24: ${englishQA.qa_type} ━━━`);
 
       try {
-        // STRICT MATCHING: Find target article via hreflang link FIRST (before AI call)
+        // STRICT MATCHING: Find target article via hreflang link FIRST
         const englishArticleHreflang = englishArticleHreflangMap.get(englishQA.source_article_id);
         const targetArticle = englishArticleHreflang ? articlesByHreflang.get(englishArticleHreflang) : null;
 
-        // This should not happen since we pre-checked, but double-check anyway
         if (!targetArticle) {
           console.error(`[TranslateQAs] ❌ No ${targetLanguage} article linked via hreflang to English article ${englishQA.source_article_id}`);
           errors.push(`Missing hreflang-linked ${targetLanguage} article for Q&A ${englishQA.qa_type} (English article: ${englishQA.source_article_id})`);
@@ -562,7 +622,7 @@ serve(async (req) => {
           qa_type: englishQA.qa_type,
         };
 
-        // BULLETPROOF: Translate single Q&A with retry (AFTER confirming target article exists)
+        // BULLETPROOF: Translate single Q&A with retry
         const translation = await translateSingleQA(qaContent, targetLanguage);
 
         const slug = generateSlug(translation.question, englishQA.qa_type, targetLanguage);
@@ -570,7 +630,7 @@ serve(async (req) => {
         // Build translated Q&A record
         const now = new Date().toISOString();
         
-        // Generate unique image for this Q&A (NO question text in prompt to avoid text baked into images)
+        // Generate unique image for this Q&A
         const sceneVariations = [
           'luxury villa exterior with pool',
           'modern apartment interior design',
@@ -585,7 +645,17 @@ serve(async (req) => {
         ];
         const randomScene = sceneVariations[Math.floor(Math.random() * sceneVariations.length)];
         const qaImagePrompt = `Professional Costa del Sol real estate photograph, ${randomScene}, bright natural lighting, educational visual style, no text, no watermarks, no logos, clean composition, high-end quality, ${LANGUAGE_NAMES[targetLanguage] || targetLanguage} market aesthetic`;
-        const generatedImageUrl = await generateUniqueImage(qaImagePrompt, englishQA.featured_image_url);
+        let generatedImageUrl = await generateUniqueImage(qaImagePrompt, englishQA.featured_image_url);
+        
+        // Upload to Supabase Storage if it's a Fal.ai URL
+        if (generatedImageUrl && generatedImageUrl.includes('fal.media')) {
+          generatedImageUrl = await uploadToStorage(
+            generatedImageUrl,
+            supabase,
+            'article-images',
+            `qa-${slug}`
+          );
+        }
         
         const translatedQARecord = {
           source_article_id: targetArticle.id,
@@ -720,7 +790,6 @@ serve(async (req) => {
         console.error(`[TranslateQAs] ❌ Failed ${englishQA.qa_type} after all retries:`, errorMessage);
         errors.push(`${englishQA.qa_type}: ${errorMessage}`);
         failedQAIds.push(englishQA.id);
-        // Continue with next Q&A instead of stopping
       }
     }
 
