@@ -536,8 +536,23 @@ System Data:
 
 ## CUSTOM FIELDS FORMAT
 
-When collecting data, output in this format:
-CUSTOM_FIELDS: {"field_name": "value", "field_name2": "value2"}
+When collecting data, ALWAYS output this at the end of your response:
+CUSTOM_FIELDS: {"field_name": "value"}
+
+IMPORTANT - Q&A TRACKING IN CONTENT PHASE:
+When answering user questions in Steps 8-9, you MUST track questions and answers:
+- After answering Question 1: CUSTOM_FIELDS: {"question_1": "user's exact question", "answer_1": "brief summary of your answer", "questions_answered": 1}
+- After answering Question 2: CUSTOM_FIELDS: {"question_2": "user's exact question", "answer_2": "brief summary of your answer", "questions_answered": 2}
+- After answering Question 3: CUSTOM_FIELDS: {"question_3": "user's exact question", "answer_3": "brief summary of your answer", "questions_answered": 3}
+
+IMPORTANT - ARRAY FIELDS:
+For location_preference and property_type, output as JSON arrays:
+- CUSTOM_FIELDS: {"location_preference": ["Marbella", "Estepona"]}
+- CUSTOM_FIELDS: {"property_type": ["Villa", "Apartment"]}
+
+IMPORTANT - INTAKE COMPLETION:
+- When Path A completes (after timeframe): CUSTOM_FIELDS: {"intake_complete": true, "timeframe": "user's choice"}
+- When Path B (user declines): CUSTOM_FIELDS: {"declined_selection": true}
 
 When you collect name, family_name, phone, or country_prefix, also add:
 COLLECTED_INFO: {"name": "first_name", "family_name": "last_name", "phone": "number", "country_prefix": "+XX"}
@@ -584,6 +599,10 @@ Current language: ${languageName}
         // Extract custom fields and collected info
         const customFields = extractCustomFields(responseText);
         const collectedInfo = extractCollectedInfo(responseText);
+        
+        // Debug logging for verification
+        console.log('📊 Custom Fields extracted:', JSON.stringify(customFields, null, 2));
+        console.log('📊 Collected Info extracted:', JSON.stringify(collectedInfo, null, 2));
         
         // Clean response for user
         const cleanedResponse = cleanResponse(responseText);

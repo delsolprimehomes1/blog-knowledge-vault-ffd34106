@@ -159,8 +159,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 };
                 setAccumulatedFields(newAccumulatedFields);
                 
+                // Debug logging for accumulated fields
+                console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
+                
                 // Check if intake is complete and we haven't already submitted
                 if (!hasSubmittedLead && (data.customFields.intake_complete || data.customFields.declined_selection)) {
+                    console.log('🎯 TRIGGER: GHL webhook triggered!');
+                    console.log('   intake_complete:', data.customFields.intake_complete);
+                    console.log('   declined_selection:', data.customFields.declined_selection);
                     setHasSubmittedLead(true);
                     await sendToGHL(newAccumulatedFields);
                 }
@@ -261,6 +267,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 }
             };
 
+            console.log('📤 GHL Payload being sent:', JSON.stringify(payload, null, 2));
             console.log('📤 Sending lead to GHL...');
             await supabase.functions.invoke('send-emma-lead', { body: payload });
             console.log('✅ Lead sent to GHL');
