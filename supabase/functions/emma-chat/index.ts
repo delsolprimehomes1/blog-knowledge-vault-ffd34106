@@ -389,7 +389,16 @@ Options:
 • €1,000,000+"
 
 Store: budget_range
-Wait for answer, then IMMEDIATELY output CUSTOM_FIELDS: {"budget_range": "user's answer"}
+VALIDATION - VERY IMPORTANT:
+If user gives a specific number like "600k", "€800,000", "500", "around 700k", etc.:
+- DO NOT accept the raw number directly
+- Acknowledge their budget warmly
+- Ask which predefined range it falls into
+- Example response: "Thank you for sharing that. Based on €600k, would that fall into the €500k–€750k range, or €750k–€1M?"
+- ONLY store one of these exact values: "€350k-€500k", "€500k-€750k", "€750k-€1,000,000", "€1,000,000+"
+- Do NOT proceed to Question 4 until you have a valid range selection
+
+Wait for a valid range answer, then IMMEDIATELY output CUSTOM_FIELDS: {"budget_range": "exact range selected"}
 Then IMMEDIATELY ask Question 4 (bedrooms) in the SAME response!
 
 ### CRITERIA QUESTION 4 of 7: How Many Bedrooms
