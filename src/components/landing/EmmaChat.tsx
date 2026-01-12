@@ -151,11 +151,12 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Accumulate custom fields from each response
-            if (data.customFields) {
+            // Merge BOTH customFields AND collectedInfo into accumulated fields
+            if (data.customFields || data.collectedInfo) {
                 const newAccumulatedFields = {
                     ...accumulatedFields,
-                    ...data.customFields
+                    ...(data.customFields || {}),
+                    ...(data.collectedInfo || {}) // CRITICAL: Include contact info in accumulated fields
                 };
                 setAccumulatedFields(newAccumulatedFields);
                 
@@ -163,16 +164,16 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
                 
                 // Check if intake is complete and we haven't already submitted
-                if (!hasSubmittedLead && (data.customFields.intake_complete || data.customFields.declined_selection)) {
+                if (!hasSubmittedLead && (data.customFields?.intake_complete || data.customFields?.declined_selection)) {
                     console.log('🎯 TRIGGER: GHL webhook triggered!');
-                    console.log('   intake_complete:', data.customFields.intake_complete);
-                    console.log('   declined_selection:', data.customFields.declined_selection);
+                    console.log('   intake_complete:', data.customFields?.intake_complete);
+                    console.log('   declined_selection:', data.customFields?.declined_selection);
                     setHasSubmittedLead(true);
                     await sendToGHL(newAccumulatedFields);
                 }
             }
 
-            // Check if Emma collected contact info
+            // Check if Emma collected contact info (for local state)
             if (data.collectedInfo) {
                 setUserData({
                     name: data.collectedInfo.name || '',
@@ -237,9 +238,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         try {
             const payload = {
                 contact_info: {
-                    first_name: fields.name || '',
-                    last_name: fields.family_name || '',
-                    phone_number: fields.phone || '',
+                    first_name: fields.name || fields.first_name || '',
+                    last_name: fields.family_name || fields.last_name || '',
+                    phone_number: fields.phone || fields.phone_number || '',
                     country_prefix: fields.country_prefix || ''
                 },
                 content_phase: {
