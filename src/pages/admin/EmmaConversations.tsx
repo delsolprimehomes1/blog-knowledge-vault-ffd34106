@@ -19,7 +19,9 @@ import {
     Eye,
     Send,
     ChevronRight,
-    XCircle
+    XCircle,
+    Download,
+    Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -86,10 +88,48 @@ const EmmaConversations = () => {
     const [filterWebhook, setFilterWebhook] = useState<string>('all');
     const [selectedLead, setSelectedLead] = useState<EmmaLead | null>(null);
     const [retryingWebhook, setRetryingWebhook] = useState<string | null>(null);
+    const [legacyCount, setLegacyCount] = useState<number>(0);
+    const [importing, setImporting] = useState(false);
 
     useEffect(() => {
         fetchLeads();
+        fetchLegacyCount();
     }, [filterLanguage, filterStatus, filterWebhook]);
+
+    async function fetchLegacyCount() {
+        try {
+            const { count, error } = await supabase
+                .from('emma_conversations' as any)
+                .select('*', { count: 'exact', head: true });
+            
+            if (!error && count !== null) {
+                setLegacyCount(count);
+            }
+        } catch (e) {
+            console.error('Error fetching legacy count:', e);
+        }
+    }
+
+    async function importLegacyData() {
+        setImporting(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('migrate-emma-leads');
+            
+            if (error) {
+                toast.error('Failed to import legacy data');
+                console.error('Migration error:', error);
+            } else {
+                toast.success(`Imported ${data.migrated} leads from legacy conversations`);
+                fetchLeads();
+                fetchLegacyCount();
+            }
+        } catch (e) {
+            toast.error('Failed to import legacy data');
+            console.error('Migration error:', e);
+        } finally {
+            setImporting(false);
+        }
+    }
 
     async function fetchLeads() {
         setLoading(true);
@@ -269,6 +309,40 @@ const EmmaConversations = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Legacy Data Import Banner */}
+            {legacyCount > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Upload className="w-5 h-5 text-amber-600" />
+                        <div>
+                            <p className="font-medium text-amber-800">
+                                {legacyCount} legacy conversations found
+                            </p>
+                            <p className="text-sm text-amber-600">
+                                Import data from older emma_conversations table to view all leads
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={importLegacyData}
+                        disabled={importing}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                        {importing ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Importing...
+                            </>
+                        ) : (
+                            <>
+                                <Download className="w-4 h-4" />
+                                Import Legacy Data
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
                 {/* List Column */}

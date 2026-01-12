@@ -296,3 +296,9 @@ verify_jwt = false
 
 [functions.send-emma-lead]
 verify_jwt = false
+
+[functions.migrate-emma-leads]
+verify_jwt = false
+
+[functions.retry-emma-webhooks]
+verify_jwt = false
