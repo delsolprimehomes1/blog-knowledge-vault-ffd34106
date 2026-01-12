@@ -98,6 +98,7 @@ const ImageHealthDashboard = lazy(() => import("./pages/admin/ImageHealthDashboa
 const SystemAudit = lazy(() => import("./pages/admin/SystemAudit"));
 const ProductionAudit = lazy(() => import("./pages/admin/ProductionAudit"));
 const AEOAnswerFixer = lazy(() => import("./pages/admin/AEOAnswerFixer"));
+const MigrateImages = lazy(() => import("./pages/admin/MigrateImages"));
 const AddProperty = lazy(() => import("./pages/AddProperty"));
 const EmmaConversations = lazy(() => import("./pages/admin/EmmaConversations"));
 
@@ -197,6 +198,7 @@ const App = () => (
               <Route path="/admin/system-audit" element={<ProtectedRoute><SystemAudit /></ProtectedRoute>} />
               <Route path="/admin/production-audit" element={<ProtectedRoute><ProductionAudit /></ProtectedRoute>} />
               <Route path="/admin/aeo-fixer" element={<ProtectedRoute><AEOAnswerFixer /></ProtectedRoute>} />
+              <Route path="/admin/migrate-images" element={<ProtectedRoute><MigrateImages /></ProtectedRoute>} />
 
               {/* Standalone Property Management Page */}
               <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />
