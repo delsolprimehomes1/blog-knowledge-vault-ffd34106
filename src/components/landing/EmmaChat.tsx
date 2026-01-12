@@ -377,8 +377,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 }
                 // Check for phone collection
                 else if (!contact.phone_number && phonePatterns.some(p => assistantContent.includes(p))) {
-                    contact.phone_number = userResponse;
-                    console.log('📋 FALLBACK: Extracted phone_number from history:', userResponse);
+                    // Only accept if we have at least 7 digits (valid phone number)
+                    const cleaned = userResponse.replace(/[^\d]/g, '');
+                    if (cleaned.length >= 7) {
+                        contact.phone_number = userResponse;
+                        console.log('📋 FALLBACK: Extracted phone_number from history:', userResponse);
+                    } else {
+                        console.log('📋 FALLBACK: Rejected invalid phone (less than 7 digits):', userResponse);
+                    }
                 }
                 // Check for country prefix
                 else if (!contact.country_prefix && prefixPatterns.some(p => assistantContent.includes(p))) {
