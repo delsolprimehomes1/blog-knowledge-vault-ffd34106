@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Minimize2, Maximize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { markdownToHtml } from '@/lib/markdownToHtml';
+import { upsertEmmaLead, extractPropertyCriteriaFromHistory } from '@/hooks/useEmmaLeadTracking';
 
 interface Message {
     id: string;
@@ -159,71 +160,113 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             setMessages(prev => [...prev, assistantMessage]);
 
             // Merge BOTH customFields AND collectedInfo into accumulated fields
-            if (data.customFields || data.collectedInfo) {
-                let newAccumulatedFields: Record<string, any> = {
-                    ...accumulatedFields,
-                    ...(data.customFields || {}),
-                    ...(data.collectedInfo || {}) // CRITICAL: Include contact info in accumulated fields
-                };
-                
-                // VALIDATE phone numbers from AI tags - reject invalid values like "yes", "ok"
-                if (newAccumulatedFields.phone_number && !isValidPhoneNumber(newAccumulatedFields.phone_number)) {
-                    console.log('⚠️ Rejecting invalid phone_number from AI:', newAccumulatedFields.phone_number);
-                    delete newAccumulatedFields.phone_number;
-                }
-                if (newAccumulatedFields.phone && !isValidPhoneNumber(newAccumulatedFields.phone)) {
-                    console.log('⚠️ Rejecting invalid phone from AI:', newAccumulatedFields.phone);
-                    delete newAccumulatedFields.phone;
-                }
-                if (newAccumulatedFields.whatsapp && !isValidPhoneNumber(newAccumulatedFields.whatsapp)) {
-                    console.log('⚠️ Rejecting invalid whatsapp from AI:', newAccumulatedFields.whatsapp);
-                    delete newAccumulatedFields.whatsapp;
-                }
-                
-                // Debug logging for accumulated fields
-                console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
-                
-                // Check if intake is complete and we haven't already submitted
-                if (!hasSubmittedLead && (data.customFields?.intake_complete || data.customFields?.declined_selection)) {
-                    console.log('🎯 TRIGGER: GHL webhook triggered!');
-                    console.log('   intake_complete:', data.customFields?.intake_complete);
-                    console.log('   declined_selection:', data.customFields?.declined_selection);
-                    
-                    // FALLBACK: If contact info is missing, extract from conversation history
-                    const hasContactInfo = newAccumulatedFields.name || newAccumulatedFields.first_name || newAccumulatedFields.phone || newAccumulatedFields.phone_number;
-                    if (!hasContactInfo) {
-                        console.log('⚠️ Contact info missing from COLLECTED_INFO, using fallback extraction...');
-                        const extractedContact = extractContactFromHistory([...messages, assistantMessage]);
-                        newAccumulatedFields = { ...newAccumulatedFields, ...extractedContact };
-                        console.log('📊 Fields after contact fallback:', JSON.stringify(newAccumulatedFields, null, 2));
-                    }
-                    
-                    // ALWAYS extract Q&A from conversation history (don't rely on Emma's CUSTOM_FIELDS for Q&A)
-                    console.log('📋 Running Q&A extraction from conversation history...');
-                    const extractedQA = extractQAFromHistory([...messages, assistantMessage]);
-                    // Only overwrite if extraction found data (preserve any Emma-provided Q&A)
-                    if (extractedQA.questions_answered && parseInt(extractedQA.questions_answered) > 0) {
-                        newAccumulatedFields = { ...newAccumulatedFields, ...extractedQA };
-                        console.log('📊 Fields after Q&A extraction:', JSON.stringify(newAccumulatedFields, null, 2));
-                    }
-                    
-                    // Also merge userData if available (from database record) - but validate phone
-                    if (userData.name || userData.whatsapp) {
-                        console.log('📊 Merging userData into fields:', JSON.stringify(userData, null, 2));
-                        if (!newAccumulatedFields.first_name && !newAccumulatedFields.name && userData.name) {
-                            newAccumulatedFields.first_name = userData.name;
-                        }
-                        if (!newAccumulatedFields.phone_number && !newAccumulatedFields.phone && userData.whatsapp && isValidPhoneNumber(userData.whatsapp)) {
-                            newAccumulatedFields.phone_number = userData.whatsapp;
-                        }
-                    }
-                    
-                    setHasSubmittedLead(true);
-                    await sendToGHL(newAccumulatedFields);
-                }
-                
-                setAccumulatedFields(newAccumulatedFields);
+            let newAccumulatedFields: Record<string, any> = {
+                ...accumulatedFields,
+                ...(data.customFields || {}),
+                ...(data.collectedInfo || {}) // CRITICAL: Include contact info in accumulated fields
+            };
+            
+            // VALIDATE phone numbers from AI tags - reject invalid values like "yes", "ok"
+            if (newAccumulatedFields.phone_number && !isValidPhoneNumber(newAccumulatedFields.phone_number)) {
+                console.log('⚠️ Rejecting invalid phone_number from AI:', newAccumulatedFields.phone_number);
+                delete newAccumulatedFields.phone_number;
             }
+            if (newAccumulatedFields.phone && !isValidPhoneNumber(newAccumulatedFields.phone)) {
+                console.log('⚠️ Rejecting invalid phone from AI:', newAccumulatedFields.phone);
+                delete newAccumulatedFields.phone;
+            }
+            if (newAccumulatedFields.whatsapp && !isValidPhoneNumber(newAccumulatedFields.whatsapp)) {
+                console.log('⚠️ Rejecting invalid whatsapp from AI:', newAccumulatedFields.whatsapp);
+                delete newAccumulatedFields.whatsapp;
+            }
+            
+            // ALWAYS run fallback extraction on every message (not just on close/complete)
+            const allMessages = [...messages, assistantMessage];
+            
+            // Extract contact info if missing
+            const hasContactInfo = newAccumulatedFields.name || newAccumulatedFields.first_name || newAccumulatedFields.phone || newAccumulatedFields.phone_number;
+            if (!hasContactInfo && allMessages.length > 2) {
+                const extractedContact = extractContactFromHistory(allMessages);
+                newAccumulatedFields = { ...newAccumulatedFields, ...extractedContact };
+            }
+            
+            // Extract Q&A if missing
+            const hasQA = newAccumulatedFields.question_1 || newAccumulatedFields.answer_1;
+            if (!hasQA && allMessages.length > 4) {
+                const extractedQA = extractQAFromHistory(allMessages);
+                if (extractedQA.questions_answered && parseInt(extractedQA.questions_answered) > 0) {
+                    newAccumulatedFields = { ...newAccumulatedFields, ...extractedQA };
+                }
+            }
+            
+            // Extract property criteria if in that phase
+            const propertyCriteria = extractPropertyCriteriaFromHistory(allMessages.map(m => ({ role: m.role, content: m.content })));
+            if (Object.keys(propertyCriteria).length > 0) {
+                newAccumulatedFields = { ...newAccumulatedFields, ...propertyCriteria };
+            }
+            
+            // Debug logging for accumulated fields
+            console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
+            
+            // PROGRESSIVE SAVE: Save lead data to emma_leads after EVERY message
+            const leadData = {
+                conversation_id: conversationId,
+                first_name: newAccumulatedFields.name || newAccumulatedFields.first_name,
+                last_name: newAccumulatedFields.family_name || newAccumulatedFields.last_name,
+                phone_number: newAccumulatedFields.phone || newAccumulatedFields.phone_number,
+                country_prefix: newAccumulatedFields.country_prefix,
+                question_1: newAccumulatedFields.question_1,
+                answer_1: newAccumulatedFields.answer_1,
+                question_2: newAccumulatedFields.question_2,
+                answer_2: newAccumulatedFields.answer_2,
+                question_3: newAccumulatedFields.question_3,
+                answer_3: newAccumulatedFields.answer_3,
+                questions_answered: countQuestionsAnswered(newAccumulatedFields),
+                location_preference: Array.isArray(newAccumulatedFields.location_preference) 
+                    ? newAccumulatedFields.location_preference 
+                    : (newAccumulatedFields.location_preference ? [newAccumulatedFields.location_preference] : undefined),
+                sea_view_importance: newAccumulatedFields.sea_view_importance,
+                budget_range: newAccumulatedFields.budget_range,
+                bedrooms_desired: newAccumulatedFields.bedrooms_desired,
+                property_type: Array.isArray(newAccumulatedFields.property_type)
+                    ? newAccumulatedFields.property_type
+                    : (newAccumulatedFields.property_type ? [newAccumulatedFields.property_type] : undefined),
+                property_purpose: newAccumulatedFields.purpose || newAccumulatedFields.property_purpose,
+                timeframe: newAccumulatedFields.timeframe,
+                detected_language: language.toUpperCase(),
+                intake_complete: newAccumulatedFields.intake_complete || false,
+                declined_selection: newAccumulatedFields.declined_selection || false,
+                exit_point: determineExitPoint(newAccumulatedFields),
+                conversation_status: newAccumulatedFields.intake_complete ? 'completed' 
+                    : newAccumulatedFields.declined_selection ? 'declined' 
+                    : 'in_progress'
+            };
+            
+            // Save progressively (non-blocking)
+            upsertEmmaLead(leadData).catch(err => console.error('Progressive save error:', err));
+            
+            // Check if intake is complete and we haven't already submitted
+            if (!hasSubmittedLead && (data.customFields?.intake_complete || data.customFields?.declined_selection)) {
+                console.log('🎯 TRIGGER: GHL webhook triggered!');
+                console.log('   intake_complete:', data.customFields?.intake_complete);
+                console.log('   declined_selection:', data.customFields?.declined_selection);
+                
+                // Also merge userData if available (from database record) - but validate phone
+                if (userData.name || userData.whatsapp) {
+                    console.log('📊 Merging userData into fields:', JSON.stringify(userData, null, 2));
+                    if (!newAccumulatedFields.first_name && !newAccumulatedFields.name && userData.name) {
+                        newAccumulatedFields.first_name = userData.name;
+                    }
+                    if (!newAccumulatedFields.phone_number && !newAccumulatedFields.phone && userData.whatsapp && isValidPhoneNumber(userData.whatsapp)) {
+                        newAccumulatedFields.phone_number = userData.whatsapp;
+                    }
+                }
+                
+                setHasSubmittedLead(true);
+                await sendToGHL(newAccumulatedFields);
+            }
+            
+            setAccumulatedFields(newAccumulatedFields);
 
             // Check if Emma collected contact info (for local state)
             if (data.collectedInfo) {
@@ -536,6 +579,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
         try {
             const payload = {
+                conversation_id: conversationId, // Include for tracking
                 contact_info: {
                     first_name: fields.name || fields.first_name || '',
                     last_name: fields.family_name || fields.last_name || '',

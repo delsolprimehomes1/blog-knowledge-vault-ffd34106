@@ -1964,6 +1964,114 @@ export type Database = {
         }
         Relationships: []
       }
+      emma_leads: {
+        Row: {
+          answer_1: string | null
+          answer_2: string | null
+          answer_3: string | null
+          bedrooms_desired: string | null
+          budget_range: string | null
+          conversation_date: string | null
+          conversation_id: string
+          conversation_status: string | null
+          country_prefix: string | null
+          created_at: string | null
+          declined_selection: boolean | null
+          detected_language: string | null
+          exit_point: string | null
+          first_name: string | null
+          id: string
+          intake_complete: boolean | null
+          last_name: string | null
+          location_preference: Json | null
+          phone_number: string | null
+          property_purpose: string | null
+          property_type: Json | null
+          question_1: string | null
+          question_2: string | null
+          question_3: string | null
+          questions_answered: number | null
+          sea_view_importance: string | null
+          timeframe: string | null
+          updated_at: string | null
+          webhook_attempts: number | null
+          webhook_last_error: string | null
+          webhook_payload: Json | null
+          webhook_sent: boolean | null
+          webhook_sent_at: string | null
+        }
+        Insert: {
+          answer_1?: string | null
+          answer_2?: string | null
+          answer_3?: string | null
+          bedrooms_desired?: string | null
+          budget_range?: string | null
+          conversation_date?: string | null
+          conversation_id: string
+          conversation_status?: string | null
+          country_prefix?: string | null
+          created_at?: string | null
+          declined_selection?: boolean | null
+          detected_language?: string | null
+          exit_point?: string | null
+          first_name?: string | null
+          id?: string
+          intake_complete?: boolean | null
+          last_name?: string | null
+          location_preference?: Json | null
+          phone_number?: string | null
+          property_purpose?: string | null
+          property_type?: Json | null
+          question_1?: string | null
+          question_2?: string | null
+          question_3?: string | null
+          questions_answered?: number | null
+          sea_view_importance?: string | null
+          timeframe?: string | null
+          updated_at?: string | null
+          webhook_attempts?: number | null
+          webhook_last_error?: string | null
+          webhook_payload?: Json | null
+          webhook_sent?: boolean | null
+          webhook_sent_at?: string | null
+        }
+        Update: {
+          answer_1?: string | null
+          answer_2?: string | null
+          answer_3?: string | null
+          bedrooms_desired?: string | null
+          budget_range?: string | null
+          conversation_date?: string | null
+          conversation_id?: string
+          conversation_status?: string | null
+          country_prefix?: string | null
+          created_at?: string | null
+          declined_selection?: boolean | null
+          detected_language?: string | null
+          exit_point?: string | null
+          first_name?: string | null
+          id?: string
+          intake_complete?: boolean | null
+          last_name?: string | null
+          location_preference?: Json | null
+          phone_number?: string | null
+          property_purpose?: string | null
+          property_type?: Json | null
+          question_1?: string | null
+          question_2?: string | null
+          question_3?: string | null
+          questions_answered?: number | null
+          sea_view_importance?: string | null
+          timeframe?: string | null
+          updated_at?: string | null
+          webhook_attempts?: number | null
+          webhook_last_error?: string | null
+          webhook_payload?: Json | null
+          webhook_sent?: boolean | null
+          webhook_sent_at?: string | null
+        }
+        Relationships: []
+      }
       external_citation_health: {
         Row: {
           authority_score: number | null
