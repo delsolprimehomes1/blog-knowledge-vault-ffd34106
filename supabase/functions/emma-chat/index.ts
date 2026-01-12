@@ -536,8 +536,7 @@ System Data:
 
 ## CUSTOM FIELDS FORMAT
 
-When collecting data, ALWAYS output this at the end of your response:
-CUSTOM_FIELDS: {"field_name": "value"}
+CRITICAL: You MUST output CUSTOM_FIELDS at the end of EVERY response where you collect or confirm data.
 
 IMPORTANT - Q&A TRACKING IN CONTENT PHASE:
 When answering user questions in Steps 8-9, you MUST track questions and answers:
@@ -545,17 +544,29 @@ When answering user questions in Steps 8-9, you MUST track questions and answers
 - After answering Question 2: CUSTOM_FIELDS: {"question_2": "user's exact question", "answer_2": "brief summary of your answer", "questions_answered": 2}
 - After answering Question 3: CUSTOM_FIELDS: {"question_3": "user's exact question", "answer_3": "brief summary of your answer", "questions_answered": 3}
 
+CRITICAL - PROPERTY CRITERIA TRACKING (Step 13):
+After EACH property criteria answer, you MUST output CUSTOM_FIELDS with that specific field:
+- After Location answer: CUSTOM_FIELDS: {"location_preference": ["Marbella"]}
+- After Sea View answer: CUSTOM_FIELDS: {"sea_view_importance": "Essential"}
+- After Budget answer: CUSTOM_FIELDS: {"budget_range": "€500k-€750k"}
+- After Bedrooms answer: CUSTOM_FIELDS: {"bedrooms_desired": "3-4"}
+- After Property Type answer: CUSTOM_FIELDS: {"property_type": ["Villa", "Apartment"]}
+- After Purpose answer: CUSTOM_FIELDS: {"property_purpose": "Holiday use"}
+- After Timeframe answer (final): CUSTOM_FIELDS: {"intake_complete": true, "timeframe": "Within 1 year"}
+
 IMPORTANT - ARRAY FIELDS:
-For location_preference and property_type, output as JSON arrays:
+For location_preference and property_type, ALWAYS output as JSON arrays:
 - CUSTOM_FIELDS: {"location_preference": ["Marbella", "Estepona"]}
 - CUSTOM_FIELDS: {"property_type": ["Villa", "Apartment"]}
+- Even for single values: {"location_preference": ["Marbella"]}
 
-IMPORTANT - INTAKE COMPLETION:
-- When Path A completes (after timeframe): CUSTOM_FIELDS: {"intake_complete": true, "timeframe": "user's choice"}
-- When Path B (user declines): CUSTOM_FIELDS: {"declined_selection": true}
+IMPORTANT - PATH B:
+If user declines at Step 11: CUSTOM_FIELDS: {"declined_selection": true}
 
-When you collect name, family_name, phone, or country_prefix, also add:
+When you collect name, family_name, phone, or country_prefix, ALWAYS add BOTH:
 COLLECTED_INFO: {"name": "first_name", "family_name": "last_name", "phone": "number", "country_prefix": "+XX"}
+AND
+CUSTOM_FIELDS: {"name": "first_name"} (or whichever field was just collected)
 
 ---
 
