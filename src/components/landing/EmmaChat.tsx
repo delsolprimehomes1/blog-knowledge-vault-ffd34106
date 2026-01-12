@@ -153,12 +153,11 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
             // Merge BOTH customFields AND collectedInfo into accumulated fields
             if (data.customFields || data.collectedInfo) {
-                const newAccumulatedFields = {
+                let newAccumulatedFields: Record<string, any> = {
                     ...accumulatedFields,
                     ...(data.customFields || {}),
                     ...(data.collectedInfo || {}) // CRITICAL: Include contact info in accumulated fields
                 };
-                setAccumulatedFields(newAccumulatedFields);
                 
                 // Debug logging for accumulated fields
                 console.log('📊 Accumulated fields so far:', JSON.stringify(newAccumulatedFields, null, 2));
@@ -168,9 +167,32 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     console.log('🎯 TRIGGER: GHL webhook triggered!');
                     console.log('   intake_complete:', data.customFields?.intake_complete);
                     console.log('   declined_selection:', data.customFields?.declined_selection);
+                    
+                    // FALLBACK: If contact info is missing, extract from conversation history
+                    const hasContactInfo = newAccumulatedFields.name || newAccumulatedFields.first_name || newAccumulatedFields.phone || newAccumulatedFields.phone_number;
+                    if (!hasContactInfo) {
+                        console.log('⚠️ Contact info missing from COLLECTED_INFO, using fallback extraction...');
+                        const extractedContact = extractContactFromHistory([...messages, assistantMessage]);
+                        newAccumulatedFields = { ...newAccumulatedFields, ...extractedContact };
+                        console.log('📊 Fields after fallback extraction:', JSON.stringify(newAccumulatedFields, null, 2));
+                    }
+                    
+                    // Also merge userData if available (from database record)
+                    if (userData.name || userData.whatsapp) {
+                        console.log('📊 Merging userData into fields:', JSON.stringify(userData, null, 2));
+                        if (!newAccumulatedFields.first_name && !newAccumulatedFields.name && userData.name) {
+                            newAccumulatedFields.first_name = userData.name;
+                        }
+                        if (!newAccumulatedFields.phone_number && !newAccumulatedFields.phone && userData.whatsapp) {
+                            newAccumulatedFields.phone_number = userData.whatsapp;
+                        }
+                    }
+                    
                     setHasSubmittedLead(true);
                     await sendToGHL(newAccumulatedFields);
                 }
+                
+                setAccumulatedFields(newAccumulatedFields);
             }
 
             // Check if Emma collected contact info (for local state)
@@ -257,6 +279,108 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         if (fields.question_2 && fields.answer_2) count++;
         if (fields.question_3 && fields.answer_3) count++;
         return count;
+    };
+
+    // FALLBACK: Extract contact info from conversation history when COLLECTED_INFO is not output
+    const extractContactFromHistory = (msgs: Message[]): Record<string, string> => {
+        const contact: Record<string, string> = {};
+        
+        // Patterns that indicate Emma asked for specific info (multilingual)
+        const namePatterns = [
+            'how may i address you',
+            'how should i address you',
+            'what is your name',
+            'hoe mag ik je noemen',
+            'comment puis-je vous appeler',
+            'wie darf ich sie anreden',
+            'jak mogę się do ciebie zwracać',
+            'vad får jag kalla dig',
+            'hvad må jeg kalde dig',
+            'miten voin kutsua sinua',
+            'hogyan szólíthatlak',
+            'hva kan jeg kalle deg'
+        ];
+        
+        const familyNamePatterns = [
+            'family name',
+            'last name',
+            'surname',
+            'achternaam',
+            'nom de famille',
+            'nachname',
+            'familienname',
+            'nazwisko',
+            'efternamn',
+            'efternavn',
+            'sukunimi',
+            'vezetéknév',
+            'etternavn'
+        ];
+        
+        const phonePatterns = [
+            'which number may i send',
+            'what number can i reach you',
+            'phone number',
+            'whatsapp',
+            'op welk nummer',
+            'quel numéro',
+            'welche nummer',
+            'na jaki numer',
+            'vilket nummer',
+            'hvilket nummer',
+            'mihin numeroon',
+            'milyen számra',
+            'hvilket nummer'
+        ];
+        
+        const prefixPatterns = [
+            'country prefix',
+            'country code',
+            'landnummer',
+            'indicatif',
+            'landesvorwahl',
+            'numer kierunkowy',
+            'landskod',
+            'landekode',
+            'maatunnus',
+            'országkód',
+            'landskode'
+        ];
+        
+        // Scan conversation for assistant questions followed by user answers
+        for (let i = 0; i < msgs.length - 1; i++) {
+            const msg = msgs[i];
+            const nextMsg = msgs[i + 1];
+            
+            if (msg.role === 'assistant' && nextMsg.role === 'user') {
+                const assistantContent = msg.content.toLowerCase();
+                const userResponse = nextMsg.content.trim();
+                
+                // Check for name collection
+                if (!contact.first_name && namePatterns.some(p => assistantContent.includes(p))) {
+                    contact.first_name = userResponse;
+                    console.log('📋 FALLBACK: Extracted first_name from history:', userResponse);
+                }
+                // Check for family name collection
+                else if (!contact.last_name && familyNamePatterns.some(p => assistantContent.includes(p))) {
+                    contact.last_name = userResponse;
+                    console.log('📋 FALLBACK: Extracted last_name from history:', userResponse);
+                }
+                // Check for phone collection
+                else if (!contact.phone_number && phonePatterns.some(p => assistantContent.includes(p))) {
+                    contact.phone_number = userResponse;
+                    console.log('📋 FALLBACK: Extracted phone_number from history:', userResponse);
+                }
+                // Check for country prefix
+                else if (!contact.country_prefix && prefixPatterns.some(p => assistantContent.includes(p))) {
+                    contact.country_prefix = userResponse;
+                    console.log('📋 FALLBACK: Extracted country_prefix from history:', userResponse);
+                }
+            }
+        }
+        
+        console.log('📋 FALLBACK: Contact extraction result:', JSON.stringify(contact, null, 2));
+        return contact;
     };
 
     // Send lead data to GoHighLevel webhook with ALL 24 fields
@@ -346,18 +470,37 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     // Handle close with partial lead capture - ALWAYS send whatever data we have
     const handleClose = async () => {
         // Send partial lead if we have ANY accumulated data and haven't already submitted
-        const hasAnyData = Object.keys(accumulatedFields).length > 0;
+        let fieldsToSend = { ...accumulatedFields };
+        
+        // FALLBACK: Extract contact from conversation history if missing
+        const hasContactInfo = fieldsToSend.name || fieldsToSend.first_name || fieldsToSend.phone || fieldsToSend.phone_number;
+        if (!hasContactInfo && messages.length > 1) {
+            console.log('⚠️ CLOSE: Contact info missing, using fallback extraction...');
+            const extractedContact = extractContactFromHistory(messages);
+            fieldsToSend = { ...fieldsToSend, ...extractedContact };
+        }
+        
+        // Also merge userData if available
+        if (userData.name || userData.whatsapp) {
+            fieldsToSend = {
+                ...fieldsToSend,
+                first_name: fieldsToSend.first_name || fieldsToSend.name || userData.name || '',
+                phone_number: fieldsToSend.phone_number || fieldsToSend.phone || userData.whatsapp || ''
+            };
+        }
+        
+        const hasAnyData = Object.keys(fieldsToSend).length > 0;
         
         if (hasAnyData && !hasSubmittedLead) {
             console.log('🚪 CLOSE: User closing chat, sending partial data to GHL...');
-            console.log('🚪 CLOSE: Data collected so far:', JSON.stringify(accumulatedFields, null, 2));
+            console.log('🚪 CLOSE: Data collected so far:', JSON.stringify(fieldsToSend, null, 2));
             
-            const exitPoint = determineExitPoint(accumulatedFields);
+            const exitPoint = determineExitPoint(fieldsToSend);
             console.log('🚪 CLOSE: Exit point determined:', exitPoint);
             
             setHasSubmittedLead(true);
             await sendToGHL({
-                ...accumulatedFields,
+                ...fieldsToSend,
                 closed_early: true,
                 exit_point: exitPoint
             });
