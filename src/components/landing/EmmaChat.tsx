@@ -43,6 +43,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [hasCollectedInfo, setHasCollectedInfo] = useState(false);
     const [accumulatedFields, setAccumulatedFields] = useState<Record<string, any>>({});
     const [hasSubmittedLead, setHasSubmittedLead] = useState(false);
+    const [inactivityTimer, setInactivityTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +114,81 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // 60-SECOND INACTIVITY TRIGGER (Trigger 3)
+    useEffect(() => {
+        // Clear any existing timer when messages change
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+            setInactivityTimer(null);
+        }
+
+        // Only start timer if:
+        // - We have accumulated data
+        // - Haven't submitted lead yet
+        // - Conversation has started (more than just greeting)
+        // - Not currently loading
+        const hasData = Object.keys(accumulatedFields).length > 0;
+        const conversationStarted = messages.length > 1;
+
+        if (hasData && !hasSubmittedLead && conversationStarted && !isLoading) {
+            console.log('⏱️ Starting 60-second inactivity timer');
+            
+            const timer = setTimeout(async () => {
+                console.log('⏰ TRIGGER 3: 60 seconds of inactivity - sending data');
+                
+                // Get all available data with fallback extraction
+                let fieldsToSend = { ...accumulatedFields };
+                
+                // FALLBACK: Extract contact info if missing
+                const hasContactInfo = fieldsToSend.name || fieldsToSend.first_name || 
+                                      fieldsToSend.phone || fieldsToSend.phone_number;
+                if (!hasContactInfo && messages.length > 1) {
+                    const extractedContact = extractContactFromHistory(messages);
+                    fieldsToSend = { ...fieldsToSend, ...extractedContact };
+                }
+                
+                // FALLBACK: Extract Q&A if missing
+                const hasQA = fieldsToSend.question_1 || fieldsToSend.answer_1;
+                if (!hasQA && messages.length > 3) {
+                    const extractedQA = extractQAFromHistory(messages);
+                    fieldsToSend = { ...fieldsToSend, ...extractedQA };
+                }
+                
+                // Also merge userData if available
+                if (userData.name || userData.whatsapp) {
+                    fieldsToSend = {
+                        ...fieldsToSend,
+                        first_name: fieldsToSend.first_name || fieldsToSend.name || userData.name || '',
+                        phone_number: fieldsToSend.phone_number || fieldsToSend.phone || userData.whatsapp || ''
+                    };
+                }
+                
+                // Determine exit point with _timeout suffix
+                const baseExitPoint = determineExitPoint(fieldsToSend);
+                
+                setHasSubmittedLead(true);
+                await sendToGHL({
+                    ...fieldsToSend,
+                    conversation_status: 'abandoned',
+                    intake_complete: false,
+                    exit_point: `${baseExitPoint}_timeout`
+                });
+                
+                console.log('✅ Inactivity lead sent successfully');
+            }, 60000); // 60 seconds
+            
+            setInactivityTimer(timer);
+        }
+
+        // Cleanup on unmount
+        return () => {
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages, hasSubmittedLead, isLoading]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,7 +323,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             
             // Check if intake is complete and we haven't already submitted
             if (!hasSubmittedLead && (data.customFields?.intake_complete || data.customFields?.declined_selection)) {
-                console.log('🎯 TRIGGER: GHL webhook triggered!');
+                console.log('🎯 TRIGGER 1: Complete conversation - GHL webhook triggered!');
+                
+                // CLEAR INACTIVITY TIMER - prevent duplicate send
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    setInactivityTimer(null);
+                    console.log('⏱️ Inactivity timer cleared (Trigger 1 fired)');
+                }
                 console.log('   intake_complete:', data.customFields?.intake_complete);
                 console.log('   declined_selection:', data.customFields?.declined_selection);
                 
@@ -646,6 +729,13 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
     // Handle close with partial lead capture - ALWAYS send whatever data we have
     const handleClose = async () => {
+        // CLEAR INACTIVITY TIMER - prevent duplicate send
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+            setInactivityTimer(null);
+            console.log('⏱️ Inactivity timer cleared (chat closed)');
+        }
+        
         // Send partial lead if we have ANY accumulated data and haven't already submitted
         let fieldsToSend = { ...accumulatedFields };
         
