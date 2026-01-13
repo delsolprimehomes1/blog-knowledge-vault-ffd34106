@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Request Information",
+    "fields": {
+      "fullName": "Full Name",
+      "contactField": "WhatsApp / SMS number",
+      "comment": "Comment (optional)"
+    },
+    "consent": "I agree to receive relevant information.",
+    "submit": "Request Information",
+    "success": "Thank you! We'll be in touch shortly.",
+    "error": "Submission Error"
   }
 }

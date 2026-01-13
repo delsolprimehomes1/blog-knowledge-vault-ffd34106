@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Információ Kérése",
+    "fields": {
+      "fullName": "Teljes Név",
+      "contactField": "WhatsApp / SMS szám",
+      "comment": "Megjegyzés (opcionális)"
+    },
+    "consent": "Elfogadom a releváns információk fogadását.",
+    "submit": "Információ Kérése",
+    "success": "Köszönjük! Hamarosan felvesszük Önnel a kapcsolatot.",
+    "error": "Beküldési hiba"
   }
 }

@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Demander des Informations",
+    "fields": {
+      "fullName": "Nom Complet",
+      "contactField": "Numéro WhatsApp / SMS",
+      "comment": "Commentaire (facultatif)"
+    },
+    "consent": "J'accepte de recevoir des informations pertinentes.",
+    "submit": "Demander des Informations",
+    "success": "Merci ! Nous vous contacterons bientôt.",
+    "error": "Erreur de soumission"
   }
 }

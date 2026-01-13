@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Informatie Aanvragen",
+    "fields": {
+      "fullName": "Volledige Naam",
+      "contactField": "WhatsApp / SMS-nummer",
+      "comment": "Opmerking (optioneel)"
+    },
+    "consent": "Ik ga akkoord met het ontvangen van relevante informatie.",
+    "submit": "Informatie Aanvragen",
+    "success": "Dank u! We nemen spoedig contact met u op.",
+    "error": "Verzendingsfout"
   }
 }

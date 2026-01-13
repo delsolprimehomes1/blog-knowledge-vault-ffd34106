@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Poproś o Informacje",
+    "fields": {
+      "fullName": "Imię i Nazwisko",
+      "contactField": "Numer WhatsApp / SMS",
+      "comment": "Komentarz (opcjonalnie)"
+    },
+    "consent": "Zgadzam się na otrzymywanie odpowiednich informacji.",
+    "submit": "Poproś o Informacje",
+    "success": "Dziękujemy! Wkrótce się skontaktujemy.",
+    "error": "Błąd przesyłania"
   }
 }

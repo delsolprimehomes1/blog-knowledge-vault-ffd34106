@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Begär Information",
+    "fields": {
+      "fullName": "Fullständigt Namn",
+      "contactField": "WhatsApp / SMS-nummer",
+      "comment": "Kommentar (valfritt)"
+    },
+    "consent": "Jag godkänner att ta emot relevant information.",
+    "submit": "Begär Information",
+    "success": "Tack! Vi hör av oss snart.",
+    "error": "Inlämningsfel"
   }
 }

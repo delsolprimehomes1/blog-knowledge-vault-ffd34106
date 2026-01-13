@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Pyydä Tietoja",
+    "fields": {
+      "fullName": "Koko Nimi",
+      "contactField": "WhatsApp / SMS-numero",
+      "comment": "Kommentti (valinnainen)"
+    },
+    "consent": "Hyväksyn asiaankuuluvien tietojen vastaanottamisen.",
+    "submit": "Pyydä Tietoja",
+    "success": "Kiitos! Otamme pian yhteyttä.",
+    "error": "Lähetysvirhe"
   }
 }

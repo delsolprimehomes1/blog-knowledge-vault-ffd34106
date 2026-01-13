@@ -100,5 +100,17 @@
         "name": "Sven & Ingrid"
       }
     ]
+  },
+  "form": {
+    "title": "Anmod om Information",
+    "fields": {
+      "fullName": "Fuldt Navn",
+      "contactField": "WhatsApp / SMS-nummer",
+      "comment": "Kommentar (valgfri)"
+    },
+    "consent": "Jeg accepterer at modtage relevant information.",
+    "submit": "Anmod om Information",
+    "success": "Tak! Vi kontakter dig snart.",
+    "error": "Indsendelsesfejl"
   }
 }
