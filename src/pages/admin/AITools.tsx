@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BatchLinkValidator } from "@/components/admin/BatchLinkValidator";
 import { CodeFenceCleanup } from "@/components/admin/CodeFenceCleanup";
 import { ContentMarkerCleanup } from "@/components/admin/ContentMarkerCleanup";
+import { BulkCaptionGenerator } from "@/components/admin/BulkCaptionGenerator";
 
 export default function AITools() {
   const [testingImage, setTestingImage] = useState(false);
@@ -431,6 +432,9 @@ export default function AITools() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bulk Caption Generation */}
+        <BulkCaptionGenerator />
 
         {/* Batch Link Validation */}
         <BatchLinkValidator />

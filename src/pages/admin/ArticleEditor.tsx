@@ -15,7 +15,7 @@ import { LazyRichTextEditor } from "@/components/LazyRichTextEditor";
 import { AIImageGenerator } from "@/components/AIImageGenerator";
 import { DiagramGenerator } from "@/components/DiagramGenerator";
 import { toast } from "sonner";
-import { AlertCircle, Upload, Save, Eye, Loader2 } from "lucide-react";
+import { AlertCircle, Upload, Save, Eye, Loader2, Sparkles } from "lucide-react";
 import { 
   generateSlug, 
   countWords, 
@@ -78,9 +78,61 @@ const ArticleEditor = () => {
 
   const [imageUploading, setImageUploading] = useState(false);
   const [isImageGenerating, setIsImageGenerating] = useState(false);
+  const [isCaptionGenerating, setIsCaptionGenerating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [citationSelectionMode, setCitationSelectionMode] = useState(false);
   const [citationTargetContext, setCitationTargetContext] = useState("");
+
+  // Generate caption using AI
+  const handleGenerateCaption = async () => {
+    if (!headline.trim()) {
+      toast.error("Please add a headline first");
+      return;
+    }
+
+    setIsCaptionGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-missing-captions', {
+        body: {
+          singleArticleId: id || null,
+          dryRun: !id, // If creating new article, just generate caption without saving
+          batchSize: 1,
+          language
+        }
+      });
+
+      if (error) throw error;
+
+      // For new articles, manually craft the caption request
+      if (!id) {
+        const { data: newCaptionData, error: newCaptionError } = await supabase.functions.invoke('generate-missing-captions', {
+          body: {
+            // Simulate article data for caption generation
+            singleArticleId: null,
+            language,
+            dryRun: true,
+            // Custom prompt data
+            customHeadline: headline,
+            customLanguage: language
+          }
+        });
+
+        if (newCaptionError) throw newCaptionError;
+        if (newCaptionData?.caption) {
+          setFeaturedImageCaption(newCaptionData.caption);
+          toast.success("Caption generated!");
+        }
+      } else if (data?.caption) {
+        setFeaturedImageCaption(data.caption);
+        toast.success("Caption generated and saved!");
+      }
+    } catch (error) {
+      console.error('Caption generation error:', error);
+      toast.error("Failed to generate caption");
+    } finally {
+      setIsCaptionGenerating(false);
+    }
+  };
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -702,12 +754,40 @@ const ArticleEditor = () => {
 
             <div>
               <Label htmlFor="featuredImageCaption">Featured Image Caption (Optional)</Label>
-              <Input
-                id="featuredImageCaption"
-                value={featuredImageCaption}
-                onChange={(e) => setFeaturedImageCaption(e.target.value)}
-                placeholder="Optional caption for the image"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="featuredImageCaption"
+                  value={featuredImageCaption}
+                  onChange={(e) => setFeaturedImageCaption(e.target.value)}
+                  placeholder="Optional caption for the image"
+                  className="flex-1"
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleGenerateCaption}
+                        disabled={isCaptionGenerating || !headline.trim()}
+                      >
+                        {isCaptionGenerating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Generate caption with AI</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Caption will appear below the image on article pages
+              </p>
             </div>
 
             <DiagramGenerator
