@@ -510,20 +510,32 @@ Deno.serve(async (req) => {
       { column: 'date_modified', ascending: false }
     );
 
-    const { data: qaPages } = await supabase
-      .from('qa_pages')
-      .select('slug, language, hreflang_group_id, updated_at, created_at')
-      .eq('status', 'published');
+    console.log('📥 Fetching Q&A pages with pagination...');
+    const qaPages = await fetchAllRows<QAPageData>(
+      supabase,
+      'qa_pages',
+      'slug, language, hreflang_group_id, updated_at, created_at',
+      { column: 'status', value: 'published' },
+      { column: 'updated_at', ascending: false }
+    );
 
-    const { data: locationPages } = await supabase
-      .from('location_pages')
-      .select('city_slug, topic_slug, city_name, language, hreflang_group_id, updated_at')
-      .eq('status', 'published');
+    console.log('📥 Fetching location pages with pagination...');
+    const locationPages = await fetchAllRows<LocationData>(
+      supabase,
+      'location_pages',
+      'city_slug, topic_slug, city_name, language, hreflang_group_id, updated_at',
+      { column: 'status', value: 'published' },
+      { column: 'updated_at', ascending: false }
+    );
 
-    const { data: comparisonPages } = await supabase
-      .from('comparison_pages')
-      .select('slug, language, hreflang_group_id, updated_at')
-      .eq('status', 'published');
+    console.log('📥 Fetching comparison pages with pagination...');
+    const comparisonPages = await fetchAllRows<ComparisonData>(
+      supabase,
+      'comparison_pages',
+      'slug, language, hreflang_group_id, updated_at',
+      { column: 'status', value: 'published' },
+      { column: 'updated_at', ascending: false }
+    );
 
     console.log(`📊 Content counts:`);
     console.log(`   📝 Blog: ${articles?.length || 0}`);
