@@ -688,12 +688,53 @@ Deno.serve(async (req) => {
     // Generate master sitemap index
     const masterIndex = generateMasterSitemapIndex(languageContentTypes, getToday());
     sitemapFiles['sitemap-index.xml'] = masterIndex;
+    
+    // Also add main sitemap.xml that points to sitemap-index.xml
+    sitemapFiles['sitemap.xml'] = masterIndex;
+
+    // Upload all sitemap files to Supabase Storage for fresh serving
+    console.log('📤 Uploading sitemaps to storage...');
+    let uploadedCount = 0;
+    let uploadErrors: string[] = [];
+    
+    for (const [filePath, xmlContent] of Object.entries(sitemapFiles)) {
+      try {
+        // Convert string to Uint8Array for upload
+        const encoder = new TextEncoder();
+        const contentBytes = encoder.encode(xmlContent);
+        
+        const { error: uploadError } = await supabase.storage
+          .from('sitemaps')
+          .upload(filePath, contentBytes, {
+            contentType: 'application/xml',
+            cacheControl: '300', // 5 minute cache
+            upsert: true
+          });
+        
+        if (uploadError) {
+          console.error(`   ❌ Failed to upload ${filePath}:`, uploadError.message);
+          uploadErrors.push(`${filePath}: ${uploadError.message}`);
+        } else {
+          uploadedCount++;
+        }
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : 'Unknown error';
+        console.error(`   ❌ Error uploading ${filePath}:`, errMsg);
+        uploadErrors.push(`${filePath}: ${errMsg}`);
+      }
+    }
+    
+    console.log(`   ✅ Uploaded ${uploadedCount}/${Object.keys(sitemapFiles).length} files to storage`);
+    if (uploadErrors.length > 0) {
+      console.log(`   ⚠️ Upload errors: ${uploadErrors.join(', ')}`);
+    }
 
     // Log the regeneration event
     console.log(`✅ Sitemap regeneration complete:`);
     console.log(`   • Total URLs: ${totalUrls}`);
     console.log(`   • Languages: ${Array.from(languageContentTypes.keys()).join(', ')}`);
     console.log(`   • Files generated: ${Object.keys(sitemapFiles).length}`);
+    console.log(`   • Files uploaded to storage: ${uploadedCount}`);
 
     // Prepare response data
     const sitemapData = {
@@ -708,7 +749,11 @@ Deno.serve(async (req) => {
         comparisons: comparisonPages?.length || 0,
       },
       files_generated: Object.keys(sitemapFiles).length,
+      files_uploaded: uploadedCount,
+      upload_errors: uploadErrors.length > 0 ? uploadErrors : undefined,
       file_list: Object.keys(sitemapFiles),
+      storage_bucket: 'sitemaps',
+      storage_url: `${supabaseUrl}/storage/v1/object/public/sitemaps`,
     };
 
     // Ping IndexNow if this is a publish event
@@ -732,7 +777,7 @@ Deno.serve(async (req) => {
     if (download_xml) {
       return new Response(JSON.stringify({
         success: true,
-        message: 'Sitemap XML files generated',
+        message: 'Sitemap XML files generated and uploaded to storage',
         data: sitemapData,
         xml_files: sitemapFiles,
       }), {
@@ -742,7 +787,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'Sitemap data regenerated',
+      message: 'Sitemap regenerated and uploaded to storage',
       data: sitemapData,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

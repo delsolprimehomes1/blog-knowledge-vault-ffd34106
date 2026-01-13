@@ -26,8 +26,6 @@ const CONFIG = {
 
 // Static files that should be served directly with correct content types
 const STATIC_FILES = {
-  '/sitemap.xml': 'application/xml; charset=utf-8',
-  '/sitemap-index.xml': 'application/xml; charset=utf-8',
   '/ai-sitemap.xml': 'application/xml; charset=utf-8',
   '/robots.txt': 'text/plain; charset=utf-8',
   '/llm.txt': 'text/plain; charset=utf-8',
@@ -36,6 +34,9 @@ const STATIC_FILES = {
   '/glossary.json': 'application/json; charset=utf-8',
   '/pages.json': 'application/json; charset=utf-8'
 };
+
+// Supabase Storage URL for sitemaps (served fresh, bypasses Cloudflare cache)
+const SUPABASE_STORAGE_URL = 'https://kazggnufaoicopvmwhdl.supabase.co/storage/v1/object/public/sitemaps';
 
 /**
  * Normalize a slug by removing hidden characters, URL-encoded garbage, 
@@ -101,6 +102,45 @@ export async function onRequest(context) {
   const { request, next, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
+  
+  // PRIORITY -1: Serve sitemaps from Supabase Storage (bypasses Cloudflare cache)
+  // This ensures Google always gets fresh sitemap data
+  if (path === '/sitemap.xml' || path === '/sitemap-index.xml' || path.startsWith('/sitemaps/')) {
+    try {
+      // Map path to storage file path
+      const storagePath = path.startsWith('/') ? path.substring(1) : path;
+      const storageUrl = `${SUPABASE_STORAGE_URL}/${storagePath}`;
+      
+      console.log(`[Middleware] Fetching sitemap from storage: ${storageUrl}`);
+      
+      const storageResponse = await fetch(storageUrl, {
+        headers: {
+          'Accept': 'application/xml, text/xml',
+        }
+      });
+      
+      if (storageResponse.ok) {
+        const xmlContent = await storageResponse.text();
+        return new Response(xmlContent, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60',
+            'X-Sitemap-Source': 'supabase-storage',
+            'X-Middleware-Active': 'true',
+            'X-Content-Type-Options': 'nosniff'
+          }
+        });
+      } else {
+        console.log(`[Middleware] Storage returned ${storageResponse.status}, falling back to static file`);
+        // Fall back to static file if storage fails
+      }
+    } catch (error) {
+      console.error(`[Middleware] Error fetching sitemap from storage:`, error);
+      // Fall back to static file
+    }
+    return next();
+  }
   
   // PRIORITY 0: Serve SSG homepage for root path
   // The static index.html contains fully rendered H1, body text, and JSON-LD for bots
