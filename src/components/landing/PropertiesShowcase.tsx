@@ -9,6 +9,7 @@ interface Property {
     category: 'apartment' | 'villa';
     location: string;
     beds_min: number;
+    beds_max?: number;
     baths: number;
     size_sqm: number;
     price_eur: number;
@@ -143,6 +144,13 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations, l
         return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(price);
     };
 
+    const formatBeds = (property: Property) => {
+        if (property.beds_max && property.beds_max !== property.beds_min) {
+            return `${property.beds_min}-${property.beds_max}`;
+        }
+        return `${property.beds_min}`;
+    };
+
     const PropertyCard = ({ property, index }: { property: Property; index: number }) => {
         const { elementRef, isVisible } = useScrollAnimation({ threshold: 0.05 });
         const displayTitle = property.title || `${property.category === 'apartment' ? currentLabels.apartmentTitle : currentLabels.villaTitle}`;
@@ -189,7 +197,7 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations, l
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
                             <div className="flex items-center gap-1">
-                                <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.beds_min}</span>
+                                <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{formatBeds(property)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <Bath size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.baths}</span>
