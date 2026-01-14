@@ -53,6 +53,7 @@ export const ClusterArticlesTab = ({
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   
   // Citation discovery state
   const [discoveringArticle, setDiscoveringArticle] = useState<string | null>(null);
@@ -90,13 +91,13 @@ export const ClusterArticlesTab = ({
     return text.split(/\s+/).filter(w => w.length > 0).length;
   };
 
-  // Fetch actual articles for this cluster
-  const { data: articles = [] } = useQuery({
+  // Fetch actual articles for this cluster (including featured_image_url for duplicate detection)
+  const { data: rawArticles = [] } = useQuery({
     queryKey: ['cluster-articles', cluster.cluster_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('blog_articles')
-        .select('id, headline, slug, language, status, funnel_stage, detailed_content, external_citations')
+        .select('id, headline, slug, language, status, funnel_stage, detailed_content, external_citations, featured_image_url')
         .eq('cluster_id', cluster.cluster_id)
         .order('language')
         .order('funnel_stage');
@@ -105,6 +106,26 @@ export const ClusterArticlesTab = ({
       return data || [];
     },
   });
+
+  // Compute duplicate image detection
+  const imageCountMap = new Map<string, number>();
+  rawArticles.forEach(a => {
+    if (a.featured_image_url) {
+      const count = imageCountMap.get(a.featured_image_url) || 0;
+      imageCountMap.set(a.featured_image_url, count + 1);
+    }
+  });
+
+  // Add isDuplicateImage flag to each article
+  const articles = rawArticles.map(a => ({
+    ...a,
+    isDuplicateImage: a.featured_image_url ? (imageCountMap.get(a.featured_image_url) || 1) > 1 : false,
+    duplicateCount: a.featured_image_url ? (imageCountMap.get(a.featured_image_url) || 1) : 1,
+  }));
+
+  // Count articles with duplicate images
+  const duplicateImageCount = articles.filter(a => a.isDuplicateImage).length;
+  const uniqueImageCount = new Set(rawArticles.map(a => a.featured_image_url).filter(Boolean)).size;
 
   // Calculate word count stats for articles
   const wordCountStats = articles.reduce((acc, article) => {
@@ -119,7 +140,8 @@ export const ClusterArticlesTab = ({
   const filteredArticles = articles.filter(article => {
     const matchesSearch = article.headline.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || article.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesDuplicateFilter = !showDuplicatesOnly || article.isDuplicateImage;
+    return matchesSearch && matchesStatus && matchesDuplicateFilter;
   });
 
   const handleViewLive = (article: { language: string; slug: string }) => {
@@ -363,7 +385,7 @@ export const ClusterArticlesTab = ({
   return (
     <div className="space-y-4">
       {/* Summary Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="text-center p-3 bg-muted/50 rounded-lg">
           <div className="text-2xl font-bold">{cluster.total_articles}</div>
           <div className="text-xs text-muted-foreground">Total Articles</div>
@@ -388,6 +410,19 @@ export const ClusterArticlesTab = ({
             {articles.length > 0 ? Math.round((wordCountStats.inRange / articles.length) * 100) : 0}%
           </div>
           <div className="text-xs text-muted-foreground">Word Count OK</div>
+        </div>
+        <div className="text-center p-3 bg-muted/50 rounded-lg">
+          <div className={`text-2xl font-bold ${
+            duplicateImageCount > 0 ? 'text-orange-600' : 'text-green-600'
+          }`}>
+            {uniqueImageCount}/{articles.length}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Unique Images
+            {duplicateImageCount > 0 && (
+              <span className="text-orange-500 ml-1">({duplicateImageCount} dup)</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -454,6 +489,17 @@ export const ClusterArticlesTab = ({
             <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
+        {duplicateImageCount > 0 && (
+          <Button
+            variant={showDuplicatesOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
+            className="gap-1.5"
+          >
+            <ImageIcon className="h-4 w-4" />
+            Duplicates ({duplicateImageCount})
+          </Button>
+        )}
       </div>
 
       {/* Articles List */}
@@ -498,6 +544,15 @@ export const ClusterArticlesTab = ({
                     title={`${article.external_citations.length} approved citation(s)`}
                   >
                     🔗 {article.external_citations.length}
+                  </Badge>
+                )}
+                {article.isDuplicateImage && (
+                  <Badge 
+                    variant="outline" 
+                    className="shrink-0 h-5 px-1.5 text-xs bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700"
+                    title={`Shares image with ${article.duplicateCount - 1} other article(s) - click 🖼️ to regenerate unique image`}
+                  >
+                    🔄 Dup
                   </Badge>
                 )}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
