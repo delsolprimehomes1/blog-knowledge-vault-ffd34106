@@ -107,25 +107,39 @@ export const ClusterArticlesTab = ({
     },
   });
 
-  // Compute duplicate image detection
-  const imageCountMap = new Map<string, number>();
+  // Compute position-aware duplicate image detection
+  // We expect translation siblings (same funnel_stage) to share images
+  // Only flag as duplicate if the same image URL is used across DIFFERENT funnel positions
+  const imagePositionMap = new Map<string, Set<string>>();
   rawArticles.forEach(a => {
-    if (a.featured_image_url) {
-      const count = imageCountMap.get(a.featured_image_url) || 0;
-      imageCountMap.set(a.featured_image_url, count + 1);
+    if (a.featured_image_url && a.funnel_stage) {
+      if (!imagePositionMap.has(a.featured_image_url)) {
+        imagePositionMap.set(a.featured_image_url, new Set());
+      }
+      imagePositionMap.get(a.featured_image_url)!.add(a.funnel_stage);
     }
   });
 
-  // Add isDuplicateImage flag to each article
-  const articles = rawArticles.map(a => ({
-    ...a,
-    isDuplicateImage: a.featured_image_url ? (imageCountMap.get(a.featured_image_url) || 1) > 1 : false,
-    duplicateCount: a.featured_image_url ? (imageCountMap.get(a.featured_image_url) || 1) : 1,
-  }));
+  // Add isDuplicateImage flag - only true if image is shared across multiple funnel positions
+  const articles = rawArticles.map(a => {
+    const positionsUsingImage = a.featured_image_url 
+      ? imagePositionMap.get(a.featured_image_url) 
+      : null;
+    const isDup = positionsUsingImage ? positionsUsingImage.size > 1 : false;
+    
+    return {
+      ...a,
+      isDuplicateImage: isDup,
+      duplicatePositions: positionsUsingImage ? Array.from(positionsUsingImage) : [],
+      duplicatePositionCount: positionsUsingImage?.size || 1,
+    };
+  });
 
-  // Count articles with duplicate images
+  // Count articles with cross-position duplicate images
   const duplicateImageCount = articles.filter(a => a.isDuplicateImage).length;
-  const uniqueImageCount = new Set(rawArticles.map(a => a.featured_image_url).filter(Boolean)).size;
+  // Count unique images per English articles (1 per funnel position = ideal)
+  const englishArticles = rawArticles.filter(a => a.language === 'en');
+  const uniqueEnglishImageCount = new Set(englishArticles.map(a => a.featured_image_url).filter(Boolean)).size;
 
   // Calculate word count stats for articles
   const wordCountStats = articles.reduce((acc, article) => {
@@ -421,7 +435,7 @@ export const ClusterArticlesTab = ({
           <div className={`text-2xl font-bold ${
             duplicateImageCount > 0 ? 'text-orange-600' : 'text-green-600'
           }`}>
-            {uniqueImageCount}/{articles.length}
+            {uniqueEnglishImageCount}/6
           </div>
           <div className="text-xs text-muted-foreground">
             Unique Images
@@ -556,9 +570,9 @@ export const ClusterArticlesTab = ({
                   <Badge 
                     variant="outline" 
                     className="shrink-0 h-5 px-1.5 text-xs bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700"
-                    title={`Shares image with ${article.duplicateCount - 1} other article(s) - click 🖼️ to regenerate unique image`}
+                    title={`Shares image with ${article.duplicatePositionCount - 1} other funnel position(s): ${article.duplicatePositions.filter(p => p !== article.funnel_stage).join(', ')} - click 🖼️ to regenerate`}
                   >
-                    🔄 Dup
+                    🔄 Dup ({article.duplicatePositionCount} pos)
                   </Badge>
                 )}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
