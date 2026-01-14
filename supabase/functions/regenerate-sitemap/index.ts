@@ -35,6 +35,8 @@ interface ArticleData {
   is_primary: boolean;
   date_modified: string | null;
   date_published: string | null;
+  is_redirect?: boolean | null;
+  redirect_to?: string | null;
 }
 
 interface QAPageData {
@@ -43,6 +45,8 @@ interface QAPageData {
   hreflang_group_id: string | null;
   updated_at: string | null;
   created_at: string | null;
+  is_redirect?: boolean | null;
+  redirect_to?: string | null;
 }
 
 interface ComparisonData {
@@ -50,6 +54,8 @@ interface ComparisonData {
   language: string;
   hreflang_group_id: string | null;
   updated_at: string | null;
+  is_redirect?: boolean | null;
+  redirect_to?: string | null;
 }
 
 interface LocationData {
@@ -59,6 +65,8 @@ interface LocationData {
   language: string;
   hreflang_group_id: string | null;
   updated_at: string | null;
+  is_redirect?: boolean | null;
+  redirect_to?: string | null;
 }
 
 // Paginated fetching to bypass Supabase 1000-row limit
@@ -504,46 +512,63 @@ Deno.serve(async (req) => {
 
     // Fetch all published content (paginated to get ALL articles beyond 1000-row limit)
     console.log('📥 Fetching blog articles with pagination...');
-    const articles = await fetchAllRows<ArticleData>(
+    const rawArticles = await fetchAllRows<ArticleData>(
       supabase,
       'blog_articles',
-      'slug, language, cluster_id, is_primary, date_modified, date_published',
+      'slug, language, cluster_id, is_primary, date_modified, date_published, is_redirect, redirect_to',
       { column: 'status', value: 'published' },
       { column: 'date_modified', ascending: false }
     );
 
     console.log('📥 Fetching Q&A pages with pagination...');
-    const qaPages = await fetchAllRows<QAPageData>(
+    const rawQaPages = await fetchAllRows<QAPageData>(
       supabase,
       'qa_pages',
-      'slug, language, hreflang_group_id, updated_at, created_at',
+      'slug, language, hreflang_group_id, updated_at, created_at, is_redirect, redirect_to',
       { column: 'status', value: 'published' },
       { column: 'updated_at', ascending: false }
     );
 
     console.log('📥 Fetching location pages with pagination...');
-    const locationPages = await fetchAllRows<LocationData>(
+    const rawLocationPages = await fetchAllRows<LocationData>(
       supabase,
       'location_pages',
-      'city_slug, topic_slug, city_name, language, hreflang_group_id, updated_at',
+      'city_slug, topic_slug, city_name, language, hreflang_group_id, updated_at, is_redirect, redirect_to',
       { column: 'status', value: 'published' },
       { column: 'updated_at', ascending: false }
     );
 
     console.log('📥 Fetching comparison pages with pagination...');
-    const comparisonPages = await fetchAllRows<ComparisonData>(
+    const rawComparisonPages = await fetchAllRows<ComparisonData>(
       supabase,
       'comparison_pages',
-      'slug, language, hreflang_group_id, updated_at',
+      'slug, language, hreflang_group_id, updated_at, is_redirect, redirect_to',
       { column: 'status', value: 'published' },
       { column: 'updated_at', ascending: false }
     );
 
-    console.log(`📊 Content counts:`);
-    console.log(`   📝 Blog: ${articles?.length || 0}`);
-    console.log(`   🔍 Q&A: ${qaPages?.length || 0}`);
-    console.log(`   📍 Locations: ${locationPages?.length || 0}`);
-    console.log(`   ⚖️ Comparisons: ${comparisonPages?.length || 0}`);
+    // Filter out redirects from sitemap
+    const articles = (rawArticles || []).filter(a => !a.is_redirect && !a.redirect_to);
+    const qaPages = (rawQaPages || []).filter(q => !q.is_redirect && !q.redirect_to);
+    const locationPages = (rawLocationPages || []).filter(l => !l.is_redirect && !l.redirect_to);
+    const comparisonPages = (rawComparisonPages || []).filter(c => !c.is_redirect && !c.redirect_to);
+
+    const excludedRedirects = {
+      blog: (rawArticles?.length || 0) - articles.length,
+      qa: (rawQaPages?.length || 0) - qaPages.length,
+      locations: (rawLocationPages?.length || 0) - locationPages.length,
+      comparisons: (rawComparisonPages?.length || 0) - comparisonPages.length,
+    };
+    const totalExcluded = excludedRedirects.blog + excludedRedirects.qa + excludedRedirects.locations + excludedRedirects.comparisons;
+
+    console.log(`📊 Content counts (after filtering redirects):`);
+    console.log(`   📝 Blog: ${articles.length} (excluded ${excludedRedirects.blog} redirects)`);
+    console.log(`   🔍 Q&A: ${qaPages.length} (excluded ${excludedRedirects.qa} redirects)`);
+    console.log(`   📍 Locations: ${locationPages.length} (excluded ${excludedRedirects.locations} redirects)`);
+    console.log(`   ⚖️ Comparisons: ${comparisonPages.length} (excluded ${excludedRedirects.comparisons} redirects)`);
+    if (totalExcluded > 0) {
+      console.log(`   🔀 Total redirects excluded from sitemap: ${totalExcluded}`);
+    }
 
     // Build cluster map for blog articles
     const clusterMap = new Map<string, ArticleData[]>();
@@ -743,11 +768,13 @@ Deno.serve(async (req) => {
       total_urls: totalUrls,
       languages_with_content: Array.from(languageContentTypes.keys()),
       content_counts: {
-        blog: articles?.length || 0,
-        qa: qaPages?.length || 0,
-        locations: locationPages?.length || 0,
-        comparisons: comparisonPages?.length || 0,
+        blog: articles.length,
+        qa: qaPages.length,
+        locations: locationPages.length,
+        comparisons: comparisonPages.length,
       },
+      excluded_redirects: excludedRedirects,
+      total_redirects_excluded: totalExcluded,
       files_generated: Object.keys(sitemapFiles).length,
       files_uploaded: uploadedCount,
       upload_errors: uploadErrors.length > 0 ? uploadErrors : undefined,

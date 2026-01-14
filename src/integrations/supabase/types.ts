@@ -436,6 +436,7 @@ export type Database = {
           id: string
           internal_links: Json | null
           is_primary: boolean
+          is_redirect: boolean | null
           language: string
           last_citation_check_at: string | null
           last_edited_by: string | null
@@ -446,6 +447,7 @@ export type Database = {
           published_by: string | null
           qa_entities: Json | null
           read_time: number | null
+          redirect_to: string | null
           related_article_ids: string[] | null
           related_cluster_articles: Json | null
           reviewer_id: string | null
@@ -492,6 +494,7 @@ export type Database = {
           id?: string
           internal_links?: Json | null
           is_primary?: boolean
+          is_redirect?: boolean | null
           language: string
           last_citation_check_at?: string | null
           last_edited_by?: string | null
@@ -502,6 +505,7 @@ export type Database = {
           published_by?: string | null
           qa_entities?: Json | null
           read_time?: number | null
+          redirect_to?: string | null
           related_article_ids?: string[] | null
           related_cluster_articles?: Json | null
           reviewer_id?: string | null
@@ -548,6 +552,7 @@ export type Database = {
           id?: string
           internal_links?: Json | null
           is_primary?: boolean
+          is_redirect?: boolean | null
           language?: string
           last_citation_check_at?: string | null
           last_edited_by?: string | null
@@ -558,6 +563,7 @@ export type Database = {
           published_by?: string | null
           qa_entities?: Json | null
           read_time?: number | null
+          redirect_to?: string | null
           related_article_ids?: string[] | null
           related_cluster_articles?: Json | null
           reviewer_id?: string | null
@@ -1566,6 +1572,7 @@ export type Database = {
           hreflang_group_id: string | null
           id: string
           internal_links: Json | null
+          is_redirect: boolean | null
           language: string | null
           meta_description: string
           meta_title: string
@@ -1576,6 +1583,7 @@ export type Database = {
           option_b_overview: string | null
           qa_entities: Json | null
           quick_comparison_table: Json | null
+          redirect_to: string | null
           reviewer_id: string | null
           side_by_side_breakdown: string | null
           slug: string
@@ -1605,6 +1613,7 @@ export type Database = {
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language?: string | null
           meta_description: string
           meta_title: string
@@ -1615,6 +1624,7 @@ export type Database = {
           option_b_overview?: string | null
           qa_entities?: Json | null
           quick_comparison_table?: Json | null
+          redirect_to?: string | null
           reviewer_id?: string | null
           side_by_side_breakdown?: string | null
           slug: string
@@ -1644,6 +1654,7 @@ export type Database = {
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language?: string | null
           meta_description?: string
           meta_title?: string
@@ -1654,6 +1665,7 @@ export type Database = {
           option_b_overview?: string | null
           qa_entities?: Json | null
           quick_comparison_table?: Json | null
+          redirect_to?: string | null
           reviewer_id?: string | null
           side_by_side_breakdown?: string | null
           slug?: string
@@ -2584,12 +2596,14 @@ export type Database = {
           image_prompt: string | null
           intent_type: string
           internal_links: Json | null
+          is_redirect: boolean | null
           language: string
           location_overview: string | null
           market_breakdown: string | null
           meta_description: string
           meta_title: string
           qa_entities: Json | null
+          redirect_to: string | null
           region: string
           reviewer_id: string | null
           source_language: string | null
@@ -2625,12 +2639,14 @@ export type Database = {
           image_prompt?: string | null
           intent_type: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language?: string
           location_overview?: string | null
           market_breakdown?: string | null
           meta_description: string
           meta_title: string
           qa_entities?: Json | null
+          redirect_to?: string | null
           region?: string
           reviewer_id?: string | null
           source_language?: string | null
@@ -2666,12 +2682,14 @@ export type Database = {
           image_prompt?: string | null
           intent_type?: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language?: string
           location_overview?: string | null
           market_breakdown?: string | null
           meta_description?: string
           meta_title?: string
           qa_entities?: Json | null
+          redirect_to?: string | null
           region?: string
           reviewer_id?: string | null
           source_language?: string | null
@@ -2989,11 +3007,13 @@ export type Database = {
           hreflang_group_id: string | null
           id: string
           internal_links: Json | null
+          is_redirect: boolean | null
           language: string
           meta_description: string
           meta_title: string
           qa_type: string
           question_main: string
+          redirect_to: string | null
           related_qas: Json | null
           slug: string
           source_article_id: string
@@ -3023,11 +3043,13 @@ export type Database = {
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language: string
           meta_description: string
           meta_title: string
           qa_type: string
           question_main: string
+          redirect_to?: string | null
           related_qas?: Json | null
           slug: string
           source_article_id: string
@@ -3057,11 +3079,13 @@ export type Database = {
           hreflang_group_id?: string | null
           id?: string
           internal_links?: Json | null
+          is_redirect?: boolean | null
           language?: string
           meta_description?: string
           meta_title?: string
           qa_type?: string
           question_main?: string
+          redirect_to?: string | null
           related_qas?: Json | null
           slug?: string
           source_article_id?: string
