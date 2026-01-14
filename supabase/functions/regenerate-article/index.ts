@@ -229,13 +229,17 @@ ${userPrompt}`;
       });
     }
 
+    // Truncate meta fields to fit database constraints
+    const metaTitle = (finalContent.meta_title || article.meta_title || '').slice(0, 60);
+    const metaDescription = (finalContent.meta_description || article.meta_description || '').slice(0, 160);
+
     // Update the article
     const { error: updateError } = await supabase
       .from('blog_articles')
       .update({
         detailed_content: finalContent.detailed_content,
-        meta_title: finalContent.meta_title || article.meta_title,
-        meta_description: finalContent.meta_description || article.meta_description,
+        meta_title: metaTitle,
+        meta_description: metaDescription,
         speakable_answer: finalContent.speakable_answer || article.speakable_answer,
         date_modified: new Date().toISOString(),
         updated_at: new Date().toISOString()
