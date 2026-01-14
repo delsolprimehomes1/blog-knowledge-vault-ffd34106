@@ -22,12 +22,11 @@ import { toast } from "sonner";
 import JSZip from "jszip";
 
 interface PingResults {
-  google: { success: boolean; status: number };
   indexNow: {
     success: boolean;
     results?: Array<{ endpoint: string; success: boolean; status: number }>;
-    googlePing?: { success: boolean; status: number };
   } | null;
+  googleNote?: string;
 }
 
 interface SitemapData {
@@ -134,15 +133,12 @@ export function SitemapRegenerator() {
         setSitemapData(data.data);
         
         const pingResults = data.data.ping_results;
-        const googleSuccess = pingResults?.google?.success;
         const indexNowSuccess = pingResults?.indexNow?.success;
         
-        if (googleSuccess && indexNowSuccess) {
-          toast.success("All search engines pinged successfully!");
-        } else if (googleSuccess || indexNowSuccess) {
-          toast.success("Search engines pinged (some may have partial results)");
+        if (indexNowSuccess) {
+          toast.success("Bing & Yandex pinged successfully via IndexNow!");
         } else {
-          toast.warning("Sitemaps regenerated but pings may have failed");
+          toast.warning("Sitemaps regenerated but IndexNow ping may have failed");
         }
       }
     } catch (error) {
@@ -253,14 +249,14 @@ export function SitemapRegenerator() {
           </CardContent>
         </Card>
 
-        <Card className="border-green-500/50 bg-green-500/5">
+        <Card className="border-blue-500/50 bg-blue-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-green-600" />
-              Force Google Update
+              <Search className="h-5 w-5 text-blue-600" />
+              Ping Bing & Yandex
             </CardTitle>
             <CardDescription>
-              Regenerate + ping Google, Bing & Yandex
+              Regenerate + notify Bing & Yandex via IndexNow
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -269,7 +265,7 @@ export function SitemapRegenerator() {
               disabled={isLoading || isDownloading || isPinging}
               size="lg"
               variant="default"
-              className="w-full bg-green-600 hover:bg-green-700"
+              className="w-full bg-blue-600 hover:bg-blue-700"
             >
               {isPinging ? (
                 <>
@@ -329,18 +325,9 @@ export function SitemapRegenerator() {
               Search Engine Ping Results
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Google */}
-              <div className="flex items-center gap-2 p-2 rounded bg-background">
-                <div className={`w-2 h-2 rounded-full ${sitemapData.ping_results.google?.success ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-sm font-medium">Google</span>
-                <Badge variant={sitemapData.ping_results.google?.success ? "default" : "destructive"} className="ml-auto text-xs">
-                  {sitemapData.ping_results.google?.status || 'N/A'}
-                </Badge>
-              </div>
-              
-              {/* IndexNow endpoints */}
+          <CardContent className="space-y-3">
+            {/* IndexNow endpoints (Bing, Yandex) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {sitemapData.ping_results.indexNow?.results?.map((result, idx) => (
                 <div key={idx} className="flex items-center gap-2 p-2 rounded bg-background">
                   <div className={`w-2 h-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -355,9 +342,18 @@ export function SitemapRegenerator() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Google Search Console typically updates within 24-48 hours after a successful ping.
-            </p>
+            
+            {/* Google info box */}
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium text-amber-700">Google: </span>
+                <span className="text-muted-foreground">
+                  Google deprecated their sitemap ping endpoint in 2023. Your sitemap is automatically discovered via robots.txt, 
+                  or you can manually submit it in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Search Console</a>.
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
