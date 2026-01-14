@@ -36,6 +36,7 @@ interface ClusterResult {
   theme: string | null;
   success: boolean;
   uniqueImagesGenerated: number;
+  imagesPreserved: number;
   imagesShared: number;
   totalArticles: number;
   error?: string;
@@ -62,6 +63,7 @@ const BulkImageUpdate = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [preserveEnglishImages, setPreserveEnglishImages] = useState(true);
   const abortRef = useRef(false);
 
   // Fetch clusters on mount
@@ -150,9 +152,14 @@ const BulkImageUpdate = () => {
   const runDryRun = () => {
     const selectedClusters = clusters.filter(c => selected.has(c.id));
     const totalArticles = selectedClusters.reduce((sum, c) => sum + c.articleCount, 0);
-    const uniqueImagesNeeded = selectedClusters.length * 6; // 6 funnel stages per cluster
-    const translationsToShare = totalArticles - uniqueImagesNeeded;
-    const estimatedTimeMinutes = Math.ceil((selectedClusters.length * 30) / 60); // ~30s per cluster
+    const englishArticles = selectedClusters.length * 6; // 6 funnel stages per cluster
+    const translationsToShare = totalArticles - englishArticles;
+    
+    // If preserving, no new images needed
+    const uniqueImagesNeeded = preserveEnglishImages ? 0 : englishArticles;
+    const estimatedTimeMinutes = preserveEnglishImages 
+      ? Math.ceil((selectedClusters.length * 10) / 60)  // ~10s per cluster (metadata only)
+      : Math.ceil((selectedClusters.length * 30) / 60); // ~30s per cluster (with image gen)
 
     setDryRunSummary({
       totalClusters: selectedClusters.length,
@@ -194,7 +201,7 @@ const BulkImageUpdate = () => {
       try {
         const { data, error } = await supabase.functions.invoke(
           'regenerate-cluster-images',
-          { body: { clusterId, dryRun: false } }
+          { body: { clusterId, dryRun: false, preserveEnglishImages } }
         );
 
         if (error) throw error;
@@ -204,6 +211,7 @@ const BulkImageUpdate = () => {
           theme: cluster?.theme || null,
           success: true,
           uniqueImagesGenerated: data?.uniqueImagesGenerated || 0,
+          imagesPreserved: data?.imagesPreserved || 0,
           imagesShared: data?.imagesShared || 0,
           totalArticles: data?.totalArticles || cluster?.articleCount || 0
         });
@@ -216,6 +224,7 @@ const BulkImageUpdate = () => {
           theme: cluster?.theme || null,
           success: false,
           uniqueImagesGenerated: 0,
+          imagesPreserved: 0,
           imagesShared: 0,
           totalArticles: cluster?.articleCount || 0,
           error: err instanceof Error ? err.message : 'Unknown error'
@@ -235,12 +244,14 @@ const BulkImageUpdate = () => {
     
     const successCount = newResults.filter(r => r.success).length;
     const totalGenerated = newResults.reduce((sum, r) => sum + r.uniqueImagesGenerated, 0);
+    const totalPreserved = newResults.reduce((sum, r) => sum + r.imagesPreserved, 0);
     const totalShared = newResults.reduce((sum, r) => sum + r.imagesShared, 0);
     
-    toast.success(
-      `Completed! ${successCount}/${newResults.length} clusters processed. ` +
-      `${totalGenerated} images generated, ${totalShared} shared.`
-    );
+    const message = preserveEnglishImages
+      ? `Completed! ${successCount}/${newResults.length} clusters. ${totalPreserved} preserved, ${totalShared} shared.`
+      : `Completed! ${successCount}/${newResults.length} clusters. ${totalGenerated} generated, ${totalShared} shared.`;
+    
+    toast.success(message);
   };
 
   const stopProcessing = () => {
@@ -299,10 +310,12 @@ const BulkImageUpdate = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2">
-                <Image className="h-5 w-5 text-blue-500" />
+                <Image className={`h-5 w-5 ${preserveEnglishImages ? 'text-green-500' : 'text-blue-500'}`} />
                 <div>
-                  <p className="text-2xl font-bold">{estimatedImages}</p>
-                  <p className="text-sm text-muted-foreground">New Images</p>
+                  <p className="text-2xl font-bold">{preserveEnglishImages ? estimatedImages : estimatedImages}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {preserveEnglishImages ? 'Images Preserved' : 'New Images'}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -355,6 +368,26 @@ const BulkImageUpdate = () => {
                 <label htmlFor="select-all" className="text-sm cursor-pointer">
                   Select All ({filteredClusters.length} clusters)
                 </label>
+              </div>
+            </div>
+
+            {/* Preserve Images Toggle */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+              <Checkbox
+                id="preserve-images"
+                checked={preserveEnglishImages}
+                onCheckedChange={(checked) => setPreserveEnglishImages(checked === true)}
+                disabled={processing}
+              />
+              <div className="flex-1">
+                <label htmlFor="preserve-images" className="text-sm font-medium cursor-pointer">
+                  Preserve existing English images
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  {preserveEnglishImages 
+                    ? "✅ Keep existing images, only copy to translations (faster, no API costs)"
+                    : "⚠️ Generate NEW images for English articles (slower, uses API credits)"}
+                </p>
               </div>
             </div>
 
@@ -580,24 +613,44 @@ const BulkImageUpdate = () => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>⚠️ Bulk Image Update</AlertDialogTitle>
-              <AlertDialogDescription className="space-y-4">
-                <p>
-                  You are about to regenerate images for <strong>{selected.size}</strong> clusters.
-                </p>
-                <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
-                  <p>This will:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Generate up to <strong>{estimatedImages}</strong> unique images (English articles only)</li>
-                    <li>Share images to up to <strong>{Math.max(0, estimatedShares)}</strong> translated articles</li>
-                    <li>Generate localized alt text and captions for all articles</li>
-                  </ul>
-                  <p className="mt-4">
-                    Estimated time: <strong>{Math.ceil((selected.size * 30) / 60)}-{Math.ceil((selected.size * 45) / 60)} minutes</strong>
+              <AlertDialogDescription asChild>
+                <div className="space-y-4">
+                  <p>
+                    You are about to update <strong>{selected.size}</strong> clusters.
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                    <p>This will:</p>
+                    {preserveEnglishImages ? (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>✅ Keep existing English images</li>
+                        <li>📋 Copy images to up to <strong>{Math.max(0, estimatedShares)}</strong> translations</li>
+                        <li>📝 Generate localized alt text & captions for all articles</li>
+                      </ul>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>🖼️ Generate <strong>{estimatedImages}</strong> NEW images (replaces existing)</li>
+                        <li>📋 Share to up to <strong>{Math.max(0, estimatedShares)}</strong> translations</li>
+                        <li>📝 Generate localized metadata for all articles</li>
+                      </ul>
+                    )}
+                    <p className="mt-4">
+                      Estimated time: <strong>
+                        {preserveEnglishImages 
+                          ? `${Math.max(1, Math.ceil((selected.size * 10) / 60))} minutes`
+                          : `${Math.ceil((selected.size * 30) / 60)}-${Math.ceil((selected.size * 45) / 60)} minutes`
+                        }
+                      </strong>
+                    </p>
+                    {preserveEnglishImages ? (
+                      <p className="text-green-600 font-medium">💰 No image generation costs</p>
+                    ) : (
+                      <p className="text-amber-600 font-medium">💰 Uses API credits for image generation</p>
+                    )}
+                  </div>
+                  <p className="text-amber-600 font-medium">
+                    This cannot be undone. Are you sure?
                   </p>
                 </div>
-                <p className="text-amber-600 font-medium">
-                  This cannot be undone. Are you sure?
-                </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

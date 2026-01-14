@@ -215,7 +215,7 @@ serve(async (req) => {
   }
 
   try {
-    const { clusterId, dryRun = false } = await req.json();
+    const { clusterId, dryRun = false, preserveEnglishImages = false } = await req.json();
 
     if (!clusterId) {
       return new Response(
@@ -286,9 +286,13 @@ serve(async (req) => {
           success: true, 
           dryRun: true, 
           articleCount: articles.length,
-          uniqueImagesNeeded: englishCount,
+          uniqueImagesNeeded: preserveEnglishImages ? 0 : englishCount,
+          imagesPreserved: preserveEnglishImages ? englishCount : 0,
           translationsToShare: translationCount,
-          message: `Would generate ${englishCount} unique images, share to ${translationCount} translations` 
+          preserveMode: preserveEnglishImages,
+          message: preserveEnglishImages 
+            ? `Would preserve ${englishCount} existing images, share to ${translationCount} translations`
+            : `Would generate ${englishCount} unique images, share to ${translationCount} translations` 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -296,7 +300,8 @@ serve(async (req) => {
 
     let successCount = 0;
     let failCount = 0;
-    const results: Array<{ id: string; language: string; success: boolean; newUrl?: string; shared?: boolean }> = [];
+    let imagesPreserved = 0;
+    const results: Array<{ id: string; language: string; success: boolean; newUrl?: string; shared?: boolean; preserved?: boolean }> = [];
     let sceneIndex = 0;
 
     // Process each funnel stage
@@ -309,61 +314,99 @@ serve(async (req) => {
 
       let primaryImageUrl: string | null = null;
 
-      // Step 1: Generate NEW image for English article (primary)
+      // Step 1: Handle English article - either preserve or generate new image
       if (english) {
-        const scene = SCENE_VARIATIONS[sceneIndex % SCENE_VARIATIONS.length];
-        sceneIndex++;
-        
-        const imagePrompt = `Professional Costa del Sol real estate photograph, luxury Mediterranean villa with ${scene}, bright natural lighting, Architectural Digest style, no text, no watermarks, no logos, clean composition, high-end marketing quality`;
-        
-        console.log(`🇬🇧 Generating image for English ${funnelStage} article...`);
-        
-        try {
-          let newImageUrl = await generateUniqueImage(
-            imagePrompt, 
-            english.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200'
-          );
+        if (preserveEnglishImages && english.featured_image_url) {
+          // PRESERVE MODE: Keep existing English image
+          console.log(`📌 Preserving existing English image for ${funnelStage}`);
+          primaryImageUrl = english.featured_image_url;
           
-          // Upload to Supabase Storage
-          if (newImageUrl && newImageUrl.includes('fal.media')) {
-            newImageUrl = await uploadToStorage(
-              newImageUrl,
-              supabase,
-              'article-images',
-              `cluster-en-${funnelStage}-${english.slug || english.id.slice(0, 8)}`
-            );
-          }
-          
-          // Generate English metadata
-          const { altText, caption } = openaiKey 
-            ? await generateLocalizedMetadata(english, openaiKey)
-            : { altText: `Costa del Sol property - ${english.headline}`, caption: null };
-          
-          // Update English article
-          const { error: updateError } = await supabase
-            .from('blog_articles')
-            .update({ 
-              featured_image_url: newImageUrl,
-              featured_image_alt: altText,
-              featured_image_caption: caption,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', english.id);
-          
-          if (updateError) {
-            console.error(`❌ Failed to update English article:`, updateError);
+          // Still generate/update English metadata if OpenAI key available
+          try {
+            const { altText, caption } = openaiKey 
+              ? await generateLocalizedMetadata(english, openaiKey)
+              : { altText: `Costa del Sol property - ${english.headline}`, caption: null };
+            
+            const { error: updateError } = await supabase
+              .from('blog_articles')
+              .update({ 
+                featured_image_alt: altText,
+                featured_image_caption: caption,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', english.id);
+            
+            if (updateError) {
+              console.error(`❌ Failed to update English metadata:`, updateError);
+              failCount++;
+              results.push({ id: english.id, language: 'en', success: false });
+            } else {
+              console.log(`✅ Updated English metadata (image preserved)`);
+              imagesPreserved++;
+              successCount++;
+              results.push({ id: english.id, language: 'en', success: true, newUrl: primaryImageUrl || undefined, preserved: true });
+            }
+          } catch (error) {
+            console.error(`❌ Error updating English metadata:`, error);
             failCount++;
             results.push({ id: english.id, language: 'en', success: false });
-          } else {
-            console.log(`✅ Updated English article with new image`);
-            primaryImageUrl = newImageUrl;
-            successCount++;
-            results.push({ id: english.id, language: 'en', success: true, newUrl: newImageUrl });
           }
-        } catch (error) {
-          console.error(`❌ Error generating English image:`, error);
-          failCount++;
-          results.push({ id: english.id, language: 'en', success: false });
+        } else {
+          // GENERATE MODE: Create new image
+          const scene = SCENE_VARIATIONS[sceneIndex % SCENE_VARIATIONS.length];
+          sceneIndex++;
+          
+          const imagePrompt = `Professional Costa del Sol real estate photograph, luxury Mediterranean villa with ${scene}, bright natural lighting, Architectural Digest style, no text, no watermarks, no logos, clean composition, high-end marketing quality`;
+          
+          console.log(`🇬🇧 Generating image for English ${funnelStage} article...`);
+          
+          try {
+            let newImageUrl = await generateUniqueImage(
+              imagePrompt, 
+              english.featured_image_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200'
+            );
+            
+            // Upload to Supabase Storage
+            if (newImageUrl && newImageUrl.includes('fal.media')) {
+              newImageUrl = await uploadToStorage(
+                newImageUrl,
+                supabase,
+                'article-images',
+                `cluster-en-${funnelStage}-${english.slug || english.id.slice(0, 8)}`
+              );
+            }
+            
+            // Generate English metadata
+            const { altText, caption } = openaiKey 
+              ? await generateLocalizedMetadata(english, openaiKey)
+              : { altText: `Costa del Sol property - ${english.headline}`, caption: null };
+            
+            // Update English article
+            const { error: updateError } = await supabase
+              .from('blog_articles')
+              .update({ 
+                featured_image_url: newImageUrl,
+                featured_image_alt: altText,
+                featured_image_caption: caption,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', english.id);
+            
+            if (updateError) {
+              console.error(`❌ Failed to update English article:`, updateError);
+              failCount++;
+              results.push({ id: english.id, language: 'en', success: false });
+            } else {
+              console.log(`✅ Updated English article with new image`);
+              primaryImageUrl = newImageUrl;
+              successCount++;
+              results.push({ id: english.id, language: 'en', success: true, newUrl: newImageUrl });
+            }
+          } catch (error) {
+            console.error(`❌ Error generating English image:`, error);
+            failCount++;
+            results.push({ id: english.id, language: 'en', success: false });
+          }
         }
         
         // Small delay to avoid rate limiting
@@ -417,11 +460,12 @@ serve(async (req) => {
       }
     }
 
-    const uniqueImagesGenerated = Object.values(articlesByFunnel).filter(g => g.english).length;
+    const uniqueImagesGenerated = results.filter(r => r.success && r.language === 'en' && !r.preserved).length;
     const imagesShared = results.filter(r => r.shared).length;
 
     console.log(`\n🎉 Completed: ${successCount} success, ${failCount} failed`);
     console.log(`   Unique images generated: ${uniqueImagesGenerated}`);
+    console.log(`   Images preserved: ${imagesPreserved}`);
     console.log(`   Images shared to translations: ${imagesShared}`);
 
     return new Response(
@@ -430,9 +474,11 @@ serve(async (req) => {
         clusterId,
         totalArticles: articles.length,
         uniqueImagesGenerated,
+        imagesPreserved,
         imagesShared,
         successCount,
         failCount,
+        preserveMode: preserveEnglishImages,
         results: results.slice(0, 30)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
