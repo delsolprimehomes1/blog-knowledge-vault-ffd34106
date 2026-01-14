@@ -106,53 +106,36 @@ export function ImageAuditView({ onFixClusters }: ImageAuditViewProps) {
       // Filter to complete clusters (10 languages) and analyze health
       const auditClusters: ClusterAuditInfo[] = [];
       
+      // Expected funnel stages in the database
+      const EXPECTED_STAGES = ['TOFU-1', 'TOFU-2', 'TOFU-3', 'MOFU-1', 'MOFU-2', 'BOFU'];
+      
       clusterMap.forEach((cluster, clusterId) => {
         // Only audit complete clusters (10 languages)
         if (cluster.languages.size !== 10) return;
 
-        // Build positions array
+        // Build positions array - check each expected stage directly
         const positionHealthList: FunnelPositionHealth[] = [];
-        let totalUniqueImages = 0;
-
-        // Check each funnel stage
-        const allStages = ['TOFU', 'MOFU', 'BOFU'];
-        allStages.forEach(baseStage => {
-          const count = baseStage === 'TOFU' ? 3 : baseStage === 'MOFU' ? 2 : 1;
+        
+        EXPECTED_STAGES.forEach(stageKey => {
+          // Get unique images for this exact funnel stage
+          const imagesForStage = cluster.positions.get(stageKey) || new Set<string>();
+          const uniqueCount = imagesForStage.size;
           
-          for (let i = 0; i < count; i++) {
-            const stageKey = `${baseStage}${count > 1 ? `-${i + 1}` : ''}`;
-            // Find matching position
-            const matchingPositions = Array.from(cluster.positions.keys()).filter(k => {
-              if (baseStage === 'TOFU') return k.startsWith('TOFU') || k === 'tofu' || k.toLowerCase().includes('tofu');
-              if (baseStage === 'MOFU') return k.startsWith('MOFU') || k === 'mofu' || k.toLowerCase().includes('mofu');
-              if (baseStage === 'BOFU') return k.startsWith('BOFU') || k === 'bofu' || k.toLowerCase().includes('bofu');
-              return false;
-            });
-            
-            // Get unique images for this position across all matching stages
-            const uniqueImagesForPosition = new Set<string>();
-            matchingPositions.forEach(pos => {
-              cluster.positions.get(pos)?.forEach(url => uniqueImagesForPosition.add(url));
-            });
-            
-            const uniqueCount = uniqueImagesForPosition.size;
-            totalUniqueImages += uniqueCount;
-            
-            positionHealthList.push({
-              funnelStage: stageKey,
-              uniqueImages: uniqueCount > 0 ? Math.ceil(uniqueCount / count) : 0,
-              isHealthy: uniqueCount === 10 || uniqueCount <= count // All 10 languages share same images
-            });
-          }
+          // A position is healthy ONLY if exactly 1 image is shared by all 10 languages
+          positionHealthList.push({
+            funnelStage: stageKey,
+            uniqueImages: uniqueCount,
+            isHealthy: uniqueCount === 1
+          });
         });
 
-        // Recalculate total unique images correctly
+        // Calculate total unique images across all positions
         const allImages = new Set<string>();
         cluster.positions.forEach(urls => urls.forEach(url => allImages.add(url)));
         const actualUnique = allImages.size;
 
-        // A healthy cluster has 6 unique images (1 per funnel position shared across 10 languages)
-        const isHealthy = actualUnique === 6;
+        // A cluster is healthy ONLY if ALL 6 positions have exactly 1 shared image
+        const isHealthy = positionHealthList.every(p => p.isHealthy);
 
         auditClusters.push({
           clusterId,
