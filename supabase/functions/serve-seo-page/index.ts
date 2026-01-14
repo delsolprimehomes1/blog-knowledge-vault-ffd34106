@@ -324,25 +324,16 @@ function generateHreflangTags(siblings: HreflangSibling[], currentLang: string, 
     availableLanguages.set(sibling.language, sibling)
   })
 
-  // Generate tags for ALL 10 supported languages (not just existing siblings)
-  // This ensures complete hreflang coverage even when translations don't exist yet
+  // FIXED: Only generate hreflang tags for languages that ACTUALLY EXIST
+  // DO NOT create placeholder URLs for missing translations - this causes 
+  // "Duplicate without user-selected canonical" errors in Google Search Console
   const tags: string[] = []
   
-  for (const lang of SUPPORTED_LANGUAGES) {
-    const sibling = availableLanguages.get(lang)
-    if (sibling) {
-      // Use existing sibling's canonical URL or construct from slug
-      const url = sibling.canonical_url || `${BASE_URL}/${lang}/${pathPrefix}/${sibling.slug}`
-      tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
-    } else {
-      // For missing languages, use the current page's slug pattern
-      // This creates placeholder hreflang tags that can be used when translations are created
-      const currentSibling = availableLanguages.get(currentLang)
-      if (currentSibling) {
-        // Construct URL using the same slug pattern but different language
-        const url = `${BASE_URL}/${lang}/${pathPrefix}/${currentSibling.slug}`
-        tags.push(`  <link rel="alternate" hreflang="${lang}" href="${url}" />`)
-      }
+  for (const sibling of siblings) {
+    // Only include published siblings with valid slugs
+    if (sibling.language && sibling.slug) {
+      const url = sibling.canonical_url || `${BASE_URL}/${sibling.language}/${pathPrefix}/${sibling.slug}`
+      tags.push(`  <link rel="alternate" hreflang="${sibling.language}" href="${url}" />`)
     }
   }
 
