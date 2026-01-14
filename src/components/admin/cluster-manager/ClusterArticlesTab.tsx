@@ -316,14 +316,20 @@ export const ClusterArticlesTab = ({
       
       if (data.success) {
         toast.success(`Regenerated! ${data.oldWordCount}w → ${data.newWordCount}w`);
-        queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
       } else {
         toast.error(data.error || 'Regeneration failed');
       }
     } catch (error: any) {
       console.error('Regenerate failed:', error);
-      toast.error(`Failed: ${error.message}`);
+      // Show warning instead of error - regeneration may still complete in background
+      toast.warning(`Connection interrupted. Refreshing data in 5 seconds...`, {
+        description: "The regeneration may still complete in the background"
+      });
+      // Wait before refresh to give edge function time to complete
+      await new Promise(resolve => setTimeout(resolve, 5000));
     } finally {
+      // ALWAYS invalidate cache to ensure fresh data is shown
+      queryClient.invalidateQueries({ queryKey: ['cluster-articles', cluster.cluster_id] });
       setRegeneratingArticle(null);
     }
   };
