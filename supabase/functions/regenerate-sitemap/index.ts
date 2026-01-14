@@ -783,23 +783,10 @@ Deno.serve(async (req) => {
       storage_url: `${supabaseUrl}/storage/v1/object/public/sitemaps`,
     };
 
-    // Always ping Google directly after sitemap regeneration
-    console.log('🔔 Pinging Google sitemap endpoint...');
-    let googlePingResult = { success: false, status: 0 };
-    try {
-      const googlePingUrl = 'https://www.google.com/ping?sitemap=' + 
-        encodeURIComponent('https://www.delsolprimehomes.com/sitemap.xml');
-      const googleResponse = await fetch(googlePingUrl);
-      googlePingResult = { success: googleResponse.ok, status: googleResponse.status };
-      console.log(`   Google ping: ${googleResponse.status} ${googleResponse.statusText}`);
-    } catch (e) {
-      console.error('   Failed to ping Google:', e);
-    }
-
-    // Ping IndexNow if this is a publish event
+    // Ping IndexNow for Bing and Yandex (Google deprecated their ping endpoint in 2023)
     let indexNowResult = null;
     if (trigger_source === 'publish') {
-      console.log('🔔 Pinging IndexNow...');
+      console.log('🔔 Pinging IndexNow (Bing/Yandex)...');
       try {
         const indexNowResponse = await fetch(`${supabaseUrl}/functions/v1/ping-indexnow`, {
           method: 'POST',
@@ -810,15 +797,16 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ sitemap_update: true }),
         });
         indexNowResult = await indexNowResponse.json();
+        console.log('   IndexNow result:', indexNowResult?.success ? '✓' : '✗');
       } catch (e) {
-        console.error('Failed to ping IndexNow:', e);
+        console.error('   Failed to ping IndexNow:', e);
       }
     }
 
-    // Add ping results to response
+    // Add ping results to response (no Google ping - deprecated in 2023)
     const pingResults = {
-      google: googlePingResult,
       indexNow: indexNowResult,
+      googleNote: 'Google discontinued their sitemap ping endpoint in 2023. Use Google Search Console for manual submission.',
     };
 
     // Return XML files if requested
