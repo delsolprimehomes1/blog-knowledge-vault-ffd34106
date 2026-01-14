@@ -23,6 +23,7 @@ import {
   Home,
   MessageCircle,
   Ban,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -54,6 +55,7 @@ const navigation = [
   { name: "Image Health", href: "/admin/image-health", icon: Image },
   { name: "Schema Health", href: "/admin/schema-health", icon: Database },
   { name: "410 Manager", href: "/admin/gone-urls", icon: Ban },
+  { name: "Redirect Checker", href: "/admin/redirect-checker", icon: ArrowRightLeft },
   { name: "Production Audit", href: "/admin/production-audit", icon: Shield },
 
   // Tools
