@@ -103,6 +103,7 @@ const AddProperty = lazy(() => import("./pages/AddProperty"));
 const EmmaConversations = lazy(() => import("./pages/admin/EmmaConversations"));
 const GoneURLsManager = lazy(() => import("./pages/admin/GoneURLsManager"));
 const RedirectChecker = lazy(() => import("./pages/admin/RedirectChecker"));
+const BrokenLinkChecker = lazy(() => import("./pages/admin/BrokenLinkChecker"));
 
 // Landing Pages (Paid Traffic)
 const LandingEn = lazy(() => import("./pages/landing/en"));
@@ -203,6 +204,7 @@ const App = () => (
               <Route path="/admin/migrate-images" element={<ProtectedRoute><MigrateImages /></ProtectedRoute>} />
               <Route path="/admin/gone-urls" element={<ProtectedRoute><GoneURLsManager /></ProtectedRoute>} />
               <Route path="/admin/redirect-checker" element={<ProtectedRoute><RedirectChecker /></ProtectedRoute>} />
+              <Route path="/admin/broken-links" element={<ProtectedRoute><BrokenLinkChecker /></ProtectedRoute>} />
 
               {/* Standalone Property Management Page */}
               <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />

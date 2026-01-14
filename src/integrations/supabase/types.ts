@@ -591,6 +591,104 @@ export type Database = {
           },
         ]
       }
+      broken_link_scans: {
+        Row: {
+          broken_links_found: number | null
+          content_types_scanned: string[] | null
+          created_at: string | null
+          fixed_links: number | null
+          id: string
+          scan_completed_at: string | null
+          scan_started_at: string | null
+          scan_type: string | null
+          total_links_checked: number | null
+        }
+        Insert: {
+          broken_links_found?: number | null
+          content_types_scanned?: string[] | null
+          created_at?: string | null
+          fixed_links?: number | null
+          id?: string
+          scan_completed_at?: string | null
+          scan_started_at?: string | null
+          scan_type?: string | null
+          total_links_checked?: number | null
+        }
+        Update: {
+          broken_links_found?: number | null
+          content_types_scanned?: string[] | null
+          created_at?: string | null
+          fixed_links?: number | null
+          id?: string
+          scan_completed_at?: string | null
+          scan_started_at?: string | null
+          scan_type?: string | null
+          total_links_checked?: number | null
+        }
+        Relationships: []
+      }
+      broken_links: {
+        Row: {
+          broken_url: string
+          created_at: string | null
+          fix_action: string | null
+          fixed: boolean | null
+          fixed_at: string | null
+          id: string
+          link_index: number | null
+          link_location: string | null
+          link_text: string | null
+          scan_id: string | null
+          source_id: string
+          source_language: string
+          source_slug: string
+          source_table: string
+          target_status: string | null
+        }
+        Insert: {
+          broken_url: string
+          created_at?: string | null
+          fix_action?: string | null
+          fixed?: boolean | null
+          fixed_at?: string | null
+          id?: string
+          link_index?: number | null
+          link_location?: string | null
+          link_text?: string | null
+          scan_id?: string | null
+          source_id: string
+          source_language: string
+          source_slug: string
+          source_table: string
+          target_status?: string | null
+        }
+        Update: {
+          broken_url?: string
+          created_at?: string | null
+          fix_action?: string | null
+          fixed?: boolean | null
+          fixed_at?: string | null
+          id?: string
+          link_index?: number | null
+          link_location?: string | null
+          link_text?: string | null
+          scan_id?: string | null
+          source_id?: string
+          source_language?: string
+          source_slug?: string
+          source_table?: string
+          target_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broken_links_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "broken_link_scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_recitation_jobs: {
         Row: {
           completed_at: string | null
