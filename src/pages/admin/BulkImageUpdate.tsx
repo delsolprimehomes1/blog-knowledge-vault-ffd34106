@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,10 @@ interface DryRunSummary {
 }
 
 const BulkImageUpdate = () => {
-  const [activeTab, setActiveTab] = useState<"update" | "audit">("audit");
+  const [searchParams] = useSearchParams();
+  const preSelectedCluster = searchParams.get('cluster');
+  
+  const [activeTab, setActiveTab] = useState<"update" | "audit">(preSelectedCluster ? "update" : "audit");
   const [clusters, setClusters] = useState<ClusterInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -69,6 +73,17 @@ const BulkImageUpdate = () => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [preserveEnglishImages, setPreserveEnglishImages] = useState(true);
   const abortRef = useRef(false);
+
+  // Handle pre-selected cluster from URL param
+  useEffect(() => {
+    if (preSelectedCluster && clusters.length > 0 && !processing) {
+      const clusterExists = clusters.some(c => c.id === preSelectedCluster);
+      if (clusterExists) {
+        setSelected(new Set([preSelectedCluster]));
+        toast.info(`Cluster pre-selected for image fixing`);
+      }
+    }
+  }, [preSelectedCluster, clusters, processing]);
 
   // Fetch clusters on mount
   useEffect(() => {

@@ -1,5 +1,12 @@
 // Cluster Manager Types
 
+export interface ImageSharingStatus {
+  isHealthy: boolean;
+  uniqueImages: number;
+  expectedImages: number;  // Always 6
+  sharingRatio: number;    // 60 articles / 6 unique = 10 (healthy)
+}
+
 export interface ClusterData {
   cluster_id: string;
   cluster_theme: string | null;
@@ -21,6 +28,7 @@ export interface ClusterData {
   image_health?: number;
   unique_images?: number;
   total_images?: number;
+  image_sharing_status?: ImageSharingStatus;
 }
 
 export interface QAJobProgress {

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Eye, Trash2, CheckCircle, Loader2, Globe, Link2, Shield, HelpCircle, FileCheck, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Eye, Trash2, CheckCircle, Loader2, Globe, Link2, Shield, HelpCircle, FileCheck, RefreshCw, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ClusterData, getLanguageFlag, getMissingLanguages, getSourceLanguageInfo, getIncompleteLanguages } from "./types";
@@ -121,19 +122,41 @@ export const ClusterCard = ({
                       </h3>
                       {getStatusBadge()}
                       {getJobStatusBadge(cluster.job_status)}
-                      {cluster.image_health !== undefined && (
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${
-                            cluster.image_health >= 95 
-                              ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-950/30' 
-                              : cluster.image_health >= 50 
-                              ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30' 
-                              : 'bg-red-50 border-red-300 text-red-700 dark:bg-red-950/30'
-                          }`}
-                        >
-                          🖼️ {cluster.image_health}%
-                        </Badge>
+                      {cluster.unique_images !== undefined && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs cursor-help ${
+                                  cluster.unique_images === 6 
+                                    ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-950/30' 
+                                    : cluster.unique_images > 6 
+                                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30' 
+                                    : 'bg-red-50 border-red-300 text-red-700 dark:bg-red-950/30'
+                                }`}
+                              >
+                                {cluster.unique_images === 6 ? '✅' : '⚠️'} 🖼️ {cluster.unique_images}/6
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[250px]">
+                              <div className="space-y-1">
+                                <p className="font-semibold">
+                                  Image Sharing: {cluster.unique_images === 6 ? 'Healthy ✅' : 'Needs Fix ⚠️'}
+                                </p>
+                                <p className="text-xs">• {cluster.unique_images} unique images (expected: 6)</p>
+                                {cluster.total_images && (
+                                  <p className="text-xs">• {cluster.total_images} total article images</p>
+                                )}
+                                {cluster.unique_images === 6 ? (
+                                  <p className="text-xs text-green-600">• All languages share the same images</p>
+                                ) : (
+                                  <p className="text-xs text-amber-600">• Click Fix to share English images</p>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
@@ -161,6 +184,26 @@ export const ClusterCard = ({
 
                 {/* Right: Quick Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Fix Images Button - only show if unhealthy */}
+                  {cluster.unique_images !== undefined && cluster.unique_images !== 6 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                            onClick={() => navigate(`/admin/bulk-image-update?cluster=${cluster.cluster_id}`)}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Fix image sharing ({cluster.unique_images} → 6 images)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
