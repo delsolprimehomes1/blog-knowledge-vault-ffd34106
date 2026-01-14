@@ -968,6 +968,14 @@ setTranslationProgress({
     toast.success("Cluster ID copied to clipboard");
   };
 
+  // Calculate image health summary
+  const imageHealthSummary = useMemo(() => {
+    const healthy = clusters.filter(c => c.unique_images === 6).length;
+    const needsFix = clusters.filter(c => c.unique_images !== undefined && c.unique_images !== 6).length;
+    const unknown = clusters.filter(c => c.unique_images === undefined).length;
+    return { healthy, needsFix, unknown, total: clusters.length };
+  }, [clusters]);
+
   return (
     <AdminLayout>
       <div className="container mx-auto p-6 space-y-6">
@@ -978,6 +986,21 @@ setTranslationProgress({
             <p className="text-muted-foreground">
               Manage article clusters ({clusters.length} clusters, {articles?.length || 0} total articles)
             </p>
+            {/* Image Health Summary */}
+            {(imageHealthSummary.healthy > 0 || imageHealthSummary.needsFix > 0) && (
+              <div className="flex gap-3 mt-2 text-sm">
+                {imageHealthSummary.healthy > 0 && (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✅ {imageHealthSummary.healthy} images healthy
+                  </span>
+                )}
+                {imageHealthSummary.needsFix > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    ⚠️ {imageHealthSummary.needsFix} need fix
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button onClick={() => setShowCreateDialog(true)}>
