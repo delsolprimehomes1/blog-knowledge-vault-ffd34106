@@ -9,12 +9,54 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, ExternalLink, Plus, X, Loader2, Image as ImageIcon, Video } from 'lucide-react';
+import { 
+  Save, ExternalLink, Plus, X, Loader2, Image as ImageIcon, Video,
+  Sparkles, RefreshCw, ImagePlus, Check, Clock, AlertCircle, Globe
+} from 'lucide-react';
+
+const SUPPORTED_LANGUAGES = ['en', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'] as const;
+type Language = typeof SUPPORTED_LANGUAGES[number];
+
+const LANGUAGE_LABELS: Record<Language, string> = {
+  en: 'English',
+  de: 'Deutsch',
+  nl: 'Nederlands',
+  fr: 'Français',
+  pl: 'Polski',
+  sv: 'Svenska',
+  da: 'Dansk',
+  hu: 'Magyar',
+  fi: 'Suomi',
+  no: 'Norsk',
+};
+
+const LANGUAGE_FLAGS: Record<Language, string> = {
+  en: '🇬🇧',
+  de: '🇩🇪',
+  nl: '🇳🇱',
+  fr: '🇫🇷',
+  pl: '🇵🇱',
+  sv: '🇸🇪',
+  da: '🇩🇰',
+  hu: '🇭🇺',
+  fi: '🇫🇮',
+  no: '🇳🇴',
+};
 
 interface GalleryItem {
   title: string;
   image: string;
+}
+
+interface AIGalleryItem {
+  type: string;
+  image: string;
+  prompt: string;
+  title_i18n: Record<string, string>;
 }
 
 interface CityBrochure {
@@ -31,22 +73,28 @@ interface CityBrochure {
   meta_title: string | null;
   meta_description: string | null;
   is_published: boolean;
+  // New i18n fields
+  hero_headline_i18n: Record<string, string> | null;
+  hero_subtitle_i18n: Record<string, string> | null;
+  description_i18n: Record<string, string> | null;
+  features_i18n: Record<string, string[]> | null;
+  meta_title_i18n: Record<string, string> | null;
+  meta_description_i18n: Record<string, string> | null;
+  // AI generation fields
+  ai_hero_image: string | null;
+  ai_gallery_images: AIGalleryItem[] | null;
+  generation_status: string | null;
+  content_generated: boolean;
+  images_generated: boolean;
+  last_generated_at: string | null;
 }
 
-// Parse gallery_images from database (handles both old string[] and new GalleryItem[] format)
 const parseGalleryImages = (data: unknown): GalleryItem[] => {
   if (!data || !Array.isArray(data)) return [];
-  
-  return data.map((item, index) => {
-    if (typeof item === 'string') {
-      // Legacy format: convert string URL to GalleryItem
-      return { title: '', image: item };
-    }
+  return data.map((item) => {
+    if (typeof item === 'string') return { title: '', image: item };
     if (typeof item === 'object' && item !== null) {
-      return {
-        title: (item as GalleryItem).title || '',
-        image: (item as GalleryItem).image || '',
-      };
+      return { title: (item as GalleryItem).title || '', image: (item as GalleryItem).image || '' };
     }
     return { title: '', image: '' };
   });
@@ -56,75 +104,134 @@ const BrochureManager: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
   const [editData, setEditData] = useState<Partial<CityBrochure>>({});
   const [newFeature, setNewFeature] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
 
-  // Initialize 3 empty gallery slots
   const emptyGallerySlots: GalleryItem[] = [
     { title: '', image: '' },
     { title: '', image: '' },
     { title: '', image: '' },
   ];
 
-  // Fetch all brochures
+  // Fetch all brochures with polling during generation
   const { data: brochures, isLoading } = useQuery({
-    queryKey: ['city-brochures'],
+    queryKey: ['city-brochures-admin'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('city_brochures')
         .select('*')
         .order('name');
       if (error) throw error;
-      
-      // Parse gallery_images for each brochure
       return data.map(brochure => ({
         ...brochure,
         gallery_images: parseGalleryImages(brochure.gallery_images),
         features: Array.isArray(brochure.features) ? brochure.features : [],
+        hero_headline_i18n: brochure.hero_headline_i18n || {},
+        hero_subtitle_i18n: brochure.hero_subtitle_i18n || {},
+        description_i18n: brochure.description_i18n || {},
+        features_i18n: brochure.features_i18n || {},
+        meta_title_i18n: brochure.meta_title_i18n || {},
+        meta_description_i18n: brochure.meta_description_i18n || {},
+        ai_gallery_images: Array.isArray(brochure.ai_gallery_images) ? brochure.ai_gallery_images as unknown as AIGalleryItem[] : [],
       })) as CityBrochure[];
     },
+    refetchInterval: isGenerating ? 3000 : false,
   });
 
-  // Update brochure mutation
+  // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<CityBrochure> & { id: string }) => {
+      const updatePayload: any = {
+        hero_image: data.hero_image,
+        hero_video_url: data.hero_video_url,
+        hero_headline: data.hero_headline,
+        hero_subtitle: data.hero_subtitle,
+        description: data.description,
+        gallery_images: JSON.parse(JSON.stringify(data.gallery_images || [])),
+        features: data.features,
+        meta_title: data.meta_title,
+        meta_description: data.meta_description,
+        is_published: data.is_published,
+      };
+
+      // Also save i18n content for the current language
+      if (data.hero_headline_i18n) updatePayload.hero_headline_i18n = data.hero_headline_i18n;
+      if (data.hero_subtitle_i18n) updatePayload.hero_subtitle_i18n = data.hero_subtitle_i18n;
+      if (data.description_i18n) updatePayload.description_i18n = data.description_i18n;
+      if (data.features_i18n) updatePayload.features_i18n = data.features_i18n;
+      if (data.meta_title_i18n) updatePayload.meta_title_i18n = data.meta_title_i18n;
+      if (data.meta_description_i18n) updatePayload.meta_description_i18n = data.meta_description_i18n;
+
       const { error } = await supabase
         .from('city_brochures')
-        .update({
-          hero_image: data.hero_image,
-          hero_video_url: data.hero_video_url,
-          hero_headline: data.hero_headline,
-          hero_subtitle: data.hero_subtitle,
-          description: data.description,
-          gallery_images: JSON.parse(JSON.stringify(data.gallery_images || [])),
-          features: data.features,
-          meta_title: data.meta_title,
-          meta_description: data.meta_description,
-          is_published: data.is_published,
-        })
+        .update(updatePayload)
         .eq('id', data.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['city-brochures'] });
+      queryClient.invalidateQueries({ queryKey: ['city-brochures-admin'] });
       toast({ title: 'Saved', description: 'Brochure updated successfully.' });
     },
     onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to save changes.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to save changes.', variant: 'destructive' });
       console.error(error);
     },
   });
 
-  // Set edit data when city changes
+  // Generate content mutation
+  const generateContentMutation = useMutation({
+    mutationFn: async (brochureId: string) => {
+      const { data, error } = await supabase.functions.invoke('generate-brochure-content', {
+        body: { brochureId }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['city-brochures-admin'] });
+      toast({ 
+        title: 'Content Generated', 
+        description: `Generated content in ${data.languagesGenerated}/${data.totalLanguages} languages.` 
+      });
+      setIsGenerating(false);
+    },
+    onError: (error) => {
+      toast({ title: 'Generation Failed', description: String(error), variant: 'destructive' });
+      setIsGenerating(false);
+    },
+  });
+
+  // Generate images mutation
+  const generateImagesMutation = useMutation({
+    mutationFn: async (brochureId: string) => {
+      const { data, error } = await supabase.functions.invoke('generate-brochure-images', {
+        body: { brochureId }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['city-brochures-admin'] });
+      toast({ 
+        title: 'Images Generated', 
+        description: `Generated ${data.totalImages} images for ${data.cityName}.` 
+      });
+      setIsGenerating(false);
+    },
+    onError: (error) => {
+      toast({ title: 'Image Generation Failed', description: String(error), variant: 'destructive' });
+      setIsGenerating(false);
+    },
+  });
+
+  // Set edit data when city or language changes
   useEffect(() => {
     if (selectedCity && brochures) {
       const city = brochures.find((b) => b.slug === selectedCity);
       if (city) {
-        // Ensure we always have 3 gallery slots
         const galleryWithSlots = [...city.gallery_images];
         while (galleryWithSlots.length < 3) {
           galleryWithSlots.push({ title: '', image: '' });
@@ -137,17 +244,102 @@ const BrochureManager: React.FC = () => {
     }
   }, [selectedCity, brochures]);
 
+  // Helper to get content for current language with fallback to English
+  const getLocalizedValue = (i18nField: Record<string, any> | null | undefined, fallback: any = '') => {
+    if (!i18nField) return fallback;
+    return i18nField[selectedLanguage] || i18nField['en'] || fallback;
+  };
+
+  // Helper to check if a language has content
+  const hasLanguageContent = (city: CityBrochure, lang: Language): boolean => {
+    return !!(city.hero_headline_i18n?.[lang] && city.description_i18n?.[lang]);
+  };
+
   const handleSave = () => {
     if (!editData.id) return;
-    // Filter out empty gallery items before saving
-    const cleanedGallery = (editData.gallery_images || []).map(item => ({
+
+    // Update the i18n fields for the current language
+    const updatedData = { ...editData };
+    
+    // Sync current edits to i18n fields
+    if (editData.hero_headline) {
+      updatedData.hero_headline_i18n = {
+        ...(editData.hero_headline_i18n || {}),
+        [selectedLanguage]: editData.hero_headline,
+      };
+    }
+    if (editData.hero_subtitle) {
+      updatedData.hero_subtitle_i18n = {
+        ...(editData.hero_subtitle_i18n || {}),
+        [selectedLanguage]: editData.hero_subtitle,
+      };
+    }
+    if (editData.description) {
+      updatedData.description_i18n = {
+        ...(editData.description_i18n || {}),
+        [selectedLanguage]: editData.description,
+      };
+    }
+    if (editData.features && editData.features.length > 0) {
+      updatedData.features_i18n = {
+        ...(editData.features_i18n || {}),
+        [selectedLanguage]: editData.features,
+      };
+    }
+    if (editData.meta_title) {
+      updatedData.meta_title_i18n = {
+        ...(editData.meta_title_i18n || {}),
+        [selectedLanguage]: editData.meta_title,
+      };
+    }
+    if (editData.meta_description) {
+      updatedData.meta_description_i18n = {
+        ...(editData.meta_description_i18n || {}),
+        [selectedLanguage]: editData.meta_description,
+      };
+    }
+
+    const cleanedGallery = (updatedData.gallery_images || []).map(item => ({
       title: item.title || '',
       image: item.image || '',
     }));
+
     updateMutation.mutate({
-      ...editData,
+      ...updatedData,
       gallery_images: cleanedGallery,
     } as CityBrochure);
+  };
+
+  const handleGenerateAll = async () => {
+    if (!editData.id) return;
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    
+    // Start content generation
+    generateContentMutation.mutate(editData.id);
+    
+    // Simulate progress (actual progress comes from polling)
+    const interval = setInterval(() => {
+      setGenerationProgress(prev => Math.min(prev + 5, 90));
+    }, 2000);
+    
+    // Clear interval when done
+    setTimeout(() => {
+      clearInterval(interval);
+      setGenerationProgress(100);
+    }, 60000);
+  };
+
+  const handleGenerateContent = async () => {
+    if (!editData.id) return;
+    setIsGenerating(true);
+    generateContentMutation.mutate(editData.id);
+  };
+
+  const handleGenerateImages = async () => {
+    if (!editData.id) return;
+    setIsGenerating(true);
+    generateImagesMutation.mutate(editData.id);
   };
 
   const addFeature = () => {
@@ -171,6 +363,21 @@ const BrochureManager: React.FC = () => {
     setEditData({ ...editData, gallery_images: gallery });
   };
 
+  // When language changes, update editable fields from i18n
+  useEffect(() => {
+    if (editData.id) {
+      setEditData(prev => ({
+        ...prev,
+        hero_headline: getLocalizedValue(prev.hero_headline_i18n, prev.hero_headline),
+        hero_subtitle: getLocalizedValue(prev.hero_subtitle_i18n, prev.hero_subtitle),
+        description: getLocalizedValue(prev.description_i18n, prev.description),
+        features: getLocalizedValue(prev.features_i18n, prev.features) || [],
+        meta_title: getLocalizedValue(prev.meta_title_i18n, prev.meta_title),
+        meta_description: getLocalizedValue(prev.meta_description_i18n, prev.meta_description),
+      }));
+    }
+  }, [selectedLanguage]);
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -181,7 +388,21 @@ const BrochureManager: React.FC = () => {
     );
   }
 
+  const currentCity = brochures?.find(b => b.slug === selectedCity);
   const galleryItems = editData.gallery_images || emptyGallerySlots;
+
+  const getStatusBadge = (city: CityBrochure) => {
+    if (city.generation_status === 'generating' || city.generation_status === 'generating_images') {
+      return <Badge variant="outline" className="animate-pulse"><Clock className="w-3 h-3 mr-1" />Generating...</Badge>;
+    }
+    if (city.content_generated && city.images_generated) {
+      return <Badge className="bg-green-500"><Check className="w-3 h-3 mr-1" />Complete</Badge>;
+    }
+    if (city.content_generated) {
+      return <Badge variant="secondary"><Check className="w-3 h-3 mr-1" />Content Only</Badge>;
+    }
+    return <Badge variant="outline"><AlertCircle className="w-3 h-3 mr-1" />Not Generated</Badge>;
+  };
 
   return (
     <AdminLayout>
@@ -190,7 +411,7 @@ const BrochureManager: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold">Brochure Manager</h1>
             <p className="text-muted-foreground">
-              Manage city brochure pages content and SEO
+              AI-powered multilingual brochure content generation
             </p>
           </div>
         </div>
@@ -199,7 +420,10 @@ const BrochureManager: React.FC = () => {
           {/* City List */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="text-lg">Cities</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Cities
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {brochures?.map((city) => (
@@ -212,9 +436,14 @@ const BrochureManager: React.FC = () => {
                       : 'hover:bg-muted'
                   }`}
                 >
-                  <div className="font-medium">{city.name}</div>
-                  <div className="text-xs opacity-70">
-                    {city.is_published ? 'Published' : 'Draft'}
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{city.name}</div>
+                    {city.is_published && (
+                      <span className="text-xs bg-green-500/20 text-green-600 px-2 py-0.5 rounded">Live</span>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    {getStatusBadge(city)}
                   </div>
                 </button>
               ))}
@@ -225,11 +454,34 @@ const BrochureManager: React.FC = () => {
           <div className="lg:col-span-3">
             {selectedCity && editData.id ? (
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>{editData.name}</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-4">
+                    <CardTitle>{editData.name}</CardTitle>
+                    {currentCity && getStatusBadge(currentCity)}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* Language Selector */}
+                    <Select value={selectedLanguage} onValueChange={(v) => setSelectedLanguage(v as Language)}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_LANGUAGES.map(lang => (
+                          <SelectItem key={lang} value={lang}>
+                            <span className="flex items-center gap-2">
+                              <span>{LANGUAGE_FLAGS[lang]}</span>
+                              <span>{LANGUAGE_LABELS[lang]}</span>
+                              {currentCity && hasLanguageContent(currentCity, lang) && (
+                                <Check className="w-3 h-3 text-green-500" />
+                              )}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     <a
-                      href={`/brochure/${editData.slug}`}
+                      href={`/${selectedLanguage}/brochure/${editData.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
@@ -246,15 +498,79 @@ const BrochureManager: React.FC = () => {
                       ) : (
                         <Save className="w-4 h-4 mr-2" />
                       )}
-                      Save Changes
+                      Save
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Generation Controls */}
+                  <div className="mb-6 p-4 bg-gradient-to-r from-prime-gold/10 to-transparent rounded-lg border border-prime-gold/20">
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      <Button
+                        onClick={handleGenerateAll}
+                        disabled={isGenerating}
+                        className="bg-gradient-to-r from-prime-gold to-amber-500 text-prime-950 hover:from-prime-gold/90 hover:to-amber-500/90"
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 mr-2" />
+                        )}
+                        Generate All Content & Images
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleGenerateContent}
+                        disabled={isGenerating}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Regenerate Content
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleGenerateImages}
+                        disabled={isGenerating}
+                      >
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        Regenerate Images
+                      </Button>
+                    </div>
+
+                    {isGenerating && (
+                      <div className="space-y-2">
+                        <Progress value={generationProgress} className="h-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Generating content for all 10 languages... This may take 1-2 minutes.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Language Status Grid */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {SUPPORTED_LANGUAGES.map(lang => {
+                        const hasContent = currentCity && hasLanguageContent(currentCity, lang);
+                        return (
+                          <div
+                            key={lang}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                              hasContent 
+                                ? 'bg-green-500/20 text-green-600' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {LANGUAGE_FLAGS[lang]} {lang.toUpperCase()}
+                            {hasContent && <Check className="w-3 h-3" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <Tabs defaultValue="content">
                     <TabsList className="mb-6">
                       <TabsTrigger value="content">Content</TabsTrigger>
                       <TabsTrigger value="gallery">Gallery Cards</TabsTrigger>
+                      <TabsTrigger value="ai-images">AI Images</TabsTrigger>
                       <TabsTrigger value="features">Features</TabsTrigger>
                       <TabsTrigger value="seo">SEO</TabsTrigger>
                     </TabsList>
@@ -276,6 +592,12 @@ const BrochureManager: React.FC = () => {
                         />
                       </div>
 
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          Currently editing: <strong>{LANGUAGE_FLAGS[selectedLanguage]} {LANGUAGE_LABELS[selectedLanguage]}</strong>
+                        </p>
+                      </div>
+
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <Video className="w-4 h-4" />
@@ -288,25 +610,10 @@ const BrochureManager: React.FC = () => {
                           }
                           placeholder="https://... (YouTube, Vimeo, or direct video URL)"
                         />
-                        {editData.hero_video_url && (
-                          <div className="mt-2 rounded-lg overflow-hidden border">
-                            <video
-                              src={editData.hero_video_url}
-                              controls
-                              className="w-full h-48 object-cover"
-                              poster={editData.hero_image || undefined}
-                            >
-                              Your browser does not support the video tag.
-                            </video>
-                          </div>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Upload a sales video to display in the hero section. Leave empty to use the hero image instead.
-                        </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Hero Image URL (fallback/poster)</Label>
+                        <Label>Hero Image URL (fallback)</Label>
                         <Input
                           value={editData.hero_image || ''}
                           onChange={(e) =>
@@ -314,20 +621,25 @@ const BrochureManager: React.FC = () => {
                           }
                           placeholder="https://..."
                         />
-                        {editData.hero_image && (
-                          <img
-                            src={editData.hero_image}
-                            alt="Hero preview"
-                            className="w-full h-48 object-cover rounded-lg mt-2"
-                          />
+                        {(editData.ai_hero_image || editData.hero_image) && (
+                          <div className="relative">
+                            <img
+                              src={editData.ai_hero_image || editData.hero_image || ''}
+                              alt="Hero preview"
+                              className="w-full h-48 object-cover rounded-lg mt-2"
+                            />
+                            {editData.ai_hero_image && (
+                              <Badge className="absolute top-4 left-4 bg-prime-gold text-prime-950">
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                AI Generated
+                              </Badge>
+                            )}
+                          </div>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                          Used as video poster image and fallback when no video is set.
-                        </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Hero Headline</Label>
+                        <Label>Hero Headline ({selectedLanguage.toUpperCase()})</Label>
                         <Input
                           value={editData.hero_headline || ''}
                           onChange={(e) =>
@@ -335,10 +647,13 @@ const BrochureManager: React.FC = () => {
                           }
                           placeholder="Luxury Living in..."
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {(editData.hero_headline || '').length}/60 characters
+                        </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Hero Subtitle</Label>
+                        <Label>Hero Subtitle ({selectedLanguage.toUpperCase()})</Label>
                         <Input
                           value={editData.hero_subtitle || ''}
                           onChange={(e) =>
@@ -346,25 +661,31 @@ const BrochureManager: React.FC = () => {
                           }
                           placeholder="The jewel of the Costa del Sol"
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {(editData.hero_subtitle || '').length}/100 characters
+                        </p>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Description</Label>
+                        <Label>Description ({selectedLanguage.toUpperCase()})</Label>
                         <Textarea
                           value={editData.description || ''}
                           onChange={(e) =>
                             setEditData({ ...editData, description: e.target.value })
                           }
-                          rows={6}
+                          rows={8}
                           placeholder="Write a compelling description..."
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {(editData.description || '').length} characters (target: 1500-2000)
+                        </p>
                       </div>
                     </TabsContent>
 
                     {/* Gallery Cards Tab */}
                     <TabsContent value="gallery" className="space-y-6">
                       <p className="text-sm text-muted-foreground mb-4">
-                        Add 3 image cards that will display below the description section. Each card has a title and image.
+                        Manual gallery cards. These display below the description section.
                       </p>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -405,10 +726,72 @@ const BrochureManager: React.FC = () => {
                       </div>
                     </TabsContent>
 
+                    {/* AI Images Tab */}
+                    <TabsContent value="ai-images" className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">AI-Generated Images</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Images generated by Nano Banana Pro AI, stored permanently.
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={handleGenerateImages}
+                          disabled={isGenerating}
+                        >
+                          <ImagePlus className="w-4 h-4 mr-2" />
+                          Regenerate All
+                        </Button>
+                      </div>
+
+                      {editData.ai_hero_image && (
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-prime-gold" />
+                            Hero Image
+                          </Label>
+                          <img
+                            src={editData.ai_hero_image}
+                            alt="AI Hero"
+                            className="w-full h-64 object-cover rounded-lg"
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {(editData.ai_gallery_images as AIGalleryItem[] || []).map((img, index) => (
+                          <div key={index} className="space-y-2 p-3 border rounded-lg">
+                            <Badge variant="outline" className="capitalize">{img.type}</Badge>
+                            <img
+                              src={img.image}
+                              alt={img.type}
+                              className="w-full h-40 object-cover rounded-lg"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {!editData.ai_hero_image && (!editData.ai_gallery_images || (editData.ai_gallery_images as AIGalleryItem[]).length === 0) && (
+                        <div className="text-center py-12 bg-muted/50 rounded-lg">
+                          <ImagePlus className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                          <p className="text-muted-foreground">No AI images generated yet.</p>
+                          <Button
+                            className="mt-4"
+                            onClick={handleGenerateImages}
+                            disabled={isGenerating}
+                          >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate Images
+                          </Button>
+                        </div>
+                      )}
+                    </TabsContent>
+
                     {/* Features Tab */}
                     <TabsContent value="features" className="space-y-6">
                       <p className="text-sm text-muted-foreground mb-4">
-                        Features appear in the 4th slot of the gallery grid, next to the 3 image cards.
+                        Features for <strong>{LANGUAGE_FLAGS[selectedLanguage]} {LANGUAGE_LABELS[selectedLanguage]}</strong>
                       </p>
                       
                       <div className="space-y-2">
@@ -435,13 +818,17 @@ const BrochureManager: React.FC = () => {
                           onKeyPress={(e) => e.key === 'Enter' && addFeature()}
                         />
                         <Button onClick={addFeature} variant="outline">
-                          <Plus className="w-4 h-4 mr-2" /> Add
+                          <Plus className="w-4 h-4" />
                         </Button>
                       </div>
                     </TabsContent>
 
                     {/* SEO Tab */}
                     <TabsContent value="seo" className="space-y-6">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        SEO metadata for <strong>{LANGUAGE_FLAGS[selectedLanguage]} {LANGUAGE_LABELS[selectedLanguage]}</strong>
+                      </p>
+
                       <div className="space-y-2">
                         <Label>Meta Title</Label>
                         <Input
@@ -452,7 +839,7 @@ const BrochureManager: React.FC = () => {
                           placeholder="Page title for search engines"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {editData.meta_title?.length || 0}/60 characters
+                          {(editData.meta_title || '').length}/60 characters
                         </p>
                       </div>
 
@@ -464,27 +851,26 @@ const BrochureManager: React.FC = () => {
                             setEditData({ ...editData, meta_description: e.target.value })
                           }
                           rows={3}
-                          placeholder="Description for search engines"
+                          placeholder="Brief description for search results"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {editData.meta_description?.length || 0}/160 characters
+                          {(editData.meta_description || '').length}/160 characters
                         </p>
                       </div>
 
                       {/* Google Preview */}
-                      <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Google Preview
-                        </p>
-                        <div className="text-blue-600 text-lg hover:underline cursor-pointer">
-                          {editData.meta_title || `Luxury Properties in ${editData.name}`}
-                        </div>
-                        <div className="text-green-700 text-sm">
-                          www.delsolprimehomes.com/brochure/{editData.slug}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {editData.meta_description ||
-                            `Discover exceptional properties in ${editData.name} on the Costa del Sol.`}
+                      <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                        <p className="text-xs text-muted-foreground mb-2">Search Preview</p>
+                        <div className="space-y-1">
+                          <p className="text-blue-600 dark:text-blue-400 text-lg hover:underline cursor-pointer truncate">
+                            {editData.meta_title || `${editData.name} | Del Sol Prime Homes`}
+                          </p>
+                          <p className="text-green-700 dark:text-green-500 text-sm">
+                            www.delsolprimehomes.com › {selectedLanguage} › brochure › {editData.slug}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {editData.meta_description || `Discover luxury properties in ${editData.name} on Spain's Costa del Sol.`}
+                          </p>
                         </div>
                       </div>
                     </TabsContent>
@@ -492,10 +878,11 @@ const BrochureManager: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="flex items-center justify-center h-64">
-                <p className="text-muted-foreground">
-                  Select a city to edit its brochure
-                </p>
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center h-96 text-muted-foreground">
+                  <Globe className="w-12 h-12 mb-4 opacity-50" />
+                  <p>Select a city to edit its brochure content</p>
+                </CardContent>
               </Card>
             )}
           </div>

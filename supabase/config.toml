@@ -311,3 +311,9 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
+
+[functions.generate-brochure-content]
+verify_jwt = false
+
+[functions.generate-brochure-images]
+verify_jwt = false
