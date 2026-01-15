@@ -6,3 +6,5 @@ export * from "./ClusterCitationsTab";
 export * from "./ClusterSEOTab";
 export * from "./ClusterHreflangTab";
 export * from "./CreateClusterDialog";
+export * from "./ImageSharingFixDialog";
+export * from "./ImageSharingProgress";

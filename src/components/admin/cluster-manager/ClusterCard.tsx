@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Eye, Trash2, CheckCircle, Loader2, Globe, Link2, Shield, HelpCircle, FileCheck, RefreshCw, ImageIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Eye, Trash2, CheckCircle, Loader2, Globe, Link2, Shield, HelpCircle, FileCheck, RefreshCw, ImageIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,11 +31,14 @@ interface ClusterCardProps {
   onRegenerateLinks: (clusterId: string) => void;
   onSEOAudit: (clusterId: string) => void;
   onGenerateQAs: (clusterId: string, lang: string) => void;
+  onFixImageSharing?: (cluster: ClusterData) => void;
   isPublishing: boolean;
   isDeleting: boolean;
   isTranslating: boolean;
   isRegeneratingLinks: boolean;
   isAuditing: boolean;
+  isFixingImages?: boolean;
+  fixingClusterId?: string | null;
   generatingQALanguage: { clusterId: string; lang: string } | null;
   publishingQAs: string | null;
   translationProgress?: TranslationProgress | null;
@@ -50,11 +53,14 @@ export const ClusterCard = ({
   onRegenerateLinks,
   onSEOAudit,
   onGenerateQAs,
+  onFixImageSharing,
   isPublishing,
   isDeleting,
   isTranslating,
   isRegeneratingLinks,
   isAuditing,
+  isFixingImages,
+  fixingClusterId,
   generatingQALanguage,
   publishingQAs,
   translationProgress,
@@ -193,9 +199,14 @@ export const ClusterCard = ({
                             variant="outline"
                             size="sm"
                             className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                            onClick={() => navigate(`/admin/bulk-image-update?cluster=${cluster.cluster_id}`)}
+                            onClick={() => onFixImageSharing?.(cluster)}
+                            disabled={isFixingImages && fixingClusterId === cluster.cluster_id}
                           >
-                            <ImageIcon className="h-4 w-4" />
+                            {isFixingImages && fixingClusterId === cluster.cluster_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImageIcon className="h-4 w-4" />
+                            )}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -203,6 +214,13 @@ export const ClusterCard = ({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                  )}
+                  {/* Success Indicator - show when healthy */}
+                  {cluster.unique_images !== undefined && cluster.unique_images === 6 && (
+                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30">
+                      <Check className="h-3 w-3 mr-1" />
+                      Shared
+                    </Badge>
                   )}
                   <Button
                     variant="outline"
