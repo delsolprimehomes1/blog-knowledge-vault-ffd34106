@@ -364,11 +364,15 @@ export async function onRequest(context) {
     if (HOMEPAGE_LANGUAGES.includes(homeLang)) {
       try {
         // Try to serve the pre-generated /{lang}/index.html file
-        const langIndexRequest = new Request(
-          new URL(`/${homeLang}/index.html`, request.url).toString(),
-          { method: 'GET', headers: request.headers }
-        );
+        // Use a clean URL without copying headers to avoid ASSETS binding issues
+        const origin = new URL(request.url).origin;
+        const langIndexUrl = `${origin}/${homeLang}/index.html`;
+        console.log(`[Middleware] Attempting to serve language homepage: ${langIndexUrl}`);
+        
+        const langIndexRequest = new Request(langIndexUrl, { method: 'GET' });
         const assetResponse = await env.ASSETS.fetch(langIndexRequest);
+        
+        console.log(`[Middleware] Asset response for /${homeLang}/index.html: status=${assetResponse.status}, ok=${assetResponse.ok}`);
         
         if (assetResponse.ok) {
           const html = await assetResponse.text();
