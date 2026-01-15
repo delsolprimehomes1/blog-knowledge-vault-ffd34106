@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
                       All Locations
                     </span>
                   </HoveredLink>
-                  <HoveredLink href="#areas">
+                  <HoveredLink href={`/${currentLanguage}/#areas`}>
                     <span className="flex items-center gap-2">
                       <Map className="w-4 h-4" />
                       Featured Areas
@@ -190,7 +190,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
                     Our Team
                   </span>
                 </HoveredLink>
-                <HoveredLink href="#contact">
+                <HoveredLink href={`/${currentLanguage}/#contact`}>
                   <span className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
                     Contact
@@ -243,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
             All Locations
           </MobileLink>
-          <MobileLink href="#areas" onClick={() => setIsMobileMenuOpen(false)} icon={<Map className="w-5 h-5" />}>
+          <MobileLink href={`/${currentLanguage}/#areas`} onClick={() => setIsMobileMenuOpen(false)} icon={<Map className="w-5 h-5" />}>
             Featured Areas
           </MobileLink>
           <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
@@ -297,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           <MobileLink to={`/${currentLanguage}/about`} onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
             Our Team
           </MobileLink>
-          <MobileLink href="#contact" onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
+          <MobileLink href={`/${currentLanguage}/#contact`} onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
             Contact
           </MobileLink>
         </MobileMenuSection>
