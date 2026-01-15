@@ -14,7 +14,7 @@ const AREA_SLUG_MAP: Record<string, string> = {
 };
 
 export const FeaturedAreas: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
   
   const areaDescriptions = [
     t.featuredAreas.areas.marbella,
@@ -33,7 +33,7 @@ export const FeaturedAreas: React.FC = () => {
             {t.featuredAreas.description}
           </p>
         </div>
-        <Link to="/property-finder">
+        <Link to={`/${currentLanguage}/properties`}>
           <Button variant="ghost" className="hidden md:flex text-prime-gold font-bold hover:bg-white/50 group">
             {t.featuredAreas.cta} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
@@ -43,7 +43,7 @@ export const FeaturedAreas: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
         {FEATURED_AREAS.map((area, idx) => (
           <Link 
-            to={`/brochure/${AREA_SLUG_MAP[area.id] || area.id}`}
+            to={`/${currentLanguage}/brochure/${AREA_SLUG_MAP[area.id] || area.id}`}
             key={area.id} 
             className={`group relative overflow-hidden rounded-2xl cursor-pointer shadow-lg hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-2 transition-all duration-500 aspect-[3/4] reveal-on-scroll stagger-${idx + 1}`}
           >
@@ -80,7 +80,7 @@ export const FeaturedAreas: React.FC = () => {
       </div>
 
       <div className="mt-12 md:hidden text-center reveal-on-scroll">
-        <Link to="/property-finder">
+        <Link to={`/${currentLanguage}/properties`}>
           <Button variant="ghost" className="text-prime-gold font-bold">
             {t.featuredAreas.cta}
           </Button>

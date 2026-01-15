@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, MapPin, ChevronLeft } from 'lucide-react';
 import { getOtherCities } from '@/constants/brochures';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/i18n';
 
 interface CrossCityDiscoveryProps {
   currentCity: string;
 }
 
 export const CrossCityDiscovery: React.FC<CrossCityDiscoveryProps> = ({ currentCity }) => {
+  const { currentLanguage } = useTranslation();
   const otherCities = getOtherCities(currentCity);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +71,7 @@ export const CrossCityDiscovery: React.FC<CrossCityDiscoveryProps> = ({ currentC
           {otherCities.map((city, index) => (
             <Link
               key={city.id}
-              to={`/brochure/${city.slug}`}
+              to={`/${currentLanguage}/brochure/${city.slug}`}
               className="group relative flex-shrink-0 w-[320px] md:w-[380px] snap-start reveal-on-scroll"
               style={{ transitionDelay: `${index * 100}ms` }}
             >
