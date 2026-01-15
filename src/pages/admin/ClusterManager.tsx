@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { ClusterCard } from "@/components/admin/cluster-manager/ClusterCard";
 import { CreateClusterDialog } from "@/components/admin/cluster-manager/CreateClusterDialog";
 import { BulkImageRegenerationDialog } from "@/components/admin/cluster-manager/BulkImageRegenerationDialog";
+import { ImageSharingFixDialog } from "@/components/admin/cluster-manager/ImageSharingFixDialog";
+import { ImageSharingProgress } from "@/components/admin/cluster-manager/ImageSharingProgress";
 import { 
   ClusterData, 
   QAJobProgress,
@@ -53,6 +55,15 @@ const ClusterManager = () => {
   const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBulkImageDialog, setShowBulkImageDialog] = useState(false);
+  
+  // Image sharing fix state
+  const [clusterToFixImages, setClusterToFixImages] = useState<ClusterData | null>(null);
+  const [showImageFixConfirm, setShowImageFixConfirm] = useState(false);
+  const [imageFixProgress, setImageFixProgress] = useState<{
+    isProcessing: boolean;
+    elapsedSeconds: number;
+  } | null>(null);
+  const imageFixIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Realtime subscription ref
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -276,6 +287,71 @@ const ClusterManager = () => {
       toast.error(`Failed to publish: ${error.message}`);
     },
   });
+
+  // Fix image sharing for a cluster
+  const fixImageSharingMutation = useMutation({
+    mutationFn: async (cluster: ClusterData) => {
+      // Start elapsed time counter
+      setImageFixProgress({ isProcessing: true, elapsedSeconds: 0 });
+      imageFixIntervalRef.current = setInterval(() => {
+        setImageFixProgress(prev => prev ? { ...prev, elapsedSeconds: prev.elapsedSeconds + 1 } : null);
+      }, 1000);
+      
+      const { data, error } = await supabase.functions.invoke('regenerate-cluster-images', {
+        body: {
+          clusterId: cluster.cluster_id,
+          dryRun: false,
+          preserveEnglishImages: true
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      // Clear interval
+      if (imageFixIntervalRef.current) {
+        clearInterval(imageFixIntervalRef.current);
+        imageFixIntervalRef.current = null;
+      }
+      
+      toast.success(`✅ Fixed! ${data.imagesPreserved || 6} preserved, ${data.imagesShared || 54} shared`);
+      
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["cluster-image-health"] });
+      queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
+      
+      // Reset after short delay
+      setTimeout(() => {
+        setImageFixProgress(null);
+        setClusterToFixImages(null);
+      }, 1500);
+    },
+    onError: (error) => {
+      // Clear interval
+      if (imageFixIntervalRef.current) {
+        clearInterval(imageFixIntervalRef.current);
+        imageFixIntervalRef.current = null;
+      }
+      
+      toast.error(`Failed to fix images: ${error.message}`);
+      setImageFixProgress(null);
+      setClusterToFixImages(null);
+    }
+  });
+
+  // Handlers for image sharing fix
+  const handleFixImageSharing = (cluster: ClusterData) => {
+    setClusterToFixImages(cluster);
+    setShowImageFixConfirm(true);
+  };
+
+  const confirmFixImageSharing = () => {
+    if (clusterToFixImages) {
+      setShowImageFixConfirm(false);
+      fixImageSharingMutation.mutate(clusterToFixImages);
+    }
+  };
 
   // Delete all articles in cluster
   const deleteMutation = useMutation({
@@ -1174,12 +1250,15 @@ setTranslationProgress({
                 onGenerateQAs={() => {
                   generateQAsForArticleMutation.mutate({ clusterId: cluster.cluster_id });
                 }}
+                onFixImageSharing={handleFixImageSharing}
                 isPublishing={clusterToPublish === cluster.cluster_id && publishMutation.isPending}
                 isDeleting={clusterToDelete === cluster.cluster_id && deleteMutation.isPending}
                 isTranslating={translatingCluster === cluster.cluster_id}
                 translationProgress={translatingCluster === cluster.cluster_id ? translationProgress : null}
                 isRegeneratingLinks={regeneratingLinks === cluster.cluster_id}
                 isAuditing={false}
+                isFixingImages={fixImageSharingMutation.isPending}
+                fixingClusterId={clusterToFixImages?.cluster_id || null}
                 generatingQALanguage={generatingQALanguage?.clusterId === cluster.cluster_id ? generatingQALanguage : null}
                 publishingQAs={publishingQAs === cluster.cluster_id ? cluster.cluster_id : null}
               />
@@ -1335,6 +1414,24 @@ setTranslationProgress({
           onOpenChange={setShowBulkImageDialog}
           clusters={clusters}
           imageHealthData={imageHealthData}
+        />
+
+        {/* Image Sharing Fix Confirmation Dialog */}
+        <ImageSharingFixDialog
+          cluster={clusterToFixImages}
+          isOpen={showImageFixConfirm}
+          onConfirm={confirmFixImageSharing}
+          onCancel={() => {
+            setShowImageFixConfirm(false);
+            setClusterToFixImages(null);
+          }}
+        />
+
+        {/* Image Sharing Progress Overlay */}
+        <ImageSharingProgress
+          cluster={clusterToFixImages}
+          isOpen={!!imageFixProgress?.isProcessing}
+          elapsedSeconds={imageFixProgress?.elapsedSeconds}
         />
       </div>
     </AdminLayout>
