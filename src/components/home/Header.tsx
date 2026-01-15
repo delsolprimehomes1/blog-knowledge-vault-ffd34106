@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
     {
       title: "Málaga",
       description: "Culture, cuisine & coastline",
-      href: `/${currentLanguage}/brochure/malaga`,
+      href: `/${currentLanguage}/brochure/malaga-city`,
       src: `${storageBaseUrl}/malaga-navbar.jpg`,
       fallback: "https://images.unsplash.com/photo-1550152428-4fbab75a3b0e?w=400&h=300&fit=crop&q=80"
     },
