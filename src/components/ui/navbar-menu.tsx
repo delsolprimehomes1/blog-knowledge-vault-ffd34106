@@ -38,18 +38,19 @@ export const MenuItem = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 10 }}
             transition={transition}
+            className="absolute top-full left-1/2 -translate-x-1/2 z-[60]"
           >
-            <div className="absolute top-[calc(100%_+_1.2rem)] left-1/2 transform -translate-x-1/2 pt-4 z-[60]">
-              <motion.div
-                transition={transition}
-                layoutId="active"
-                className="bg-white rounded-2xl overflow-hidden border border-prime-gold/20 shadow-2xl shadow-prime-900/20"
-              >
-                <motion.div layout className="w-max h-full p-4">
-                  {children}
-                </motion.div>
+            {/* Invisible bridge to maintain hover continuity */}
+            <div className="h-4 w-full" />
+            <motion.div
+              transition={transition}
+              layoutId="active"
+              className="bg-white rounded-2xl overflow-hidden border border-prime-gold/20 shadow-2xl shadow-prime-900/20"
+            >
+              <motion.div layout className="w-max h-full p-4">
+                {children}
               </motion.div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
