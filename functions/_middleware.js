@@ -1,3 +1,5 @@
+// Force rebuild - 2026-01-15-12:30
+
 /**
  * Cloudflare Pages Middleware for SEO Metadata Injection
  * ========================================================
