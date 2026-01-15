@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu as MenuIcon, X, ChevronDown, MapPin, Scale, Users, Phone, Home, Map, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info } from 'lucide-react';
+import { Menu as MenuIcon, X, ChevronDown, Scale, Users, Phone, Home, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useTranslation } from '../../i18n';
 import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
@@ -103,18 +103,6 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
                     <span className="flex items-center gap-2">
                       <Home className="w-4 h-4" />
                       Property Finder
-                    </span>
-                  </HoveredLink>
-                  <HoveredLink href={`/${currentLanguage}/locations`}>
-                    <span className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      All Locations
-                    </span>
-                  </HoveredLink>
-                  <HoveredLink href={`/${currentLanguage}/#areas`}>
-                    <span className="flex items-center gap-2">
-                      <Map className="w-4 h-4" />
-                      Featured Areas
                     </span>
                   </HoveredLink>
                   <HoveredLink href={`/${currentLanguage}/brochure/marbella`}>
@@ -239,12 +227,6 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
         >
           <MobileLink to={`/${currentLanguage}/properties`} onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
             Property Finder
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
-            All Locations
-          </MobileLink>
-          <MobileLink href={`/${currentLanguage}/#areas`} onClick={() => setIsMobileMenuOpen(false)} icon={<Map className="w-5 h-5" />}>
-            Featured Areas
           </MobileLink>
           <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
             City Brochures
