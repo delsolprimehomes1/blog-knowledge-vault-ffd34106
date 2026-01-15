@@ -8,7 +8,7 @@ import { BrochureHero } from '@/components/brochures/BrochureHero';
 import { BrochureDescription } from '@/components/brochures/BrochureDescription';
 import { InvestmentHighlights } from '@/components/brochures/InvestmentHighlights';
 import { LifestyleFeatures } from '@/components/brochures/LifestyleFeatures';
-import { BrochureGallery } from '@/components/brochures/BrochureGallery';
+
 import { BrochureOptInForm } from '@/components/brochures/BrochureOptInForm';
 import { CrossCityDiscovery } from '@/components/brochures/CrossCityDiscovery';
 import { BrochureChatbot } from '@/components/brochures/BrochureChatbot';
@@ -132,7 +132,7 @@ const CityBrochure: React.FC = () => {
   };
 
   const heroImage = city.ai_hero_image || city.hero_image || FALLBACK_IMAGES[city.slug] || FALLBACK_IMAGES.marbella;
-  const galleryImages = parseGalleryImages(city.gallery_images);
+  
   const features = getLocalized(city.features_i18n, city.features) || [];
   const description = getLocalized(city.description_i18n, city.description) || `Discover exceptional real estate opportunities in ${city.name}.`;
   const heroHeadline = getLocalized(city.hero_headline_i18n, city.hero_headline);
@@ -162,7 +162,7 @@ const CityBrochure: React.FC = () => {
         <BrochureDescription description={description} cityName={city.name} />
         <InvestmentHighlights cityName={city.name} />
         <LifestyleFeatures cityName={city.name} />
-        <BrochureGallery images={galleryImages} features={features} cityName={city.name} />
+        
         <BrochureOptInForm ref={formRef} cityName={city.name} citySlug={city.slug} />
         <CrossCityDiscovery currentCity={city.slug} />
       </main>
