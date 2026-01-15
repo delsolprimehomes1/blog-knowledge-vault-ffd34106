@@ -60,9 +60,23 @@ const BlogArticle = () => {
     staleTime: 15 * 60 * 1000, // 15 minutes - articles don't change often
   });
 
-  // Redirect if URL language doesn't match article's actual language
+  // If URL language doesn't match article's actual language, show 404 (no cross-language redirect)
+  // This prevents redirect chains that confuse search engines
   if (article && article.language !== lang) {
-    return <Navigate to={`/${article.language}/blog/${article.slug}`} replace />;
+    return (
+      <>
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>Article Not Found | Del Sol Prime Homes</title>
+        </Helmet>
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
+            <p className="text-muted-foreground">This article is not available in this language.</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   const { data: author } = useQuery({

@@ -1,17 +1,18 @@
 import { Navigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import NotFound from "@/pages/NotFound";
 
 /**
  * Redirect components for legacy URLs without language prefix
- * Q&A redirect looks up the actual language from DB to redirect correctly
+ * Returns 404 if slug doesn't exist (no more fallback to /en/)
  */
 
-// Redirect /blog/:slug -> /{actual-language}/blog/:slug (looks up correct language)
+// Redirect /blog/:slug -> /{actual-language}/blog/:slug OR 404 if not found
 export const BlogRedirect = () => {
   const { slug } = useParams<{ slug: string }>();
   
-  const { data: article, isLoading } = useQuery({
+  const { data: article, isLoading, error } = useQuery({
     queryKey: ['blog-redirect', slug],
     queryFn: async () => {
       const { data } = await supabase
@@ -28,16 +29,19 @@ export const BlogRedirect = () => {
   // While loading, show nothing (brief flash)
   if (isLoading) return null;
   
-  // Redirect to correct language folder, fallback to /en/ if not found
-  const targetLang = article?.language || 'en';
-  return <Navigate to={`/${targetLang}/blog/${slug}`} replace />;
+  // If article not found, show 404 - NO FALLBACK TO /en/
+  if (!article || error) {
+    return <NotFound />;
+  }
+  
+  return <Navigate to={`/${article.language}/blog/${slug}`} replace />;
 };
 
-// Redirect /qa/:slug -> /{actual-language}/qa/:slug (looks up correct language)
+// Redirect /qa/:slug -> /{actual-language}/qa/:slug OR 404 if not found
 export const QARedirect = () => {
   const { slug } = useParams<{ slug: string }>();
   
-  const { data: qaPage, isLoading } = useQuery({
+  const { data: qaPage, isLoading, error } = useQuery({
     queryKey: ['qa-redirect', slug],
     queryFn: async () => {
       const { data } = await supabase
@@ -54,9 +58,12 @@ export const QARedirect = () => {
   // While loading, show nothing (brief flash)
   if (isLoading) return null;
   
-  // Redirect to correct language folder, fallback to /en/ if not found
-  const targetLang = qaPage?.language || 'en';
-  return <Navigate to={`/${targetLang}/qa/${slug}`} replace />;
+  // If Q&A not found, show 404 - NO FALLBACK TO /en/
+  if (!qaPage || error) {
+    return <NotFound />;
+  }
+  
+  return <Navigate to={`/${qaPage.language}/qa/${slug}`} replace />;
 };
 
 // Redirect /compare/:slug -> /en/compare/:slug

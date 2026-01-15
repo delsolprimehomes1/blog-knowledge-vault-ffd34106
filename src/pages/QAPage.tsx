@@ -141,9 +141,33 @@ export default function QAPage() {
     );
   }
 
-  // If Q&A exists but in wrong language folder, redirect to correct one
+  // If Q&A exists but in wrong language folder, show 404 (no cross-language redirect)
+  // This prevents redirect chains that confuse search engines
   if (qaPage && (qaPage as any)._needsRedirect && qaPage.language !== lang) {
-    return <Navigate to={`/${qaPage.language}/qa/${qaPage.slug}`} replace />;
+    return (
+      <>
+        <Header variant="solid" />
+        <main className="min-h-screen bg-background pt-24 pb-16">
+          <div className="container mx-auto px-4 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="w-20 h-20 bg-prime-gold/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Sparkles className="h-10 w-10 text-prime-gold" />
+              </div>
+              <h1 className="text-3xl font-display font-bold mb-4">Q&A Not Found</h1>
+              <p className="text-muted-foreground mb-8">This Q&A is not available in this language.</p>
+              <Link 
+                to={`/${lang}/qa`}
+                className="inline-flex items-center px-6 py-3 bg-prime-gold text-prime-950 font-nav font-semibold rounded-lg hover:bg-prime-goldLight transition-all duration-300 hover:shadow-lg hover:shadow-prime-gold/20"
+              >
+                Browse all Q&As
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
   }
 
   if (error || !qaPage) {

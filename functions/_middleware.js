@@ -112,6 +112,7 @@ const GONE_PATTERNS = [
 
 /**
  * Helper function to lookup article language from database
+ * Returns null if article not found (for 404 handling)
  */
 async function lookupArticleLanguage(table, slug) {
   try {
@@ -120,10 +121,11 @@ async function lookupArticleLanguage(table, slug) {
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Accept': 'application/json' } }
     );
     const data = await response.json();
-    return data?.[0]?.language || 'en';
+    // Return null if not found - caller handles 404
+    return data?.[0]?.language || null;
   } catch (e) {
     console.error('[Middleware] Error looking up article language:', e);
-    return 'en'; // Default to English if lookup fails
+    return null; // Return null on error - caller handles 404
   }
 }
 
@@ -210,20 +212,50 @@ export async function onRequest(context) {
   // This fixes "Alternate page with proper canonical" in GSC
   // ============================================================
   
-  // Legacy blog: /blog/:slug → /{lang}/blog/:slug
+  // Legacy blog: /blog/:slug → /{lang}/blog/:slug OR 404 if not found
   const legacyBlogMatch = path.match(/^\/blog\/([a-z0-9][a-z0-9-]*[a-z0-9])\/?$/);
   if (legacyBlogMatch) {
     const [, slug] = legacyBlogMatch;
     const articleLang = await lookupArticleLanguage('blog_articles', slug);
+    
+    // If slug doesn't exist, return 404 instead of redirecting to /en/
+    if (!articleLang) {
+      console.log(`[Middleware] 404 - Legacy blog slug not found: ${slug}`);
+      return new Response('404 Not Found - This article does not exist', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Robots-Tag': 'noindex, nofollow',
+          'X-Middleware-Active': 'true',
+          'X-404-Reason': 'slug-not-found'
+        }
+      });
+    }
+    
     console.log(`[Middleware] 301 redirect: /blog/${slug} → /${articleLang}/blog/${slug}`);
     return Response.redirect(`${BASE_URL}/${articleLang}/blog/${slug}`, 301);
   }
   
-  // Legacy Q&A: /qa/:slug → /{lang}/qa/:slug
+  // Legacy Q&A: /qa/:slug → /{lang}/qa/:slug OR 404 if not found
   const legacyQaMatch = path.match(/^\/qa\/([a-z0-9][a-z0-9-]*[a-z0-9])\/?$/);
   if (legacyQaMatch) {
     const [, slug] = legacyQaMatch;
     const qaLang = await lookupArticleLanguage('qa_pages', slug);
+    
+    // If slug doesn't exist, return 404 instead of redirecting to /en/
+    if (!qaLang) {
+      console.log(`[Middleware] 404 - Legacy Q&A slug not found: ${slug}`);
+      return new Response('404 Not Found - This Q&A page does not exist', {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Robots-Tag': 'noindex, nofollow',
+          'X-Middleware-Active': 'true',
+          'X-404-Reason': 'slug-not-found'
+        }
+      });
+    }
+    
     console.log(`[Middleware] 301 redirect: /qa/${slug} → /${qaLang}/qa/${slug}`);
     return Response.redirect(`${BASE_URL}/${qaLang}/qa/${slug}`, 301);
   }
