@@ -34,28 +34,28 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
     {
       title: "Marbella",
       description: "Luxury living on the Golden Mile",
-      href: "/brochure/marbella",
+      href: `/${currentLanguage}/brochure/marbella`,
       src: `${storageBaseUrl}/marbella-navbar.jpg`,
       fallback: "https://images.unsplash.com/photo-1722600522832-c7ebd5ea1ace?w=400&h=300&fit=crop&q=80"
     },
     {
       title: "Estepona",
       description: "Charming old town & beaches",
-      href: "/brochure/estepona",
+      href: `/${currentLanguage}/brochure/estepona`,
       src: `${storageBaseUrl}/estepona-navbar.jpg`,
       fallback: "https://images.unsplash.com/photo-1624361141205-e0fd424dd800?w=400&h=300&fit=crop&q=80"
     },
     {
       title: "Málaga",
       description: "Culture, cuisine & coastline",
-      href: "/brochure/malaga",
+      href: `/${currentLanguage}/brochure/malaga`,
       src: `${storageBaseUrl}/malaga-navbar.jpg`,
       fallback: "https://images.unsplash.com/photo-1550152428-4fbab75a3b0e?w=400&h=300&fit=crop&q=80"
     },
     {
       title: "Sotogrande",
       description: "Exclusive marina lifestyle",
-      href: "/brochure/sotogrande",
+      href: `/${currentLanguage}/brochure/sotogrande`,
       src: `${storageBaseUrl}/sotogrande-navbar.jpg`,
       fallback: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&q=80"
     },
@@ -99,13 +99,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-1 pt-2">
-                  <HoveredLink href="/property-finder">
+                  <HoveredLink href={`/${currentLanguage}/properties`}>
                     <span className="flex items-center gap-2">
                       <Home className="w-4 h-4" />
                       Property Finder
                     </span>
                   </HoveredLink>
-                  <HoveredLink href="/locations">
+                  <HoveredLink href={`/${currentLanguage}/locations`}>
                     <span className="flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       All Locations
@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
                       Featured Areas
                     </span>
                   </HoveredLink>
-                  <HoveredLink href="/brochure/marbella">
+                  <HoveredLink href={`/${currentLanguage}/brochure/marbella`}>
                     <span className="flex items-center gap-2">
                       <Landmark className="w-4 h-4" />
                       City Brochures
@@ -130,25 +130,25 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
             {/* Learn Menu */}
             <MenuItem setActive={setActive} active={active} item="Learn">
               <div className="flex flex-col gap-1 min-w-[200px]">
-                <HoveredLink href="/blog">
+                <HoveredLink href={`/${currentLanguage}/blog`}>
                   <span className="flex items-center gap-2">
                     <Newspaper className="w-4 h-4" />
                     Blog & Insights
                   </span>
                 </HoveredLink>
-                <HoveredLink href="/qa">
+                <HoveredLink href={`/${currentLanguage}/qa`}>
                   <span className="flex items-center gap-2">
                     <MessageCircleQuestion className="w-4 h-4" />
                     Q&A Center
                   </span>
                 </HoveredLink>
-                <HoveredLink href="/glossary">
+                <HoveredLink href={`/${currentLanguage}/glossary`}>
                   <span className="flex items-center gap-2">
                     <BookMarked className="w-4 h-4" />
                     Property Glossary
                   </span>
                 </HoveredLink>
-                <HoveredLink href="#guide">
+                <HoveredLink href={`/${currentLanguage}/buyers-guide`}>
                   <span className="flex items-center gap-2">
                     <GraduationCap className="w-4 h-4" />
                     Buyer's Guide
@@ -160,13 +160,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
             {/* Compare Menu */}
             <MenuItem setActive={setActive} active={active} item="Compare">
               <div className="flex flex-col gap-1 min-w-[200px]">
-                <HoveredLink href="/compare">
+                <HoveredLink href={`/${currentLanguage}/compare`}>
                   <span className="flex items-center gap-2">
                     <GitCompare className="w-4 h-4" />
                     Comparison Index
                   </span>
                 </HoveredLink>
-                <HoveredLink href="/compare">
+                <HoveredLink href={`/${currentLanguage}/compare`}>
                   <span className="flex items-center gap-2">
                     <Scale className="w-4 h-4" />
                     City vs City
@@ -178,13 +178,13 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
             {/* About Menu */}
             <MenuItem setActive={setActive} active={active} item="About">
               <div className="flex flex-col gap-1 min-w-[200px]">
-                <HoveredLink href="/about">
+                <HoveredLink href={`/${currentLanguage}/about`}>
                   <span className="flex items-center gap-2">
                     <Info className="w-4 h-4" />
                     About Us
                   </span>
                 </HoveredLink>
-                <HoveredLink href="/about">
+                <HoveredLink href={`/${currentLanguage}/about`}>
                   <span className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Our Team
@@ -237,16 +237,16 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           isOpen={mobileSubmenu === 'explore'}
           onToggle={() => setMobileSubmenu(mobileSubmenu === 'explore' ? null : 'explore')}
         >
-          <MobileLink to="/property-finder" onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/properties`} onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
             Property Finder
           </MobileLink>
-          <MobileLink to="/locations" onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
             All Locations
           </MobileLink>
           <MobileLink href="#areas" onClick={() => setIsMobileMenuOpen(false)} icon={<Map className="w-5 h-5" />}>
             Featured Areas
           </MobileLink>
-          <MobileLink to="/brochure/marbella" onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
             City Brochures
           </MobileLink>
         </MobileMenuSection>
@@ -257,16 +257,16 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           isOpen={mobileSubmenu === 'learn'}
           onToggle={() => setMobileSubmenu(mobileSubmenu === 'learn' ? null : 'learn')}
         >
-          <MobileLink to="/blog" onClick={() => setIsMobileMenuOpen(false)} icon={<Newspaper className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/blog`} onClick={() => setIsMobileMenuOpen(false)} icon={<Newspaper className="w-5 h-5" />}>
             Blog & Insights
           </MobileLink>
-          <MobileLink to="/qa" onClick={() => setIsMobileMenuOpen(false)} icon={<MessageCircleQuestion className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/qa`} onClick={() => setIsMobileMenuOpen(false)} icon={<MessageCircleQuestion className="w-5 h-5" />}>
             Q&A Center
           </MobileLink>
-          <MobileLink to="/glossary" onClick={() => setIsMobileMenuOpen(false)} icon={<BookMarked className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/glossary`} onClick={() => setIsMobileMenuOpen(false)} icon={<BookMarked className="w-5 h-5" />}>
             Property Glossary
           </MobileLink>
-          <MobileLink href="#guide" onClick={() => setIsMobileMenuOpen(false)} icon={<GraduationCap className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/buyers-guide`} onClick={() => setIsMobileMenuOpen(false)} icon={<GraduationCap className="w-5 h-5" />}>
             Buyer's Guide
           </MobileLink>
         </MobileMenuSection>
@@ -277,10 +277,10 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           isOpen={mobileSubmenu === 'compare'}
           onToggle={() => setMobileSubmenu(mobileSubmenu === 'compare' ? null : 'compare')}
         >
-          <MobileLink to="/compare" onClick={() => setIsMobileMenuOpen(false)} icon={<GitCompare className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<GitCompare className="w-5 h-5" />}>
             Comparison Index
           </MobileLink>
-          <MobileLink to="/compare" onClick={() => setIsMobileMenuOpen(false)} icon={<Scale className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<Scale className="w-5 h-5" />}>
             City vs City
           </MobileLink>
         </MobileMenuSection>
@@ -291,10 +291,10 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent' }) => {
           isOpen={mobileSubmenu === 'about'}
           onToggle={() => setMobileSubmenu(mobileSubmenu === 'about' ? null : 'about')}
         >
-          <MobileLink to="/about" onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/about`} onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
             About Us
           </MobileLink>
-          <MobileLink to="/about" onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
+          <MobileLink to={`/${currentLanguage}/about`} onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
             Our Team
           </MobileLink>
           <MobileLink href="#contact" onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
