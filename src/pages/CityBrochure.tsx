@@ -53,6 +53,12 @@ interface CityBrochureData {
   meta_title: string | null;
   meta_description: string | null;
   is_published: boolean;
+  // i18n fields
+  hero_headline_i18n: Record<string, string> | null;
+  hero_subtitle_i18n: Record<string, string> | null;
+  description_i18n: Record<string, string> | null;
+  features_i18n: Record<string, string[]> | null;
+  ai_hero_image: string | null;
 }
 
 const parseGalleryImages = (data: unknown): GalleryItem[] => {
@@ -119,10 +125,18 @@ const CityBrochure: React.FC = () => {
 
   if (!city || error) return <NotFound />;
 
-  const heroImage = city.hero_image || FALLBACK_IMAGES[city.slug] || FALLBACK_IMAGES.marbella;
+  // Helper to get localized content with fallback
+  const getLocalized = (i18n: Record<string, any> | null | undefined, fallback: any) => {
+    if (!i18n) return fallback;
+    return i18n[lang] || i18n['en'] || fallback;
+  };
+
+  const heroImage = city.ai_hero_image || city.hero_image || FALLBACK_IMAGES[city.slug] || FALLBACK_IMAGES.marbella;
   const galleryImages = parseGalleryImages(city.gallery_images);
-  const features = city.features || [];
-  const description = city.description || `Discover exceptional real estate opportunities in ${city.name}.`;
+  const features = getLocalized(city.features_i18n, city.features) || [];
+  const description = getLocalized(city.description_i18n, city.description) || `Discover exceptional real estate opportunities in ${city.name}.`;
+  const heroHeadline = getLocalized(city.hero_headline_i18n, city.hero_headline);
+  const heroSubtitle = getLocalized(city.hero_subtitle_i18n, city.hero_subtitle);
 
   // SEO is now handled server-side by Cloudflare middleware
   // No Helmet needed - server injects: title, meta, canonical, 11 hreflang tags, OG tags
@@ -133,7 +147,15 @@ const CityBrochure: React.FC = () => {
 
       <main className="overflow-hidden">
         <BrochureHero
-          city={{ id: city.id, slug: city.slug, name: city.name, heroImage, heroVideoUrl: city.hero_video_url, hero_headline: city.hero_headline, hero_subtitle: city.hero_subtitle }}
+          city={{ 
+            id: city.id, 
+            slug: city.slug, 
+            name: city.name, 
+            heroImage, 
+            heroVideoUrl: city.hero_video_url, 
+            hero_headline: heroHeadline, 
+            hero_subtitle: heroSubtitle 
+          }}
           onViewBrochure={scrollToForm}
           onChat={toggleChat}
         />

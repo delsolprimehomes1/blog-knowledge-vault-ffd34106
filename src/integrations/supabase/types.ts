@@ -1316,58 +1316,97 @@ export type Database = {
       }
       city_brochures: {
         Row: {
+          ai_gallery_images: Json | null
+          ai_hero_image: string | null
+          content_generated: boolean | null
           created_at: string | null
           description: string | null
+          description_i18n: Json | null
           features: Json | null
+          features_i18n: Json | null
           gallery_images: Json | null
+          gallery_images_i18n: Json | null
+          generation_status: string | null
           hero_headline: string | null
+          hero_headline_i18n: Json | null
           hero_image: string | null
           hero_subtitle: string | null
+          hero_subtitle_i18n: Json | null
           hero_video_url: string | null
           id: string
+          images_generated: boolean | null
           investment_stats: Json | null
           is_published: boolean | null
+          last_generated_at: string | null
           lifestyle_features: Json | null
           meta_description: string | null
+          meta_description_i18n: Json | null
           meta_title: string | null
+          meta_title_i18n: Json | null
           name: string
           slug: string
           updated_at: string | null
         }
         Insert: {
+          ai_gallery_images?: Json | null
+          ai_hero_image?: string | null
+          content_generated?: boolean | null
           created_at?: string | null
           description?: string | null
+          description_i18n?: Json | null
           features?: Json | null
+          features_i18n?: Json | null
           gallery_images?: Json | null
+          gallery_images_i18n?: Json | null
+          generation_status?: string | null
           hero_headline?: string | null
+          hero_headline_i18n?: Json | null
           hero_image?: string | null
           hero_subtitle?: string | null
+          hero_subtitle_i18n?: Json | null
           hero_video_url?: string | null
           id?: string
+          images_generated?: boolean | null
           investment_stats?: Json | null
           is_published?: boolean | null
+          last_generated_at?: string | null
           lifestyle_features?: Json | null
           meta_description?: string | null
+          meta_description_i18n?: Json | null
           meta_title?: string | null
+          meta_title_i18n?: Json | null
           name: string
           slug: string
           updated_at?: string | null
         }
         Update: {
+          ai_gallery_images?: Json | null
+          ai_hero_image?: string | null
+          content_generated?: boolean | null
           created_at?: string | null
           description?: string | null
+          description_i18n?: Json | null
           features?: Json | null
+          features_i18n?: Json | null
           gallery_images?: Json | null
+          gallery_images_i18n?: Json | null
+          generation_status?: string | null
           hero_headline?: string | null
+          hero_headline_i18n?: Json | null
           hero_image?: string | null
           hero_subtitle?: string | null
+          hero_subtitle_i18n?: Json | null
           hero_video_url?: string | null
           id?: string
+          images_generated?: boolean | null
           investment_stats?: Json | null
           is_published?: boolean | null
+          last_generated_at?: string | null
           lifestyle_features?: Json | null
           meta_description?: string | null
+          meta_description_i18n?: Json | null
           meta_title?: string | null
+          meta_title_i18n?: Json | null
           name?: string
           slug?: string
           updated_at?: string | null
