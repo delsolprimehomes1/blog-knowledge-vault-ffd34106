@@ -6,6 +6,10 @@ export VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc
 # Build the React app
 npm run build
 
+# Generate production app-shell.html with correct asset paths
+echo "📦 Generating production app-shell.html..."
+npx tsx scripts/generateAppShell.ts dist
+
 # IMPORTANT: Generate static HOMEPAGE FIRST (creates language-specific homepages)
 # This creates dist/index.html + dist/{en,de,nl,fr,pl,sv,da,hu,fi,no}/index.html
 echo "🏠 Generating static homepage (11 language versions)..."
