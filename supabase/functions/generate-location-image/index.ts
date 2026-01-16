@@ -1,10 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as fal from "npm:@fal-ai/serverless-client";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface FalImage {
+  url: string;
+  width: number;
+  height: number;
+  content_type: string;
+}
+
+interface FalResult {
+  images: FalImage[];
+}
 
 // Sanitize folder name: remove accents and special characters
 function sanitizeFolderName(name: string): string {
@@ -14,6 +26,50 @@ function sanitizeFolderName(name: string): string {
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, ''); // Only allow alphanumeric and hyphens
+}
+
+// Upload image from URL to Supabase Storage
+async function uploadToStorage(
+  imageUrl: string,
+  supabase: any,
+  bucket: string,
+  fileName: string
+): Promise<string> {
+  try {
+    console.log('Downloading image from Fal.ai:', imageUrl);
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to download image: ${imageResponse.status}`);
+    }
+    
+    const imageBlob = await imageResponse.blob();
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    console.log('Uploading to storage:', fileName);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, uint8Array, {
+        contentType: 'image/png',
+        cacheControl: '31536000', // 1 year cache
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(fileName);
+
+    console.log('Image uploaded successfully:', urlData.publicUrl);
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error in uploadToStorage:', error);
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -39,16 +95,19 @@ serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const FAL_KEY = Deno.env.get('FAL_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    if (!FAL_KEY) {
+      throw new Error('FAL_KEY is not configured');
     }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Supabase configuration is missing');
     }
+
+    // Configure Fal.ai
+    fal.config({ credentials: FAL_KEY.trim() });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -57,122 +116,52 @@ serve(async (req) => {
 Mediterranean coastline with azure waters, luxury villas and apartments, 
 Spanish architecture, palm trees, golden beaches. 
 Ultra high resolution, real estate marketing style, 
-warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
+warm Mediterranean sunlight, no text overlays.`;
 
     const finalPrompt = image_prompt 
-      ? `${image_prompt}. Ultra high resolution, 16:9 aspect ratio.`
+      ? `${image_prompt}. Ultra high resolution.`
       : defaultPrompt;
 
     console.log('Generating location image for:', city_name, topic_slug);
     console.log('Using prompt:', finalPrompt);
 
-    // Generate image using OpenAI GPT Image
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
+    // Generate image using Fal.ai Nano Banana Pro
+    const result = await fal.subscribe("fal-ai/nano-banana-pro", {
+      input: {
         prompt: finalPrompt,
-        n: 1,
-        size: '1536x1024'
-      }),
-    });
+        aspect_ratio: "16:9",
+        resolution: "2K",
+        num_images: 1,
+        output_format: "png"
+      },
+      logs: true,
+    }) as FalResult;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI Image API error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI Image API error: ${response.status}`);
+    if (!result.images || result.images.length === 0) {
+      throw new Error('No images generated by Fal.ai');
     }
 
-    const aiData = await response.json();
-    const imageUrl = aiData.data?.[0]?.url;
-    const imageB64 = aiData.data?.[0]?.b64_json;
-
-    // OpenAI returns URL or base64 - handle both
-    let imageData: string;
-    if (imageB64) {
-      imageData = `data:image/png;base64,${imageB64}`;
-    } else if (imageUrl) {
-      // Fetch the image and convert to base64
-      const imgResponse = await fetch(imageUrl);
-      const imgBlob = await imgResponse.blob();
-      const imgBuffer = await imgBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
-      imageData = `data:image/png;base64,${base64}`;
-    } else {
-      console.error('No valid image data in response:', aiData);
-      throw new Error('No valid image data received from AI');
-    }
-
-    // Extract base64 data and mime type
-    const matches = imageData.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) {
-      throw new Error('Invalid base64 image format');
-    }
-
-    const mimeType = matches[1];
-    const base64Data = matches[2];
-    const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-
-    // Convert base64 to Uint8Array for upload
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    const generatedImage = result.images[0];
+    console.log('Image generated successfully:', generatedImage.url);
 
     // Generate unique filename with sanitized folder name
     const timestamp = Date.now();
     const sanitizedCitySlug = sanitizeFolderName(city_slug || city_name);
     const sanitizedTopicSlug = sanitizeFolderName(topic_slug);
-    const fileName = `${sanitizedCitySlug}/${sanitizedTopicSlug}-${timestamp}.${extension}`;
-
-    console.log('Uploading image to storage:', fileName);
+    const fileName = `${sanitizedCitySlug}/${sanitizedTopicSlug}-${timestamp}.png`;
 
     // Upload to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('location-images')
-      .upload(fileName, bytes, {
-        contentType: mimeType,
-        cacheControl: '31536000', // 1 year cache
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      throw new Error(`Failed to upload image: ${uploadError.message}`);
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('location-images')
-      .getPublicUrl(fileName);
-
-    const publicUrl = urlData.publicUrl;
+    const publicUrl = await uploadToStorage(
+      generatedImage.url,
+      supabase,
+      'location-images',
+      fileName
+    );
 
     // Generate SEO-optimized alt text and caption
     const altText = `Aerial view of ${city_name}, Costa del Sol showing Mediterranean coastline, luxury properties, and ${intent_type?.replace(/-/g, ' ') || 'real estate'} opportunities`;
     
     const caption = `${city_name}, Costa del Sol - Premium real estate destination featuring stunning Mediterranean views, world-class amenities, and exceptional investment opportunities in Southern Spain.`;
-
-    console.log('Image uploaded successfully:', publicUrl);
 
     // If location_page_id is provided, update the database
     if (location_page_id) {
@@ -182,8 +171,8 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
           featured_image_url: publicUrl,
           featured_image_alt: altText,
           featured_image_caption: caption,
-          featured_image_width: 1536,
-          featured_image_height: 1024,
+          featured_image_width: generatedImage.width || 1920,
+          featured_image_height: generatedImage.height || 1080,
           updated_at: new Date().toISOString()
         })
         .eq('id', location_page_id);
@@ -203,9 +192,9 @@ warm Mediterranean sunlight, no text overlays. 16:9 aspect ratio.`;
           url: publicUrl,
           alt: altText,
           caption: caption,
-          width: 1536,
-          height: 1024,
-          format: extension,
+          width: generatedImage.width || 1920,
+          height: generatedImage.height || 1080,
+          format: 'png',
           fileName
         }
       }),
