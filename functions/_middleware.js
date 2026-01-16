@@ -357,6 +357,12 @@ export async function onRequest(context) {
     return Response.redirect(`${BASE_URL}/en/locations/${citySlug}/${topicSlug}`, 301);
   }
   
+  // Legacy glossary: /glossary → /en/glossary
+  if (path === '/glossary' || path === '/glossary/') {
+    console.log(`[Middleware] 301 redirect: /glossary → /en/glossary`);
+    return Response.redirect(`${BASE_URL}/en/glossary`, 301);
+  }
+  
   // PRIORITY -1: Serve sitemaps from Supabase Storage (bypasses Cloudflare cache)
   // This ensures Google always gets fresh sitemap data
   if (path === '/sitemap.xml' || path === '/sitemap-index.xml' || path.startsWith('/sitemaps/')) {
