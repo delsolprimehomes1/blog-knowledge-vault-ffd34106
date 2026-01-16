@@ -217,7 +217,7 @@ function generateArticleSchema(article: ArticleData) {
   const schema: any = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#article`,
+    "@id": `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}#article`,
     "headline": article.headline,
     "description": article.meta_description,
     "image": {
@@ -236,7 +236,7 @@ function generateArticleSchema(article: ArticleData) {
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://www.delsolprimehomes.com/blog/${article.slug}`
+      "@id": `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}`
     },
     "inLanguage": article.language
   };
@@ -274,25 +274,25 @@ function generateBreadcrumbSchema(article: ArticleData) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    "@id": `https://www.delsolprimehomes.com/blog/${article.slug}#breadcrumb`,
+    "@id": `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}#breadcrumb`,
     "itemListElement": [
       {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://www.delsolprimehomes.com/"
+        "item": `https://www.delsolprimehomes.com/${article.language}/`
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Blog",
-        "item": "https://www.delsolprimehomes.com/blog/"
+        "item": `https://www.delsolprimehomes.com/${article.language}/blog/`
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": article.headline,
-        "item": `https://www.delsolprimehomes.com/blog/${article.slug}/`
+        "item": `https://www.delsolprimehomes.com/${article.language}/blog/${article.slug}/`
       }
     ]
   };
@@ -601,8 +601,8 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
   ].filter(Boolean).join('\n  ');
 
   const baseUrl = 'https://www.delsolprimehomes.com';
-  // Canonical always self-referencing (never cross-language)
-  const canonicalUrl = `${baseUrl}/blog/${article.slug}`;
+  // Canonical always self-referencing with language prefix
+  const canonicalUrl = `${baseUrl}/${article.language}/blog/${article.slug}`;
 
   // Build hreflang links ONLY when feature flag is enabled
   let hreflangLinks = '';
@@ -615,25 +615,25 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
     };
 
     const hreflangLinksArray = [];
-    const currentUrl = `${baseUrl}/blog/${article.slug}`;
+    const currentUrl = `${baseUrl}/${article.language}/blog/${article.slug}`;
 
-    // 1. Self-referencing
+    // 1. Self-referencing with language prefix
     const currentLangCode = langToHreflang[article.language] || article.language;
     hreflangLinksArray.push(`  <link rel="alternate" hreflang="${currentLangCode}" href="${currentUrl}" />`);
 
-    // 2. Translations (only existing translations)
+    // 2. Translations (only existing translations) - all with language prefix
     if (article.translations && typeof article.translations === 'object') {
       Object.entries(article.translations).forEach(([lang, slug]) => {
         if (slug && typeof slug === 'string' && lang !== article.language) {
           const langCode = langToHreflang[lang] || lang;
-          hreflangLinksArray.push(`  <link rel="alternate" hreflang="${langCode}" href="${baseUrl}/blog/${slug}" />`);
+          hreflangLinksArray.push(`  <link rel="alternate" hreflang="${langCode}" href="${baseUrl}/${lang}/blog/${slug}" />`);
         }
       });
     }
 
-    // 3. x-default (point to English if exists, otherwise current page)
-    const xDefaultSlug = article.translations?.en || article.slug;
-    hreflangLinksArray.push(`  <link rel="alternate" hreflang="x-default" href="${baseUrl}/blog/${xDefaultSlug}" />`);
+    // 3. x-default (point to English version if exists, otherwise current page)
+    const englishSlug = article.translations?.en || article.slug;
+    hreflangLinksArray.push(`  <link rel="alternate" hreflang="x-default" href="${baseUrl}/en/blog/${englishSlug}" />`);
 
     hreflangLinks = '\n' + hreflangLinksArray.join('\n');
   }
@@ -683,7 +683,7 @@ function generateStaticHTML(article: ArticleData, enhancedHreflang: boolean, pro
   <meta property="og:title" content="${sanitizeForHTML(article.meta_title)}" />
   <meta property="og:description" content="${sanitizeForHTML(article.meta_description)}" />
   <meta property="og:image" content="${article.featured_image_url}" />
-  <meta property="og:url" content="${baseUrl}/blog/${article.slug}" />
+  <meta property="og:url" content="${baseUrl}/${article.language}/blog/${article.slug}" />
   <meta property="og:site_name" content="Del Sol Prime Homes" />
   
   <!-- Twitter Card -->
@@ -843,15 +843,46 @@ export async function generateStaticPages(distDir: string) {
       return;
     }
 
-    console.log(`📝 Found ${articles.length} published articles`);
+    // Fetch gone URLs to exclude from generation
+    const { data: goneUrls } = await supabase
+      .from('gone_urls')
+      .select('url');
+    
+    const goneUrlSet = new Set((goneUrls || []).map(g => g.url.toLowerCase()));
+    console.log(`🚫 Found ${goneUrlSet.size} gone URLs to exclude`);
+
+    // Filter out articles with empty content or in gone_urls
+    const validArticles = articles.filter(article => {
+      // Check if article has valid content
+      const content = article.detailed_content || '';
+      const plainContent = content.replace(/<[^>]*>/g, '').trim();
+      if (plainContent.length < 10) {
+        console.log(`⏭️ Skipping ${article.slug} - empty or minimal content`);
+        return false;
+      }
+      
+      // Check if article is in gone_urls
+      const articleUrl = `/${article.language}/blog/${article.slug}`;
+      if (goneUrlSet.has(articleUrl.toLowerCase())) {
+        console.log(`⏭️ Skipping ${article.slug} - in gone_urls`);
+        return false;
+      }
+      
+      return true;
+    });
+
+    console.log(`📝 Found ${articles.length} published articles, ${validArticles.length} valid for SSG`);
 
     let generated = 0;
     let failed = 0;
+    const languageCount: Record<string, number> = {};
 
-    for (const article of articles) {
+    for (const article of validArticles) {
       try {
         const html = generateStaticHTML(article as any, enhancedHreflang, productionAssets);
-        const filePath = join(distDir, 'blog', article.slug, 'index.html');
+        
+        // Output to language-prefixed path: dist/{lang}/blog/{slug}/index.html
+        const filePath = join(distDir, article.language, 'blog', article.slug, 'index.html');
         
         // Create directory if it doesn't exist
         mkdirSync(dirname(filePath), { recursive: true });
@@ -859,15 +890,24 @@ export async function generateStaticPages(distDir: string) {
         // Write HTML file
         writeFileSync(filePath, html, 'utf-8');
         
+        // Track language counts
+        languageCount[article.language] = (languageCount[article.language] || 0) + 1;
+        
         generated++;
         if (generated % 100 === 0) {
           console.log(`✅ Generated: ${generated} pages...`);
         }
       } catch (err) {
         failed++;
-        console.error(`❌ Failed to generate /blog/${article.slug}:`, err);
+        console.error(`❌ Failed to generate /${article.language}/blog/${article.slug}:`, err);
       }
     }
+    
+    // Log language breakdown
+    const langSummary = Object.entries(languageCount)
+      .map(([lang, count]) => `${lang}: ${count}`)
+      .join(', ');
+    console.log(`📊 Language breakdown: ${langSummary}`);
 
     console.log(`\n✨ Static generation complete!`);
     console.log(`   ✅ Generated: ${generated} pages`);
@@ -880,3 +920,7 @@ export async function generateStaticPages(distDir: string) {
     throw err;
   }
 }
+
+// Execute when run directly
+const distDir = process.argv[2] || 'dist';
+generateStaticPages(distDir);
