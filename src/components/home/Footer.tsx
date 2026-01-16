@@ -4,7 +4,7 @@ import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react
 import { useTranslation } from '../../i18n';
 
 export const Footer: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
   
   return (
     <footer className="bg-prime-900 text-white pt-20 pb-10 border-t-4 border-prime-gold">
@@ -60,13 +60,13 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-serif font-bold text-lg mb-6 text-white">{t.footer.navigateHeading}</h4>
             <ul className="space-y-3 text-slate-300 text-sm">
-              <li><Link to="/property-finder" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.propertyFinder}</Link></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.featuredAreas}</a></li>
+              <li><Link to={`/${currentLanguage}/properties`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.propertyFinder}</Link></li>
+              <li><Link to={`/${currentLanguage}/locations`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.featuredAreas}</Link></li>
               <li><Link to="/about" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.ourTeam}</Link></li>
-              <li><a href="#" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.buyersGuide}</a></li>
-              <li><Link to="/blog" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.blogInsights}</Link></li>
-              <li><Link to="/glossary" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.glossary || "Property Glossary"}</Link></li>
-              <li><Link to="/compare" className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.comparisons || "Comparisons"}</Link></li>
+              <li><Link to={`/${currentLanguage}/buyers-guide`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.buyersGuide}</Link></li>
+              <li><Link to={`/${currentLanguage}/blog`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.blogInsights}</Link></li>
+              <li><Link to={`/${currentLanguage}/glossary`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.glossary || "Property Glossary"}</Link></li>
+              <li><Link to={`/${currentLanguage}/compare`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.comparisons || "Comparisons"}</Link></li>
             </ul>
           </div>
 

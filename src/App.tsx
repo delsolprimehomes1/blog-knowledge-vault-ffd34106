@@ -217,7 +217,8 @@ const App = () => (
               {/* ========================================== */}
               <Route path="/thank-you" element={<ThankYou />} />
               <Route path="/sitemap" element={<Sitemap />} />
-              <Route path="/glossary" element={<Glossary />} />
+              <Route path="/glossary" element={<Navigate to="/en/glossary" replace />} />
+              <Route path="/:lang/glossary" element={<Glossary />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
 

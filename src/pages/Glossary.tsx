@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Search, Book, ChevronRight, ExternalLink, Award, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,9 @@ const categoryIcons: Record<string, string> = {
 const BASE_URL = "https://www.delsolprimehomes.com";
 
 const Glossary: React.FC = () => {
+  const { lang } = useParams<{ lang: string }>();
+  const currentLang = lang || 'en';
+  
   const [glossaryData, setGlossaryData] = useState<GlossaryData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
@@ -403,12 +406,12 @@ const Glossary: React.FC = () => {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button asChild size="lg" className="bg-prime-gold text-prime-900 hover:bg-prime-gold/90 shadow-lg shadow-prime-gold/20">
-                <Link to="/blog">
+                <Link to={`/${currentLang}/blog`}>
                   Read Our Guides <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-prime-900">
-                <Link to="/qa">
+                <Link to={`/${currentLang}/qa`}>
                   Browse Q&A <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
