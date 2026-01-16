@@ -43,6 +43,22 @@ function normalizeSlug(rawSlug: string): string {
   return clean
 }
 
+/**
+ * Checks if content is empty/placeholder (should trigger 410 Gone)
+ * Empty content patterns: null, '', '<p></p>', '<p><br></p>', whitespace-only
+ * This implements the "Wrecking Ball" policy for ghost pages
+ */
+function isEmptyContent(content: string | null | undefined): boolean {
+  if (!content) return true
+  
+  const stripped = content
+    .replace(/<[^>]*>/g, '')  // Remove HTML tags
+    .replace(/&nbsp;/g, ' ')   // Replace &nbsp;
+    .trim()
+  
+  return stripped.length === 0
+}
+
 interface PageMetadata {
   language: string
   meta_title: string
@@ -856,6 +872,48 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Page not found', path }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ============================================================
+    // WRECKING BALL POLICY: Check for empty content → 410 Gone
+    // Prevents indexing of "ghost pages" with null/placeholder content
+    // ============================================================
+    let hasEmptyContent = false
+    let contentField = ''
+    
+    if (contentType === 'blog') {
+      const { data } = await supabase
+        .from('blog_articles')
+        .select('detailed_content')
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .maybeSingle()
+      hasEmptyContent = isEmptyContent(data?.detailed_content)
+      contentField = 'detailed_content'
+    } else if (contentType === 'qa') {
+      const { data } = await supabase
+        .from('qa_pages')
+        .select('answer_main')
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .maybeSingle()
+      hasEmptyContent = isEmptyContent(data?.answer_main)
+      contentField = 'answer_main'
+    }
+    
+    if (hasEmptyContent) {
+      console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} - returning 410 Gone`)
+      return new Response(
+        JSON.stringify({ 
+          error: 'empty_content', 
+          should_410: true,
+          path,
+          content_type: contentType,
+          field: contentField,
+          reason: 'Content exists but is empty or placeholder'
+        }),
+        { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

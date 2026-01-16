@@ -155,6 +155,33 @@ async function logGoneHit(urlPath, userAgent) {
 }
 
 /**
+ * Auto-add URL to gone_urls table when empty content detected
+ * This ensures future requests get fast 410 from database check
+ */
+async function addToGoneUrls(urlPath, reason) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/gone_urls`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        url_path: urlPath,
+        reason: reason || 'empty_content_auto',
+        pattern_match: false,
+        marked_gone_at: new Date().toISOString()
+      })
+    });
+    console.log(`[Middleware] Auto-added to gone_urls: ${urlPath}`);
+  } catch (e) {
+    // Non-blocking - don't fail the request if insert fails
+    console.error('[Middleware] Error adding to gone_urls:', e);
+  }
+}
+
+/**
  * Main middleware handler
  */
 export async function onRequest(context) {
@@ -963,6 +990,38 @@ ${hreflangTags}
       }
     });
     
+    // ============================================================
+    // Handle 410 Gone from edge function (empty content detection)
+    // WRECKING BALL POLICY: Auto-log and auto-add to gone_urls
+    // ============================================================
+    if (seoResponse.status === 410) {
+      let responseData = {};
+      try {
+        responseData = await seoResponse.json();
+      } catch (e) {
+        // Ignore parse errors
+      }
+      
+      console.log(`[SEO Middleware] 410 Gone from edge function: ${path} - ${responseData.reason || 'empty content'}`);
+      
+      // Non-blocking: log hit and auto-add to gone_urls for fast future lookups
+      logGoneHit(path, userAgent);
+      addToGoneUrls(path, responseData.reason || 'empty_content');
+      
+      return new Response('410 Gone - This page has been permanently removed due to invalid content', {
+        status: 410,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'public, max-age=2592000', // 30 days
+          'X-Robots-Tag': 'noindex',
+          'X-Middleware-Active': 'true',
+          'X-Middleware-Version': '2026-01-16',
+          'X-Gone-Reason': responseData.reason || 'empty-content',
+          'X-Content-Field': responseData.field || 'unknown'
+        }
+      });
+    }
+    
     // Handle non-OK responses (404, etc.)
     if (!seoResponse.ok) {
       console.error(`[SEO Middleware] Edge function returned ${seoResponse.status}`);
@@ -1013,7 +1072,7 @@ ${hreflangTags}
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'X-Middleware-Active': 'true',
-          'X-Middleware-Version': '2026-01-03',
+          'X-Middleware-Version': '2026-01-16',
           'X-SEO-Matched-Path': path,
           'X-Robots-Tag': 'noindex, nofollow'
         }
