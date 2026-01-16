@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
-import { generateAllGlossarySchemas } from "@/lib/glossarySchemaGenerator";
+import { generateAllGlossarySchemas, getGlossaryName, getOGLocale } from "@/lib/glossarySchemaGenerator";
+import { glossaryTranslations, type GlossaryTranslation } from "@/i18n/translations/glossary";
+import { SUPPORTED_LANGUAGES } from "@/types/hreflang";
 
 interface GlossaryTerm {
   term: string;
@@ -47,23 +49,46 @@ const Glossary: React.FC = () => {
   const { lang } = useParams<{ lang: string }>();
   const currentLang = lang || 'en';
   
+  // Get translations for current language
+  const t: GlossaryTranslation = glossaryTranslations[currentLang as keyof typeof glossaryTranslations] || glossaryTranslations.en;
+  
   const [glossaryData, setGlossaryData] = useState<GlossaryData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/glossary.json")
-      .then(res => res.json())
-      .then(data => {
-        setGlossaryData(data);
-        setLoading(false);
-      })
-      .catch(err => {
+    // Try to load language-specific glossary, fallback to English
+    const loadGlossary = async () => {
+      setLoading(true);
+      try {
+        // First try language-specific JSON
+        const langResponse = await fetch(`/glossary/${currentLang}.json`);
+        if (langResponse.ok) {
+          const data = await langResponse.json();
+          setGlossaryData(data);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Continue to fallback
+      }
+      
+      // Fallback to main glossary.json (English)
+      try {
+        const response = await fetch("/glossary.json");
+        if (response.ok) {
+          const data = await response.json();
+          setGlossaryData(data);
+        }
+      } catch (err) {
         console.error("Failed to load glossary:", err);
-        setLoading(false);
-      });
-  }, []);
+      }
+      setLoading(false);
+    };
+    
+    loadGlossary();
+  }, [currentLang]);
 
   const allTerms = useMemo(() => {
     if (!glossaryData) return [];
@@ -107,12 +132,18 @@ const Glossary: React.FC = () => {
 
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+  // Get localized category title
+  const getCategoryTitle = (key: string, fallback: string): string => {
+    const categoryKey = key as keyof typeof t.categories;
+    return t.categories[categoryKey] || fallback;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Loading glossary...</p>
+          <p className="text-muted-foreground">{t.loading}</p>
         </div>
       </div>
     );
@@ -121,16 +152,17 @@ const Glossary: React.FC = () => {
   if (!glossaryData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Failed to load glossary data.</p>
+        <p className="text-muted-foreground">{t.loadError}</p>
       </div>
     );
   }
 
-  const schemaData = generateAllGlossarySchemas(glossaryData);
-  const canonicalUrl = `${BASE_URL}/glossary`;
+  const schemaData = generateAllGlossarySchemas(glossaryData, currentLang);
+  const canonicalUrl = `${BASE_URL}/${currentLang}/glossary`;
   const ogImageUrl = `${BASE_URL}/assets/logo-new.png`;
-  const pageTitle = "Costa del Sol Real Estate Glossary | Spanish Property Terms Explained";
-  const pageDescription = "Complete glossary of 65+ Spanish real estate, tax, and legal terms. Essential definitions for NIE, IBI, Golden Visa, and more when buying property on the Costa del Sol.";
+  const pageTitle = t.meta.title;
+  const pageDescription = t.meta.description;
+  const ogLocale = getOGLocale(currentLang);
 
   return (
     <>
@@ -154,9 +186,9 @@ const Glossary: React.FC = () => {
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Costa del Sol Real Estate Glossary - Spanish Property Terms" />
+        <meta property="og:image:alt" content={getGlossaryName(currentLang)} />
         <meta property="og:site_name" content="Del Sol Prime Homes" />
-        <meta property="og:locale" content="en_US" />
+        <meta property="og:locale" content={ogLocale} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -164,7 +196,7 @@ const Glossary: React.FC = () => {
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:image" content={ogImageUrl} />
-        <meta name="twitter:image:alt" content="Costa del Sol Real Estate Glossary - Spanish Property Terms" />
+        <meta name="twitter:image:alt" content={getGlossaryName(currentLang)} />
         
         {/* Article Metadata */}
         <meta property="article:published_time" content="2024-01-15T00:00:00Z" />
@@ -174,9 +206,16 @@ const Glossary: React.FC = () => {
         <meta property="article:tag" content="Real Estate Glossary" />
         <meta property="article:tag" content="Costa del Sol" />
         
-        {/* Hreflang - only for existing translations (English only for now) */}
-        <link rel="alternate" hrefLang="en" href={canonicalUrl} />
-        <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
+        {/* Hreflang - all 10 languages + x-default */}
+        {SUPPORTED_LANGUAGES.map(langCode => (
+          <link 
+            key={langCode} 
+            rel="alternate" 
+            hrefLang={langCode} 
+            href={`${BASE_URL}/${langCode}/glossary`} 
+          />
+        ))}
+        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/en/glossary`} />
         
         {/* JSON-LD Schema */}
         <script type="application/ld+json">
@@ -201,16 +240,15 @@ const Glossary: React.FC = () => {
                   <Book className="h-6 w-6 text-prime-gold" />
                 </div>
                 <Badge className="bg-prime-gold/20 text-prime-gold border-prime-gold/30 hover:bg-prime-gold/30">
-                  {glossaryData.total_terms}+ Terms Explained
+                  {t.badge.replace("{count}", String(glossaryData.total_terms))}
                 </Badge>
               </div>
               {/* Speakable H1 - glossary-category-title class for voice assistants */}
               <h1 className="glossary-category-title text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-6 tracking-tight">
-                Costa del Sol Real Estate <span className="text-prime-gold italic">Glossary</span>
+                {t.headline} <span className="text-prime-gold italic">{t.headlineHighlight}</span>
               </h1>
               <p className="text-lg text-slate-300 mb-10 font-light leading-relaxed max-w-2xl mx-auto">
-                Your comprehensive guide to Spanish property, tax, legal, and residency terminology. 
-                Essential knowledge for buying property on the Costa del Sol.
+                {t.description}
               </p>
               
               {/* Search - Premium Style */}
@@ -218,11 +256,11 @@ const Glossary: React.FC = () => {
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <Input
                   type="search"
-                  placeholder="Search terms (e.g., NIE, Golden Visa, IBI...)"
+                  placeholder={t.searchPlaceholder}
                   className="pl-14 h-14 text-lg rounded-full border-2 border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder:text-slate-400 focus:border-prime-gold focus:bg-white/20 transition-all"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search glossary terms"
+                  aria-label={t.searchPlaceholder}
                 />
               </div>
             </div>
@@ -235,17 +273,17 @@ const Glossary: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-600">
               <div className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-prime-gold" />
-                <span>Compiled by <strong className="text-prime-900">Licensed Real Estate Experts</strong></span>
+                <span>{t.compiledBy} <strong className="text-prime-900">{t.licensedExperts}</strong></span>
               </div>
               <div className="h-4 w-px bg-slate-300 hidden sm:block" />
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span>Last updated: <time dateTime={glossaryData.last_updated}>{new Date(glossaryData.last_updated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</time></span>
+                <span>{t.lastUpdated} <time dateTime={glossaryData.last_updated}>{new Date(glossaryData.last_updated).toLocaleDateString(currentLang === 'en' ? 'en-US' : currentLang, { month: 'long', day: 'numeric', year: 'numeric' })}</time></span>
               </div>
               <div className="h-4 w-px bg-slate-300 hidden sm:block" />
               <div className="flex items-center gap-2">
                 <Book className="h-5 w-5 text-prime-700" />
-                <span><strong>{glossaryData.total_terms}</strong> verified definitions</span>
+                <span><strong>{glossaryData.total_terms}</strong> {t.verifiedDefinitions}</span>
               </div>
             </div>
           </div>
@@ -284,7 +322,7 @@ const Glossary: React.FC = () => {
                 value="all" 
                 className="data-[state=active]:bg-prime-gold data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-prime-gold/20 rounded-full px-5 py-2 font-medium transition-all"
               >
-                All Terms ({allTerms.length})
+                {t.allTerms} ({allTerms.length})
               </TabsTrigger>
               {Object.entries(glossaryData.categories).map(([key, category]) => (
                 <TabsTrigger 
@@ -292,7 +330,7 @@ const Glossary: React.FC = () => {
                   value={key}
                   className="glossary-category-title data-[state=active]:bg-prime-gold data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-prime-gold/20 rounded-full px-5 py-2 font-medium transition-all"
                 >
-                  {categoryIcons[key]} {category.title} ({category.terms.length})
+                  {categoryIcons[key]} {getCategoryTitle(key, category.title)} ({category.terms.length})
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -300,9 +338,9 @@ const Glossary: React.FC = () => {
             <TabsContent value={activeCategory} className="mt-0">
               {filteredTerms.length === 0 ? (
                 <div className="text-center py-16 reveal-on-scroll">
-                  <p className="text-slate-500 text-lg">No terms found matching your search.</p>
+                  <p className="text-slate-500 text-lg">{t.noTermsFound}</p>
                   <Button variant="link" onClick={() => setSearchQuery("")} className="text-prime-gold mt-2">
-                    Clear search
+                    {t.clearSearch}
                   </Button>
                 </div>
               ) : (
@@ -338,7 +376,7 @@ const Glossary: React.FC = () => {
                                     )}
                                   </div>
                                   <Badge variant="outline" className="shrink-0 border-prime-200 text-prime-700 bg-prime-50">
-                                    {categoryIcons[term.categoryKey]} {term.categoryTitle.split(' ')[0]}
+                                    {categoryIcons[term.categoryKey]} {getCategoryTitle(term.categoryKey, term.categoryTitle).split(' ')[0]}
                                   </Badge>
                                 </div>
                               </CardHeader>
@@ -350,7 +388,7 @@ const Glossary: React.FC = () => {
                                 
                                 {term.related_terms.length > 0 && (
                                   <div className="flex flex-wrap gap-2">
-                                    <span className="text-xs text-slate-500 font-medium">Related:</span>
+                                    <span className="text-xs text-slate-500 font-medium">{t.related}</span>
                                     {term.related_terms.map(related => (
                                       <a
                                         key={related}
@@ -368,11 +406,11 @@ const Glossary: React.FC = () => {
                                     {term.see_also.map(link => (
                                       <Link
                                         key={link}
-                                        to={link}
+                                        to={`/${currentLang}${link}`}
                                         className="inline-flex items-center gap-1.5 text-sm text-prime-gold hover:text-prime-600 font-medium group/link"
                                       >
                                         <ExternalLink className="h-3.5 w-3.5" />
-                                        Learn more
+                                        {t.learnMore}
                                         <ChevronRight className="h-3.5 w-3.5 opacity-0 -ml-1 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all" />
                                       </Link>
                                     ))}
@@ -398,21 +436,20 @@ const Glossary: React.FC = () => {
           
           <div className="container mx-auto px-4 relative z-10 text-center reveal-on-scroll">
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-6">
-              Need Help Understanding the <span className="text-prime-gold italic">Property Buying Process?</span>
+              {t.ctaHeadline} <span className="text-prime-gold italic">{t.ctaHighlight}</span>
             </h2>
             <p className="text-slate-300 mb-10 max-w-2xl mx-auto text-lg font-light leading-relaxed">
-              Our expert team can guide you through every step of purchasing property in Spain. 
-              Get personalized advice tailored to your situation.
+              {t.ctaDescription}
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button asChild size="lg" className="bg-prime-gold text-prime-900 hover:bg-prime-gold/90 shadow-lg shadow-prime-gold/20">
                 <Link to={`/${currentLang}/blog`}>
-                  Read Our Guides <ChevronRight className="ml-2 h-4 w-4" />
+                  {t.ctaButton1} <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-prime-900">
                 <Link to={`/${currentLang}/qa`}>
-                  Browse Q&A <ChevronRight className="ml-2 h-4 w-4" />
+                  {t.ctaButton2} <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </div>

@@ -23,6 +23,48 @@ interface GlossaryData {
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
+// Localized glossary names for each language
+const GLOSSARY_NAMES: Record<string, string> = {
+  en: "Costa del Sol Real Estate Glossary",
+  nl: "Costa del Sol Vastgoed Woordenlijst",
+  de: "Costa del Sol Immobilien Glossar",
+  fr: "Glossaire Immobilier Costa del Sol",
+  fi: "Costa del Sol Kiinteistösanasto",
+  pl: "Słownik Nieruchomości Costa del Sol",
+  da: "Costa del Sol Ejendomsordliste",
+  hu: "Costa del Sol Ingatlan Szójegyzék",
+  sv: "Costa del Sol Fastighetsordlista",
+  no: "Costa del Sol Eiendomsordliste",
+};
+
+// Localized descriptions
+const GLOSSARY_DESCRIPTIONS: Record<string, string> = {
+  en: "Comprehensive glossary of Spanish property, tax, legal, and real estate terms for international buyers. Expert-compiled definitions for NIE, IBI, Golden Visa, and 60+ essential terms.",
+  nl: "Uitgebreide woordenlijst van Spaanse eigendoms-, belasting-, juridische en vastgoedtermen voor internationale kopers. Door experts samengestelde definities voor NIE, IBI, Golden Visa en 60+ essentiële termen.",
+  de: "Umfassendes Glossar spanischer Immobilien-, Steuer-, Rechts- und Immobilienbegriffe für internationale Käufer. Von Experten zusammengestellte Definitionen für NIE, IBI, Golden Visa und 60+ wesentliche Begriffe.",
+  fr: "Glossaire complet des termes immobiliers, fiscaux, juridiques et immobiliers espagnols pour les acheteurs internationaux. Définitions compilées par des experts pour NIE, IBI, Golden Visa et plus de 60 termes essentiels.",
+  fi: "Kattava sanasto espanjalaisista kiinteistö-, vero-, oikeudellisista ja kiinteistötermeistä kansainvälisille ostajille. Asiantuntijoiden kokoamat määritelmät NIE, IBI, Golden Visa ja yli 60 oleelliselle termille.",
+  pl: "Kompleksowy słownik hiszpańskich terminów nieruchomości, podatkowych, prawnych i nieruchomościowych dla międzynarodowych nabywców. Definicje opracowane przez ekspertów dla NIE, IBI, Golden Visa i ponad 60 niezbędnych terminów.",
+  da: "Omfattende ordliste over spanske ejendoms-, skatte-, juridiske og ejendomstermer for internationale købere. Ekspertkompilerede definitioner for NIE, IBI, Golden Visa og 60+ essentielle termer.",
+  hu: "Átfogó szójegyzék a spanyol ingatlan-, adó-, jogi és ingatlanterminológiáról nemzetközi vásárlók számára. Szakértők által összeállított definíciók NIE, IBI, Golden Visa és 60+ alapvető kifejezéshez.",
+  sv: "Omfattande ordlista över spanska fastighets-, skatte-, juridiska och fastighetstermer för internationella köpare. Expertsammanställda definitioner för NIE, IBI, Golden Visa och 60+ väsentliga termer.",
+  no: "Omfattende ordliste over spanske eiendoms-, skatte-, juridiske og eiendomsbegreper for internasjonale kjøpere. Ekspertkompilerte definisjoner for NIE, IBI, Golden Visa og 60+ essensielle begreper.",
+};
+
+// OG Locale mapping
+const OG_LOCALES: Record<string, string> = {
+  en: "en_US",
+  nl: "nl_NL",
+  de: "de_DE",
+  fr: "fr_FR",
+  fi: "fi_FI",
+  pl: "pl_PL",
+  da: "da_DK",
+  hu: "hu_HU",
+  sv: "sv_SE",
+  no: "nb_NO",
+};
+
 // Author/Expert for E-E-A-T signals
 const glossaryAuthor = {
   "@type": "Person",
@@ -65,21 +107,35 @@ const organizationSchema = {
   }
 };
 
-export function generateDefinedTermSetSchema(glossaryData: GlossaryData) {
+export function getGlossaryName(language: string): string {
+  return GLOSSARY_NAMES[language] || GLOSSARY_NAMES.en;
+}
+
+export function getGlossaryDescription(language: string): string {
+  return GLOSSARY_DESCRIPTIONS[language] || GLOSSARY_DESCRIPTIONS.en;
+}
+
+export function getOGLocale(language: string): string {
+  return OG_LOCALES[language] || OG_LOCALES.en;
+}
+
+export function generateDefinedTermSetSchema(glossaryData: GlossaryData, language: string = 'en') {
   const allTerms: GlossaryTerm[] = [];
   
   Object.values(glossaryData.categories).forEach(category => {
     allTerms.push(...category.terms);
   });
 
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+
   return {
     "@context": "https://schema.org",
     "@type": "DefinedTermSet",
-    "@id": `${BASE_URL}/glossary`,
-    "name": "Costa del Sol Real Estate Glossary",
-    "description": "Comprehensive glossary of Spanish property, tax, legal, and real estate terms for international buyers. Expert-compiled definitions for NIE, IBI, Golden Visa, and 60+ essential terms.",
-    "url": `${BASE_URL}/glossary`,
-    "inLanguage": "en",
+    "@id": glossaryUrl,
+    "name": getGlossaryName(language),
+    "description": getGlossaryDescription(language),
+    "url": glossaryUrl,
+    "inLanguage": language,
     "author": glossaryAuthor,
     "publisher": organizationSchema,
     "datePublished": "2024-01-15",
@@ -90,20 +146,22 @@ export function generateDefinedTermSetSchema(glossaryData: GlossaryData) {
       "name": term.term,
       "description": term.definition,
       "termCode": term.term.toLowerCase().replace(/\s+/g, '-'),
-      "inDefinedTermSet": `${BASE_URL}/glossary`,
-      "url": `${BASE_URL}/glossary#${term.term.toLowerCase().replace(/\s+/g, '-')}`
+      "inDefinedTermSet": glossaryUrl,
+      "url": `${glossaryUrl}#${term.term.toLowerCase().replace(/\s+/g, '-')}`
     }))
   };
 }
 
-export function generateGlossaryWebPageSchema(glossaryData: GlossaryData) {
+export function generateGlossaryWebPageSchema(glossaryData: GlossaryData, language: string = 'en') {
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+  
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${BASE_URL}/glossary#webpage`,
-    "url": `${BASE_URL}/glossary`,
-    "name": "Costa del Sol Real Estate Glossary | Spanish Property Terms Explained",
-    "description": "Complete glossary of 65+ Spanish real estate, tax, and legal terms. Essential definitions for NIE, IBI, Golden Visa, escritura, and more when buying property on the Costa del Sol.",
+    "@id": `${glossaryUrl}#webpage`,
+    "url": glossaryUrl,
+    "name": getGlossaryName(language),
+    "description": getGlossaryDescription(language),
     "isPartOf": {
       "@type": "WebSite",
       "name": "Del Sol Prime Homes",
@@ -115,25 +173,27 @@ export function generateGlossaryWebPageSchema(glossaryData: GlossaryData) {
     },
     "mainEntity": {
       "@type": "DefinedTermSet",
-      "@id": `${BASE_URL}/glossary`
+      "@id": glossaryUrl
     },
     "author": glossaryAuthor,
     "publisher": organizationSchema,
     "datePublished": "2024-01-15",
     "dateModified": glossaryData.last_updated,
-    "inLanguage": "en",
+    "inLanguage": language,
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": `${BASE_URL}/glossary?q={search_term_string}`
+        "urlTemplate": `${glossaryUrl}?q={search_term_string}`
       },
       "query-input": "required name=search_term_string"
     }
   };
 }
 
-export function generateGlossaryBreadcrumbSchema() {
+export function generateGlossaryBreadcrumbSchema(language: string = 'en') {
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+  
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -142,19 +202,21 @@ export function generateGlossaryBreadcrumbSchema() {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": BASE_URL
+        "item": `${BASE_URL}/${language}`
       },
       {
         "@type": "ListItem",
         "position": 2,
-        "name": "Glossary",
-        "item": `${BASE_URL}/glossary`
+        "name": getGlossaryName(language),
+        "item": glossaryUrl
       }
     ]
   };
 }
 
-export function generateGlossarySpeakableSchema() {
+export function generateGlossarySpeakableSchema(language: string = 'en') {
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+  
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -166,15 +228,17 @@ export function generateGlossarySpeakableSchema() {
         ".glossary-category-title"
       ]
     },
-    "url": `${BASE_URL}/glossary`
+    "url": glossaryUrl
   };
 }
 
-// NEW: ItemList schema for each category - enhances AI understanding
-export function generateCategoryItemListSchemas(glossaryData: GlossaryData) {
+// ItemList schema for each category - enhances AI understanding
+export function generateCategoryItemListSchemas(glossaryData: GlossaryData, language: string = 'en') {
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+  
   const itemLists = Object.entries(glossaryData.categories).map(([key, category]) => ({
     "@type": "ItemList",
-    "@id": `${BASE_URL}/glossary#category-${key}`,
+    "@id": `${glossaryUrl}#category-${key}`,
     "name": category.title,
     "description": category.description,
     "numberOfItems": category.terms.length,
@@ -184,15 +248,17 @@ export function generateCategoryItemListSchemas(glossaryData: GlossaryData) {
       "position": index + 1,
       "name": term.term,
       "description": term.definition,
-      "url": `${BASE_URL}/glossary#${term.term.toLowerCase().replace(/\s+/g, '-')}`
+      "url": `${glossaryUrl}#${term.term.toLowerCase().replace(/\s+/g, '-')}`
     }))
   }));
 
   return itemLists;
 }
 
-// NEW: FAQPage schema for popular terms - great for featured snippets
-export function generateGlossaryFAQSchema(glossaryData: GlossaryData) {
+// FAQPage schema for popular terms - great for featured snippets
+export function generateGlossaryFAQSchema(glossaryData: GlossaryData, language: string = 'en') {
+  const glossaryUrl = `${BASE_URL}/${language}/glossary`;
+  
   // Select top 10 most important terms for FAQ schema
   const popularTerms = [
     "NIE", "Golden Visa", "IBI", "Escritura", "Plusvalía", 
@@ -213,7 +279,7 @@ export function generateGlossaryFAQSchema(glossaryData: GlossaryData) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": `${BASE_URL}/glossary#faq`,
+    "@id": `${glossaryUrl}#faq`,
     "mainEntity": faqTerms.map(term => ({
       "@type": "Question",
       "name": `What is ${term.term} in Spanish real estate?`,
@@ -225,7 +291,7 @@ export function generateGlossaryFAQSchema(glossaryData: GlossaryData) {
   };
 }
 
-// NEW: Organization schema with expertise signals
+// Organization schema with expertise signals
 export function generateOrganizationSchema() {
   return {
     "@context": "https://schema.org",
@@ -255,16 +321,16 @@ export function generateOrganizationSchema() {
   };
 }
 
-export function generateAllGlossarySchemas(glossaryData: GlossaryData) {
-  const categoryItemLists = generateCategoryItemListSchemas(glossaryData);
-  const faqSchema = generateGlossaryFAQSchema(glossaryData);
+export function generateAllGlossarySchemas(glossaryData: GlossaryData, language: string = 'en') {
+  const categoryItemLists = generateCategoryItemListSchemas(glossaryData, language);
+  const faqSchema = generateGlossaryFAQSchema(glossaryData, language);
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const graphItems: any[] = [
-    generateDefinedTermSetSchema(glossaryData),
-    generateGlossaryWebPageSchema(glossaryData),
-    generateGlossaryBreadcrumbSchema(),
-    generateGlossarySpeakableSchema(),
+    generateDefinedTermSetSchema(glossaryData, language),
+    generateGlossaryWebPageSchema(glossaryData, language),
+    generateGlossaryBreadcrumbSchema(language),
+    generateGlossarySpeakableSchema(language),
     generateOrganizationSchema(),
     ...categoryItemLists
   ];
