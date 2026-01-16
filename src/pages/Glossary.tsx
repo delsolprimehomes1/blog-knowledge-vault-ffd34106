@@ -58,14 +58,18 @@ const Glossary: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Try to load language-specific glossary, fallback to English
+    // Try to load language-specific glossary from Supabase Storage, fallback to English
     const loadGlossary = async () => {
       setLoading(true);
+      
+      // Storage URL for language-specific glossary
+      const storageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/glossary-translations/${currentLang}.json`;
+      
       try {
-        // First try language-specific JSON
-        const langResponse = await fetch(`/glossary/${currentLang}.json`);
-        if (langResponse.ok) {
-          const data = await langResponse.json();
+        // First try Supabase Storage for the current language
+        const storageResponse = await fetch(storageUrl);
+        if (storageResponse.ok) {
+          const data = await storageResponse.json();
           setGlossaryData(data);
           setLoading(false);
           return;
@@ -74,12 +78,32 @@ const Glossary: React.FC = () => {
         // Continue to fallback
       }
       
-      // Fallback to main glossary.json (English)
+      // Second fallback: try local public folder
       try {
-        const response = await fetch("/glossary.json");
+        const localResponse = await fetch(`/glossary/${currentLang}.json`);
+        if (localResponse.ok) {
+          const data = await localResponse.json();
+          setGlossaryData(data);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Continue to final fallback
+      }
+      
+      // Final fallback: English from local public folder
+      try {
+        const response = await fetch("/glossary/en.json");
         if (response.ok) {
           const data = await response.json();
           setGlossaryData(data);
+        } else {
+          // Ultimate fallback to root glossary.json
+          const rootResponse = await fetch("/glossary.json");
+          if (rootResponse.ok) {
+            const data = await rootResponse.json();
+            setGlossaryData(data);
+          }
         }
       } catch (err) {
         console.error("Failed to load glossary:", err);

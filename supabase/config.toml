@@ -317,3 +317,6 @@ verify_jwt = false
 
 [functions.generate-brochure-images]
 verify_jwt = false
+
+[functions.translate-glossary]
+verify_jwt = false
