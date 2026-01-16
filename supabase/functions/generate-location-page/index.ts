@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+// Declare EdgeRuntime for background task support
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<any>) => void;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -95,6 +100,210 @@ function generateHreflangGroupId(): string {
   return crypto.randomUUID();
 }
 
+// Initialize Supabase client for database operations
+function getSupabaseClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+// Generate a single language version
+async function generateLanguageVersion(
+  targetLang: string,
+  prompt: string,
+  englishVersion: any,
+  city: string,
+  region: string,
+  country: string,
+  intentType: string,
+  hreflangGroupId: string | null,
+  OPENAI_API_KEY: string
+): Promise<any> {
+  let systemPrompt: string;
+  let currentPrompt: string;
+  
+  if (targetLang === 'en') {
+    systemPrompt = 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
+    currentPrompt = prompt;
+  } else {
+    systemPrompt = `Translate and adapt the following content to ${targetLang} language. 
+The structure and field names must remain in English, but all values/content must be translated to ${targetLang}.
+STRICTLY follow all word limits specified in the prompt.
+Adapt cultural references and examples to be relevant for ${targetLang}-speaking audiences while maintaining factual accuracy.`;
+    
+    currentPrompt = englishVersion 
+      ? `Original English content for reference:\n${JSON.stringify(englishVersion, null, 2)}\n\nTranslate and adapt this content to ${targetLang}, following the same structure.`
+      : prompt;
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: currentPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`AI API error for ${targetLang}: ${response.status} - ${errorText}`);
+  }
+
+  const aiData = await response.json();
+  const content = aiData.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error(`No content received from AI for ${targetLang}`);
+  }
+
+  // Parse JSON from response
+  let parsed;
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    parsed = JSON.parse(jsonMatch[0]);
+  } else {
+    throw new Error('No JSON found in response');
+  }
+
+  // Generate language-specific slug
+  const baseSlug = parsed.suggested_slug || `${intentType}-${city}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const langSlug = targetLang === 'en' ? baseSlug : `${baseSlug}-${targetLang}`;
+
+  // Build the location page object
+  return {
+    city_slug: city.toLowerCase().replace(/\s+/g, '-'),
+    city_name: city,
+    region,
+    country,
+    intent_type: intentType,
+    topic_slug: langSlug,
+    headline: parsed.headline,
+    meta_title: parsed.meta_title,
+    meta_description: parsed.meta_description,
+    speakable_answer: parsed.speakable_answer,
+    location_overview: parsed.location_overview,
+    market_breakdown: parsed.market_breakdown,
+    best_areas: parsed.best_areas || [],
+    cost_breakdown: parsed.cost_breakdown || [],
+    use_cases: parsed.use_cases,
+    final_summary: parsed.final_summary,
+    qa_entities: parsed.qa_entities || [],
+    language: targetLang,
+    source_language: 'en',
+    status: 'draft',
+    image_prompt: parsed.image_prompt,
+    hreflang_group_id: hreflangGroupId,
+    content_type: 'location',
+  };
+}
+
+// Background processing function for batch mode
+async function processBackgroundGeneration(
+  jobId: string,
+  targetLanguages: string[],
+  prompt: string,
+  city: string,
+  region: string,
+  country: string,
+  intentType: string,
+  hreflangGroupId: string,
+  OPENAI_API_KEY: string
+) {
+  const supabase = getSupabaseClient();
+  let englishVersion: any = null;
+  const completedLanguages: string[] = [];
+
+  console.log(`[Job ${jobId}] Starting background generation for ${targetLanguages.length} languages`);
+
+  try {
+    for (let i = 0; i < targetLanguages.length; i++) {
+      const targetLang = targetLanguages[i];
+      console.log(`[Job ${jobId}] Generating ${targetLang} (${i + 1}/${targetLanguages.length})...`);
+
+      try {
+        const locationPage = await generateLanguageVersion(
+          targetLang,
+          prompt,
+          englishVersion,
+          city,
+          region,
+          country,
+          intentType,
+          hreflangGroupId,
+          OPENAI_API_KEY
+        );
+
+        // Save English version for translation reference
+        if (targetLang === 'en') {
+          englishVersion = locationPage;
+        }
+
+        // Save page to location_pages table immediately
+        const { error: insertError } = await supabase
+          .from('location_pages')
+          .insert(locationPage);
+
+        if (insertError) {
+          console.error(`[Job ${jobId}] Failed to insert ${targetLang} page:`, insertError);
+          // Continue with other languages even if one fails
+        } else {
+          console.log(`[Job ${jobId}] Saved ${targetLang} page: ${locationPage.topic_slug}`);
+        }
+
+        completedLanguages.push(targetLang);
+
+        // Update job progress
+        await supabase
+          .from('generation_jobs')
+          .update({
+            completed_languages: completedLanguages,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+
+      } catch (langError) {
+        console.error(`[Job ${jobId}] Error generating ${targetLang}:`, langError);
+        // Continue with other languages
+      }
+    }
+
+    // Mark job as completed
+    await supabase
+      .from('generation_jobs')
+      .update({
+        status: 'completed',
+        completed_languages: completedLanguages,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    console.log(`[Job ${jobId}] Completed! Generated ${completedLanguages.length}/${targetLanguages.length} languages`);
+
+  } catch (error) {
+    console.error(`[Job ${jobId}] Fatal error:`, error);
+    
+    // Mark job as failed
+    await supabase
+      .from('generation_jobs')
+      .update({
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        completed_languages: completedLanguages,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -108,11 +317,11 @@ serve(async (req) => {
       intent_type,
       goal,
       language = 'en',
-      languages = [], // Array of languages for batch generation
-      batch_mode = false, // Enable batch multilingual generation
+      languages = [],
+      batch_mode = false,
     } = await req.json();
 
-    // Validate language is supported (folder-language mismatch prevention)
+    // Validate language is supported
     const requestedLanguage = language || 'en';
     if (!SUPPORTED_LANGUAGES.includes(requestedLanguage)) {
       return new Response(
@@ -139,25 +348,19 @@ serve(async (req) => {
     // Determine which languages to generate
     let targetLanguages: string[] = [];
     if (batch_mode && languages.length > 0) {
-      // Use provided languages array
       targetLanguages = languages.filter((l: string) => SUPPORTED_LANGUAGES.includes(l));
     } else if (batch_mode) {
-      // Default to all 10 languages
       targetLanguages = [...SUPPORTED_LANGUAGES];
     } else {
-      // Single language mode
       targetLanguages = [language];
     }
 
-    // Ensure English is first (source language)
+    // Ensure English is first (source language) for batch mode
     if (batch_mode && !targetLanguages.includes('en')) {
       targetLanguages.unshift('en');
     } else if (batch_mode && targetLanguages[0] !== 'en') {
       targetLanguages = ['en', ...targetLanguages.filter(l => l !== 'en')];
     }
-
-    console.log('Location generation mode:', batch_mode ? 'batch' : 'single');
-    console.log('Target languages:', targetLanguages);
 
     // Build intent description
     const intentDescriptions: Record<string, string> = {
@@ -182,152 +385,90 @@ serve(async (req) => {
       .replace('[INTENT_TYPE]', intentDescription)
       .replace('[GOAL]', goal || 'property buyers');
 
-    // Generate shared hreflang_group_id for batch mode
-    const hreflangGroupId = batch_mode ? generateHreflangGroupId() : null;
+    // Generate shared hreflang_group_id
+    const hreflangGroupId = generateHreflangGroupId();
 
-    const generatedPages: any[] = [];
-    let englishVersion: any = null;
+    console.log('Location generation mode:', batch_mode ? 'batch (fire-and-forget)' : 'single');
+    console.log('Target languages:', targetLanguages);
 
-    for (let i = 0; i < targetLanguages.length; i++) {
-      const targetLang = targetLanguages[i];
-      
-      let systemPrompt: string;
-      let currentPrompt: string;
-      
-      if (targetLang === 'en') {
-        // Generate English version first
-        systemPrompt = 'Generate all content in English. STRICTLY follow all word limits specified in the prompt.';
-        currentPrompt = prompt;
-      } else {
-        // For translations, use the English content as reference
-        systemPrompt = `Translate and adapt the following content to ${targetLang} language. 
-The structure and field names must remain in English, but all values/content must be translated to ${targetLang}.
-STRICTLY follow all word limits specified in the prompt.
-Adapt cultural references and examples to be relevant for ${targetLang}-speaking audiences while maintaining factual accuracy.`;
-        
-        // Include English version for reference in translation
-        currentPrompt = englishVersion 
-          ? `Original English content for reference:\n${JSON.stringify(englishVersion, null, 2)}\n\nTranslate and adapt this content to ${targetLang}, following the same structure.`
-          : prompt;
-      }
-
-      console.log(`Generating ${targetLang} version (${i + 1}/${targetLanguages.length})...`);
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: currentPrompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 8000,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('AI API error:', response.status, errorText);
-        
-        if (response.status === 429) {
-          return new Response(
-            JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        if (response.status === 402) {
-          return new Response(
-            JSON.stringify({ error: 'Payment required. Please add credits to continue.' }),
-            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        throw new Error(`AI API error: ${response.status}`);
-      }
-
-      const aiData = await response.json();
-      const content = aiData.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new Error(`No content received from AI for ${targetLang}`);
-      }
-
-      // Parse JSON from response
-      let parsed;
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('No JSON found in response');
-        }
-      } catch (parseError) {
-        console.error(`JSON parse error for ${targetLang}:`, parseError);
-        throw new Error(`Failed to parse AI response as JSON for ${targetLang}`);
-      }
-
-      // Save English version for translation reference
-      if (targetLang === 'en') {
-        englishVersion = parsed;
-      }
-
-      // Generate language-specific slug
-      const baseSlug = parsed.suggested_slug || `${intent_type}-${city}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const langSlug = targetLang === 'en' ? baseSlug : `${baseSlug}-${targetLang}`;
-
-      // Build the location page object
-      const locationPage = {
-        city_slug: city.toLowerCase().replace(/\s+/g, '-'),
-        city_name: city,
-        region,
-        country,
-        intent_type,
-        topic_slug: langSlug,
-        headline: parsed.headline,
-        meta_title: parsed.meta_title,
-        meta_description: parsed.meta_description,
-        speakable_answer: parsed.speakable_answer,
-        location_overview: parsed.location_overview,
-        market_breakdown: parsed.market_breakdown,
-        best_areas: parsed.best_areas || [],
-        cost_breakdown: parsed.cost_breakdown || [],
-        use_cases: parsed.use_cases,
-        final_summary: parsed.final_summary,
-        qa_entities: parsed.qa_entities || [],
-        language: targetLang,
-        source_language: 'en', // Always English-first strategy
-        status: 'draft',
-        image_prompt: parsed.image_prompt,
-        hreflang_group_id: hreflangGroupId,
-        content_type: 'location',
-      };
-
-      generatedPages.push(locationPage);
-      console.log(`Generated ${targetLang} location page successfully:`, locationPage.topic_slug);
-    }
-
-    // Return based on mode
+    // BATCH MODE: Fire-and-forget pattern
     if (batch_mode) {
+      const supabase = getSupabaseClient();
+      const jobId = crypto.randomUUID();
+
+      // Create job record immediately
+      const { error: jobError } = await supabase
+        .from('generation_jobs')
+        .insert({
+          id: jobId,
+          job_type: 'location',
+          status: 'running',
+          city,
+          region,
+          country,
+          intent_type,
+          languages: targetLanguages,
+          completed_languages: [],
+          hreflang_group_id: hreflangGroupId,
+        });
+
+      if (jobError) {
+        console.error('Failed to create job:', jobError);
+        throw new Error('Failed to create generation job');
+      }
+
+      console.log(`[Job ${jobId}] Created job, starting background processing...`);
+
+      // Fire and forget: continue processing in background
+      EdgeRuntime.waitUntil(
+        processBackgroundGeneration(
+          jobId,
+          targetLanguages,
+          prompt,
+          city,
+          region,
+          country,
+          intent_type,
+          hreflangGroupId,
+          OPENAI_API_KEY
+        )
+      );
+
+      // Return immediately with job ID
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          locationPages: generatedPages,
+          success: true,
+          status: 'started',
+          job_id: jobId,
           hreflang_group_id: hreflangGroupId,
-          languages_generated: targetLanguages,
+          languages: targetLanguages,
+          message: `Generation started for ${targetLanguages.length} languages. Poll the job status for updates.`,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else {
-      return new Response(
-        JSON.stringify({ success: true, locationPage: generatedPages[0] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
+
+    // SINGLE LANGUAGE MODE: Synchronous (fast enough, ~30s)
+    console.log(`Generating single ${language} version synchronously...`);
+
+    const locationPage = await generateLanguageVersion(
+      language,
+      prompt,
+      null,
+      city,
+      region,
+      country,
+      intent_type,
+      hreflangGroupId,
+      OPENAI_API_KEY
+    );
+
+    console.log('Generated single location page:', locationPage.topic_slug);
+
+    return new Response(
+      JSON.stringify({ success: true, locationPage }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error in generate-location-page:', error);

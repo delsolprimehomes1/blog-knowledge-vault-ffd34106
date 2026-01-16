@@ -2290,6 +2290,54 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_jobs: {
+        Row: {
+          city: string | null
+          completed_languages: string[] | null
+          country: string | null
+          created_at: string | null
+          error_message: string | null
+          hreflang_group_id: string | null
+          id: string
+          intent_type: string | null
+          job_type: string
+          languages: string[] | null
+          region: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          city?: string | null
+          completed_languages?: string[] | null
+          country?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          hreflang_group_id?: string | null
+          id?: string
+          intent_type?: string | null
+          job_type?: string
+          languages?: string[] | null
+          region?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          city?: string | null
+          completed_languages?: string[] | null
+          country?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          hreflang_group_id?: string | null
+          id?: string
+          intent_type?: string | null
+          job_type?: string
+          languages?: string[] | null
+          region?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       gone_url_hits: {
         Row: {
           hit_at: string | null

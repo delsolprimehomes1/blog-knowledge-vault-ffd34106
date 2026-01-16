@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Sparkles, Loader2, Save, MapPin, Image as ImageIcon, RefreshCw, CheckCircle, Globe, Languages } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,15 @@ interface GeneratedImage {
   height: number;
 }
 
+interface GenerationJob {
+  id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  languages: string[];
+  completed_languages: string[];
+  hreflang_group_id: string;
+  error_message?: string;
+}
+
 // Check if a string is a valid UUID v4
 const isValidUUID = (str: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -99,9 +109,102 @@ const LocationGenerator = () => {
   const [generatedPages, setGeneratedPages] = useState<any[]>([]);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [isPublished, setIsPublished] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, status: '' });
+  
+  // Job polling state
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [generationProgress, setGenerationProgress] = useState({ 
+    current: 0, 
+    total: 0, 
+    status: '',
+    completedLangs: [] as string[]
+  });
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const selectedCity = city === 'custom' ? customCity : city;
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Poll for job completion
+  const pollJobStatus = useCallback(async (jobId: string, hreflangGroupId: string, totalLanguages: number) => {
+    try {
+      const { data: job, error } = await supabase
+        .from('generation_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (error) {
+        console.error('Error polling job:', error);
+        return;
+      }
+
+      const typedJob = job as GenerationJob;
+      const completedCount = typedJob.completed_languages?.length || 0;
+
+      // Update progress
+      setGenerationProgress({
+        current: completedCount,
+        total: totalLanguages,
+        status: typedJob.status === 'completed' 
+          ? 'Complete!' 
+          : typedJob.status === 'failed'
+          ? 'Failed'
+          : `Generating ${completedCount}/${totalLanguages} languages...`,
+        completedLangs: typedJob.completed_languages || []
+      });
+
+      // Check if completed or failed
+      if (typedJob.status === 'completed') {
+        // Stop polling
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+
+        // Fetch all generated pages from location_pages
+        const { data: pages, error: pagesError } = await supabase
+          .from('location_pages')
+          .select('*')
+          .eq('hreflang_group_id', hreflangGroupId)
+          .order('language');
+
+        if (pagesError) {
+          console.error('Error fetching generated pages:', pagesError);
+          toast.error('Generation completed but failed to fetch pages');
+        } else if (pages && pages.length > 0) {
+          setGeneratedPages(pages);
+          // Show English version in preview (or first available)
+          const englishPage = pages.find(p => p.language === 'en') || pages[0];
+          setGeneratedPage(englishPage);
+          toast.success(`Generated ${pages.length} language versions!`);
+        }
+
+        setIsGenerating(false);
+        setCurrentJobId(null);
+
+      } else if (typedJob.status === 'failed') {
+        // Stop polling
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+
+        toast.error(typedJob.error_message || 'Generation failed');
+        setIsGenerating(false);
+        setCurrentJobId(null);
+      }
+
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, []);
 
   const handleLanguageToggle = (langCode: LanguageCode) => {
     if (langCode === 'en') return; // English is always required
@@ -136,13 +239,16 @@ const LocationGenerator = () => {
     setGeneratedPages([]);
     setGeneratedImage(null);
     setIsPublished(false);
+    setCurrentJobId(null);
 
     try {
       if (batchMode) {
+        // BATCH MODE: Fire-and-forget with polling
         setGenerationProgress({ 
           current: 0, 
           total: selectedLanguages.length, 
-          status: 'Generating multilingual pages...' 
+          status: 'Starting generation...',
+          completedLangs: []
         });
 
         const { data, error } = await supabase.functions.invoke('generate-location-page', {
@@ -155,13 +261,36 @@ const LocationGenerator = () => {
           }
         });
 
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || 'Generation failed');
+        // Handle potential timeout errors gracefully (the job continues in background)
+        if (error) {
+          console.warn('Initial request error (may be timeout, checking job):', error);
+        }
 
-        setGeneratedPages(data.locationPages);
-        setGeneratedPage(data.locationPages[0]); // Show English version in preview
-        toast.success(`Generated ${data.locationPages.length} language versions!`);
+        if (data?.status === 'started' && data?.job_id) {
+          // Job started successfully - begin polling
+          setCurrentJobId(data.job_id);
+          const jobId = data.job_id;
+          const hreflangGroupId = data.hreflang_group_id;
+          const totalLanguages = data.languages?.length || selectedLanguages.length;
+
+          toast.info(`Generation started for ${totalLanguages} languages. Tracking progress...`);
+
+          // Start polling every 3 seconds
+          pollingIntervalRef.current = setInterval(() => {
+            pollJobStatus(jobId, hreflangGroupId, totalLanguages);
+          }, 3000);
+
+          // Also poll immediately
+          setTimeout(() => pollJobStatus(jobId, hreflangGroupId, totalLanguages), 1000);
+
+        } else if (data?.error) {
+          throw new Error(data.error);
+        } else {
+          throw new Error('Failed to start generation job');
+        }
+
       } else {
+        // SINGLE LANGUAGE MODE: Synchronous
         const { data, error } = await supabase.functions.invoke('generate-location-page', {
           body: {
             city: selectedCity,
@@ -176,13 +305,13 @@ const LocationGenerator = () => {
 
         setGeneratedPage(data.locationPage);
         toast.success('Location page generated successfully!');
+        setIsGenerating(false);
       }
     } catch (error) {
       console.error('Generation error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to generate location page');
-    } finally {
       setIsGenerating(false);
-      setGenerationProgress({ current: 0, total: 0, status: '' });
+      setGenerationProgress({ current: 0, total: 0, status: '', completedLangs: [] });
     }
   };
 
@@ -234,6 +363,14 @@ const LocationGenerator = () => {
 
     setIsSaving(true);
     try {
+      // For pages already saved via background job, just update status
+      if (batchMode && generatedPages.length > 0 && generatedPages[0]?.id) {
+        // Pages already exist in DB from background job - just navigate
+        toast.success(`${pagesToSave.length} location page(s) already saved as draft!`);
+        navigate(`/admin/articles`);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('location_pages')
         .insert(pagesToSave.map(p => ({ ...p, status: 'draft' })))
@@ -461,6 +598,35 @@ const LocationGenerator = () => {
                 </div>
               )}
 
+              {/* Generation Progress (Batch Mode) */}
+              {isGenerating && batchMode && generationProgress.total > 0 && (
+                <div className="space-y-3 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{generationProgress.status}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {generationProgress.current}/{generationProgress.total}
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(generationProgress.current / generationProgress.total) * 100} 
+                    className="h-2"
+                  />
+                  {generationProgress.completedLangs.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {generationProgress.completedLangs.map(lang => {
+                        const langInfo = SUPPORTED_LANGUAGES.find(l => l.code === lang);
+                        return (
+                          <Badge key={lang} variant="secondary" className="text-xs">
+                            <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
+                            {langInfo?.label || lang}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Generate Button */}
               <Button 
                 onClick={handleGenerate} 
@@ -472,7 +638,9 @@ const LocationGenerator = () => {
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {batchMode 
-                      ? `Generating ${selectedLanguages.length} languages...`
+                      ? generationProgress.total > 0 
+                        ? `Generating ${generationProgress.current}/${generationProgress.total}...`
+                        : 'Starting...'
                       : 'Generating...'}
                   </>
                 ) : (
