@@ -590,47 +590,102 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const hreflangEnabled = await checkFeatureFlag('enhanced_hreflang');
   console.log(`🏳️ Hreflang: ${hreflangEnabled ? 'ENABLED' : 'DISABLED'}`);
   
-  // Fetch all published content
-  console.log('\n📥 Fetching content from database...');
+  // Fetch gone_urls to exclude from sitemap
+  console.log('\n📥 Fetching gone URLs to exclude...');
+  const { data: goneUrls } = await supabase
+    .from('gone_urls')
+    .select('url_path');
   
-  const { data: articles, error } = await supabase
+  const goneUrlPaths = new Set((goneUrls || []).map(g => g.url_path));
+  console.log(`   🚫 Gone URLs to exclude: ${goneUrlPaths.size}`);
+  
+  // Fetch all published content with content validation
+  console.log('\n📥 Fetching content from database (with content validation)...');
+  
+  // Blog articles: must have non-empty detailed_content
+  const { data: articlesRaw, error } = await supabase
     .from('blog_articles')
-    .select('slug, language, cluster_id, is_primary, date_modified, date_published')
+    .select('slug, language, cluster_id, is_primary, date_modified, date_published, detailed_content')
     .eq('status', 'published')
+    .not('is_redirect', 'eq', true)
     .order('date_modified', { ascending: false });
   
   if (error) {
     console.error('❌ Failed to fetch articles:', error);
     throw error;
   }
-  console.log(`   📝 Blog articles: ${articles?.length || 0}`);
   
-  const { data: qaPages, error: qaError } = await supabase
+  // Filter out articles with empty content and those in gone_urls
+  const articles = (articlesRaw || []).filter(article => {
+    // Check if URL is in gone_urls
+    const articlePath = `/${article.language}/blog/${article.slug}`;
+    if (goneUrlPaths.has(articlePath)) return false;
+    
+    // Check for empty content
+    if (!article.detailed_content) return false;
+    const stripped = article.detailed_content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    return stripped.length >= 10;
+  }).map(({ detailed_content, ...rest }) => rest); // Remove content from final data
+  
+  console.log(`   📝 Blog articles: ${articles?.length || 0} (filtered from ${articlesRaw?.length || 0})`);
+  
+  // Q&A pages: must have non-empty answer_main
+  const { data: qaPagesRaw, error: qaError } = await supabase
     .from('qa_pages')
-    .select('slug, language, hreflang_group_id, updated_at, created_at')
+    .select('slug, language, hreflang_group_id, updated_at, created_at, answer_main')
     .eq('status', 'published')
+    .not('is_redirect', 'eq', true)
     .order('updated_at', { ascending: false });
   
   if (qaError) console.error('❌ Failed to fetch QA pages:', qaError);
-  console.log(`   🔍 Q&A pages: ${qaPages?.length || 0}`);
   
-  const { data: locationPages, error: locError } = await supabase
+  // Filter out Q&A pages with empty content and those in gone_urls
+  const qaPages = (qaPagesRaw || []).filter(qa => {
+    const qaPath = `/${qa.language}/qa/${qa.slug}`;
+    if (goneUrlPaths.has(qaPath)) return false;
+    
+    if (!qa.answer_main) return false;
+    const stripped = qa.answer_main.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    return stripped.length >= 10;
+  }).map(({ answer_main, ...rest }) => rest);
+  
+  console.log(`   🔍 Q&A pages: ${qaPages?.length || 0} (filtered from ${qaPagesRaw?.length || 0})`);
+  
+  // Location pages: filter out redirects and gone URLs
+  const { data: locationPagesRaw, error: locError } = await supabase
     .from('location_pages')
     .select('city_slug, topic_slug, city_name, language, intent_type, hreflang_group_id, updated_at, date_published')
     .eq('status', 'published')
+    .not('is_redirect', 'eq', true)
     .order('updated_at', { ascending: false });
   
   if (locError) console.error('❌ Failed to fetch location pages:', locError);
-  console.log(`   📍 Location pages: ${locationPages?.length || 0}`);
   
-  const { data: comparisonPages, error: compError } = await supabase
+  const locationPages = (locationPagesRaw || []).filter(loc => {
+    const locPath = `/${loc.language}/locations/${loc.city_slug}/${loc.topic_slug}`;
+    return !goneUrlPaths.has(locPath);
+  });
+  
+  console.log(`   📍 Location pages: ${locationPages?.length || 0} (filtered from ${locationPagesRaw?.length || 0})`);
+  
+  // Comparison pages: filter out redirects and gone URLs
+  const { data: comparisonPagesRaw, error: compError } = await supabase
     .from('comparison_pages')
     .select('slug, language, option_a, option_b, niche, hreflang_group_id, updated_at, date_published')
     .eq('status', 'published')
+    .not('is_redirect', 'eq', true)
     .order('updated_at', { ascending: false });
   
   if (compError) console.error('❌ Failed to fetch comparison pages:', compError);
-  console.log(`   ⚖️ Comparison pages: ${comparisonPages?.length || 0}`);
+  
+  if (compError) console.error('❌ Failed to fetch comparison pages:', compError);
+  
+  const comparisonPages = (comparisonPagesRaw || []).filter(comp => {
+    const compPath = `/${comp.language}/compare/${comp.slug}`;
+    return !goneUrlPaths.has(compPath);
+  });
+  
+  console.log(`   ⚖️ Comparison pages: ${comparisonPages?.length || 0} (filtered from ${comparisonPagesRaw?.length || 0})`);
   
   const glossaryTerms = loadGlossaryTerms();
   console.log(`   📖 Glossary terms: ${glossaryTerms.length}`);

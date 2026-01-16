@@ -182,12 +182,35 @@ async function addToGoneUrls(urlPath, reason) {
 }
 
 /**
+ * Normalize URL path for SEO canonicalization
+ * - Force lowercase slugs
+ * - Remove trailing slashes (except root)
+ * Returns null if no normalization needed, or the canonical path if redirect required
+ */
+function normalizeUrlPath(path) {
+  let normalized = path;
+  
+  // Remove trailing slash (except for root path)
+  if (normalized.length > 1 && normalized.endsWith('/')) {
+    normalized = normalized.slice(0, -1);
+  }
+  
+  // Force lowercase for content paths (preserve case for static assets)
+  const contentPathPattern = /^\/([a-z]{2})\/(qa|blog|compare|locations)\/.+$/;
+  if (contentPathPattern.test(normalized.toLowerCase())) {
+    normalized = normalized.toLowerCase();
+  }
+  
+  return normalized !== path ? normalized : null;
+}
+
+/**
  * Main middleware handler
  */
 export async function onRequest(context) {
   const { request, next, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname;
+  let path = url.pathname;
   const userAgent = request.headers.get('user-agent') || '';
   
   // ============================================================
@@ -198,6 +221,17 @@ export async function onRequest(context) {
     const wwwUrl = `https://www.${url.hostname}${url.pathname}${url.search}`;
     console.log(`[Middleware] 301 WWW redirect: ${url.href} → ${wwwUrl}`);
     return Response.redirect(wwwUrl, 301);
+  }
+  
+  // ============================================================
+  // PRIORITY -2.9: URL Normalization (canonical format enforcement)
+  // Force lowercase slugs and remove trailing slashes
+  // ============================================================
+  const normalizedPath = normalizeUrlPath(path);
+  if (normalizedPath) {
+    const canonicalUrl = `${BASE_URL}${normalizedPath}${url.search}`;
+    console.log(`[Middleware] 301 URL normalize: ${path} → ${normalizedPath}`);
+    return Response.redirect(canonicalUrl, 301);
   }
   
   // ============================================================
