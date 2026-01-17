@@ -320,3 +320,6 @@ verify_jwt = false
 
 [functions.translate-glossary]
 verify_jwt = false
+
+[functions.translate-property-description]
+verify_jwt = false

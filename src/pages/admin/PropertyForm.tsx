@@ -68,64 +68,30 @@ const PropertyForm: React.FC = () => {
         }
     };
 
-    // Auto-translate description to all 10 languages using Claude API
+    // Auto-translate description to all 10 languages using edge function
     const translateDescription = async (englishText: string) => {
         setTranslating(true);
 
         try {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-                    'anthropic-version': '2023-06-01'
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514', // Assuming this model, falling back if not avail
-                    max_tokens: 2000,
-                    messages: [{
-                        role: 'user',
-                        content: `Translate this property description to Dutch, French, German, Polish, Swedish, Danish, Finnish, Hungarian, and Norwegian. Keep the same tone and style. Return ONLY a JSON object with language codes as keys.
+            const { data, error } = await supabase.functions.invoke(
+                'translate-property-description',
+                { body: { description: englishText } }
+            );
 
-English description: "${englishText}"
-
-Return format:
-{
-  "nl": "Dutch translation",
-  "fr": "French translation",
-  "de": "German translation",
-  "pl": "Polish translation",
-  "sv": "Swedish translation",
-  "da": "Danish translation",
-  "fi": "Finnish translation",
-  "hu": "Hungarian translation",
-  "no": "Norwegian translation"
-}`
-                    }]
-                })
-            });
-
-            const data = await response.json();
-
-            let translations: Record<string, string> = {};
-
-            if (data.content && data.content[0] && data.content[0].text) {
-                const translationsText = data.content[0].text;
-                // Extract JSON from response (remove markdown if present)
-                const jsonMatch = translationsText.match(/\{[\s\S]*\}/);
-                translations = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-            } else {
-                // Mock translation if API fails or key is missing
-                console.warn("Translation API response invalid, using fallback.");
-                translations = {
-                    nl: englishText, fr: englishText, de: englishText, pl: englishText,
-                    sv: englishText, da: englishText, fi: englishText, hu: englishText, no: englishText
-                }
+            if (error) {
+                console.error('Translation function error:', error);
+                throw error;
             }
 
+            if (!data?.success || !data?.translations) {
+                console.error('Translation response invalid:', data);
+                throw new Error(data?.error || 'Translation failed');
+            }
+
+            console.log('Translation completed successfully');
             return {
                 en: englishText,
-                ...translations
+                ...data.translations
             };
         } catch (error) {
             console.error('Translation error:', error);
@@ -142,6 +108,35 @@ Return format:
                 hu: englishText,
                 no: englishText
             };
+        } finally {
+            setTranslating(false);
+        }
+    };
+
+    // Manual re-translate for existing properties
+    const handleRetranslate = async () => {
+        if (!formData.description_en.trim()) {
+            alert('Please enter a description first');
+            return;
+        }
+        
+        setTranslating(true);
+        try {
+            const descriptions = await translateDescription(formData.description_en);
+            
+            if (isEdit && id) {
+                // Update directly in database
+                const { error } = await (supabase as any)
+                    .from('properties')
+                    .update({ descriptions })
+                    .eq('id', id);
+                
+                if (error) throw error;
+                alert('✅ Description re-translated to all 10 languages!');
+            }
+        } catch (error) {
+            console.error('Re-translate error:', error);
+            alert('Re-translation failed. Please try again.');
         } finally {
             setTranslating(false);
         }
@@ -380,7 +375,7 @@ Return format:
                                 Description (Auto-Translated to 10 Languages)
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                             <div>
                                 <Label htmlFor="description_en">Description (English) *</Label>
                                 <Textarea
@@ -395,6 +390,29 @@ Return format:
                                     ✨ Will auto-translate to: Dutch, French, German, Polish, Swedish, Danish, Finnish, Hungarian, Norwegian
                                 </p>
                             </div>
+                            
+                            {/* Re-translate button for existing properties */}
+                            {isEdit && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleRetranslate}
+                                    disabled={translating || !formData.description_en.trim()}
+                                    className="w-full"
+                                >
+                                    {translating ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Translating to 9 languages...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Languages className="w-4 h-4 mr-2" />
+                                            Re-translate Description to All Languages
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
 
