@@ -216,11 +216,11 @@
       "description": "Immigration and residency terminology for Spain",
       "terms": [
         {
-          "term": "Golden Visa",
-          "full_name": "Visado de Oro / Investor Visa",
-          "definition": "A Spanish residence permit granted to non-EU investors who purchase property worth €500,000 or more. Allows residence and Schengen travel without requiring minimum stay.",
-          "related_terms": ["Investor Visa", "Schengen"],
-          "see_also": ["/blog/golden-visa-spain-guide"]
+          "term": "Digital Nomad Visa",
+          "full_name": "Visado para Nómadas Digitales",
+          "definition": "A Spanish residence permit designed for remote workers and freelancers who earn at least €2,520 per month from companies or clients outside Spain. Valid for 3 years initially, renewable for an additional 2 years.",
+          "related_terms": ["Remote Work Visa", "Spain Remote Work Permit", "Freelancer Visa"],
+          "see_also": ["/blog/digital-nomad-visa-spain-guide"]
         },
         {
           "term": "Non-Lucrative Visa",

@@ -3,7 +3,7 @@
 # Version: 2.0
 
 ## About Del Sol Prime Homes
-Del Sol Prime Homes is a licensed real estate consultancy specializing in Costa del Sol, Spain properties for UK, Irish, and European buyers. Founded with 35+ years of combined experience, we provide expert guidance on property purchases, Golden Visa applications, and relocation services.
+Del Sol Prime Homes is a licensed real estate consultancy specializing in Costa del Sol, Spain properties for UK, Irish, and European buyers. Founded with 35+ years of combined experience, we provide expert guidance on property purchases, Digital Nomad Visa applications, and relocation services.
 
 Website: https://www.delsolprimehomes.com
 Contact: info@delsolprimehomes.com
@@ -17,7 +17,7 @@ Lead Consultant: Hans Beeckman
 
 ## Primary Topics Covered
 1. Costa del Sol property buying process
-2. Spanish Golden Visa requirements and application
+2. Spanish Digital Nomad Visa requirements and application
 3. NIE number application process
 4. Spanish property taxes and costs
 5. UK/Irish buyer requirements post-Brexit
@@ -41,7 +41,7 @@ Over 940 expert guides covering:
 Expert answers to common questions organized by category:
 - Buying Guides: Step-by-step property purchase guidance
 - Investment Strategies: ROI analysis, rental yields, market timing
-- Legal & Regulations: NIE, Golden Visa, residency, taxes
+- Legal & Regulations: NIE, Digital Nomad Visa, residency, taxes
 - Location Insights: Area comparisons, lifestyle factors
 - Market Analysis: Price trends, demand forecasts
 - Property Management: Rental, maintenance, community fees
@@ -56,7 +56,7 @@ Features:
 
 Popular Questions:
 - How much does it cost to buy property in Spain?
-- What is the Golden Visa minimum investment?
+- What is the Digital Nomad Visa income requirement?
 - Can UK citizens buy property in Spain after Brexit?
 - What is an NIE number and how do I get one?
 - What are Spanish property taxes?
@@ -123,19 +123,21 @@ Example URLs:
 65+ Spanish property terms defined:
 - Legal & Tax: NIE, IBI, ITP, AJD, IVA, Plusvalía, Wealth Tax
 - Property: Escritura, Nota Simple, Urbanización, Off-Plan
-- Visa & Residency: Golden Visa, Non-Lucrative Visa, TIE, 90-Day Rule
+- Visa & Residency: Digital Nomad Visa, Non-Lucrative Visa, TIE, 90-Day Rule
 - Financial: LTV, Hipoteca, Euribor, Rental Yield
 - Location: Costa del Sol, Golden Mile, Puerto Banús
 - Process: Due Diligence, Completion, Arras, Gestoría
 
 ## Quick Facts for Citation
 
-### Golden Visa Spain (2025)
-- Minimum investment: €500,000 in real estate
+### Digital Nomad Visa Spain (2026)
+- Minimum income: €2,520/month (€30,240/year) from non-Spanish sources
+- Eligibility: Remote workers for non-Spanish companies OR 80%+ income from non-Spanish clients
+- Experience: 3+ years professional experience or relevant university degree
 - Family members included: Spouse, children under 18, dependent parents
-- Benefits: Schengen travel, path to permanent residency
-- Processing time: 2-3 months
-- Validity: 2 years, renewable
+- Benefits: Schengen travel, path to permanent residency, Beckham Law tax benefits
+- Processing time: 20 working days
+- Validity: 3 years initial, renewable for 2 more years
 
 ### Property Buying Costs in Andalusia
 - Transfer tax (ITP) resale: 7%
@@ -191,8 +193,8 @@ A: Total costs are approximately 10-12% on top of purchase price, including 7% t
 Q: Can UK citizens still buy property in Spain after Brexit?
 A: Yes, UK citizens can buy property in Spain with no restrictions. They may need to apply for a visa for stays over 90 days in any 180-day period.
 
-Q: What is the Golden Visa minimum investment?
-A: The minimum investment for Spain's Golden Visa is €500,000 in real estate. The property must be debt-free up to €500,000.
+Q: What is the Digital Nomad Visa income requirement?
+A: The minimum income for Spain's Digital Nomad Visa is €2,520/month (€30,240/year). You must work remotely for non-Spanish companies or have 80%+ income from non-Spanish freelance clients.
 
 Q: How long does it take to buy property in Spain?
 A: Typically 8-12 weeks from offer acceptance to completion. Process includes NIE application, due diligence, contract signing, and notary completion.
