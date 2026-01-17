@@ -283,7 +283,7 @@ export default function QAIndex() {
                       {/* Q&A Cards Grid */}
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                         {qas.map((qa: any) => (
-                          <QACard key={qa.id} qa={qa} lang={lang} stripHtml={stripHtml} />
+                          <QACard key={qa.id} qa={qa} stripHtml={stripHtml} />
                         ))}
                       </div>
                     </div>
@@ -294,7 +294,7 @@ export default function QAIndex() {
               // Show flat list when specific category is selected
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                 {filteredQas.map((qa: any) => (
-                  <QACard key={qa.id} qa={qa} lang={lang} stripHtml={stripHtml} />
+                  <QACard key={qa.id} qa={qa} stripHtml={stripHtml} />
                 ))}
               </div>
             )}
@@ -343,7 +343,7 @@ export default function QAIndex() {
 }
 
 // Q&A Card Component with optimized image loading
-function QACard({ qa, lang, stripHtml }: { qa: any; lang: string; stripHtml: (html: string) => string }) {
+function QACard({ qa, stripHtml }: { qa: any; stripHtml: (html: string) => string }) {
   // Generate optimized image URL using Supabase transformations
   // IMPORTANT: Must use /render/image/public/ path for transformations to work
   const getOptimizedImageUrl = (url: string): string => {
@@ -360,7 +360,7 @@ function QACard({ qa, lang, stripHtml }: { qa: any; lang: string; stripHtml: (ht
 
   return (
     <Link
-      to={`/${lang}/qa/${qa.slug}`}
+      to={`/${qa.language}/qa/${qa.slug}`}
       className="group block"
     >
       <Card className="h-full overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
