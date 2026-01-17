@@ -69,7 +69,7 @@ export const generateBuyersGuideSchema = (
     "@type": "Article",
     "@id": `${pageUrl}#article`,
     "headline": "The Complete Guide to Buying Property on the Costa del Sol",
-    "description": "Everything you need to know about purchasing real estate in Spain's Costa del Sol region. From NIE numbers to Golden Visa requirements.",
+    "description": "Everything you need to know about purchasing real estate in Spain's Costa del Sol region. From NIE numbers to Digital Nomad Visa requirements.",
     "image": {
       "@type": "ImageObject",
       "url": `${BASE_URL}/assets/costa-del-sol-bg.jpg`,
@@ -296,8 +296,8 @@ export const defaultFAQs: FAQItem[] = [
     answer: "Total buying costs typically range from 10-13% of the purchase price. This includes Transfer Tax (ITP) of 7% for resale properties or 10% VAT for new builds, plus notary fees (0.5-1%), registry fees (0.5-1%), and legal fees (1-1.5%)."
   },
   {
-    question: "What is the Spanish Golden Visa?",
-    answer: "The Spanish Golden Visa grants residency to non-EU citizens who invest €500,000 or more in Spanish real estate. Benefits include visa-free travel throughout the Schengen zone, the right to live and work in Spain, and a path to permanent residency after 5 years."
+    question: "What is the Spanish Digital Nomad Visa?",
+    answer: "The Spanish Digital Nomad Visa grants residency to remote workers who earn at least €2,520/month from non-Spanish companies or clients. Benefits include visa-free travel throughout the Schengen zone, the right to live in Spain while working remotely, and a path to permanent residency after 5 years. Initial validity is 3 years, renewable for 2 more."
   },
   {
     question: "Do I need to be in Spain to buy property?",

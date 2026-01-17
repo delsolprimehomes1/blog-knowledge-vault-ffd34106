@@ -195,7 +195,7 @@ const Glossary: React.FC = () => {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="Spanish property glossary, NIE definition, IBI tax, Golden Visa Spain, Spanish real estate terms, Costa del Sol buying guide, escritura, plusvalia, notario" />
+        <meta name="keywords" content="Spanish property glossary, NIE definition, IBI tax, Digital Nomad Visa Spain, Spanish real estate terms, Costa del Sol buying guide, escritura, plusvalia, notario, remote work visa Spain" />
         <meta name="author" content="Del Sol Prime Homes" />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
         

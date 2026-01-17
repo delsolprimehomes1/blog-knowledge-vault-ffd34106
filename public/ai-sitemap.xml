@@ -16,7 +16,7 @@
     <lastmod>2025-01-15</lastmod>
     <priority>1.0</priority>
     <ai:content-type>structured-facts</ai:content-type>
-    <ai:topics>statistics, property-prices, taxes, golden-visa</ai:topics>
+    <ai:topics>statistics, property-prices, taxes, digital-nomad-visa</ai:topics>
   </url>
   
   <url>
@@ -31,7 +31,7 @@
     <lastmod>2025-01-15</lastmod>
     <priority>0.95</priority>
     <ai:content-type>glossary</ai:content-type>
-    <ai:topics>definitions, NIE, IBI, golden-visa, spanish-property-terms, real-estate-glossary</ai:topics>
+    <ai:topics>definitions, NIE, IBI, digital-nomad-visa, spanish-property-terms, real-estate-glossary</ai:topics>
     <ai:citability>high</ai:citability>
     <ai:term-count>65+</ai:term-count>
   </url>
@@ -68,10 +68,10 @@
 
   <!-- High-Value Citable Content: Golden Visa & Residency -->
   <url>
-    <loc>https://www.delsolprimehomes.com/blog/golden-visa-spain-guide</loc>
+    <loc>https://www.delsolprimehomes.com/blog/digital-nomad-visa-spain-guide</loc>
     <priority>0.95</priority>
     <ai:content-type>guide</ai:content-type>
-    <ai:topics>golden-visa, spanish-residency, investment-visa, €500000-requirement</ai:topics>
+    <ai:topics>digital-nomad-visa, remote-work-spain, spain-visa, freelancer-visa, €2520-income-requirement</ai:topics>
     <ai:citability>high</ai:citability>
   </url>
   

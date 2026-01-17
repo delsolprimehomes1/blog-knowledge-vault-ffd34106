@@ -149,7 +149,7 @@ export function generateOrganizationSchema() {
     knowsAbout: [
       'Costa del Sol Real Estate',
       'Spanish Property Law',
-      'Golden Visa Spain',
+      'Digital Nomad Visa Spain',
       'Spanish Property Taxes',
       'NIE Number Application',
       'Spanish Mortgages for Non-Residents',
