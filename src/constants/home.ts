@@ -106,9 +106,9 @@ export const LATEST_POSTS: BlogPost[] = [
   },
   {
     id: '3',
-    title: 'Golden Visa Updates for 2024',
-    excerpt: 'What non-EU citizens need to know about residency through property investment.',
-    date: 'Sep 15, 2023',
+    title: 'Digital Nomad Visa Updates for 2026',
+    excerpt: 'What remote workers and digital nomads need to know about living and working in Spain.',
+    date: 'Jan 15, 2026',
     image: 'https://picsum.photos/id/20/600/400'
   }
 ];

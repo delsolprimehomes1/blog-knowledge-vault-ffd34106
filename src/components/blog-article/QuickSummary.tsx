@@ -27,10 +27,12 @@ function extractKeyTakeaways(headline: string, bottomLine: string): string[] {
   const takeaways: string[] = [];
   
   // Add headline-derived takeaway
-  if (headline.toLowerCase().includes('golden visa')) {
-    takeaways.push('€500,000 minimum investment for Spanish Golden Visa');
-    takeaways.push('Includes spouse, children, and dependent parents');
-    takeaways.push('Path to permanent residency and citizenship');
+  if (headline.toLowerCase().includes('digital nomad') || 
+      headline.toLowerCase().includes('remote work visa')) {
+    takeaways.push('€2,520/month minimum income requirement for Digital Nomad Visa');
+    takeaways.push('Work remotely for non-Spanish companies or 80%+ non-Spanish clients');
+    takeaways.push('3-year initial visa, renewable for additional 2 years');
+    takeaways.push('Family members (spouse, children, dependents) can be included');
   } else if (headline.toLowerCase().includes('cost') || headline.toLowerCase().includes('tax')) {
     takeaways.push('Budget 10-15% for purchase costs beyond property price');
     takeaways.push('Transfer tax (ITP) ranges from 7-10% depending on region');

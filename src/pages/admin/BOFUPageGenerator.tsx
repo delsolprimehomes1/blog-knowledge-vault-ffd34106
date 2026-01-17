@@ -22,6 +22,7 @@ import {
   Calculator,
   FileCheck,
   Landmark,
+  Laptop,
   Zap
 } from "lucide-react";
 
@@ -37,12 +38,12 @@ interface BOFUTemplate {
 
 const BOFU_TEMPLATES: BOFUTemplate[] = [
   {
-    id: 'golden-visa',
-    title: 'Golden Visa Spain 2025: Requirements, Costs & Process',
-    description: '€500K investment threshold, 10-step process, Portugal comparison, family inclusion, path to permanent residency',
-    icon: <Landmark className="h-5 w-5" />,
-    targetKeyword: 'golden visa spain requirements',
-    category: 'Legal & Regulations',
+    id: 'digital-nomad-visa',
+    title: 'Digital Nomad Visa Spain 2026: Requirements, Process & Complete Guide',
+    description: '€2,520/month income requirement, remote work eligibility, 3-year initial visa, family inclusion, Beckham Law tax benefits',
+    icon: <Laptop className="h-5 w-5" />,
+    targetKeyword: 'digital nomad visa spain requirements',
+    category: 'Legal & Immigration',
     estimatedTime: '~2 min'
   },
   {
@@ -128,7 +129,7 @@ export default function BOFUPageGenerator() {
 
   const getTemplateStatus = (templateId: string): 'new' | 'exists' => {
     const keywordMap: Record<string, string> = {
-      'golden-visa': 'golden-visa',
+      'digital-nomad-visa': 'digital-nomad-visa',
       'property-costs': 'property-buying-costs',
       'nie-number': 'nie-number',
       'spanish-mortgage': 'mortgage'

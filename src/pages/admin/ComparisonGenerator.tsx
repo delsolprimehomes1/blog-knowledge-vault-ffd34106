@@ -39,7 +39,7 @@ const SUGGESTED_COMPARISONS = [
   { a: 'New Build', b: 'Renovation Project', context: 'Which Is Better for Investment?' },
   { a: 'Local Agent', b: 'International Broker', context: 'Who Should You Choose in Spain?' },
   { a: 'Marbella', b: 'Estepona', context: 'Where to Buy Property on Costa del Sol?' },
-  { a: 'Golden Visa', b: 'Standard Residency', context: 'Which Path to Spanish Residency?' },
+  { a: 'Digital Nomad Visa', b: 'Standard Residency', context: 'Which Path to Spanish Residency?' },
   { a: 'Beachfront Property', b: 'Golf Property', context: 'Best Lifestyle Investment in Spain' },
   { a: 'Holiday Home', b: 'Investment Property', context: 'What Should You Buy in Spain?' },
   { a: 'Cash Purchase', b: 'Spanish Mortgage', context: 'How Should You Finance Property?' },
@@ -62,7 +62,7 @@ const PHASE3_MOFU_COMPARISONS = [
     aiHeadline: 'Golden Mile vs Nueva Andalucía: Where Should You Buy Property in Marbella?',
     targetAudience: 'luxury property buyers comparing premium Marbella neighborhoods',
     niche: 'real-estate',
-    relatedKeywords: ['golden visa', 'property investment', 'Marbella real estate'],
+    relatedKeywords: ['digital nomad visa', 'property investment', 'Marbella real estate'],
     description: 'Location comparison for high-end Marbella property seekers',
   },
   {
@@ -71,7 +71,7 @@ const PHASE3_MOFU_COMPARISONS = [
     aiHeadline: 'Costa del Sol vs Algarve: Best Mediterranean Property Investment for 2025',
     targetAudience: 'international property investors comparing Mediterranean destinations',
     niche: 'real-estate',
-    relatedKeywords: ['golden visa spain', 'property buying costs', 'tax comparison'],
+    relatedKeywords: ['digital nomad visa spain', 'property buying costs', 'tax comparison'],
     description: 'Destination comparison for European property investors',
   },
 ];

@@ -140,13 +140,13 @@ function extractEntitiesForSSG(headline: string, content: string, category: stri
     "Manilva": "https://www.wikidata.org/wiki/Q571730",
     "Málaga": "https://www.wikidata.org/wiki/Q8851",
     "Costa del Sol": "https://www.wikidata.org/wiki/Q751676",
-    "Golden Visa": "https://www.wikidata.org/wiki/Q5579119",
+    "Digital Nomad Visa": "https://www.wikidata.org/wiki/Q111946227",
     "NIE": "https://www.wikidata.org/wiki/Q6955279",
   };
 
   const GLOSSARY_TERMS: Record<string, string> = {
     "NIE": "Tax identification number for foreigners in Spain",
-    "Golden Visa": "Spanish residence permit for property investors (€500,000+)",
+    "Digital Nomad Visa": "Spanish residence visa for remote workers (€2,520+/month income from non-Spanish sources)",
     "Escritura": "Public deed of sale signed before a notary",
     "IBI": "Annual municipal property tax in Spain",
     "Plusvalía": "Municipal capital gains tax on land value increase",

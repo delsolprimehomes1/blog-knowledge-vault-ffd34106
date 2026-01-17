@@ -40,23 +40,23 @@ const BOFU_TEMPLATES: Record<string, {
   pageType: string;
   contentFocus: string[];
 }> = {
-  'golden-visa': {
-    topic: 'Golden Visa Spain 2025: Requirements, Costs & Process',
-    targetKeyword: 'golden visa spain requirements',
-    category: 'Legal & Regulations',
-    targetAudience: 'Non-EU investors seeking Spanish residency through property investment',
+  'digital-nomad-visa': {
+    topic: 'Digital Nomad Visa Spain 2026: Requirements, Process & Complete Guide',
+    targetKeyword: 'digital nomad visa spain requirements',
+    category: 'Legal & Immigration',
+    targetAudience: 'Remote workers, freelancers, and digital nomads seeking Spanish residency',
     pageType: 'comprehensive-guide',
     contentFocus: [
-      '€500,000 minimum investment threshold (current 2025 requirement)',
-      '10-step application process with exact timelines',
-      'Required documents checklist with official forms',
-      'Benefits: residency, Schengen travel, path to permanent residency (5 years)',
-      'Comparison with Portugal Golden Visa (now closed to property)',
-      'Family inclusion rules (spouse, children, dependents)',
-      'Tax implications for Golden Visa holders (Beckham Law eligibility)',
-      'Common mistakes to avoid and rejection reasons',
-      'Processing times by consulate/region',
-      'Renewal process and citizenship pathway'
+      '€2,520 minimum monthly income requirement (€30,240 annually)',
+      'Remote work for non-Spanish companies OR 80%+ income from non-Spanish clients',
+      '3-year initial visa validity, renewable for additional 2 years',
+      'Family inclusion: spouse, children under 18, dependent parents',
+      'Required documents checklist (work contracts, bank statements, insurance)',
+      'Application process: 20 working days processing time',
+      'Beckham Law tax benefits eligibility (24% flat rate up to €600,000)',
+      'Healthcare and private insurance requirements',
+      'Path to permanent residency after 5 years',
+      'Comparison with Non-Lucrative Visa and Standard Residency'
     ]
   },
   'property-costs': {
