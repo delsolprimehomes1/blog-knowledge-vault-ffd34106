@@ -10,33 +10,54 @@
     "credentials": ["API Certified", "Costa del Sol Specialist"]
   },
   "categories": {
-    "golden_visa": {
-      "title": "Spanish Golden Visa Facts",
+    "digital_nomad_visa": {
+      "title": "Spain Digital Nomad Visa Facts",
+      "icon": "laptop",
+      "last_updated": "2026-01-16",
       "facts": [
         {
-          "fact": "Spain's Golden Visa requires a minimum property investment of €500,000",
+          "id": "dnv_income",
+          "fact": "Spain's Digital Nomad Visa requires a minimum monthly income of €2,520 (€30,240 annually)",
+          "source": "Spanish Immigration Law - Law 28/2022, Article 15",
+          "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2022-21739",
+          "last_verified": "2026-01",
+          "category": "Requirements"
+        },
+        {
+          "id": "dnv_work",
+          "fact": "Applicants must work remotely for companies registered outside Spain, or earn 80% or more of their income from non-Spanish clients",
+          "source": "Spanish Immigration Law - Law 28/2022",
+          "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2022-21739",
+          "last_verified": "2026-01",
+          "category": "Requirements"
+        },
+        {
+          "id": "dnv_duration",
+          "fact": "Initial Digital Nomad Visa is valid for 3 years and can be renewed for an additional 2 years, totaling 5 years maximum",
           "source": "Spanish Immigration Law",
-          "last_verified": "2025-01"
+          "last_verified": "2026-01",
+          "category": "Duration"
         },
         {
-          "fact": "Golden Visa holders can include spouse, children under 18, and dependent parents",
-          "source": "Spanish Immigration Law",
-          "last_verified": "2025-01"
+          "id": "dnv_processing",
+          "fact": "Processing time for Digital Nomad Visa applications is 20 working days from submission",
+          "source": "Spanish Ministry of Inclusion, Social Security and Migration",
+          "last_verified": "2026-01",
+          "category": "Process"
         },
         {
-          "fact": "Golden Visa allows visa-free travel to all 27 Schengen countries",
-          "source": "Schengen Agreement",
-          "last_verified": "2025-01"
+          "id": "dnv_family",
+          "fact": "Family members (spouse, children under 18, dependent parents) can be included in the Digital Nomad Visa application",
+          "source": "Spanish Immigration Law - Law 28/2022",
+          "last_verified": "2026-01",
+          "category": "Family"
         },
         {
-          "fact": "Golden Visa can lead to permanent residency after 5 years",
-          "source": "Spanish Immigration Law",
-          "last_verified": "2025-01"
-        },
-        {
-          "fact": "Processing time for Golden Visa is typically 2-3 months",
-          "source": "Del Sol Prime Homes client data",
-          "last_verified": "2025-01"
+          "id": "dnv_tax",
+          "fact": "Digital Nomad Visa holders may qualify for Beckham Law tax benefits (24% flat rate on Spanish-source income up to €600,000)",
+          "source": "Spanish Tax Agency - Special Tax Regime",
+          "last_verified": "2026-01",
+          "category": "Taxation"
         }
       ]
     },
