@@ -846,9 +846,9 @@ export async function generateStaticPages(distDir: string) {
     // Fetch gone URLs to exclude from generation
     const { data: goneUrls } = await supabase
       .from('gone_urls')
-      .select('url');
+      .select('url_path');
     
-    const goneUrlSet = new Set((goneUrls || []).map(g => g.url.toLowerCase()));
+    const goneUrlSet = new Set((goneUrls || []).map(g => g.url_path.toLowerCase()));
     console.log(`🚫 Found ${goneUrlSet.size} gone URLs to exclude`);
 
     // Filter out articles with empty content or in gone_urls
