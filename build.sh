@@ -35,9 +35,9 @@ npx tsx scripts/generateStaticLocationPages.ts
 echo "👤 Generating static about page..."
 npx tsx scripts/generateStaticAboutPage.ts
 
-# Generate sitemap with all pages
+# Generate sitemap with all pages - OUTPUT TO dist/ for Cloudflare
 echo "🗺️ Generating sitemap..."
-npx tsx scripts/generateSitemap.ts
+npx tsx scripts/generateSitemap.ts dist
 
 # Copy Cloudflare Pages Functions to dist directory
 # This ensures Cloudflare Pages detects and deploys the middleware

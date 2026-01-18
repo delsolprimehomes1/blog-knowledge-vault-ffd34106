@@ -837,5 +837,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log(`   /sitemaps/brochures.xml`);
 }
 
-// Run if called directly
-generateSitemap().catch(console.error);
+// Run if called directly with optional output directory argument
+// Usage: npx tsx scripts/generateSitemap.ts [outputDir]
+const outputDir = process.argv[2] || undefined;
+generateSitemap(outputDir).catch(console.error);
