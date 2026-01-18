@@ -7,7 +7,36 @@ import type { Database } from '../src/integrations/supabase/types';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
 
-const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Create Supabase client with build-optimized settings
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false },
+  global: { headers: { 'x-client-info': 'static-build' } }
+});
+
+const MAX_RETRIES = 3;
+
+async function fetchWithRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  description: string
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data, error } = await queryFn();
+      if (error) {
+        console.error(`❌ ${description} error (attempt ${attempt}/${MAX_RETRIES}):`, error.message || error);
+        if (attempt === MAX_RETRIES) return null;
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
+      return data;
+    } catch (err: any) {
+      console.error(`❌ ${description} failed (attempt ${attempt}/${MAX_RETRIES}):`, err.message || err);
+      if (attempt === MAX_RETRIES) return null;
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+  return null;
+}
 
 interface Founder {
   name: string;
@@ -36,20 +65,20 @@ interface AboutPageData {
   id: string;
   meta_title: string;
   meta_description: string;
-  canonical_url: string;
+  canonical_url: string | null;
   speakable_summary: string;
   hero_headline: string;
   hero_subheadline: string;
   mission_statement: string;
   our_story_content: string;
   why_choose_us_content: string;
-  years_in_business: number;
-  properties_sold: number;
-  client_satisfaction_percent: number;
+  years_in_business: number | null;
+  properties_sold: number | null;
+  client_satisfaction_percent: number | null;
   faq_entities: FAQ[];
   founders: Founder[];
   credentials: Credential[];
-  language: string;
+  language: string | null;
 }
 
 interface ProductionAssets {
@@ -193,7 +222,7 @@ function generateOrganizationSchema(content: AboutPageData) {
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "4.9",
-      "reviewCount": content.properties_sold.toString(),
+      "reviewCount": (content.properties_sold || 500).toString(),
       "bestRating": "5",
       "worstRating": "1"
     }
@@ -686,12 +715,12 @@ export async function generateStaticAboutPage(distDir: string) {
       return;
     }
 
-    // Parse JSON fields
+    // Parse JSON fields with proper type casting
     const content: AboutPageData = {
       ...aboutContent,
-      faq_entities: (aboutContent.faq_entities as FAQ[]) || [],
-      founders: (aboutContent.founders as Founder[]) || [],
-      credentials: (aboutContent.credentials as Credential[]) || []
+      faq_entities: (aboutContent.faq_entities as unknown as FAQ[]) || [],
+      founders: (aboutContent.founders as unknown as Founder[]) || [],
+      credentials: (aboutContent.credentials as unknown as Credential[]) || []
     };
 
     const html = generateStaticHTML(content, productionAssets);

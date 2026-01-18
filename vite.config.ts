@@ -5,20 +5,85 @@ import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import type { Plugin } from "vite";
 
-// Plugin to generate static HTML pages after build
+// Plugin to generate ALL static HTML pages after build
 function staticPageGenerator(): Plugin {
   return {
     name: "static-page-generator",
     async closeBundle() {
       // Only run in production builds
       if (process.env.NODE_ENV === 'production') {
-        console.log('\n📄 Generating static pages...');
+        const distPath = path.resolve(__dirname, 'dist');
+        
+        // 1. Generate app-shell.html first (needed for dynamic routes)
+        console.log('\n📄 Generating app-shell.html...');
+        try {
+          const { generateAppShell } = await import('./scripts/generateAppShell');
+          if (typeof generateAppShell === 'function') {
+            generateAppShell(distPath);
+          }
+        } catch (err) {
+          console.error('Failed to generate app-shell:', err);
+        }
+        
+        // 2. Generate static homepages (CRITICAL - prevents 404 on /)
+        console.log('\n🏠 Generating static homepages...');
+        try {
+          const { generateStaticHomePage } = await import('./scripts/generateStaticHomePage');
+          await generateStaticHomePage(distPath);
+          
+          // Verify home.html was created
+          if (!fs.existsSync(path.join(distPath, 'home.html'))) {
+            console.error('❌ CRITICAL: dist/home.html was not created!');
+          } else {
+            console.log('✅ dist/home.html verified');
+          }
+        } catch (err) {
+          console.error('❌ Failed to generate static homepages:', err);
+        }
+        
+        // 3. Generate blog article pages
+        console.log('\n📄 Generating static blog pages...');
         try {
           const { generateStaticPages } = await import('./scripts/generateStaticPages');
-          await generateStaticPages(path.resolve(__dirname, 'dist'));
+          await generateStaticPages(distPath);
         } catch (err) {
-          console.error('Failed to generate static pages:', err);
-          // Don't fail the build if static generation fails
+          console.error('Failed to generate static blog pages:', err);
+        }
+        
+        // 4. Generate Q&A pages
+        console.log('\n❓ Generating static Q&A pages...');
+        try {
+          const { generateStaticQAPages } = await import('./scripts/generateStaticQAPages');
+          await generateStaticQAPages(distPath);
+        } catch (err) {
+          console.error('Failed to generate Q&A pages:', err);
+        }
+        
+        // 5. Generate comparison pages
+        console.log('\n⚖️ Generating static comparison pages...');
+        try {
+          const { generateStaticComparisonPages } = await import('./scripts/generateStaticComparisonPages');
+          await generateStaticComparisonPages(distPath);
+        } catch (err) {
+          console.error('Failed to generate comparison pages:', err);
+        }
+        
+        // 6. Generate location pages
+        console.log('\n📍 Generating static location pages...');
+        try {
+          const { generateStaticLocationPages } = await import('./scripts/generateStaticLocationPages');
+          await generateStaticLocationPages(distPath);
+        } catch (err) {
+          console.error('Failed to generate location pages:', err);
+        }
+        
+        // 7. Generate about page
+        console.log('\n📋 Generating static about page...');
+        try {
+          const { generateStaticAboutPage } = await import('./scripts/generateStaticAboutPage');
+          await generateStaticAboutPage(distPath);
+        } catch (err) {
+          console.error('Failed to generate about page:', err);
         }
       }
     }

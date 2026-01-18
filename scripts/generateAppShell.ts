@@ -12,16 +12,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const distDir = process.argv[2] || 'dist';
-
-function generateAppShell(): void {
+export function generateAppShell(distDir: string = 'dist'): void {
   const indexPath = path.join(distDir, 'index.html');
   const appShellPath = path.join(distDir, 'app-shell.html');
 
   // Read the built index.html to extract production assets
   if (!fs.existsSync(indexPath)) {
     console.error(`❌ Could not find ${indexPath}`);
-    process.exit(1);
+    return;
   }
 
   const indexHtml = fs.readFileSync(indexPath, 'utf-8');
@@ -95,4 +93,6 @@ function generateAppShell(): void {
   console.log(`   - Script tags: ${scripts.length}`);
 }
 
-generateAppShell();
+// Run if executed directly
+const distDir = process.argv[2] || 'dist';
+generateAppShell(distDir);

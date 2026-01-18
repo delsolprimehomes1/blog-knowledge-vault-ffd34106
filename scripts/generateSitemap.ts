@@ -3,16 +3,43 @@ import { createClient } from '@supabase/supabase-js';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
-// Supabase setup
+// Supabase setup with build-optimized settings
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://kazggnufaoicopvmwhdl.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemdnbnVmYW9pY29wdm13aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MzM0ODEsImV4cCI6MjA3NjEwOTQ4MX0.acQwC_xPXFXvOwwn7IATeg6OwQ2HWlu52x76iqUdhB4';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false },
+  global: { headers: { 'x-client-info': 'static-build' } }
+});
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
-// Batch size for paginated database queries (stay under Supabase 1000 row limit)
-const BATCH_SIZE = 500;
+// Batch size for paginated database queries - reduced to prevent timeouts
+const BATCH_SIZE = 200;
+const MAX_RETRIES = 3;
+
+async function fetchWithRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  description: string
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data, error } = await queryFn();
+      if (error) {
+        console.error(`❌ ${description} error (attempt ${attempt}/${MAX_RETRIES}):`, error.message || error);
+        if (attempt === MAX_RETRIES) return null;
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
+      return data;
+    } catch (err: any) {
+      console.error(`❌ ${description} failed (attempt ${attempt}/${MAX_RETRIES}):`, err.message || err);
+      if (attempt === MAX_RETRIES) return null;
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+  return null;
+}
 
 // All 10 supported languages
 const SUPPORTED_LANGUAGES = ['en', 'nl', 'de', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];

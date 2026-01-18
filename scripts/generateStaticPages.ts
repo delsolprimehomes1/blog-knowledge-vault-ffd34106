@@ -7,7 +7,91 @@ import type { Database } from '../src/integrations/supabase/types';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
 
-const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Create Supabase client with build-optimized settings
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false },
+  global: {
+    headers: { 'x-client-info': 'static-build' }
+  }
+});
+
+// Batch size for database queries (reduced from 500 to prevent timeouts)
+const BATCH_SIZE = 200;
+const QUERY_TIMEOUT_MS = 30000;
+const MAX_RETRIES = 3;
+
+/**
+ * Fetch with retry logic and timeout
+ */
+async function fetchWithRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  description: string
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data, error } = await queryFn();
+      
+      if (error) {
+        console.error(`❌ ${description} error (attempt ${attempt}/${MAX_RETRIES}):`, error.message || error);
+        if (attempt === MAX_RETRIES) return null;
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+        continue;
+      }
+      
+      return data;
+    } catch (err: any) {
+      console.error(`❌ ${description} failed (attempt ${attempt}/${MAX_RETRIES}):`, err.message || err);
+      if (attempt === MAX_RETRIES) return null;
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch articles in batches to prevent timeout
+ */
+async function fetchAllArticles(): Promise<any[]> {
+  const allArticles: any[] = [];
+  let offset = 0;
+  let hasMore = true;
+  
+  console.log(`📦 Fetching articles in batches of ${BATCH_SIZE}...`);
+  
+  while (hasMore) {
+    const batch = await fetchWithRetry<any[]>(
+      async () => {
+        return await supabase
+          .from('blog_articles')
+          .select(`
+            *,
+            author:authors!author_id(*),
+            reviewer:authors!reviewer_id(*)
+          `)
+          .eq('status', 'published')
+          .range(offset, offset + BATCH_SIZE - 1);
+      },
+      `Fetch articles batch ${offset}-${offset + BATCH_SIZE}`
+    );
+    
+    if (!batch || batch.length === 0) {
+      hasMore = false;
+    } else {
+      allArticles.push(...batch);
+      console.log(`   ✅ Fetched ${allArticles.length} articles so far...`);
+      offset += BATCH_SIZE;
+      
+      // Small delay between batches to avoid rate limiting
+      if (batch.length === BATCH_SIZE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        hasMore = false;
+      }
+    }
+  }
+  
+  return allArticles;
+}
 
 interface ArticleData {
   id: string;
@@ -823,30 +907,19 @@ export async function generateStaticPages(distDir: string) {
     const enhancedHreflang = await checkFeatureFlag('enhanced_hreflang');
     console.log(`🏳️ Feature flag 'enhanced_hreflang': ${enhancedHreflang ? 'ENABLED' : 'DISABLED'}`);
 
-    // Fetch all published articles with author and reviewer
-    const { data: articles, error } = await supabase
-      .from('blog_articles')
-      .select(`
-        *,
-        author:authors!author_id(*),
-        reviewer:authors!reviewer_id(*)
-      `)
-      .eq('status', 'published');
-
-    if (error) {
-      console.error('❌ Error fetching articles:', error);
-      return;
-    }
+    // Fetch all published articles in batches (prevents timeout)
+    const articles = await fetchAllArticles();
 
     if (!articles || articles.length === 0) {
       console.log('⚠️  No published articles found');
       return;
     }
 
-    // Fetch gone URLs to exclude from generation
-    const { data: goneUrls } = await supabase
-      .from('gone_urls')
-      .select('url_path');
+    // Fetch gone URLs to exclude from generation (with retry)
+    const goneUrls = await fetchWithRetry<any[]>(
+      async () => supabase.from('gone_urls').select('url_path'),
+      'Fetch gone URLs'
+    );
     
     const goneUrlSet = new Set((goneUrls || []).map(g => g.url_path.toLowerCase()));
     console.log(`🚫 Found ${goneUrlSet.size} gone URLs to exclude`);
