@@ -45,9 +45,9 @@ const STATIC_EXTENSIONS = [
   '.xml', '.txt', '.json'
 ];
 
-export async function onRequest(context) {
-  const { request, next } = context;
+export async function onRequest({ request, next, env }) {
   const url = new URL(request.url);
+  // env is optional; used only for diagnostics
 
   const isLocalhost =
     url.hostname === 'localhost' ||
@@ -190,20 +190,31 @@ export async function onRequest(context) {
         }
       });
 
-    } catch (error) {
-      // Timeout or network error - show the error, don't hide it
-      console.error('[Middleware] SEO function error:', error.message);
-      seoStatus = `FetchError:${error.message?.substring(0, 100) || 'unknown'}`;
-      
-      return new Response(`Edge Function Fetch Error: ${error.message}`, {
-        status: 502,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'X-SEO-Status': seoStatus,
-          'X-Middleware-Status': 'Active',
-          'X-SEO-Debug': 'fetch-error',
+    } catch (err) {
+      return new Response(
+        JSON.stringify(
+          {
+            error: 'Middleware Crash',
+            name: err?.name,
+            details: err?.message,
+            stack: err?.stack,
+            env_check: {
+              has_url: !!env?.SUPABASE_URL,
+              has_key: !!env?.SUPABASE_ANON_KEY,
+            },
+          },
+          null,
+          2
+        ),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Middleware-Status': 'Active',
+            'X-SEO-Status': 'MiddlewareCrash',
+          },
         }
-      });
+      );
     }
   }
 
