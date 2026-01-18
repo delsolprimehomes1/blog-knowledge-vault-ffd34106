@@ -141,28 +141,30 @@ export async function onRequest(context) {
       seoBody = await seoResponse.text();
 
       // ============================================================
-      // RULE 2: Handle 404/410 (empty/missing content) - NEVER fall through
-      // These statuses MUST return immediately with the edge function response
+      // FAIL LOUDLY: If edge function returns ANY non-200 status,
+      // return that response directly - NEVER fall back to React
       // ============================================================
-      if (seoResponse.status === 410 || seoResponse.status === 404) {
-        console.log(`[Middleware] ${seoResponse.status} from edge function:`, pathname);
-        return new Response(seoBody || `<!DOCTYPE html><html><head><meta name="robots" content="noindex,nofollow"><title>${seoResponse.status} Gone</title></head><body><h1>${seoResponse.status === 410 ? 'Gone' : 'Not Found'}</h1></body></html>`, {
+      if (!seoResponse.ok) {
+        console.log(`[Middleware] Edge function returned ${seoResponse.status}:`, pathname);
+        
+        // Determine content type from response or default to text/html
+        const contentType = seoResponse.headers.get('Content-Type') || 'text/html; charset=utf-8';
+        
+        return new Response(seoBody, {
           status: seoResponse.status,
           headers: {
-            'Content-Type': 'text/html; charset=utf-8',
+            'Content-Type': contentType,
             'X-Robots-Tag': 'noindex',
             'X-SEO-Source': `edge-function-${seoResponse.status}`,
             'X-SEO-Status': seoStatus,
             'X-Middleware-Status': 'Active',
+            'X-SEO-Debug': 'fail-loud-mode',
           }
         });
       }
 
       // If we got HTML content (check for DOCTYPE or <html), use it
-      if (
-        seoResponse.ok &&
-        (seoBody.includes('<!DOCTYPE html>') || seoBody.includes('<html'))
-      ) {
+      if (seoBody.includes('<!DOCTYPE html>') || seoBody.includes('<html')) {
         console.log('[Middleware] SEO function returned HTML');
         return new Response(seoBody, {
           status: 200,
@@ -176,27 +178,33 @@ export async function onRequest(context) {
         });
       }
 
-      // Edge function didn't return HTML, fall through to React app
-      console.log('[Middleware] SEO function did not return HTML, status:', seoResponse.status);
-      seoStatus = `${seoResponse.status}-no-html`;
+      // Edge function returned 200 but no HTML - still show the raw response
+      console.log('[Middleware] SEO function returned 200 but no HTML');
+      return new Response(seoBody || 'Edge function returned empty body', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-SEO-Source': 'edge-function-no-html',
+          'X-SEO-Status': seoStatus,
+          'X-Middleware-Status': 'Active',
+        }
+      });
 
     } catch (error) {
-      // Timeout or network error - fall through to React app
+      // Timeout or network error - show the error, don't hide it
       console.error('[Middleware] SEO function error:', error.message);
-      seoStatus = `FetchError:${error.message?.substring(0, 50) || 'unknown'}`;
+      seoStatus = `FetchError:${error.message?.substring(0, 100) || 'unknown'}`;
+      
+      return new Response(`Edge Function Fetch Error: ${error.message}`, {
+        status: 502,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-SEO-Status': seoStatus,
+          'X-Middleware-Status': 'Active',
+          'X-SEO-Debug': 'fetch-error',
+        }
+      });
     }
-
-    // If we reach here, we're falling through to React - add debug header
-    const fallbackResponse = await next();
-    const headers = new Headers(fallbackResponse.headers);
-    headers.set('X-Middleware-Status', 'Active');
-    headers.set('X-SEO-Status', seoStatus);
-    headers.set('X-SEO-Fallback', 'true');
-    return new Response(fallbackResponse.body, {
-      status: fallbackResponse.status,
-      statusText: fallbackResponse.statusText,
-      headers,
-    });
   }
 
   // All other requests - pass through to React SPA
