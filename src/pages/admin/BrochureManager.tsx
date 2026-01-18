@@ -109,6 +109,7 @@ const BrochureManager: React.FC = () => {
   const [newFeature, setNewFeature] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
 
   const emptyGallerySlots: GalleryItem[] = [
     { title: '', image: '' },
@@ -185,23 +186,38 @@ const BrochureManager: React.FC = () => {
   useEffect(() => {
     if (isGenerating && selectedCity && brochures) {
       const city = brochures.find(b => b.slug === selectedCity);
+      
+      // Check for completion states
       if (city?.generation_status === 'complete' || city?.generation_status === 'content_complete' || city?.generation_status === 'images_complete') {
         setIsGenerating(false);
         setGenerationProgress(100);
+        setGenerationStartTime(null);
         toast({ 
           title: 'Generation Complete!', 
           description: `All content generated for ${city.name}.` 
         });
       } else if (city?.generation_status === 'failed') {
         setIsGenerating(false);
+        setGenerationStartTime(null);
         toast({ 
           title: 'Generation Failed', 
           description: 'Check logs for details.',
           variant: 'destructive' 
         });
       }
+      
+      // Timeout fallback: if generating for more than 5 minutes, stop and prompt refresh
+      if (generationStartTime && Date.now() - generationStartTime > 5 * 60 * 1000) {
+        setIsGenerating(false);
+        setGenerationStartTime(null);
+        toast({
+          title: 'Generation Timeout',
+          description: 'Please click "Refresh Status" to check the current state.',
+          variant: 'destructive'
+        });
+      }
     }
-  }, [brochures, isGenerating, selectedCity]);
+  }, [brochures, isGenerating, selectedCity, generationStartTime, toast]);
 
   // Generate content mutation - fire and forget
   const generateContentMutation = useMutation({
@@ -389,13 +405,20 @@ const BrochureManager: React.FC = () => {
   const handleGenerateContent = async () => {
     if (!editData.id) return;
     setIsGenerating(true);
+    setGenerationStartTime(Date.now());
     generateContentMutation.mutate(editData.id);
   };
 
   const handleGenerateImages = async () => {
     if (!editData.id) return;
     setIsGenerating(true);
+    setGenerationStartTime(Date.now());
     generateImagesMutation.mutate(editData.id);
+  };
+
+  const handleRefreshStatus = () => {
+    queryClient.invalidateQueries({ queryKey: ['city-brochures-admin'] });
+    toast({ title: 'Status Refreshed', description: 'Fetching latest brochure status...' });
   };
 
   const addFeature = () => {
@@ -594,7 +617,18 @@ const BrochureManager: React.FC = () => {
 
                     {isGenerating && (
                       <div className="space-y-2">
-                        <Progress value={generationProgress} className="h-2" />
+                        <div className="flex items-center gap-3">
+                          <Progress value={generationProgress} className="h-2 flex-1" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRefreshStatus}
+                            className="text-xs"
+                          >
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            Refresh Status
+                          </Button>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Generating content for all 10 languages... This may take 1-2 minutes.
                         </p>
