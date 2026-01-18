@@ -359,48 +359,234 @@ export function WebhookPayloadPreview() {
         </CardContent>
       </Card>
       
-      {/* Key Fields Reference */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Key Fields for GHL Mapping</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 text-sm">
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">leadSource</code>
-              <span className="text-muted-foreground">- "Emma Chatbot" or "Website Form"</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">leadSourceDetail</code>
-              <span className="text-muted-foreground">- Format: "{'{source}_{language}'}" (e.g., "emma_chat_nl", "blog_page_fr")</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">pageType</code>
-              <span className="text-muted-foreground">- Where submission originated (homepage, blog_page, property_detail, etc.)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">language</code>
-              <span className="text-muted-foreground">- 2-letter language code (en, nl, de, fr, etc.)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">leadSegment</code>
-              <span className="text-muted-foreground">- (Emma only) Calculated segment like "Hot_Primary", "Warm_Investor"</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">timeline</code>
-              <span className="text-muted-foreground">- (Emma only) Buyer timeline: "within_6_months", "within_1_year", etc.</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">buyerProfile</code>
-              <span className="text-muted-foreground">- (Emma only) Buyer type: "primary_residence", "holiday", "investment"</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <code className="bg-muted px-2 py-0.5 rounded font-mono text-primary">initialLeadScore</code>
-              <span className="text-muted-foreground">- Numeric score: 25 (Emma complete), 20 (Form), 15 (Emma abandoned)</span>
-            </div>
+      {/* Key Fields Reference - Expanded */}
+      <div className="mt-4 text-xs text-muted-foreground space-y-4">
+        <div>
+          <p className="font-bold text-sm mb-2">📋 Key Fields for GHL Mapping</p>
+        </div>
+
+        {/* Lead Source Values */}
+        <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">leadSource - Lead Origin</p>
+          <p className="mb-2">Possible values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Emma Chatbot</code> - All Emma conversations</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Website Form</code> - All traditional form submissions</li>
+          </ul>
+        </div>
+
+        {/* Lead Source Detail Values */}
+        <div className="bg-green-50 dark:bg-green-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">leadSourceDetail - Specific Source</p>
+          <p className="mb-2">Format: <code className="bg-white dark:bg-muted px-1 rounded">{'{source}_{pageType}_{language}'}</code></p>
+          
+          <p className="font-semibold mt-3 mb-1 text-foreground">Emma Examples:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_en</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_nl</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_de</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_fr</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_pl</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_sv</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_da</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_fi</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_hu</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">emma_chat_no</code></li>
+          </ul>
+          <p className="font-semibold mt-3 mb-1 text-foreground">Form Examples:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">homepage_en</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">location_page_nl</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">blog_page_de</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">property_detail_es</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">brochure_page_fr</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">qa_page_pl</code></li>
+            <li>...and many more combinations</li>
+          </ul>
+        </div>
+
+        {/* Page Type Values */}
+        <div className="bg-purple-50 dark:bg-purple-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">pageType - Where Submission Originated</p>
+          <p className="mb-2">All possible page types:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">homepage</code> - Main homepage</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">location_page</code> - Location pages (e.g., /locations/marbella)</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">brochure_page</code> - Brochure download pages</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">blog_page</code> - Blog article pages</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">qa_page</code> - Q&A pages</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">buyers_guide</code> - Buyers Guide page</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">glossary</code> - Glossary page</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">contact_page</code> - Contact page</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">property_detail</code> - Individual property pages</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">comparison_page</code> - Comparison pages</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">other</code> - Any other page type</li>
+          </ul>
+        </div>
+
+        {/* Language Values */}
+        <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">language - Language Version</p>
+          <p className="mb-2">All supported languages (2-letter codes):</p>
+          <div className="grid grid-cols-2 gap-2">
+            <ul className="list-disc ml-4 space-y-1">
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">en</code> - English</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">nl</code> - Dutch (Nederlands)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">de</code> - German (Deutsch)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">fr</code> - French (Français)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">fi</code> - Finnish (Suomi)</li>
+            </ul>
+            <ul className="list-disc ml-4 space-y-1">
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">pl</code> - Polish (Polski)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">sv</code> - Swedish (Svenska)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">da</code> - Danish (Dansk)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">hu</code> - Hungarian (Magyar)</li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">no</code> - Norwegian (Norsk)</li>
+            </ul>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Lead Segment Values (Emma Only) */}
+        <div className="bg-red-50 dark:bg-red-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">leadSegment - Calculated Buyer Segment (Emma Only)</p>
+          <p className="mb-2">Format: <code className="bg-white dark:bg-muted px-1 rounded">{'{Readiness}_{Profile}'}</code></p>
+          
+          <p className="font-semibold mt-2 mb-1 text-foreground">Readiness Levels:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot</code> - 0-6 months timeline</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm</code> - 6-12 months timeline</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool</code> - 1-2 years timeline</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold</code> - 2+ years or unsure</li>
+          </ul>
+          <p className="font-semibold mt-2 mb-1 text-foreground">Buyer Profiles:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Primary</code> - Primary residence</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Holiday</code> - Holiday home</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Investor</code> - Investment property</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Seasonal</code> - Winter stay</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">General</code> - Not specified</li>
+          </ul>
+          <p className="font-semibold mt-2 mb-1 text-foreground">Example Combinations (20 total):</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <ul className="list-disc ml-4 space-y-1">
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot_Primary</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot_Holiday</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot_Investor</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot_Seasonal</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm_Primary</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm_Holiday</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm_Investor</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm_Seasonal</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool_Primary</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool_Holiday</code></li>
+            </ul>
+            <ul className="list-disc ml-4 space-y-1">
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool_Investor</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool_Seasonal</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold_Primary</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold_Holiday</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold_Investor</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold_Seasonal</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Hot_General</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Warm_General</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cool_General</code></li>
+              <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Cold_General</code></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Timeline Values (Emma Only) */}
+        <div className="bg-indigo-50 dark:bg-indigo-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">timeline - Buyer Timeline (Emma Only)</p>
+          <p className="mb-2">Possible values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">within_6_months</code> - Ready to buy within 6 months</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">within_1_year</code> - Ready within 1 year</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">within_2_years</code> - Ready within 2 years</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">longer_than_2_years</code> - More than 2 years</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">Not sure</code> - Timeline undecided</li>
+          </ul>
+        </div>
+
+        {/* Buyer Profile Values (Emma Only) */}
+        <div className="bg-pink-50 dark:bg-pink-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">buyerProfile - Buyer Type (Emma Only)</p>
+          <p className="mb-2">Possible values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">primary_residence</code> - Primary home</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">holiday</code> - Holiday/vacation home</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">investment</code> - Investment/rental property</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">winter_stay</code> - Seasonal/winter residence</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">General</code> - Not specified</li>
+          </ul>
+        </div>
+
+        {/* Emma Conversation Status */}
+        <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">emmaConversationStatus - Conversation Outcome (Emma Only)</p>
+          <p className="mb-2">Possible values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">completed</code> - Full conversation finished</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">abandoned</code> - 60-second timeout occurred</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">declined</code> - User declined to continue</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">partial</code> - Some data collected</li>
+          </ul>
+        </div>
+
+        {/* Initial Lead Score */}
+        <div className="bg-teal-50 dark:bg-teal-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">initialLeadScore - Lead Scoring</p>
+          <p className="mb-2">Numeric score values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">25</code> - Emma completed conversation</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">20</code> - Traditional form submission OR Emma with phone</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">15</code> - Emma abandoned (60s timeout)</li>
+          </ul>
+        </div>
+
+        {/* Property Type Array (Emma Only) */}
+        <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">propertyType - Property Type Array (Emma Only)</p>
+          <p className="mb-2">Possible array values:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["villa"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["apartment"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["townhouse"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["villa", "apartment"]</code> - Multiple types</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">[]</code> - Not specified yet</li>
+          </ul>
+        </div>
+
+        {/* Areas of Interest (Emma Only) */}
+        <div className="bg-cyan-50 dark:bg-cyan-950 p-3 rounded">
+          <p className="font-semibold mb-1 text-foreground">areasOfInterest - Location Array (Emma Only)</p>
+          <p className="mb-2">Possible array values (Costa del Sol locations):</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["Marbella"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["Estepona"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["Nueva Andalucía"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["San Pedro"]</code></li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">["Marbella", "Estepona"]</code> - Multiple areas</li>
+            <li><code className="bg-white dark:bg-muted px-2 py-0.5 rounded text-foreground">[]</code> - Not specified yet</li>
+          </ul>
+        </div>
+
+        {/* Summary Note */}
+        <div className="bg-muted p-3 rounded border-2 border-border">
+          <p className="font-bold text-sm mb-2 text-foreground">💡 GHL Mapping Summary</p>
+          <ul className="list-disc ml-4 space-y-1 text-xs">
+            <li><strong className="text-foreground">leadSource:</strong> 2 possible values (Emma Chatbot, Website Form)</li>
+            <li><strong className="text-foreground">leadSourceDetail:</strong> 110+ combinations (11 page types × 10 languages)</li>
+            <li><strong className="text-foreground">pageType:</strong> 11 possible values</li>
+            <li><strong className="text-foreground">language:</strong> 10 possible values (en, nl, de, fr, fi, pl, sv, da, hu, no)</li>
+            <li><strong className="text-foreground">leadSegment:</strong> 20 possible combinations (Emma only)</li>
+            <li><strong className="text-foreground">timeline:</strong> 5 possible values (Emma only)</li>
+            <li><strong className="text-foreground">buyerProfile:</strong> 5 possible values (Emma only)</li>
+            <li><strong className="text-foreground">emmaConversationStatus:</strong> 4 possible values (Emma only)</li>
+            <li><strong className="text-foreground">initialLeadScore:</strong> 3 possible values (15, 20, 25)</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
