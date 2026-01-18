@@ -560,10 +560,18 @@ function loadGlossaryTerms(): GlossaryTerm[] {
   }
 }
 
-// Ensure directory exists
+// Ensure directory exists with explicit recursive creation
 function ensureDir(dirPath: string): void {
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
+  try {
+    if (!existsSync(dirPath)) {
+      mkdirSync(dirPath, { recursive: true });
+      console.log(`   ✅ Created directory: ${dirPath}`);
+    } else {
+      console.log(`   📁 Directory exists: ${dirPath}`);
+    }
+  } catch (error) {
+    console.error(`   ❌ Failed to create directory ${dirPath}:`, error);
+    throw error;
   }
 }
 
@@ -583,8 +591,14 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log('\n🗺️ Starting hierarchical multi-sitemap generation...');
   console.log('📁 Structure: /sitemaps/{lang}/{content-type}.xml\n');
   
-  const outputPath = outputDir || join(process.cwd(), 'public');
+  // Handle output directory - ensure absolute path for reliability
+  const outputPath = outputDir 
+    ? (outputDir.startsWith('/') ? outputDir : join(process.cwd(), outputDir))
+    : join(process.cwd(), 'public');
   const sitemapsPath = join(outputPath, 'sitemaps');
+  
+  console.log(`📂 Output path: ${outputPath}`);
+  console.log(`📂 Sitemaps path: ${sitemapsPath}`);
   
   // Check feature flag
   const hreflangEnabled = await checkFeatureFlag('enhanced_hreflang');
@@ -741,7 +755,9 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     // Blog sitemap
     if (langArticles.length > 0) {
       const blogSitemap = generateLanguageBlogSitemap(langArticles, lang, clusterMap, hreflangEnabled);
-      writeFileSync(join(langPath, 'blog.xml'), blogSitemap, 'utf-8');
+      const blogPath = join(langPath, 'blog.xml');
+      writeFileSync(blogPath, blogSitemap, 'utf-8');
+      console.log(`      ✍️ Wrote: ${blogPath}`);
       const lastmod = langArticles[0]?.date_modified 
         ? new Date(langArticles[0].date_modified).toISOString().split('T')[0]
         : getToday();
@@ -752,7 +768,9 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     // Q&A sitemap
     if (langQA.length > 0) {
       const qaSitemap = generateLanguageQASitemap(langQA, lang, qaPages || [], hreflangEnabled);
-      writeFileSync(join(langPath, 'qa.xml'), qaSitemap, 'utf-8');
+      const qaPath = join(langPath, 'qa.xml');
+      writeFileSync(qaPath, qaSitemap, 'utf-8');
+      console.log(`      ✍️ Wrote: ${qaPath}`);
       const lastmod = langQA[0]?.updated_at 
         ? new Date(langQA[0].updated_at).toISOString().split('T')[0]
         : getToday();
@@ -763,7 +781,9 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     // Locations sitemap
     if (langLocations.length > 0) {
       const locSitemap = generateLanguageLocationsSitemap(langLocations, lang, locationPages || [], hreflangEnabled);
-      writeFileSync(join(langPath, 'locations.xml'), locSitemap, 'utf-8');
+      const locPath = join(langPath, 'locations.xml');
+      writeFileSync(locPath, locSitemap, 'utf-8');
+      console.log(`      ✍️ Wrote: ${locPath}`);
       const lastmod = langLocations[0]?.updated_at 
         ? new Date(langLocations[0].updated_at).toISOString().split('T')[0]
         : getToday();
@@ -774,7 +794,9 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     // Comparisons sitemap
     if (langComparisons.length > 0) {
       const compSitemap = generateLanguageComparisonSitemap(langComparisons, lang, comparisonPages || [], hreflangEnabled);
-      writeFileSync(join(langPath, 'comparisons.xml'), compSitemap, 'utf-8');
+      const compPath = join(langPath, 'comparisons.xml');
+      writeFileSync(compPath, compSitemap, 'utf-8');
+      console.log(`      ✍️ Wrote: ${compPath}`);
       const lastmod = langComparisons[0]?.updated_at 
         ? new Date(langComparisons[0].updated_at).toISOString().split('T')[0]
         : getToday();
