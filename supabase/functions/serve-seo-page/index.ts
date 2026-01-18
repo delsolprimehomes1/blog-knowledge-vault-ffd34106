@@ -5,6 +5,88 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// ============================================================
+// TIMEOUT & CIRCUIT BREAKER CONFIGURATION
+// Prevents 504/524 errors from hanging database queries
+// ============================================================
+const QUERY_TIMEOUT = 10000 // 10 seconds max per database query
+const TOTAL_REQUEST_TIMEOUT = 20000 // 20 seconds max for entire request
+
+// Simple in-memory cache to reduce DB load (5-minute TTL)
+const pageCache = new Map<string, { data: any; expires: number }>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Circuit breaker state
+let consecutiveFailures = 0
+const FAILURE_THRESHOLD = 3
+const CIRCUIT_RESET_TIME = 30000 // 30 seconds
+let circuitOpenUntil = 0
+
+function getCachedPage(key: string): any | null {
+  const cached = pageCache.get(key)
+  if (cached && cached.expires > Date.now()) {
+    console.log(`[Cache] HIT: ${key}`)
+    return cached.data
+  }
+  if (cached) {
+    pageCache.delete(key) // Clean up expired entry
+  }
+  return null
+}
+
+function setCachedPage(key: string, data: any): void {
+  pageCache.set(key, { data, expires: Date.now() + CACHE_TTL })
+  // Limit cache size to 200 entries to prevent memory issues
+  if (pageCache.size > 200) {
+    const oldest = pageCache.keys().next().value
+    if (oldest) pageCache.delete(oldest)
+  }
+}
+
+function isCircuitOpen(): boolean {
+  if (Date.now() < circuitOpenUntil) {
+    console.log('[Circuit] OPEN - returning 503 immediately')
+    return true
+  }
+  return false
+}
+
+function recordFailure(): void {
+  consecutiveFailures++
+  if (consecutiveFailures >= FAILURE_THRESHOLD) {
+    circuitOpenUntil = Date.now() + CIRCUIT_RESET_TIME
+    console.log(`[Circuit] OPENED for ${CIRCUIT_RESET_TIME}ms after ${consecutiveFailures} consecutive failures`)
+    consecutiveFailures = 0
+  }
+}
+
+function recordSuccess(): void {
+  consecutiveFailures = 0
+}
+
+/**
+ * Create a Supabase client with timeout handling
+ */
+function createTimeoutClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  
+  return createClient(supabaseUrl, supabaseKey, {
+    global: {
+      fetch: (url, options = {}) => {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          console.log(`[Timeout] Query aborted after ${QUERY_TIMEOUT}ms`)
+          controller.abort()
+        }, QUERY_TIMEOUT)
+        
+        return fetch(url, { ...options, signal: controller.signal })
+          .finally(() => clearTimeout(timeoutId))
+      }
+    }
+  })
+}
+
 // Language to locale mapping - Only 10 supported languages
 const LOCALE_MAP: Record<string, string> = {
   en: 'en_GB',
@@ -793,206 +875,288 @@ ${hreflangTags}
   return html
 }
 
+/**
+ * Main request handler with timeout protection
+ */
+async function handleRequest(req: Request): Promise<Response> {
+  const url = new URL(req.url)
+  const path = url.searchParams.get('path')
+  
+  if (!path) {
+    return new Response(
+      JSON.stringify({ error: 'Missing path parameter' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  console.log(`[SEO] Processing path: ${path}`)
+
+  // Parse the path: /{lang}/{type}/{slug}
+  const pathMatch = path.match(/^\/(\w{2})\/(qa|blog|compare|locations)\/(.+)$/)
+  
+  if (!pathMatch) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid path format. Expected: /{lang}/{type}/{slug}' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const [, lang, contentType, rawSlug] = pathMatch
+  
+  // Normalize the slug to handle malformed URLs from copy-paste errors
+  const slug = normalizeSlug(rawSlug)
+  console.log(`[SEO] Parsed: lang=${lang}, type=${contentType}, slug=${slug}${slug !== rawSlug ? ` (normalized from "${rawSlug}")` : ''}`)
+
+  // Check cache first (before any DB calls)
+  const cacheKey = `${contentType}:${lang}:${slug}`
+  const cachedResponse = getCachedPage(cacheKey)
+  if (cachedResponse) {
+    console.log(`[SEO] Returning cached response for ${cacheKey}`)
+    return cachedResponse
+  }
+
+  // Initialize Supabase client WITH timeout handling
+  const supabase = createTimeoutClient()
+
+  // Fetch metadata based on content type
+  let metadata: PageMetadata | null = null
+  let redirectInfo: { to: string; reason: string } | undefined
+  
+  switch (contentType) {
+    case 'qa':
+      metadata = await fetchQAMetadata(supabase, slug, lang)
+      break
+    case 'blog':
+      metadata = await fetchBlogMetadata(supabase, slug, lang)
+      break
+    case 'compare':
+      metadata = await fetchComparisonMetadata(supabase, slug, lang)
+      break
+    case 'locations':
+      const locationResult = await fetchLocationMetadata(supabase, slug, lang)
+      metadata = locationResult.metadata
+      redirectInfo = locationResult.redirect
+      break
+  }
+
+  // If location page exists but in wrong language, return redirect info
+  if (redirectInfo) {
+    console.log(`[SEO] Language mismatch - redirecting to: ${redirectInfo.to}`)
+    return new Response(
+      JSON.stringify({ 
+        error: 'language_mismatch', 
+        redirectTo: redirectInfo.to,
+        reason: redirectInfo.reason,
+        path 
+      }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  if (!metadata) {
+    return new Response(
+      JSON.stringify({ error: 'Page not found', path }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // ============================================================
+  // WRECKING BALL POLICY: Check for empty content → 410 Gone
+  // Prevents indexing of "ghost pages" with null/placeholder content
+  // ============================================================
+  let hasEmptyContent = false
+  let contentField = ''
+  
+  if (contentType === 'blog') {
+    const { data } = await supabase
+      .from('blog_articles')
+      .select('detailed_content')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle()
+    hasEmptyContent = isEmptyContent(data?.detailed_content)
+    contentField = 'detailed_content'
+  } else if (contentType === 'qa') {
+    const { data } = await supabase
+      .from('qa_pages')
+      .select('answer_main')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle()
+    hasEmptyContent = isEmptyContent(data?.answer_main)
+    contentField = 'answer_main'
+  }
+  
+  if (hasEmptyContent) {
+    console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} - returning 410 Gone`)
+    return new Response(
+      JSON.stringify({ 
+        error: 'empty_content', 
+        should_410: true,
+        path,
+        content_type: contentType,
+        field: contentField,
+        reason: 'Content exists but is empty or placeholder'
+      }),
+      { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  console.log(`[SEO] Found metadata for: ${metadata.headline}`)
+
+  // Fetch hreflang siblings
+  const siblings = await fetchHreflangSiblings(supabase, metadata.hreflang_group_id || '', contentType)
+  const hreflangTags = generateHreflangTags(siblings, metadata.language, contentType)
+
+  // Return just the metadata and generated tags (for debugging/API use)
+  const returnHtml = url.searchParams.get('html') === 'true'
+  
+  if (returnHtml) {
+    // Use inline HTML template instead of fetching external HTML (avoids fetch errors)
+    const baseHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+</head>
+<body>
+<div id="root"></div>
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<script>
+  // Client-side hydration will take over
+  window.__SSR_METADATA__ = ${JSON.stringify({
+    language: metadata.language,
+    title: metadata.meta_title,
+    canonical: metadata.canonical_url
+  })};
+</script>
+</body>
+</html>`
+    
+    // Generate full HTML with injected metadata
+    const fullHtml = generateFullHtml(metadata, hreflangTags, baseHtml)
+    
+    const response = new Response(fullHtml, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        'X-SEO-Source': 'edge-function',
+        'X-Content-Language': metadata.language,
+      }
+    })
+    
+    // Cache the successful HTML response
+    setCachedPage(cacheKey, response.clone())
+    return response
+  }
+
+  // Return metadata as JSON (useful for debugging)
+  const jsonResponse = new Response(
+    JSON.stringify({
+      success: true,
+      metadata: {
+        language: metadata.language,
+        locale: LOCALE_MAP[metadata.language] || 'en_GB',
+        title: metadata.meta_title,
+        description: metadata.meta_description,
+        canonical: metadata.canonical_url,
+        headline: metadata.headline,
+        image: metadata.featured_image_url,
+        datePublished: metadata.date_published,
+        dateModified: metadata.date_modified,
+        contentType,
+      },
+      hreflangTags: hreflangTags.split('\n').map(t => t.trim()).filter(Boolean),
+      schemas: {
+        faq: metadata.qa_entities?.length || 0,
+        article: true,
+        speakable: !!metadata.speakable_answer,
+      },
+      siblings: siblings.map(s => ({
+        language: s.language,
+        url: s.canonical_url || `${BASE_URL}/${s.language}/${contentType}/${s.slug}`
+      }))
+    }, null, 2),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+  
+  // Cache the successful JSON response
+  setCachedPage(cacheKey, jsonResponse.clone())
+  return jsonResponse
+}
+
+// ============================================================
+// MAIN ENTRY POINT with timeout and circuit breaker protection
+// ============================================================
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
-  try {
-    const url = new URL(req.url)
-    const path = url.searchParams.get('path')
-    
-    if (!path) {
-      return new Response(
-        JSON.stringify({ error: 'Missing path parameter' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log(`Processing path: ${path}`)
-
-    // Parse the path: /{lang}/{type}/{slug}
-    const pathMatch = path.match(/^\/(\w{2})\/(qa|blog|compare|locations)\/(.+)$/)
-    
-    if (!pathMatch) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid path format. Expected: /{lang}/{type}/{slug}' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const [, lang, contentType, rawSlug] = pathMatch
-    
-    // Normalize the slug to handle malformed URLs from copy-paste errors
-    const slug = normalizeSlug(rawSlug)
-    console.log(`Parsed: lang=${lang}, type=${contentType}, slug=${slug}${slug !== rawSlug ? ` (normalized from "${rawSlug}")` : ''}`)
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    // Fetch metadata based on content type
-    let metadata: PageMetadata | null = null
-    let redirectInfo: { to: string; reason: string } | undefined
-    
-    switch (contentType) {
-      case 'qa':
-        metadata = await fetchQAMetadata(supabase, slug, lang)
-        break
-      case 'blog':
-        metadata = await fetchBlogMetadata(supabase, slug, lang)
-        break
-      case 'compare':
-        metadata = await fetchComparisonMetadata(supabase, slug, lang)
-        break
-      case 'locations':
-        const locationResult = await fetchLocationMetadata(supabase, slug, lang)
-        metadata = locationResult.metadata
-        redirectInfo = locationResult.redirect
-        break
-    }
-
-    // If location page exists but in wrong language, return redirect info
-    if (redirectInfo) {
-      console.log(`[SEO] Language mismatch - redirecting to: ${redirectInfo.to}`)
-      return new Response(
-        JSON.stringify({ 
-          error: 'language_mismatch', 
-          redirectTo: redirectInfo.to,
-          reason: redirectInfo.reason,
-          path 
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!metadata) {
-      return new Response(
-        JSON.stringify({ error: 'Page not found', path }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ============================================================
-    // WRECKING BALL POLICY: Check for empty content → 410 Gone
-    // Prevents indexing of "ghost pages" with null/placeholder content
-    // ============================================================
-    let hasEmptyContent = false
-    let contentField = ''
-    
-    if (contentType === 'blog') {
-      const { data } = await supabase
-        .from('blog_articles')
-        .select('detailed_content')
-        .eq('slug', slug)
-        .eq('status', 'published')
-        .maybeSingle()
-      hasEmptyContent = isEmptyContent(data?.detailed_content)
-      contentField = 'detailed_content'
-    } else if (contentType === 'qa') {
-      const { data } = await supabase
-        .from('qa_pages')
-        .select('answer_main')
-        .eq('slug', slug)
-        .eq('status', 'published')
-        .maybeSingle()
-      hasEmptyContent = isEmptyContent(data?.answer_main)
-      contentField = 'answer_main'
-    }
-    
-    if (hasEmptyContent) {
-      console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} - returning 410 Gone`)
-      return new Response(
-        JSON.stringify({ 
-          error: 'empty_content', 
-          should_410: true,
-          path,
-          content_type: contentType,
-          field: contentField,
-          reason: 'Content exists but is empty or placeholder'
-        }),
-        { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log(`Found metadata for: ${metadata.headline}`)
-
-    // Fetch hreflang siblings
-    const siblings = await fetchHreflangSiblings(supabase, metadata.hreflang_group_id || '', contentType)
-    const hreflangTags = generateHreflangTags(siblings, metadata.language, contentType)
-
-    // Return just the metadata and generated tags (for debugging/API use)
-    const returnHtml = url.searchParams.get('html') === 'true'
-    
-    if (returnHtml) {
-      // Use inline HTML template instead of fetching external HTML (avoids fetch errors)
-      const baseHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-</head>
-<body>
-  <div id="root"></div>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <script>
-    // Client-side hydration will take over
-    window.__SSR_METADATA__ = ${JSON.stringify({
-      language: metadata.language,
-      title: metadata.meta_title,
-      canonical: metadata.canonical_url
-    })};
-  </script>
-</body>
-</html>`
-      
-      // Generate full HTML with injected metadata
-      const fullHtml = generateFullHtml(metadata, hreflangTags, baseHtml)
-      
-      return new Response(fullHtml, {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=3600',
-          'X-SEO-Source': 'edge-function',
-          'X-Content-Language': metadata.language,
-        }
-      })
-    }
-
-    // Return metadata as JSON (useful for debugging)
+  // Circuit breaker check - fail fast if DB is repeatedly failing
+  if (isCircuitOpen()) {
     return new Response(
-      JSON.stringify({
-        success: true,
-        metadata: {
-          language: metadata.language,
-          locale: LOCALE_MAP[metadata.language] || 'en_GB',
-          title: metadata.meta_title,
-          description: metadata.meta_description,
-          canonical: metadata.canonical_url,
-          headline: metadata.headline,
-          image: metadata.featured_image_url,
-          datePublished: metadata.date_published,
-          dateModified: metadata.date_modified,
-          contentType,
-        },
-        hreflangTags: hreflangTags.split('\n').map(t => t.trim()).filter(Boolean),
-        schemas: {
-          faq: metadata.qa_entities?.length || 0,
-          article: true,
-          speakable: !!metadata.speakable_answer,
-        },
-        siblings: siblings.map(s => ({
-          language: s.language,
-          url: s.canonical_url || `${BASE_URL}/${s.language}/${contentType}/${s.slug}`
-        }))
-      }, null, 2),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: 'Service temporarily unavailable', 
+        reason: 'circuit_breaker_open',
+        retryAfter: Math.ceil((circuitOpenUntil - Date.now()) / 1000)
+      }),
+      { 
+        status: 503, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '30'
+        } 
+      }
     )
+  }
+
+  try {
+    // Create a timeout promise that rejects after TOTAL_REQUEST_TIMEOUT
+    const timeoutPromise = new Promise<Response>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Request timeout after ${TOTAL_REQUEST_TIMEOUT}ms`))
+      }, TOTAL_REQUEST_TIMEOUT)
+    })
+
+    // Race the actual request against the timeout
+    const result = await Promise.race([
+      handleRequest(req),
+      timeoutPromise
+    ])
+
+    // Success - reset circuit breaker
+    recordSuccess()
+    return result
 
   } catch (error: unknown) {
-    console.error('Error in serve-seo-page:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Check if it's a timeout or abort error
+    if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
+      console.error(`[SEO] Timeout error: ${errorMessage}`)
+      recordFailure()
+      return new Response(
+        JSON.stringify({ 
+          error: 'Request timeout', 
+          details: 'Database query took too long',
+          retryAfter: 30
+        }),
+        { 
+          status: 503, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '30'
+          } 
+        }
+      )
+    }
+
+    // Other errors
+    console.error('[SEO] Error in serve-seo-page:', error)
+    recordFailure()
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
