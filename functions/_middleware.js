@@ -121,7 +121,7 @@ export async function onRequest({ request, next, env }) {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const seoResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/serve-seo-page${pathname}`,
+        `${SUPABASE_URL}/functions/v1/serve-seo-page?path=${encodeURIComponent(pathname)}`,
         {
           method: 'GET',
           headers: {
