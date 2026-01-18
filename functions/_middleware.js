@@ -48,6 +48,20 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const pathname = url.pathname;
   
+  // ============================================================
+  // RULE 1: Enforce www. prefix (301 Permanent Redirect)
+  // Non-www URLs must redirect to www for SEO consistency
+  // ============================================================
+  if (
+    url.hostname === 'delsolprimehomes.com' || 
+    url.hostname === 'blog-knowledge-vault.lovable.app'
+  ) {
+    const redirectUrl = new URL(url);
+    redirectUrl.hostname = 'www.' + url.hostname;
+    console.log('[Middleware] WWW Redirect:', url.hostname, '->', redirectUrl.hostname);
+    return Response.redirect(redirectUrl.toString(), 301);
+  }
+  
   // Skip static files
   if (STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
     // Special handling for XML files
@@ -94,9 +108,24 @@ export async function onRequest(context) {
       
       clearTimeout(timeoutId);
       
-      // Check if edge function returned valid HTML
-      const contentType = seoResponse.headers.get('Content-Type') || '';
+      // Get response body
       const body = await seoResponse.text();
+      
+      // ============================================================
+      // RULE 2: Handle 410 Gone (empty content) - return immediately
+      // Do NOT fall back to React SPA for 410 responses
+      // ============================================================
+      if (seoResponse.status === 410) {
+        console.log('[Middleware] 410 Gone from edge function:', pathname);
+        return new Response(body, {
+          status: 410,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'X-Robots-Tag': 'noindex',
+            'X-SEO-Source': 'edge-function-410',
+          }
+        });
+      }
       
       // If we got HTML content (check for DOCTYPE or <html), use it
       if (

@@ -1074,17 +1074,36 @@ async function handleRequest(req: Request): Promise<Response> {
   
   if (hasEmptyContent) {
     console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} - returning 410 Gone`)
-    return new Response(
-      JSON.stringify({ 
-        error: 'empty_content', 
-        should_410: true,
-        path,
-        content_type: contentType,
-        field: contentField,
-        reason: 'Content exists but is empty or placeholder'
-      }),
-      { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const gone410Html = `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <title>410 Gone</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; color: #374151; }
+    .container { text-align: center; padding: 2rem; max-width: 400px; }
+    h1 { font-size: 3rem; margin: 0 0 0.5rem 0; color: #1f2937; }
+    p { font-size: 1.125rem; color: #6b7280; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>410 Gone</h1>
+    <p>This content has been permanently removed.</p>
+  </div>
+</body>
+</html>`
+    return new Response(gone410Html, { 
+      status: 410, 
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Robots-Tag': 'noindex'
+      } 
+    })
   }
 
   console.log(`[SEO] Found metadata for: ${metadata.headline}`)
