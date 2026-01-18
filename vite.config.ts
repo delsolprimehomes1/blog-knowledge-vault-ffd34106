@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import type { Plugin } from "vite";
 
@@ -42,6 +43,32 @@ function sitemapGenerator(): Plugin {
   };
 }
 
+// Plugin to copy Cloudflare Pages Functions (middleware) into the build output.
+// Lovable publishes the `dist/` directory, so functions must exist inside it.
+function cloudflareFunctionsCopier(): Plugin {
+  return {
+    name: "cloudflare-functions-copier",
+    async closeBundle() {
+      const srcDir = path.resolve(__dirname, 'functions');
+      const destDir = path.resolve(__dirname, 'dist', 'functions');
+
+      try {
+        if (!fs.existsSync(srcDir)) return;
+
+        // Clear existing output (if any)
+        fs.rmSync(destDir, { recursive: true, force: true });
+
+        // Node 16+ supports fs.cpSync
+        fs.cpSync(srcDir, destDir, { recursive: true });
+        console.log('🔧 Copied functions/ to dist/functions/ (Pages middleware enabled)');
+      } catch (err) {
+        console.error('Failed to copy Cloudflare functions into dist:', err);
+        // Don't fail the build; the app can still serve as SPA.
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   optimizeDeps: {
@@ -56,7 +83,8 @@ export default defineConfig(({ mode }) => ({
     react(), 
     mode === "development" && componentTagger(),
     sitemapGenerator(),
-    staticPageGenerator()
+    staticPageGenerator(),
+    cloudflareFunctionsCopier(),
   ].filter(Boolean),
   resolve: {
     alias: {

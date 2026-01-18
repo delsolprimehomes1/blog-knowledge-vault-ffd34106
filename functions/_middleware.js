@@ -46,52 +46,75 @@ const STATIC_EXTENSIONS = [
 export async function onRequest(context) {
   const { request, next } = context;
   const url = new URL(request.url);
-  const pathname = url.pathname;
-  
+
+  const isLocalhost =
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname === '::1';
+
   // ============================================================
   // RULE 1: Enforce www. prefix (301 Permanent Redirect)
   // Non-www URLs must redirect to www for SEO consistency
+  // (Must run before ANY other logic)
   // ============================================================
-  if (
-    url.hostname === 'delsolprimehomes.com' || 
-    url.hostname === 'blog-knowledge-vault.lovable.app'
-  ) {
+  if (!isLocalhost && url.hostname === 'delsolprimehomes.com') {
     const redirectUrl = new URL(url);
-    redirectUrl.hostname = 'www.' + url.hostname;
-    console.log('[Middleware] WWW Redirect:', url.hostname, '->', redirectUrl.hostname);
-    return Response.redirect(redirectUrl.toString(), 301);
+    redirectUrl.hostname = 'www.delsolprimehomes.com';
+
+    return new Response(null, {
+      status: 301,
+      headers: {
+        Location: redirectUrl.toString(),
+        'X-Middleware-Status': 'Active',
+      },
+    });
   }
-  
+
+  const pathname = url.pathname;
+
+  // Adds a debug header so we can verify middleware execution in the Network tab.
+  function withMiddlewareStatus(response) {
+    const headers = new Headers(response.headers);
+    headers.set('X-Middleware-Status', 'Active');
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+
   // Skip static files
   if (STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
     // Special handling for XML files
     if (pathname.endsWith('.xml')) {
       const response = await next();
+      const headers = new Headers(response.headers);
+      headers.set('Content-Type', 'application/xml; charset=utf-8');
+      headers.set('X-Middleware-Status', 'Active');
       return new Response(response.body, {
         status: response.status,
-        headers: {
-          ...Object.fromEntries(response.headers.entries()),
-          'Content-Type': 'application/xml; charset=utf-8'
-        }
+        statusText: response.statusText,
+        headers,
       });
     }
-    return next();
+
+    return withMiddlewareStatus(await next());
   }
-  
+
   // Skip asset paths
   if (pathname.startsWith('/assets/') || pathname.startsWith('/.well-known/')) {
-    return next();
+    return withMiddlewareStatus(await next());
   }
-  
+
   // Check if this route needs SEO
   if (needsSEO(pathname)) {
     console.log('[Middleware] Routing to SEO edge function:', pathname);
-    
+
     try {
       // Call Supabase edge function with 10-second timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
+
       const seoResponse = await fetch(
         `${SUPABASE_URL}/functions/v1/serve-seo-page${pathname}`,
         {
@@ -105,12 +128,12 @@ export async function onRequest(context) {
           signal: controller.signal,
         }
       );
-      
+
       clearTimeout(timeoutId);
-      
+
       // Get response body
       const body = await seoResponse.text();
-      
+
       // ============================================================
       // RULE 2: Handle 410 Gone (empty content) - return immediately
       // Do NOT fall back to React SPA for 410 responses
@@ -123,13 +146,14 @@ export async function onRequest(context) {
             'Content-Type': 'text/html; charset=utf-8',
             'X-Robots-Tag': 'noindex',
             'X-SEO-Source': 'edge-function-410',
+            'X-Middleware-Status': 'Active',
           }
         });
       }
-      
+
       // If we got HTML content (check for DOCTYPE or <html), use it
       if (
-        seoResponse.ok && 
+        seoResponse.ok &&
         (body.includes('<!DOCTYPE html>') || body.includes('<html'))
       ) {
         console.log('[Middleware] SEO function returned HTML');
@@ -139,19 +163,20 @@ export async function onRequest(context) {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'public, max-age=300',
             'X-SEO-Source': 'edge-function',
+            'X-Middleware-Status': 'Active',
           }
         });
       }
-      
+
       // Edge function didn't return HTML, fall through to React app
       console.log('[Middleware] SEO function did not return HTML, status:', seoResponse.status);
-      
+
     } catch (error) {
       // Timeout or network error - fall through to React app
       console.error('[Middleware] SEO function error:', error.message);
     }
   }
-  
+
   // All other requests - pass through to React SPA
-  return next();
+  return withMiddlewareStatus(await next());
 }
