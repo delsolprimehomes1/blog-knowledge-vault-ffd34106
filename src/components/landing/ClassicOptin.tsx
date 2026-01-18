@@ -3,6 +3,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+import { sendFormToGHL, getPageMetadata, parseFullName } from '@/lib/webhookHandler';
 
 interface ClassicOptinProps {
     language: string;
@@ -62,6 +63,27 @@ const ClassicOptin: React.FC<ClassicOptinProps> = ({ language, translations }) =
             });
 
             if (error) throw error;
+
+            // NEW: Send to GHL webhook
+            const pageMetadata = getPageMetadata();
+            const { firstName, lastName } = parseFullName(formData.fullName);
+            
+            await sendFormToGHL({
+                firstName,
+                lastName,
+                phone: formData.phone,
+                interest: formData.interest,
+                leadSource: 'Website Form',
+                leadSourceDetail: `landing_classic_${pageMetadata.language}`,
+                pageType: pageMetadata.pageType,
+                language: language,
+                pageUrl: pageMetadata.pageUrl,
+                pageTitle: pageMetadata.pageTitle,
+                referrer: pageMetadata.referrer,
+                timestamp: pageMetadata.timestamp,
+                initialLeadScore: 20
+            });
+            console.log('[Classic Optin] GHL webhook sent');
 
             setIsSuccess(true);
             toast({

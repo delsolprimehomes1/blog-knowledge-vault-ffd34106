@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { sendFormToGHL, getPageMetadata } from "@/lib/webhookHandler";
 
 interface PropertyContactProps {
   reference: string;
@@ -44,6 +45,29 @@ export const PropertyContact = ({ reference, price, propertyType }: PropertyCont
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to submit inquiry');
+
+      // NEW: Send to GHL webhook
+      const pageMetadata = getPageMetadata();
+      await sendFormToGHL({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        message: formData.message,
+        propertyRef: reference,
+        propertyPrice: price,
+        propertyType,
+        leadSource: 'Website Form',
+        leadSourceDetail: `property_detail_${pageMetadata.language}`,
+        pageType: 'property_detail',
+        language: pageMetadata.language,
+        pageUrl: pageMetadata.pageUrl,
+        pageTitle: pageMetadata.pageTitle,
+        referrer: pageMetadata.referrer,
+        timestamp: pageMetadata.timestamp,
+        initialLeadScore: 20
+      });
+      console.log('[Property Contact] GHL webhook sent');
 
       setIsSuccess(true);
       toast({

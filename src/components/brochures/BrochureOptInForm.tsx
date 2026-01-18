@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, BookOpen, Download, ArrowRight, Star, Quote } from 'lucide-react';
+import { sendFormToGHL, getPageMetadata } from '@/lib/webhookHandler';
 
 interface BrochureOptInFormProps {
   cityName: string;
@@ -77,6 +78,28 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
             timestamp: new Date().toISOString(),
           }],
         });
+
+        // NEW: Send to GHL webhook
+        const pageMetadata = getPageMetadata();
+        await sendFormToGHL({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: `${formData.countryCode}${formData.phone}`,
+          message: formData.message || '',
+          cityName,
+          citySlug,
+          leadSource: 'Website Form',
+          leadSourceDetail: `brochure_page_${pageMetadata.language}`,
+          pageType: 'brochure_page',
+          language: pageMetadata.language,
+          pageUrl: pageMetadata.pageUrl,
+          pageTitle: pageMetadata.pageTitle,
+          referrer: pageMetadata.referrer,
+          timestamp: pageMetadata.timestamp,
+          initialLeadScore: 20
+        });
+        console.log('[Brochure Form] GHL webhook sent');
 
         setIsSubmitted(true);
         toast({
