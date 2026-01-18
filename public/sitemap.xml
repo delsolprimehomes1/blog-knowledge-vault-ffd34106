@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <!-- Core high-priority pages with AI metadata -->
+  <sitemap>
+    <loc>https://www.delsolprimehomes.com/sitemap-core.xml</loc>
+    <lastmod>2025-01-15</lastmod>
+  </sitemap>
+  
+  <!-- English blog articles (440 articles) -->
+  <sitemap>
+    <loc>https://www.delsolprimehomes.com/sitemaps/en/blog.xml</loc>
+    <lastmod>2026-01-18</lastmod>
+  </sitemap>
+  
+  <!-- English QA pages -->
+  <sitemap>
+    <loc>https://www.delsolprimehomes.com/sitemaps/en/qa.xml</loc>
+    <lastmod>2026-01-18</lastmod>
+  </sitemap>
+
+</sitemapindex>

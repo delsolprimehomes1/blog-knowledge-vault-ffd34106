@@ -11,6 +11,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
+// Batch size for paginated database queries (stay under Supabase 1000 row limit)
+const BATCH_SIZE = 500;
+
 // All 10 supported languages
 const SUPPORTED_LANGUAGES = ['en', 'nl', 'de', 'fr', 'pl', 'sv', 'da', 'hu', 'fi', 'no'];
 
