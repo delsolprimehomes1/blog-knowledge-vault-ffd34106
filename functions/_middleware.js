@@ -1,4 +1,9 @@
-// Force rebuild - 2026-01-15-12:30
+// Force rebuild - 2026-01-18 - EMERGENCY BYPASS MODE
+// ============================================================
+// EMERGENCY: Database is unresponsive - bypass serve-seo-page edge function
+// This allows pages to load via client-side rendering until DB is fixed
+// ============================================================
+const EMERGENCY_BYPASS_EDGE_FUNCTION = true; // SET TO false TO RE-ENABLE SEO INJECTION
 
 /**
  * Cloudflare Pages Middleware for SEO Metadata Injection
@@ -1016,6 +1021,57 @@ ${hreflangTags}
   
   if (CONFIG.DEBUG) {
     console.log(`[SEO Middleware] Processing: ${path} (lang=${lang}, type=${type})`);
+  }
+  
+  // ============================================================
+  // EMERGENCY BYPASS: Skip edge function when database is unresponsive
+  // This allows pages to load via client-side rendering
+  // ============================================================
+  if (EMERGENCY_BYPASS_EDGE_FUNCTION) {
+    console.log(`[SEO Middleware] ⚠️ EMERGENCY BYPASS - Skipping edge function for: ${path}`);
+    
+    // Fetch the SPA shell and serve it directly (client-side rendering)
+    try {
+      const indexRequest = new Request(new URL('/index.html', request.url).toString());
+      const assetResponse = await env.ASSETS.fetch(indexRequest);
+      
+      if (assetResponse.ok) {
+        let html = await assetResponse.text();
+        
+        // Basic SEO injection without database call
+        const baseUrl = 'https://www.delsolprimehomes.com';
+        const canonicalUrl = `${baseUrl}${path}`;
+        
+        // Inject minimal SEO tags
+        const minimalSeoBlock = `
+    <title>Del Sol Prime Homes | Costa del Sol Real Estate</title>
+    <meta name="description" content="Your trusted partner for Costa del Sol real estate. Find luxury properties in Marbella, Estepona, and the wider Costa del Sol region." />
+    <link rel="canonical" href="${canonicalUrl}" />
+    <meta property="og:url" content="${canonicalUrl}" />
+`;
+        
+        html = html.replace('</head>', `${minimalSeoBlock}</head>`);
+        html = html.replace(/<html[^>]*>/, `<html lang="${lang}">`);
+        
+        return new Response(html, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-cache', // Don't cache during emergency mode
+            'X-Middleware-Active': 'true',
+            'X-Middleware-Version': '2026-01-18-emergency',
+            'X-SEO-Source': 'emergency-bypass',
+            'X-Content-Language': lang,
+            'X-Emergency-Mode': 'true'
+          }
+        });
+      }
+    } catch (bypassError) {
+      console.error(`[SEO Middleware] Emergency bypass error:`, bypassError);
+    }
+    
+    // Fallback: just pass through to next
+    return next();
   }
   
   try {
