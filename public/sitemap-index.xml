@@ -1,171 +1,182 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- English -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/en/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Dutch -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/nl/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/nl/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/nl/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/nl/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- German -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/de/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/de/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/de/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/de/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- French -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fr/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fr/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fr/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fr/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Polish -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/pl/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/pl/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/pl/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/pl/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Swedish -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/sv/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/sv/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/sv/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/sv/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Danish -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/da/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/da/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/da/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/da/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Hungarian -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/hu/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/hu/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/hu/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/hu/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Finnish -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fi/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fi/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fi/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/fi/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Norwegian -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/no/blog.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/no/qa.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/no/locations.xml</loc>
-    <lastmod>2026-01-03</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/no/comparisons.xml</loc>
-    <lastmod>2026-01-01</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
+  <!-- Static sitemaps -->
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/glossary.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://www.delsolprimehomes.com/sitemaps/brochures.xml</loc>
-    <lastmod>2026-01-09</lastmod>
+    <lastmod>2026-01-18</lastmod>
   </sitemap>
 </sitemapindex>

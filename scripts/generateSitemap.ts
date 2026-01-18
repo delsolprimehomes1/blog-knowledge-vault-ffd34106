@@ -161,6 +161,20 @@ ${entries}
 </sitemapindex>`;
 }
 
+// Generate empty sitemap placeholder
+function generateEmptySitemap(contentType: string, lang: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- ${contentType} sitemap for ${lang.toUpperCase()} - No content available -->
+  <url>
+    <loc>${BASE_URL}/${lang}/${contentType === 'blog' ? 'blog' : contentType === 'qa' ? 'qa' : contentType === 'locations' ? 'locations' : 'compare'}</loc>
+    <lastmod>${getToday()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>`;
+}
+
 // Generate language-specific blog sitemap with /:lang/ prefixed URLs
 function generateLanguageBlogSitemap(
   articles: ArticleData[],
@@ -168,7 +182,7 @@ function generateLanguageBlogSitemap(
   clusterMap: Map<string, ArticleData[]>,
   hreflangEnabled: boolean
 ): string {
-  if (articles.length === 0) return '';
+  if (articles.length === 0) return generateEmptySitemap('blog', lang);
 
   const hreflangCode = langToHreflang[lang] || lang;
   
@@ -238,7 +252,7 @@ function generateLanguageQASitemap(
   allQAPages: QAPageData[],
   hreflangEnabled: boolean
 ): string {
-  if (qaPages.length === 0) return '';
+  if (qaPages.length === 0) return generateEmptySitemap('qa', lang);
 
   const hreflangCode = langToHreflang[lang] || lang;
   
@@ -316,7 +330,7 @@ function generateLanguageLocationsSitemap(
   allLocationPages: LocationPageData[],
   hreflangEnabled: boolean
 ): string {
-  if (locationPages.length === 0) return '';
+  if (locationPages.length === 0) return generateEmptySitemap('locations', lang);
 
   const hreflangCode = langToHreflang[lang] || lang;
   
@@ -395,7 +409,7 @@ function generateLanguageComparisonSitemap(
   allComparisonPages: ComparisonPageData[],
   hreflangEnabled: boolean
 ): string {
-  if (comparisonPages.length === 0) return '';
+  if (comparisonPages.length === 0) return generateEmptySitemap('comparisons', lang);
 
   const hreflangCode = langToHreflang[lang] || lang;
   
@@ -617,140 +631,159 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log('\n📥 Fetching content from database (optimized queries)...');
   
   // Blog articles: fetch in batches to avoid timeout
-  const allArticles: ArticleData[] = [];
-  let articleOffset = 0;
-  const BATCH_SIZE = 500;
-  
-  while (true) {
-    const { data: batch, error } = await supabase
-      .from('blog_articles')
-      .select('slug, language, cluster_id, is_primary, date_modified, date_published')
-      .eq('status', 'published')
-      .not('is_redirect', 'eq', true)
-      .order('date_modified', { ascending: false })
-      .range(articleOffset, articleOffset + BATCH_SIZE - 1);
+  let allArticles: ArticleData[] = [];
+  try {
+    let articleOffset = 0;
     
-    if (error) {
-      console.error('❌ Failed to fetch articles batch:', error);
-      break;
+    while (true) {
+      const { data: batch, error } = await supabase
+        .from('blog_articles')
+        .select('slug, language, cluster_id, is_primary, date_modified, date_published')
+        .eq('status', 'published')
+        .not('is_redirect', 'eq', true)
+        .order('date_modified', { ascending: false })
+        .range(articleOffset, articleOffset + BATCH_SIZE - 1);
+      
+      if (error) {
+        console.error('❌ Failed to fetch articles batch:', error);
+        break;
+      }
+      
+      if (!batch || batch.length === 0) break;
+      
+      // Filter out gone URLs
+      const filtered = batch.filter(article => {
+        const articlePath = `/${article.language}/blog/${article.slug}`;
+        return !goneUrlPaths.has(articlePath);
+      });
+      
+      allArticles.push(...filtered);
+      console.log(`   📝 Blog batch ${Math.floor(articleOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
+      
+      if (batch.length < BATCH_SIZE) break;
+      articleOffset += BATCH_SIZE;
     }
-    
-    if (!batch || batch.length === 0) break;
-    
-    // Filter out gone URLs
-    const filtered = batch.filter(article => {
-      const articlePath = `/${article.language}/blog/${article.slug}`;
-      return !goneUrlPaths.has(articlePath);
-    });
-    
-    allArticles.push(...filtered);
-    console.log(`   📝 Blog batch ${Math.floor(articleOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
-    
-    if (batch.length < BATCH_SIZE) break;
-    articleOffset += BATCH_SIZE;
+  } catch (error) {
+    console.warn('⚠️ Blog fetch failed completely, using empty array:', error);
+    allArticles = [];
   }
   
   const articles = allArticles;
   console.log(`   📝 Blog articles total: ${articles.length}`);
   
   // Q&A pages: fetch in batches
-  const allQAPages: QAPageData[] = [];
-  let qaOffset = 0;
-  
-  while (true) {
-    const { data: batch, error: qaError } = await supabase
-      .from('qa_pages')
-      .select('slug, language, hreflang_group_id, updated_at, created_at')
-      .eq('status', 'published')
-      .not('is_redirect', 'eq', true)
-      .order('updated_at', { ascending: false })
-      .range(qaOffset, qaOffset + BATCH_SIZE - 1);
+  let allQAPages: QAPageData[] = [];
+  try {
+    let qaOffset = 0;
     
-    if (qaError) {
-      console.error('❌ Failed to fetch QA batch:', qaError);
-      break;
+    while (true) {
+      const { data: batch, error: qaError } = await supabase
+        .from('qa_pages')
+        .select('slug, language, hreflang_group_id, updated_at, created_at')
+        .eq('status', 'published')
+        .not('is_redirect', 'eq', true)
+        .order('updated_at', { ascending: false })
+        .range(qaOffset, qaOffset + BATCH_SIZE - 1);
+      
+      if (qaError) {
+        console.error('❌ Failed to fetch QA batch:', qaError);
+        break;
+      }
+      
+      if (!batch || batch.length === 0) break;
+      
+      const filtered = batch.filter(qa => {
+        const qaPath = `/${qa.language}/qa/${qa.slug}`;
+        return !goneUrlPaths.has(qaPath);
+      });
+      
+      allQAPages.push(...filtered);
+      console.log(`   🔍 Q&A batch ${Math.floor(qaOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
+      
+      if (batch.length < BATCH_SIZE) break;
+      qaOffset += BATCH_SIZE;
     }
-    
-    if (!batch || batch.length === 0) break;
-    
-    const filtered = batch.filter(qa => {
-      const qaPath = `/${qa.language}/qa/${qa.slug}`;
-      return !goneUrlPaths.has(qaPath);
-    });
-    
-    allQAPages.push(...filtered);
-    console.log(`   🔍 Q&A batch ${Math.floor(qaOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
-    
-    if (batch.length < BATCH_SIZE) break;
-    qaOffset += BATCH_SIZE;
+  } catch (error) {
+    console.warn('⚠️ Q&A fetch failed completely, using empty array:', error);
+    allQAPages = [];
   }
   
   const qaPages = allQAPages;
   console.log(`   🔍 Q&A pages total: ${qaPages.length}`);
   
   // Location pages: fetch in batches
-  const allLocationPages: LocationPageData[] = [];
-  let locOffset = 0;
-  
-  while (true) {
-    const { data: batch, error: locError } = await supabase
-      .from('location_pages')
-      .select('city_slug, topic_slug, city_name, language, intent_type, hreflang_group_id, updated_at, date_published')
-      .eq('status', 'published')
-      .not('is_redirect', 'eq', true)
-      .order('updated_at', { ascending: false })
-      .range(locOffset, locOffset + BATCH_SIZE - 1);
+  let allLocationPages: LocationPageData[] = [];
+  try {
+    let locOffset = 0;
     
-    if (locError) {
-      console.error('❌ Failed to fetch location batch:', locError);
-      break;
+    while (true) {
+      const { data: batch, error: locError } = await supabase
+        .from('location_pages')
+        .select('city_slug, topic_slug, city_name, language, intent_type, hreflang_group_id, updated_at, date_published')
+        .eq('status', 'published')
+        .not('is_redirect', 'eq', true)
+        .order('updated_at', { ascending: false })
+        .range(locOffset, locOffset + BATCH_SIZE - 1);
+      
+      if (locError) {
+        console.error('❌ Failed to fetch location batch:', locError);
+        break;
+      }
+      
+      if (!batch || batch.length === 0) break;
+      
+      const filtered = batch.filter(loc => {
+        const locPath = `/${loc.language}/locations/${loc.city_slug}/${loc.topic_slug}`;
+        return !goneUrlPaths.has(locPath);
+      });
+      
+      allLocationPages.push(...filtered);
+      
+      if (batch.length < BATCH_SIZE) break;
+      locOffset += BATCH_SIZE;
     }
-    
-    if (!batch || batch.length === 0) break;
-    
-    const filtered = batch.filter(loc => {
-      const locPath = `/${loc.language}/locations/${loc.city_slug}/${loc.topic_slug}`;
-      return !goneUrlPaths.has(locPath);
-    });
-    
-    allLocationPages.push(...filtered);
-    
-    if (batch.length < BATCH_SIZE) break;
-    locOffset += BATCH_SIZE;
+  } catch (error) {
+    console.warn('⚠️ Location fetch failed completely, using empty array:', error);
+    allLocationPages = [];
   }
   
   const locationPages = allLocationPages;
   console.log(`   📍 Location pages total: ${locationPages.length}`);
   
   // Comparison pages: fetch in batches
-  const allComparisonPages: ComparisonPageData[] = [];
-  let compOffset = 0;
-  
-  while (true) {
-    const { data: batch, error: compError } = await supabase
-      .from('comparison_pages')
-      .select('slug, language, option_a, option_b, niche, hreflang_group_id, updated_at, date_published')
-      .eq('status', 'published')
-      .not('is_redirect', 'eq', true)
-      .order('updated_at', { ascending: false })
-      .range(compOffset, compOffset + BATCH_SIZE - 1);
+  let allComparisonPages: ComparisonPageData[] = [];
+  try {
+    let compOffset = 0;
     
-    if (compError) {
-      console.error('❌ Failed to fetch comparison batch:', compError);
-      break;
+    while (true) {
+      const { data: batch, error: compError } = await supabase
+        .from('comparison_pages')
+        .select('slug, language, option_a, option_b, niche, hreflang_group_id, updated_at, date_published')
+        .eq('status', 'published')
+        .not('is_redirect', 'eq', true)
+        .order('updated_at', { ascending: false })
+        .range(compOffset, compOffset + BATCH_SIZE - 1);
+      
+      if (compError) {
+        console.error('❌ Failed to fetch comparison batch:', compError);
+        break;
+      }
+      
+      if (!batch || batch.length === 0) break;
+      
+      const filtered = batch.filter(comp => {
+        const compPath = `/${comp.language}/compare/${comp.slug}`;
+        return !goneUrlPaths.has(compPath);
+      });
+      
+      allComparisonPages.push(...filtered);
+      
+      if (batch.length < BATCH_SIZE) break;
+      compOffset += BATCH_SIZE;
     }
-    
-    if (!batch || batch.length === 0) break;
-    
-    const filtered = batch.filter(comp => {
-      const compPath = `/${comp.language}/compare/${comp.slug}`;
-      return !goneUrlPaths.has(compPath);
-    });
-    
-    allComparisonPages.push(...filtered);
-    
-    if (batch.length < BATCH_SIZE) break;
-    compOffset += BATCH_SIZE;
+  } catch (error) {
+    console.warn('⚠️ Comparison fetch failed completely, using empty array:', error);
+    allComparisonPages = [];
   }
   
   const comparisonPages = allComparisonPages;
@@ -783,8 +816,8 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const languageContentTypes = new Map<string, { type: string; lastmod: string }[]>();
   let totalUrls = 0;
   
-  // Generate per-language sitemaps
-  console.log('\n🔨 Generating language-specific sitemaps...');
+  // Generate per-language sitemaps - ALWAYS generate for ALL 10 languages
+  console.log('\n🔨 Generating language-specific sitemaps for ALL 10 languages...');
   
   for (const lang of SUPPORTED_LANGUAGES) {
     const langArticles = articlesByLang.get(lang) || [];
@@ -792,13 +825,7 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     const langLocations = locationsByLang.get(lang) || [];
     const langComparisons = comparisonsByLang.get(lang) || [];
     
-    const totalContent = langArticles.length + langQA.length + langLocations.length + langComparisons.length;
-    
-    if (totalContent === 0) {
-      console.log(`   ⏭️ ${lang.toUpperCase()}: No content, skipping`);
-      continue;
-    }
-    
+    // ALWAYS add this language (even if empty)
     languagesWithContent.push(lang);
     const langPath = join(sitemapsPath, lang);
     ensureDir(langPath);
@@ -807,66 +834,56 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
     
     const contentTypes: { type: string; count: number; lastmod: string }[] = [];
     
-    // Blog sitemap
-    if (langArticles.length > 0) {
-      const blogSitemap = generateLanguageBlogSitemap(langArticles, lang, clusterMap, hreflangEnabled);
-      const blogPath = join(langPath, 'blog.xml');
-      writeFileSync(blogPath, blogSitemap, 'utf-8');
-      console.log(`      ✍️ Wrote: ${blogPath}`);
-      const lastmod = langArticles[0]?.date_modified 
-        ? new Date(langArticles[0].date_modified).toISOString().split('T')[0]
-        : getToday();
-      contentTypes.push({ type: 'blog', count: langArticles.length + 1, lastmod });
-      totalUrls += langArticles.length + 1;
-    }
+    // Blog sitemap - ALWAYS generate
+    const blogSitemap = generateLanguageBlogSitemap(langArticles, lang, clusterMap, hreflangEnabled);
+    const blogPath = join(langPath, 'blog.xml');
+    writeFileSync(blogPath, blogSitemap, 'utf-8');
+    console.log(`      ✍️ Wrote: ${blogPath} (${langArticles.length} articles)`);
+    const blogLastmod = langArticles[0]?.date_modified 
+      ? new Date(langArticles[0].date_modified).toISOString().split('T')[0]
+      : getToday();
+    contentTypes.push({ type: 'blog', count: Math.max(langArticles.length + 1, 1), lastmod: blogLastmod });
+    totalUrls += Math.max(langArticles.length + 1, 1);
     
-    // Q&A sitemap
-    if (langQA.length > 0) {
-      const qaSitemap = generateLanguageQASitemap(langQA, lang, qaPages || [], hreflangEnabled);
-      const qaPath = join(langPath, 'qa.xml');
-      writeFileSync(qaPath, qaSitemap, 'utf-8');
-      console.log(`      ✍️ Wrote: ${qaPath}`);
-      const lastmod = langQA[0]?.updated_at 
-        ? new Date(langQA[0].updated_at).toISOString().split('T')[0]
-        : getToday();
-      contentTypes.push({ type: 'qa', count: langQA.length + 1, lastmod });
-      totalUrls += langQA.length + 1;
-    }
+    // Q&A sitemap - ALWAYS generate
+    const qaSitemap = generateLanguageQASitemap(langQA, lang, qaPages || [], hreflangEnabled);
+    const qaPath = join(langPath, 'qa.xml');
+    writeFileSync(qaPath, qaSitemap, 'utf-8');
+    console.log(`      ✍️ Wrote: ${qaPath} (${langQA.length} pages)`);
+    const qaLastmod = langQA[0]?.updated_at 
+      ? new Date(langQA[0].updated_at).toISOString().split('T')[0]
+      : getToday();
+    contentTypes.push({ type: 'qa', count: Math.max(langQA.length + 1, 1), lastmod: qaLastmod });
+    totalUrls += Math.max(langQA.length + 1, 1);
     
-    // Locations sitemap
-    if (langLocations.length > 0) {
-      const locSitemap = generateLanguageLocationsSitemap(langLocations, lang, locationPages || [], hreflangEnabled);
-      const locPath = join(langPath, 'locations.xml');
-      writeFileSync(locPath, locSitemap, 'utf-8');
-      console.log(`      ✍️ Wrote: ${locPath}`);
-      const lastmod = langLocations[0]?.updated_at 
-        ? new Date(langLocations[0].updated_at).toISOString().split('T')[0]
-        : getToday();
-      contentTypes.push({ type: 'locations', count: langLocations.length + 1, lastmod });
-      totalUrls += langLocations.length + 1;
-    }
+    // Locations sitemap - ALWAYS generate
+    const locSitemap = generateLanguageLocationsSitemap(langLocations, lang, locationPages || [], hreflangEnabled);
+    const locPath = join(langPath, 'locations.xml');
+    writeFileSync(locPath, locSitemap, 'utf-8');
+    console.log(`      ✍️ Wrote: ${locPath} (${langLocations.length} pages)`);
+    const locLastmod = langLocations[0]?.updated_at 
+      ? new Date(langLocations[0].updated_at).toISOString().split('T')[0]
+      : getToday();
+    contentTypes.push({ type: 'locations', count: Math.max(langLocations.length + 1, 1), lastmod: locLastmod });
+    totalUrls += Math.max(langLocations.length + 1, 1);
     
-    // Comparisons sitemap
-    if (langComparisons.length > 0) {
-      const compSitemap = generateLanguageComparisonSitemap(langComparisons, lang, comparisonPages || [], hreflangEnabled);
-      const compPath = join(langPath, 'comparisons.xml');
-      writeFileSync(compPath, compSitemap, 'utf-8');
-      console.log(`      ✍️ Wrote: ${compPath}`);
-      const lastmod = langComparisons[0]?.updated_at 
-        ? new Date(langComparisons[0].updated_at).toISOString().split('T')[0]
-        : getToday();
-      contentTypes.push({ type: 'comparisons', count: langComparisons.length + 1, lastmod });
-      totalUrls += langComparisons.length + 1;
-    }
+    // Comparisons sitemap - ALWAYS generate
+    const compSitemap = generateLanguageComparisonSitemap(langComparisons, lang, comparisonPages || [], hreflangEnabled);
+    const compPath = join(langPath, 'comparisons.xml');
+    writeFileSync(compPath, compSitemap, 'utf-8');
+    console.log(`      ✍️ Wrote: ${compPath} (${langComparisons.length} pages)`);
+    const compLastmod = langComparisons[0]?.updated_at 
+      ? new Date(langComparisons[0].updated_at).toISOString().split('T')[0]
+      : getToday();
+    contentTypes.push({ type: 'comparisons', count: Math.max(langComparisons.length + 1, 1), lastmod: compLastmod });
+    totalUrls += Math.max(langComparisons.length + 1, 1);
     
-    // Store content types for master index (flat structure)
-    if (contentTypes.length > 0) {
-      languageContentTypes.set(lang, contentTypes.map(ct => ({ type: ct.type, lastmod: ct.lastmod })));
-      
-      // Also generate language index for internal reference (not linked from master)
-      const langIndex = generateLanguageSitemapIndex(lang, contentTypes);
-      writeFileSync(join(langPath, 'index.xml'), langIndex, 'utf-8');
-    }
+    // Store ALL content types for master index (always 4 types per language)
+    languageContentTypes.set(lang, contentTypes.map(ct => ({ type: ct.type, lastmod: ct.lastmod })));
+    
+    // Also generate language index for internal reference
+    const langIndex = generateLanguageSitemapIndex(lang, contentTypes);
+    writeFileSync(join(langPath, 'index.xml'), langIndex, 'utf-8');
   }
   
   // Generate static sitemaps
@@ -898,13 +915,13 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   console.log(`\n✅ Hierarchical sitemap generation complete!`);
   console.log(`\n📊 Summary:`);
   console.log(`   • Master index: sitemap-index.xml`);
-  console.log(`   • Languages with content: ${languagesWithContent.length} (${languagesWithContent.join(', ')})`);
-  console.log(`   • Total sitemap files: ${languagesWithContent.length * 4 + 2 + languagesWithContent.length + 2}`);
+  console.log(`   • Languages processed: ${SUPPORTED_LANGUAGES.length} (ALL languages always included)`);
+  console.log(`   • Child sitemaps in index: ${totalSitemapsInIndex} (${SUPPORTED_LANGUAGES.length} × 4 types + glossary + brochures = 42)`);
   console.log(`   • Total URLs: ${totalUrls}`);
-  console.log(`\n📁 Structure:`);
+  console.log(`\n📁 Structure (guaranteed 42 child sitemaps):`);
   console.log(`   /sitemap-index.xml`);
-  languagesWithContent.forEach(lang => {
-    console.log(`   /sitemaps/${lang}/index.xml`);
+  SUPPORTED_LANGUAGES.forEach(lang => {
+    console.log(`   /sitemaps/${lang}/`);
     console.log(`     ├── blog.xml`);
     console.log(`     ├── qa.xml`);
     console.log(`     ├── locations.xml`);
