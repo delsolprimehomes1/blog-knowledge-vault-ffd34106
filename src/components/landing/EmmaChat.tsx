@@ -3,6 +3,13 @@ import { X, Send, Minimize2, Maximize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { markdownToHtml } from '@/lib/markdownToHtml';
 import { upsertEmmaLead, extractPropertyCriteriaFromHistory } from '@/hooks/useEmmaLeadTracking';
+import { 
+  sendEmmaToGHL, 
+  calculateLeadSegment, 
+  calculateDuration,
+  detectPageType,
+  detectLanguage 
+} from '@/lib/webhookHandler';
 
 interface Message {
     id: string;
@@ -44,6 +51,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [accumulatedFields, setAccumulatedFields] = useState<Record<string, any>>({});
     const [hasSubmittedLead, setHasSubmittedLead] = useState(false);
     const [inactivityTimer, setInactivityTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [emmaOpenedContext, setEmmaOpenedContext] = useState<{
+        pageType: string;
+        language: string;
+        pageUrl: string;
+        pageTitle: string;
+        referrer: string;
+        openedAt: number;
+    } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -98,6 +113,16 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             setConversationId(convId);
 
+            // Capture page context when Emma opens
+            setEmmaOpenedContext({
+                pageType: detectPageType(window.location.pathname),
+                language: detectLanguage(window.location.pathname),
+                pageUrl: window.location.href,
+                pageTitle: document.title,
+                referrer: document.referrer || 'Direct',
+                openedAt: Date.now()
+            });
+
             // Add initial greeting in CORRECT language
             const greeting = greetings[language as keyof typeof greetings] || greetings.en;
             setMessages([{
@@ -108,6 +133,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             }]);
 
             console.log(`🌍 Emma initialized in ${language.toUpperCase()} language`);
+            console.log(`📍 Emma opened on: ${detectPageType(window.location.pathname)} (${detectLanguage(window.location.pathname)})`);
         }
     }, [isOpen, language]);
 
@@ -168,7 +194,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 const baseExitPoint = determineExitPoint(fieldsToSend);
                 
                 setHasSubmittedLead(true);
-                await sendToGHL({
+                await sendToGHLWebhook({
                     ...fieldsToSend,
                     conversation_status: 'abandoned',
                     intake_complete: false,
@@ -346,7 +372,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 }
                 
                 setHasSubmittedLead(true);
-                await sendToGHL(newAccumulatedFields);
+                await sendToGHLWebhook(newAccumulatedFields);
             }
             
             setAccumulatedFields(newAccumulatedFields);
@@ -642,9 +668,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         return qa;
     };
 
-    // Send lead data to GoHighLevel webhook with ALL 24 fields
-    const sendToGHL = async (fields: Record<string, any>) => {
-        console.log('📤 Preparing to send to GHL webhook...');
+    // Send lead data to GoHighLevel webhook with ENHANCED simplified structure
+    const sendToGHLWebhook = async (fields: Record<string, any>) => {
+        console.log('📤 Preparing ENHANCED GHL payload...');
         console.log('📤 Raw fields received:', JSON.stringify(fields, null, 2));
 
         // VALIDATE CRITICAL CONTACT FIELDS BEFORE SENDING
@@ -656,7 +682,6 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         // If missing critical fields, apply aggressive fallback extraction
         if (missingFields.length > 0) {
             console.warn('⚠️ WEBHOOK WARNING: Missing critical contact fields:', missingFields);
-            console.warn('⚠️ GHL may not create contact without phone number');
             
             // Apply emergency fallback extraction
             const extractedContact = extractContactFromHistory(messages);
@@ -675,13 +700,6 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             if (!fields.country_prefix && extractedContact.country_prefix) {
                 fields.country_prefix = extractedContact.country_prefix;
             }
-            
-            console.log('📋 After emergency fallback:', {
-                first_name: fields.first_name || fields.name,
-                last_name: fields.last_name || fields.family_name,
-                phone_number: fields.phone_number || fields.phone,
-                country_prefix: fields.country_prefix
-            });
         }
 
         // Determine conversation status
@@ -696,10 +714,79 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
         // Determine exit point
         const exitPoint = fields.exit_point || determineExitPoint(fields);
+        
+        // Get page context (where Emma was opened)
+        const pageContext = emmaOpenedContext || {
+            pageType: detectPageType(window.location.pathname),
+            language: detectLanguage(window.location.pathname),
+            pageUrl: window.location.href,
+            pageTitle: document.title,
+            referrer: document.referrer || 'Direct',
+            openedAt: Date.now()
+        };
+        
+        // Calculate conversation duration
+        const conversationDuration = calculateDuration(pageContext.openedAt);
+        
+        // Build specific needs array from Emma's data
+        const specificNeeds: string[] = [];
+        if (fields.sea_view_importance === 'essential' || fields.sea_view_importance === 'Very Important') {
+            specificNeeds.push('Sea view');
+        }
+        if (fields.bedrooms_desired) {
+            specificNeeds.push(`${fields.bedrooms_desired} bedrooms`);
+        }
+        if (fields.purpose || fields.property_purpose) {
+            specificNeeds.push(fields.purpose || fields.property_purpose);
+        }
 
         try {
-            const payload = {
-                conversation_id: conversationId, // Include for tracking
+            // Send to UNIVERSAL GHL WEBHOOK with simplified structure
+            await sendEmmaToGHL({
+                // Contact Information
+                firstName: fields.name || fields.first_name || '',
+                lastName: fields.family_name || fields.last_name || '',
+                phone: fields.phone || fields.phone_number || '',
+                country_prefix: fields.country_prefix || '',
+                
+                // Simplified GHL structure (what automation needs)
+                timeline: fields.timeframe || '',
+                buyerProfile: fields.purpose || fields.property_purpose || '',
+                budget: fields.budget_range || '',
+                areasOfInterest: Array.isArray(fields.location_preference) 
+                    ? fields.location_preference 
+                    : (fields.location_preference ? [fields.location_preference] : []),
+                propertyType: Array.isArray(fields.property_type)
+                    ? fields.property_type
+                    : (fields.property_type ? [fields.property_type] : []),
+                specificNeeds,
+                
+                // Emma metadata
+                leadSourceDetail: `emma_chat_${pageContext.language}`,
+                emmaConversationStatus: conversationStatus,
+                emmaQuestionsAnswered: countQuestionsAnswered(fields),
+                emmaIntakeComplete: fields.intake_complete || false,
+                emmaConversationDuration: conversationDuration,
+                emmaExitPoint: exitPoint,
+                
+                // Page context
+                pageType: pageContext.pageType,
+                language: pageContext.language,
+                pageUrl: pageContext.pageUrl,
+                pageTitle: pageContext.pageTitle,
+                referrer: pageContext.referrer,
+                
+                // Calculated fields
+                leadSegment: calculateLeadSegment(
+                    fields.timeframe || 'Not sure',
+                    fields.purpose || fields.property_purpose || 'General'
+                ),
+                initialLeadScore: fields.intake_complete ? 25 : (fields.phone || fields.phone_number ? 20 : 15)
+            });
+            
+            // ALSO send to edge function for database tracking (backwards compatible)
+            const legacyPayload = {
+                conversation_id: conversationId,
                 contact_info: {
                     first_name: fields.name || fields.first_name || '',
                     last_name: fields.family_name || fields.last_name || '',
@@ -735,20 +822,24 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     conversation_date: new Date().toISOString(),
                     conversation_status: conversationStatus,
                     exit_point: exitPoint
+                },
+                // NEW: Page context for tracking
+                page_context: {
+                    page_type: pageContext.pageType,
+                    page_url: pageContext.pageUrl,
+                    page_title: pageContext.pageTitle,
+                    referrer: pageContext.referrer,
+                    lead_segment: calculateLeadSegment(
+                        fields.timeframe || 'Not sure',
+                        fields.purpose || fields.property_purpose || 'General'
+                    )
                 }
             };
 
-            console.log('📤 Complete GHL Payload (24 fields):', JSON.stringify(payload, null, 2));
-            console.log('📤 Sending lead to GHL...');
+            console.log('📤 Sending to edge function for DB tracking...');
+            await supabase.functions.invoke('send-emma-lead', { body: legacyPayload });
             
-            const { error } = await supabase.functions.invoke('send-emma-lead', { body: payload });
-            
-            if (error) {
-                console.error('❌ GHL webhook error:', error);
-                return false;
-            }
-            
-            console.log('✅ Lead sent to GHL successfully');
+            console.log('✅ Lead sent to both GHL webhook and edge function');
             return true;
         } catch (error) {
             console.error('❌ Failed to send lead to GHL:', error);
@@ -811,7 +902,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             console.log('🚪 CLOSE: Exit point determined:', exitPoint);
             
             setHasSubmittedLead(true);
-            await sendToGHL({
+            await sendToGHLWebhook({
                 ...fieldsToSend,
                 closed_early: true,
                 exit_point: exitPoint
