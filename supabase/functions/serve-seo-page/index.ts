@@ -961,12 +961,55 @@ ${hreflangTags}
 }
 
 /**
+ * Generate 410 Gone HTML for deleted/ghost content
+ */
+function generate410GoneHtml(lang: string = 'en'): string {
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <title>410 Gone</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; color: #374151; }
+    .container { text-align: center; padding: 2rem; max-width: 400px; }
+    h1 { font-size: 3rem; margin: 0 0 0.5rem 0; color: #1f2937; }
+    p { font-size: 1.125rem; color: #6b7280; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>410 Gone</h1>
+    <p>This content has been permanently removed.</p>
+  </div>
+</body>
+</html>`
+}
+
+/**
+ * Check if a path looks like a content URL pattern
+ * Returns the detected language if it matches, null otherwise
+ */
+function isContentPathPattern(path: string): { lang: string; type: string } | null {
+  // Match patterns like: /en/blog/*, /es/qa/*, /de/locations/*, /fr/compare/*
+  const contentPattern = /^\/([a-z]{2})\/(qa|blog|compare|locations)\//i
+  const match = path.match(contentPattern)
+  if (match) {
+    return { lang: match[1].toLowerCase(), type: match[2].toLowerCase() }
+  }
+  return null
+}
+
+/**
  * Main request handler with timeout protection
  */
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url)
   const path = url.searchParams.get('path')
   
+  // If no path parameter, check if this looks like a missing path error
   if (!path) {
     return new Response(
       JSON.stringify({ error: 'Missing path parameter' }),
@@ -979,7 +1022,31 @@ async function handleRequest(req: Request): Promise<Response> {
   // Parse the path: /{lang}/{type}/{slug}
   const pathMatch = path.match(/^\/(\w{2})\/(qa|blog|compare|locations)\/(.+)$/)
   
+  // If parsing fails, check if it LOOKS like a content pattern
+  // If yes → assume deleted content → return 410 Gone
+  // If no → return 400 Bad Request
   if (!pathMatch) {
+    const contentCheck = isContentPathPattern(path)
+    
+    if (contentCheck) {
+      // This looks like a content URL but we couldn't parse the slug
+      // Treat as deleted/ghost content → 410 Gone
+      console.log(`[SEO] WRECKING BALL: Malformed content path "${path}" → returning 410 Gone`)
+      return new Response(
+        generate410GoneHtml(contentCheck.lang),
+        { 
+          status: 410, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'text/html; charset=utf-8',
+            'X-Robots-Tag': 'noindex',
+            'X-Wrecking-Ball': 'malformed-path'
+          } 
+        }
+      )
+    }
+    
+    // Not a content pattern at all → 400 Bad Request
     return new Response(
       JSON.stringify({ error: 'Invalid path format. Expected: /{lang}/{type}/{slug}' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1038,10 +1105,23 @@ async function handleRequest(req: Request): Promise<Response> {
     )
   }
 
+  // ============================================================
+  // WRECKING BALL POLICY: Content not found → 410 Gone
+  // This is a ghost page that should be de-indexed immediately
+  // ============================================================
   if (!metadata) {
+    console.log(`[SEO] WRECKING BALL: Content not found "${path}" → returning 410 Gone`)
     return new Response(
-      JSON.stringify({ error: 'Page not found', path }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      generate410GoneHtml(lang),
+      { 
+        status: 410, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Robots-Tag': 'noindex',
+          'X-Wrecking-Ball': 'content-not-found'
+        } 
+      }
     )
   }
 
@@ -1073,37 +1153,19 @@ async function handleRequest(req: Request): Promise<Response> {
   }
   
   if (hasEmptyContent) {
-    console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} - returning 410 Gone`)
-    const gone410Html = `<!DOCTYPE html>
-<html lang="${lang}">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <meta name="googlebot" content="noindex, nofollow">
-  <title>410 Gone</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; color: #374151; }
-    .container { text-align: center; padding: 2rem; max-width: 400px; }
-    h1 { font-size: 3rem; margin: 0 0 0.5rem 0; color: #1f2937; }
-    p { font-size: 1.125rem; color: #6b7280; margin: 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>410 Gone</h1>
-    <p>This content has been permanently removed.</p>
-  </div>
-</body>
-</html>`
-    return new Response(gone410Html, { 
-      status: 410, 
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'text/html; charset=utf-8',
-        'X-Robots-Tag': 'noindex'
-      } 
-    })
+    console.log(`[SEO] WRECKING BALL: Empty ${contentField} for ${contentType}/${slug} → returning 410 Gone`)
+    return new Response(
+      generate410GoneHtml(lang), 
+      { 
+        status: 410, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Robots-Tag': 'noindex',
+          'X-Wrecking-Ball': 'empty-content'
+        } 
+      }
+    )
   }
 
   console.log(`[SEO] Found metadata for: ${metadata.headline}`)
