@@ -68,6 +68,88 @@ function recordSuccess(): void {
 }
 
 /**
+ * Wraps a promise with a timeout - returns fallback HTML if too slow
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallbackResponse: Response
+): Promise<T | Response> {
+  const timeout = new Promise<Response>((resolve) => {
+    setTimeout(() => {
+      console.warn(`[SEO] Timeout after ${timeoutMs}ms - returning fallback HTML`);
+      resolve(fallbackResponse);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]);
+}
+
+/**
+ * Generates minimal SEO-friendly fallback HTML when database is slow
+ */
+function generateFallbackHTML(url: URL): string {
+  const baseTitle = 'Del Sol Prime Homes - Luxury Real Estate Costa del Sol';
+  const baseDescription = 'Discover premium properties and luxury villas on the Costa del Sol. Expert real estate services for international buyers seeking their dream Mediterranean home.';
+  const baseUrl = url.origin;
+  const pathname = url.pathname;
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${baseTitle}</title>
+  <meta name="description" content="${baseDescription}">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${url.toString()}">
+  <meta property="og:title" content="${baseTitle}">
+  <meta property="og:description" content="${baseDescription}">
+  <meta property="og:site_name" content="Del Sol Prime Homes">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${url.toString()}">
+  <meta name="twitter:title" content="${baseTitle}">
+  <meta name="twitter:description" content="${baseDescription}">
+  
+  <!-- Canonical -->
+  <link rel="canonical" href="${url.toString()}">
+  
+  <!-- Auto-redirect to React app for user experience -->
+  <meta http-equiv="refresh" content="0;url=${pathname}">
+  
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "name": "Del Sol Prime Homes",
+    "description": "${baseDescription}",
+    "url": "${baseUrl}",
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "Costa del Sol",
+      "addressCountry": "ES"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Immediate JavaScript redirect -->
+  <script>window.location.href='${pathname}';</script>
+  
+  <!-- Fallback for no-JS -->
+  <noscript>
+    <p>Redirecting to <a href="${pathname}">${baseTitle}</a>...</p>
+  </noscript>
+</body>
+</html>`;
+}
+
+/**
  * Create a Supabase client with timeout handling
  */
 function createTimeoutClient() {
@@ -1088,7 +1170,8 @@ async function handleRequest(req: Request): Promise<Response> {
 }
 
 // ============================================================
-// MAIN ENTRY POINT with timeout and circuit breaker protection
+// MAIN ENTRY POINT with timeout protection and fallback HTML
+// Always returns 200 OK with HTML - never 503/524 errors
 // ============================================================
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -1096,38 +1179,46 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Circuit breaker check - fail fast if DB is repeatedly failing
+  const url = new URL(req.url)
+
+  // Create fallback response for timeouts/errors
+  const fallbackResponse = new Response(
+    generateFallbackHTML(url),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=300',
+        'X-SEO-Fallback': 'timeout',
+        ...corsHeaders
+      }
+    }
+  )
+
+  // Circuit breaker check - return fallback HTML instead of 503
   if (isCircuitOpen()) {
+    console.log('[SEO] Circuit breaker open - returning fallback HTML')
     return new Response(
-      JSON.stringify({ 
-        error: 'Service temporarily unavailable', 
-        reason: 'circuit_breaker_open',
-        retryAfter: Math.ceil((circuitOpenUntil - Date.now()) / 1000)
-      }),
-      { 
-        status: 503, 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          'Retry-After': '30'
-        } 
+      generateFallbackHTML(url),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=60',
+          'X-SEO-Fallback': 'circuit-breaker',
+          ...corsHeaders
+        }
       }
     )
   }
 
   try {
-    // Create a timeout promise that rejects after TOTAL_REQUEST_TIMEOUT
-    const timeoutPromise = new Promise<Response>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Request timeout after ${TOTAL_REQUEST_TIMEOUT}ms`))
-      }, TOTAL_REQUEST_TIMEOUT)
-    })
-
-    // Race the actual request against the timeout
-    const result = await Promise.race([
+    // Wrap the request with 8-second timeout protection
+    const result = await withTimeout(
       handleRequest(req),
-      timeoutPromise
-    ])
+      8000, // 8 second timeout
+      fallbackResponse
+    )
 
     // Success - reset circuit breaker
     recordSuccess()
@@ -1135,34 +1226,21 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
-    // Check if it's a timeout or abort error
-    if (errorMessage.includes('timeout') || errorMessage.includes('abort')) {
-      console.error(`[SEO] Timeout error: ${errorMessage}`)
-      recordFailure()
-      return new Response(
-        JSON.stringify({ 
-          error: 'Request timeout', 
-          details: 'Database query took too long',
-          retryAfter: 30
-        }),
-        { 
-          status: 503, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': '30'
-          } 
-        }
-      )
-    }
-
-    // Other errors
-    console.error('[SEO] Error in serve-seo-page:', error)
+    console.error(`[SEO] Error: ${errorMessage}`)
     recordFailure()
+    
+    // Always return fallback HTML on any error - never 500/503
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      generateFallbackHTML(url),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=60',
+          'X-SEO-Fallback': 'error',
+          ...corsHeaders
+        }
+      }
     )
   }
 })
