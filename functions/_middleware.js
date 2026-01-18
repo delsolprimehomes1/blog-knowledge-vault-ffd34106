@@ -2,6 +2,7 @@
 // Cloudflare Pages Middleware - Routes SEO pages to edge function
 // Calls Supabase serve-seo-page function for dynamic SEO content
 // Last updated: 2026-01-18
+// v2.1 - Query param fix: ?path= instead of URL path appending
 // ============================================================
 
 // Hardcoded values ensure middleware works in Cloudflare Pages environment
