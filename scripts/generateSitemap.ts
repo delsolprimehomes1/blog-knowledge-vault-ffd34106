@@ -613,93 +613,148 @@ export async function generateSitemap(outputDir?: string): Promise<void> {
   const goneUrlPaths = new Set((goneUrls || []).map(g => g.url_path));
   console.log(`   🚫 Gone URLs to exclude: ${goneUrlPaths.size}`);
   
-  // Fetch all published content with content validation
-  console.log('\n📥 Fetching content from database (with content validation)...');
+  // Fetch all published content - MINIMAL columns to avoid timeout
+  console.log('\n📥 Fetching content from database (optimized queries)...');
   
-  // Blog articles: must have non-empty detailed_content
-  const { data: articlesRaw, error } = await supabase
-    .from('blog_articles')
-    .select('slug, language, cluster_id, is_primary, date_modified, date_published, detailed_content')
-    .eq('status', 'published')
-    .not('is_redirect', 'eq', true)
-    .order('date_modified', { ascending: false });
+  // Blog articles: fetch in batches to avoid timeout
+  const allArticles: ArticleData[] = [];
+  let articleOffset = 0;
+  const BATCH_SIZE = 500;
   
-  if (error) {
-    console.error('❌ Failed to fetch articles:', error);
-    throw error;
+  while (true) {
+    const { data: batch, error } = await supabase
+      .from('blog_articles')
+      .select('slug, language, cluster_id, is_primary, date_modified, date_published')
+      .eq('status', 'published')
+      .not('is_redirect', 'eq', true)
+      .order('date_modified', { ascending: false })
+      .range(articleOffset, articleOffset + BATCH_SIZE - 1);
+    
+    if (error) {
+      console.error('❌ Failed to fetch articles batch:', error);
+      break;
+    }
+    
+    if (!batch || batch.length === 0) break;
+    
+    // Filter out gone URLs
+    const filtered = batch.filter(article => {
+      const articlePath = `/${article.language}/blog/${article.slug}`;
+      return !goneUrlPaths.has(articlePath);
+    });
+    
+    allArticles.push(...filtered);
+    console.log(`   📝 Blog batch ${Math.floor(articleOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
+    
+    if (batch.length < BATCH_SIZE) break;
+    articleOffset += BATCH_SIZE;
   }
   
-  // Filter out articles with empty content and those in gone_urls
-  const articles = (articlesRaw || []).filter(article => {
-    // Check if URL is in gone_urls
-    const articlePath = `/${article.language}/blog/${article.slug}`;
-    if (goneUrlPaths.has(articlePath)) return false;
+  const articles = allArticles;
+  console.log(`   📝 Blog articles total: ${articles.length}`);
+  
+  // Q&A pages: fetch in batches
+  const allQAPages: QAPageData[] = [];
+  let qaOffset = 0;
+  
+  while (true) {
+    const { data: batch, error: qaError } = await supabase
+      .from('qa_pages')
+      .select('slug, language, hreflang_group_id, updated_at, created_at')
+      .eq('status', 'published')
+      .not('is_redirect', 'eq', true)
+      .order('updated_at', { ascending: false })
+      .range(qaOffset, qaOffset + BATCH_SIZE - 1);
     
-    // Check for empty content
-    if (!article.detailed_content) return false;
-    const stripped = article.detailed_content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-    return stripped.length >= 10;
-  }).map(({ detailed_content, ...rest }) => rest); // Remove content from final data
-  
-  console.log(`   📝 Blog articles: ${articles?.length || 0} (filtered from ${articlesRaw?.length || 0})`);
-  
-  // Q&A pages: must have non-empty answer_main
-  const { data: qaPagesRaw, error: qaError } = await supabase
-    .from('qa_pages')
-    .select('slug, language, hreflang_group_id, updated_at, created_at, answer_main')
-    .eq('status', 'published')
-    .not('is_redirect', 'eq', true)
-    .order('updated_at', { ascending: false });
-  
-  if (qaError) console.error('❌ Failed to fetch QA pages:', qaError);
-  
-  // Filter out Q&A pages with empty content and those in gone_urls
-  const qaPages = (qaPagesRaw || []).filter(qa => {
-    const qaPath = `/${qa.language}/qa/${qa.slug}`;
-    if (goneUrlPaths.has(qaPath)) return false;
+    if (qaError) {
+      console.error('❌ Failed to fetch QA batch:', qaError);
+      break;
+    }
     
-    if (!qa.answer_main) return false;
-    const stripped = qa.answer_main.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-    return stripped.length >= 10;
-  }).map(({ answer_main, ...rest }) => rest);
+    if (!batch || batch.length === 0) break;
+    
+    const filtered = batch.filter(qa => {
+      const qaPath = `/${qa.language}/qa/${qa.slug}`;
+      return !goneUrlPaths.has(qaPath);
+    });
+    
+    allQAPages.push(...filtered);
+    console.log(`   🔍 Q&A batch ${Math.floor(qaOffset / BATCH_SIZE) + 1}: ${batch.length} fetched, ${filtered.length} kept`);
+    
+    if (batch.length < BATCH_SIZE) break;
+    qaOffset += BATCH_SIZE;
+  }
   
-  console.log(`   🔍 Q&A pages: ${qaPages?.length || 0} (filtered from ${qaPagesRaw?.length || 0})`);
+  const qaPages = allQAPages;
+  console.log(`   🔍 Q&A pages total: ${qaPages.length}`);
   
-  // Location pages: filter out redirects and gone URLs
-  const { data: locationPagesRaw, error: locError } = await supabase
-    .from('location_pages')
-    .select('city_slug, topic_slug, city_name, language, intent_type, hreflang_group_id, updated_at, date_published')
-    .eq('status', 'published')
-    .not('is_redirect', 'eq', true)
-    .order('updated_at', { ascending: false });
+  // Location pages: fetch in batches
+  const allLocationPages: LocationPageData[] = [];
+  let locOffset = 0;
   
-  if (locError) console.error('❌ Failed to fetch location pages:', locError);
+  while (true) {
+    const { data: batch, error: locError } = await supabase
+      .from('location_pages')
+      .select('city_slug, topic_slug, city_name, language, intent_type, hreflang_group_id, updated_at, date_published')
+      .eq('status', 'published')
+      .not('is_redirect', 'eq', true)
+      .order('updated_at', { ascending: false })
+      .range(locOffset, locOffset + BATCH_SIZE - 1);
+    
+    if (locError) {
+      console.error('❌ Failed to fetch location batch:', locError);
+      break;
+    }
+    
+    if (!batch || batch.length === 0) break;
+    
+    const filtered = batch.filter(loc => {
+      const locPath = `/${loc.language}/locations/${loc.city_slug}/${loc.topic_slug}`;
+      return !goneUrlPaths.has(locPath);
+    });
+    
+    allLocationPages.push(...filtered);
+    
+    if (batch.length < BATCH_SIZE) break;
+    locOffset += BATCH_SIZE;
+  }
   
-  const locationPages = (locationPagesRaw || []).filter(loc => {
-    const locPath = `/${loc.language}/locations/${loc.city_slug}/${loc.topic_slug}`;
-    return !goneUrlPaths.has(locPath);
-  });
+  const locationPages = allLocationPages;
+  console.log(`   📍 Location pages total: ${locationPages.length}`);
   
-  console.log(`   📍 Location pages: ${locationPages?.length || 0} (filtered from ${locationPagesRaw?.length || 0})`);
+  // Comparison pages: fetch in batches
+  const allComparisonPages: ComparisonPageData[] = [];
+  let compOffset = 0;
   
-  // Comparison pages: filter out redirects and gone URLs
-  const { data: comparisonPagesRaw, error: compError } = await supabase
-    .from('comparison_pages')
-    .select('slug, language, option_a, option_b, niche, hreflang_group_id, updated_at, date_published')
-    .eq('status', 'published')
-    .not('is_redirect', 'eq', true)
-    .order('updated_at', { ascending: false });
+  while (true) {
+    const { data: batch, error: compError } = await supabase
+      .from('comparison_pages')
+      .select('slug, language, option_a, option_b, niche, hreflang_group_id, updated_at, date_published')
+      .eq('status', 'published')
+      .not('is_redirect', 'eq', true)
+      .order('updated_at', { ascending: false })
+      .range(compOffset, compOffset + BATCH_SIZE - 1);
+    
+    if (compError) {
+      console.error('❌ Failed to fetch comparison batch:', compError);
+      break;
+    }
+    
+    if (!batch || batch.length === 0) break;
+    
+    const filtered = batch.filter(comp => {
+      const compPath = `/${comp.language}/compare/${comp.slug}`;
+      return !goneUrlPaths.has(compPath);
+    });
+    
+    allComparisonPages.push(...filtered);
+    
+    if (batch.length < BATCH_SIZE) break;
+    compOffset += BATCH_SIZE;
+  }
   
-  if (compError) console.error('❌ Failed to fetch comparison pages:', compError);
-  
-  if (compError) console.error('❌ Failed to fetch comparison pages:', compError);
-  
-  const comparisonPages = (comparisonPagesRaw || []).filter(comp => {
-    const compPath = `/${comp.language}/compare/${comp.slug}`;
-    return !goneUrlPaths.has(compPath);
-  });
-  
-  console.log(`   ⚖️ Comparison pages: ${comparisonPages?.length || 0} (filtered from ${comparisonPagesRaw?.length || 0})`);
+  const comparisonPages = allComparisonPages;
+  console.log(`   ⚖️ Comparison pages total: ${comparisonPages.length}`);
   
   const glossaryTerms = loadGlossaryTerms();
   console.log(`   📖 Glossary terms: ${glossaryTerms.length}`);
