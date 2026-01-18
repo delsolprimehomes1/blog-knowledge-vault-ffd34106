@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:ai="http://www.delsolprimehomes.com/schemas/ai-sitemap">
+  
+  <!-- QA Index Page -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.9</priority>
+    <changefreq>weekly</changefreq>
+    <ai:content-type>qa-index</ai:content-type>
+    <ai:topics>FAQ, expert-answers, property-questions, buying-guide</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>FAQPage, CollectionPage</ai:schema-types>
+  </url>
+
+  <!-- Buying Process Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/buying-process/how-long-does-it-take-to-buy-property-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>buying-process, timeline, property-purchase</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/buying-process/do-i-need-a-lawyer-to-buy-property-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>lawyer, legal-requirements, property-purchase</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- Tax Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/taxes/what-taxes-do-i-pay-when-buying-property-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.9</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>taxes, transfer-tax, vat, property-purchase</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/taxes/what-is-ibi-tax-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>ibi, property-tax, annual-costs</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- NIE Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/documentation/what-is-an-nie-number</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.9</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>nie-number, tax-id, documentation</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/documentation/how-do-i-get-an-nie-number</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>nie-application, process, documentation</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- Mortgage Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/financing/can-foreigners-get-mortgages-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>mortgage, financing, non-resident-mortgage</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- Digital Nomad Visa Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/visas/what-is-the-digital-nomad-visa-in-spain</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.95</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>digital-nomad-visa, remote-work, residency</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+  
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/visas/what-are-the-income-requirements-for-digital-nomad-visa</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.9</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>digital-nomad-visa, income-requirements, €2520-monthly</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- Investment Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/investment/what-are-typical-rental-yields-in-costa-del-sol</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.85</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>rental-yields, roi, investment-returns</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+  <!-- Location Questions -->
+  <url>
+    <loc>https://www.delsolprimehomes.com/en/qa/locations/which-is-better-marbella-or-estepona</loc>
+    <lastmod>2026-01-18</lastmod>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+    <ai:content-type>qa-answer</ai:content-type>
+    <ai:topics>marbella, estepona, location-comparison</ai:topics>
+    <ai:citability>high</ai:citability>
+    <ai:schema-types>Question, Answer, FAQPage</ai:schema-types>
+    <ai:expert-attribution>Hans Beeckman</ai:expert-attribution>
+  </url>
+
+</urlset>
