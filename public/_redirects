@@ -1,14 +1,6 @@
 # Root homepage - serve pre-rendered SEO page (MUST come first)
 /  /home.html  200
 
-# Admin, Auth, and Login routes - serve SPA
-/admin        /index.html  200
-/admin/*      /index.html  200
-/auth         /index.html  200
-/auth/*       /index.html  200
-/login        /index.html  200
-/login/*      /index.html  200
-
 # Static files - serve directly (MUST come before SPA routes)
 /sitemap.xml  /sitemap.xml  200
 /sitemap-index.xml  /sitemap-index.xml  200
@@ -21,9 +13,9 @@
 /glossary.json  /glossary.json  200
 /pages.json  /pages.json  200
 
-# Force all traffic to www version
-https://delsolprimehomes.com/*  https://www.delsolprimehomes.com/:splat  301!
-http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
+# Force all traffic to www version (no ! suffix)
+https://delsolprimehomes.com/*  https://www.delsolprimehomes.com/:splat  301
+http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301
 
 # Legacy property routes - redirect to English versions
 /property-finder  /en/properties  301
@@ -76,9 +68,17 @@ http://delsolprimehomes.com/*   https://www.delsolprimehomes.com/:splat  301!
 /fi   /fi/index.html  200
 /no   /no/index.html  200
 
-# SPA routing for language-prefixed app pages
+# SPA routing for language-prefixed app pages (properties only)
 /:lang/properties  /index.html  200
 /:lang/property/:reference  /index.html  200
+
+# Admin, Auth, and Login routes - serve SPA (before final fallback)
+/admin        /index.html  200
+/admin/*      /index.html  200
+/auth         /index.html  200
+/auth/*       /index.html  200
+/login        /index.html  200
+/login/*      /index.html  200
 
 # SPA fallback - MUST come LAST
 /*  /index.html  200
