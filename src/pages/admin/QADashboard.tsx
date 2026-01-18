@@ -398,12 +398,12 @@ export default function QADashboard() {
                               <TableCell>
                                 {qa ? (
                                   <a
-                                    href={`/${lang}/qa/${qa.slug}`}
+                                    href={`/${qa.language}/qa/${qa.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-primary hover:underline flex items-center gap-1"
                                   >
-                                    /{lang}/qa/... <ExternalLink className="h-3 w-3" />
+                                    /{qa.language}/qa/... <ExternalLink className="h-3 w-3" />
                                   </a>
                                 ) : (
                                   <span className="text-muted-foreground">—</span>
@@ -463,12 +463,12 @@ export default function QADashboard() {
                               <TableCell>
                                 {qa ? (
                                   <a
-                                    href={`/${lang}/qa/${qa.slug}`}
+                                    href={`/${qa.language}/qa/${qa.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-primary hover:underline flex items-center gap-1"
                                   >
-                                    /{lang}/qa/... <ExternalLink className="h-3 w-3" />
+                                    /{qa.language}/qa/... <ExternalLink className="h-3 w-3" />
                                   </a>
                                 ) : (
                                   <span className="text-muted-foreground">—</span>

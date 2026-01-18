@@ -170,14 +170,15 @@ export function generateArticleSchema(
   }
   
   // Add QA page references for AI discoverability
+  // Use qa.language (not article.language) to ensure correct language-prefixed URLs
   if (qaPages && qaPages.length > 0) {
-    schema.hasPart = qaPages.map(qa => ({
+    schema.hasPart = qaPages.map((qa: any) => ({
       "@type": "Question",
-      "@id": `${baseUrl}/${article.language}/qa/${qa.slug}#question`,
+      "@id": `${baseUrl}/${qa.language || article.language}/qa/${qa.slug}#question`,
       "name": qa.question_main,
     }));
-    schema.relatedLink = qaPages.map(qa => 
-      `${baseUrl}/${article.language}/qa/${qa.slug}`
+    schema.relatedLink = qaPages.map((qa: any) => 
+      `${baseUrl}/${qa.language || article.language}/qa/${qa.slug}`
     );
   }
   
