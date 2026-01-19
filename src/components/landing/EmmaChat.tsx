@@ -40,6 +40,55 @@ const isValidPhoneNumber = (value: string | undefined): boolean => {
     return cleaned.length >= 7;
 };
 
+// Retry utility with exponential backoff for network resilience
+const invokeWithRetry = async <T>(
+    functionName: string,
+    body: any,
+    maxRetries: number = 2,
+    baseDelayMs: number = 1000
+): Promise<{ data: T | null; error: any }> => {
+    let lastError: any = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const { data, error } = await supabase.functions.invoke<T>(functionName, { body });
+            
+            // If successful, return immediately
+            if (!error) {
+                if (attempt > 0) {
+                    console.log(`✅ Emma request succeeded on attempt ${attempt + 1}`);
+                }
+                return { data, error: null };
+            }
+            
+            // Log retry attempt
+            console.log(`⚠️ Emma request attempt ${attempt + 1} failed:`, error);
+            lastError = error;
+            
+            // If this was the last attempt, don't wait
+            if (attempt < maxRetries) {
+                // Exponential backoff: 1000ms, 2000ms
+                const delay = baseDelayMs * Math.pow(2, attempt);
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        } catch (err) {
+            console.log(`⚠️ Emma request attempt ${attempt + 1} threw:`, err);
+            lastError = err;
+            
+            if (attempt < maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, attempt);
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    // All retries exhausted
+    console.log(`❌ All ${maxRetries + 1} attempts failed for ${functionName}`);
+    return { data: null, error: lastError };
+};
+
 const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -235,9 +284,10 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         setIsLoading(true);
 
         try {
-            // Call Emma AI backend (Supabase Edge Function) with STRICT language parameter
-            const { data, error } = await supabase.functions.invoke<ChatResponse & { customFields?: Record<string, any> }>('emma-chat', {
-                body: {
+            // Call Emma AI backend with automatic retry logic for network resilience
+            const { data, error } = await invokeWithRetry<ChatResponse & { customFields?: Record<string, any> }>(
+                'emma-chat',
+                {
                     conversationId,
                     message: input.trim(),
                     language: language, // CRITICAL: Tell Emma which language to use
@@ -246,8 +296,10 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                         content: m.content
                     })),
                     userData: hasCollectedInfo ? userData : null
-                }
-            });
+                },
+                2,    // maxRetries: 2 (total 3 attempts)
+                1000  // baseDelayMs: 1 second
+            );
 
             if (error) throw error;
             if (!data) throw new Error('No data returned from Emma');
