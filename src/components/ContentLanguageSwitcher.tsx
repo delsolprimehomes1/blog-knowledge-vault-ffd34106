@@ -135,14 +135,24 @@ export function ContentLanguageSwitcher({
   }, [hreflangGroupId, currentLanguage, contentType, currentSlug]);
 
   const handleLanguageChange = (language: LanguageOption) => {
-    if (!language.available || !language.slug) return;
+    // Defensive: prevent navigation if not available or no slug
+    if (!language.available) {
+      console.warn('ContentLanguageSwitcher: Language not available:', language.code);
+      return;
+    }
+    if (!language.slug) {
+      console.error('ContentLanguageSwitcher: No slug for language:', language.code);
+      return;
+    }
 
     const pathPrefix = contentType === 'qa' ? 'qa' :
                       contentType === 'blog' ? 'blog' :
                       contentType === 'location' ? 'locations' :
                       'compare';
 
-    navigate(`/${language.code}/${pathPrefix}/${language.slug}`);
+    const targetUrl = `/${language.code}/${pathPrefix}/${language.slug}`;
+    console.log('ContentLanguageSwitcher: Navigating to', targetUrl);
+    navigate(targetUrl);
   };
 
   const currentLang = languages.find(l => l.code === currentLanguage) || {
@@ -178,20 +188,29 @@ export function ContentLanguageSwitcher({
         {languages.map((language) => (
           <DropdownMenuItem
             key={language.code}
-            onClick={() => handleLanguageChange(language)}
-            disabled={!language.available}
+            onClick={(e) => {
+              // Prevent any action on unavailable languages
+              if (!language.available || !language.slug) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              handleLanguageChange(language);
+            }}
+            disabled={!language.available || !language.slug}
             className={`
-              flex items-center gap-3 cursor-pointer
+              flex items-center gap-3
               ${language.code === currentLanguage ? 'bg-accent' : ''}
-              ${!language.available ? 'opacity-50 cursor-not-allowed' : ''}
+              ${!language.available || !language.slug ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
+            title={language.slug ? `/${language.code}/${contentType === 'location' ? 'locations' : contentType}/${language.slug}` : undefined}
           >
             <span className="text-xl">{language.flag}</span>
             <span className="flex-1">{language.name}</span>
             {language.code === currentLanguage && (
               <span className="text-xs text-muted-foreground">Current</span>
             )}
-            {!language.available && (
+            {(!language.available || !language.slug) && language.code !== currentLanguage && (
               <span className="text-xs text-muted-foreground">N/A</span>
             )}
           </DropdownMenuItem>
