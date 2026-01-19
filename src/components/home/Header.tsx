@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu as MenuIcon, X, ChevronDown, Scale, Users, Phone, Home, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info } from 'lucide-react';
+import { Menu as MenuIcon, X, ChevronDown, Scale, Users, Phone, Home, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info, MapPin } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useTranslation } from '../../i18n';
 import { Menu, MenuItem, ProductItem, HoveredLink } from '../ui/navbar-menu';
@@ -118,6 +118,12 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
                     <span className="flex items-center gap-2">
                       <Landmark className="w-4 h-4" />
                       City Brochures
+                    </span>
+                  </HoveredLink>
+                  <HoveredLink href={`/${currentLanguage}/locations`}>
+                    <span className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Location Guides
                     </span>
                   </HoveredLink>
                 </div>
@@ -249,6 +255,9 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
           </MobileLink>
           <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
             City Brochures
+          </MobileLink>
+          <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
+            Location Guides
           </MobileLink>
         </MobileMenuSection>
 
