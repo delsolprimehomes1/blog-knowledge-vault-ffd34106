@@ -100,6 +100,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
     const [accumulatedFields, setAccumulatedFields] = useState<Record<string, any>>({});
     const [hasSubmittedLead, setHasSubmittedLead] = useState(false);
     const [inactivityTimer, setInactivityTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+    const [isRecovering, setIsRecovering] = useState(false); // Prevents timer during error recovery
     const [emmaOpenedContext, setEmmaOpenedContext] = useState<{
         pageType: string;
         language: string;
@@ -190,7 +191,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         scrollToBottom();
     }, [messages]);
 
-    // 60-SECOND INACTIVITY TRIGGER (Trigger 3)
+    // 120-SECOND INACTIVITY TRIGGER (Trigger 3) - True Dormancy Only
     useEffect(() => {
         // Clear any existing timer when messages change
         if (inactivityTimer) {
@@ -202,15 +203,16 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         // - We have accumulated data
         // - Haven't submitted lead yet
         // - Conversation has started (more than just greeting)
-        // - Not currently loading
+        // - Not currently loading (user actively engaged)
+        // - Not recovering from an error (prevents premature firing during retries)
         const hasData = Object.keys(accumulatedFields).length > 0;
         const conversationStarted = messages.length > 1;
 
-        if (hasData && !hasSubmittedLead && conversationStarted && !isLoading) {
-            console.log('⏱️ Starting 60-second inactivity timer');
+        if (hasData && !hasSubmittedLead && conversationStarted && !isLoading && !isRecovering) {
+            console.log('⏱️ Starting 120-second inactivity timer (true dormancy)');
             
             const timer = setTimeout(async () => {
-                console.log('⏰ TRIGGER 3: 60 seconds of inactivity - sending data');
+                console.log('⏰ TRIGGER 3: 120 seconds of TRUE inactivity - sending data');
                 
                 // Get all available data with fallback extraction
                 let fieldsToSend = { ...accumulatedFields };
@@ -250,8 +252,8 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     exit_point: `${baseExitPoint}_timeout`
                 });
                 
-                console.log('✅ Inactivity lead sent successfully');
-            }, 60000); // 60 seconds
+                console.log('✅ Dormancy lead sent successfully (120s inactivity)');
+            }, 120000); // 120 seconds - true dormancy threshold
             
             setInactivityTimer(timer);
         }
@@ -263,7 +265,16 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages, hasSubmittedLead, isLoading]);
+    }, [messages, hasSubmittedLead, isLoading, isRecovering]);
+
+    // CRITICAL: Clear inactivity timer when loading starts (user is actively engaged)
+    useEffect(() => {
+        if (isLoading && inactivityTimer) {
+            console.log('⏱️ Clearing inactivity timer (user is actively engaged)');
+            clearTimeout(inactivityTimer);
+            setInactivityTimer(null);
+        }
+    }, [isLoading, inactivityTimer]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -443,6 +454,17 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
         } catch (error) {
             console.error('Error sending message:', error);
+            
+            // Mark as recovering - prevents inactivity timer from firing during error state
+            setIsRecovering(true);
+            console.log('⚠️ Connection error - session preserved, inactivity timer paused');
+            
+            // Clear inactivity timer during error state to prevent premature firing
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+                setInactivityTimer(null);
+                console.log('⏱️ Inactivity timer cleared (connection error - session preserved)');
+            }
 
             // Error message in correct language
             const errorMessages = {
@@ -466,6 +488,12 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             };
 
             setMessages(prev => [...prev, errorMessage]);
+            
+            // After 5 seconds, reset recovery mode (gives user time to retry)
+            setTimeout(() => {
+                setIsRecovering(false);
+                console.log('🔄 Recovery mode ended - inactivity timer can resume if needed');
+            }, 5000);
         } finally {
             setIsLoading(false);
         }
