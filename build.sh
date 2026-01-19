@@ -32,6 +32,10 @@ npx tsx scripts/generateStaticComparisonPages.ts
 echo "📍 Generating static location pages..."
 npx tsx scripts/generateStaticLocationPages.ts
 
+# Generate static location hub pages
+echo "🌍 Generating static location hub pages..."
+npx tsx scripts/generateStaticLocationHub.ts dist
+
 # Generate static about page
 echo "👤 Generating static about page..."
 npx tsx scripts/generateStaticAboutPage.ts
