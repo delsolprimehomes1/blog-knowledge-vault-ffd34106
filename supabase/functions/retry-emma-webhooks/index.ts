@@ -39,9 +39,20 @@ interface EmmaLead {
   webhook_sent: boolean;
   webhook_attempts: number;
   webhook_last_error: string | null;
+  // NEW: Page context fields
+  page_type: string | null;
+  page_url: string | null;
+  page_title: string | null;
+  referrer: string | null;
+  lead_source: string | null;
+  lead_source_detail: string | null;
+  lead_segment: string | null;
+  initial_lead_score: number | null;
+  conversation_duration: string | null;
 }
 
 async function sendLeadToGHL(lead: EmmaLead): Promise<{ success: boolean; error?: string }> {
+  // Build complete 34-field GHL payload
   const ghlPayload = {
     // Contact Information (4 fields)
     first_name: lead.first_name || '',
@@ -73,7 +84,19 @@ async function sendLeadToGHL(lead: EmmaLead): Promise<{ success: boolean; error?
     declined_selection: lead.declined_selection || false,
     conversation_date: lead.conversation_date || new Date().toISOString(),
     conversation_status: lead.conversation_status || 'unknown',
-    exit_point: lead.exit_point || 'unknown'
+    exit_point: lead.exit_point || 'unknown',
+    
+    // Page Context (10 NEW fields)
+    page_type: lead.page_type || '',
+    page_url: lead.page_url || '',
+    page_title: lead.page_title || '',
+    referrer: lead.referrer || 'Direct',
+    language: (lead.detected_language || 'EN').toLowerCase(),
+    lead_source: lead.lead_source || 'Emma Chatbot',
+    lead_source_detail: lead.lead_source_detail || '',
+    lead_segment: lead.lead_segment || '',
+    initial_lead_score: lead.initial_lead_score || 15,
+    conversation_duration: lead.conversation_duration || ''
   };
 
   try {
@@ -105,7 +128,7 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    console.log('🔄 RETRY WEBHOOKS: Starting retry job...');
+    console.log('🔄 RETRY WEBHOOKS: Starting retry job (34-field payload)...');
 
     // Find leads that need webhook retry
     const { data: pendingLeads, error: fetchError } = await supabase
@@ -140,6 +163,8 @@ serve(async (req) => {
     for (const lead of pendingLeads as EmmaLead[]) {
       console.log(`🔄 Retrying webhook for: ${lead.first_name} ${lead.last_name} (${lead.conversation_id})`);
       console.log(`   Attempt: ${lead.webhook_attempts + 1}/${MAX_RETRY_ATTEMPTS}`);
+      console.log(`   Page Type: ${lead.page_type || 'N/A'}`);
+      console.log(`   Lead Segment: ${lead.lead_segment || 'N/A'}`);
 
       const result = await sendLeadToGHL(lead);
 
@@ -153,7 +178,7 @@ serve(async (req) => {
         updateData.webhook_sent_at = new Date().toISOString();
         updateData.webhook_last_error = null;
         successCount++;
-        console.log(`✅ Webhook succeeded for ${lead.conversation_id}`);
+        console.log(`✅ Webhook succeeded for ${lead.conversation_id} (34 fields)`);
       } else {
         updateData.webhook_last_error = result.error;
         failCount++;

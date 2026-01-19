@@ -42,10 +42,23 @@ interface LeadPayload {
     conversation_status: string;
     exit_point: string;
   };
+  // NEW: Page context for complete tracking
+  page_context?: {
+    page_type: string;
+    page_url: string;
+    page_title: string;
+    referrer: string;
+    language: string;
+    lead_source: string;
+    lead_source_detail: string;
+    lead_segment: string;
+    initial_lead_score: number;
+    conversation_duration: string;
+  };
 }
 
 async function sendToGHL(payload: LeadPayload): Promise<{ success: boolean; error?: string }> {
-  // Build flattened GHL payload with ALL 24 fields
+  // Build flattened GHL payload with ALL 34 fields
   const ghlPayload = {
     // Contact Information (4 fields)
     first_name: payload.contact_info?.first_name || '',
@@ -72,15 +85,27 @@ async function sendToGHL(payload: LeadPayload): Promise<{ success: boolean; erro
     timeframe: payload.property_criteria?.timeframe || '',
     
     // System Data (6 fields)
-    detected_language: payload.system_data?.detected_language || 'English',
+    detected_language: payload.system_data?.detected_language || 'EN',
     intake_complete: payload.system_data?.intake_complete || false,
     declined_selection: payload.system_data?.declined_selection || false,
     conversation_date: payload.system_data?.conversation_date || new Date().toISOString(),
     conversation_status: payload.system_data?.conversation_status || 'unknown',
-    exit_point: payload.system_data?.exit_point || 'unknown'
+    exit_point: payload.system_data?.exit_point || 'unknown',
+    
+    // Page Context (10 NEW fields)
+    page_type: payload.page_context?.page_type || '',
+    page_url: payload.page_context?.page_url || '',
+    page_title: payload.page_context?.page_title || '',
+    referrer: payload.page_context?.referrer || 'Direct',
+    language: payload.page_context?.language || 'en',
+    lead_source: payload.page_context?.lead_source || 'Emma Chatbot',
+    lead_source_detail: payload.page_context?.lead_source_detail || '',
+    lead_segment: payload.page_context?.lead_segment || '',
+    initial_lead_score: payload.page_context?.initial_lead_score || 15,
+    conversation_duration: payload.page_context?.conversation_duration || ''
   };
 
-  console.log('📤 Flattened GHL payload (24 fields):', JSON.stringify(ghlPayload, null, 2));
+  console.log('📤 Flattened GHL payload (34 fields):', JSON.stringify(ghlPayload, null, 2));
 
   try {
     const response = await fetch(GHL_WEBHOOK_URL, {
@@ -97,7 +122,7 @@ async function sendToGHL(payload: LeadPayload): Promise<{ success: boolean; erro
       return { success: false, error: `HTTP ${response.status}: ${errorText}` };
     }
     
-    console.log('✅ GHL webhook sent successfully with 24 fields');
+    console.log('✅ GHL webhook sent successfully with 34 fields');
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -110,7 +135,7 @@ async function updateLeadWebhookStatus(
   supabase: any,
   conversationId: string,
   success: boolean,
-  payload: any,
+  payload: LeadPayload,
   errorMessage?: string
 ) {
   if (!conversationId) {
@@ -131,7 +156,17 @@ async function updateLeadWebhookStatus(
     const updateData: Record<string, any> = {
       webhook_attempts: currentAttempts + 1,
       webhook_payload: payload,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // NEW: Store page context in emma_leads table
+      page_type: payload.page_context?.page_type || null,
+      page_url: payload.page_context?.page_url || null,
+      page_title: payload.page_context?.page_title || null,
+      referrer: payload.page_context?.referrer || 'Direct',
+      lead_source: payload.page_context?.lead_source || 'Emma Chatbot',
+      lead_source_detail: payload.page_context?.lead_source_detail || null,
+      lead_segment: payload.page_context?.lead_segment || null,
+      initial_lead_score: payload.page_context?.initial_lead_score || 15,
+      conversation_duration: payload.page_context?.conversation_duration || null
     };
 
     if (success) {
@@ -171,13 +206,15 @@ serve(async (req) => {
     const payload: LeadPayload = await req.json();
     const conversationId = payload.conversation_id;
     
-    console.log('📤 Sending lead to GHL webhook...');
+    console.log('📤 Sending lead to GHL webhook (UNIFIED - 34 fields)...');
     console.log(`   Conversation ID: ${conversationId || 'N/A'}`);
     console.log(`   Name: ${payload.contact_info.first_name} ${payload.contact_info.last_name}`);
     console.log(`   Phone: ${payload.contact_info.country_prefix}${payload.contact_info.phone_number}`);
     console.log(`   Language: ${payload.system_data.detected_language}`);
     console.log(`   Intake Complete: ${payload.system_data.intake_complete}`);
-    console.log(`   Declined: ${payload.system_data.declined_selection}`);
+    console.log(`   Page Type: ${payload.page_context?.page_type || 'N/A'}`);
+    console.log(`   Lead Source: ${payload.page_context?.lead_source || 'Emma Chatbot'}`);
+    console.log(`   Lead Segment: ${payload.page_context?.lead_segment || 'N/A'}`);
 
     // First attempt
     let result = await sendToGHL(payload);

@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { markdownToHtml } from '@/lib/markdownToHtml';
 import { upsertEmmaLead, extractPropertyCriteriaFromHistory } from '@/hooks/useEmmaLeadTracking';
 import { 
-  sendEmmaToGHL, 
   calculateLeadSegment, 
   calculateDuration,
   detectPageType,
@@ -821,51 +820,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         }
 
         try {
-            // Send to UNIVERSAL GHL WEBHOOK with simplified structure
-            await sendEmmaToGHL({
-                // Contact Information
-                firstName: fields.name || fields.first_name || '',
-                lastName: fields.family_name || fields.last_name || '',
-                phone: fields.phone || fields.phone_number || '',
-                country_prefix: fields.country_prefix || '',
-                
-                // Simplified GHL structure (what automation needs)
-                timeline: fields.timeframe || '',
-                buyerProfile: fields.purpose || fields.property_purpose || '',
-                budget: fields.budget_range || '',
-                areasOfInterest: Array.isArray(fields.location_preference) 
-                    ? fields.location_preference 
-                    : (fields.location_preference ? [fields.location_preference] : []),
-                propertyType: Array.isArray(fields.property_type)
-                    ? fields.property_type
-                    : (fields.property_type ? [fields.property_type] : []),
-                specificNeeds,
-                
-                // Emma metadata
-                leadSourceDetail: `emma_chat_${pageContext.language}`,
-                emmaConversationStatus: conversationStatus,
-                emmaQuestionsAnswered: countQuestionsAnswered(fields),
-                emmaIntakeComplete: fields.intake_complete || false,
-                emmaConversationDuration: conversationDuration,
-                emmaExitPoint: exitPoint,
-                
-                // Page context
-                pageType: pageContext.pageType,
-                language: pageContext.language,
-                pageUrl: pageContext.pageUrl,
-                pageTitle: pageContext.pageTitle,
-                referrer: pageContext.referrer,
-                
-                // Calculated fields
-                leadSegment: calculateLeadSegment(
-                    fields.timeframe || 'Not sure',
-                    fields.purpose || fields.property_purpose || 'General'
-                ),
-                initialLeadScore: fields.intake_complete ? 25 : (fields.phone || fields.phone_number ? 20 : 15)
-            });
-            
-            // ALSO send to edge function for database tracking (backwards compatible)
-            const legacyPayload = {
+            // UNIFIED: Send to edge function ONLY (which handles GHL + DB tracking)
+            // Removed duplicate sendEmmaToGHL call - edge function now sends all 34 fields
+            const unifiedPayload = {
                 conversation_id: conversationId,
                 contact_info: {
                     first_name: fields.name || fields.first_name || '',
@@ -903,23 +860,28 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     conversation_status: conversationStatus,
                     exit_point: exitPoint
                 },
-                // NEW: Page context for tracking
+                // COMPLETE: Page context with all 10 fields for GHL
                 page_context: {
                     page_type: pageContext.pageType,
                     page_url: pageContext.pageUrl,
                     page_title: pageContext.pageTitle,
                     referrer: pageContext.referrer,
+                    language: pageContext.language,
+                    lead_source: 'Emma Chatbot',
+                    lead_source_detail: `emma_chat_${pageContext.language}`,
                     lead_segment: calculateLeadSegment(
                         fields.timeframe || 'Not sure',
                         fields.purpose || fields.property_purpose || 'General'
-                    )
+                    ),
+                    initial_lead_score: fields.intake_complete ? 25 : (fields.phone || fields.phone_number ? 20 : 15),
+                    conversation_duration: conversationDuration
                 }
             };
 
-            console.log('📤 Sending to edge function for DB tracking...');
-            await supabase.functions.invoke('send-emma-lead', { body: legacyPayload });
+            console.log('📤 Sending UNIFIED payload to edge function (34 fields to GHL)...');
+            await supabase.functions.invoke('send-emma-lead', { body: unifiedPayload });
             
-            console.log('✅ Lead sent to both GHL webhook and edge function');
+            console.log('✅ Lead sent via unified edge function (GHL + DB tracking)');
             return true;
         } catch (error) {
             console.error('❌ Failed to send lead to GHL:', error);
