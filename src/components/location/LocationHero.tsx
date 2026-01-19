@@ -3,6 +3,7 @@ import { ChevronRight, MapPin, ChevronDown, Sparkles } from "lucide-react";
 import { OptimizedImage } from "@/components/OptimizedImage";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { ContentLanguageSwitcher } from "@/components/ContentLanguageSwitcher";
 
 interface LocationHeroProps {
   headline: string;
@@ -12,6 +13,8 @@ interface LocationHeroProps {
   featuredImageUrl?: string;
   featuredImageAlt?: string;
   featuredImageCaption?: string;
+  currentLanguage: string;
+  hreflangGroupId?: string | null;
 }
 
 // Floating particles for luxury effect
@@ -42,6 +45,8 @@ export function LocationHero({
   featuredImageUrl,
   featuredImageAlt,
   featuredImageCaption,
+  currentLanguage,
+  hreflangGroupId,
 }: LocationHeroProps) {
   const [scrollY, setScrollY] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -96,44 +101,53 @@ export function LocationHero({
       <FloatingParticles />
 
       <div className="container mx-auto px-4 relative z-10 pt-24 md:pt-28">
-        {/* Breadcrumbs - Glass Style */}
-        <nav 
-          aria-label="Breadcrumb" 
-          className={`mb-8 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-        >
-          <ol className="flex items-center gap-2 text-sm flex-wrap">
-            <li>
-              <Link 
-                to="/" 
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Home
-              </Link>
-            </li>
-            <ChevronRight className="w-4 h-4 text-white/50" />
-            <li>
-              <Link 
-                to="/locations" 
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Locations
-              </Link>
-            </li>
-            <ChevronRight className="w-4 h-4 text-white/50" />
-            <li>
-              <Link 
-                to={`/locations/${citySlug}`} 
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                {cityName}
-              </Link>
-            </li>
-            <ChevronRight className="w-4 h-4 text-white/50" />
-            <li className="text-white font-medium truncate max-w-[200px]">
-              {headline}
-            </li>
-          </ol>
-        </nav>
+        {/* Top bar with Breadcrumbs and Language Switcher */}
+        <div className={`flex items-start justify-between gap-4 mb-8 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Breadcrumbs - Glass Style */}
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-2 text-sm flex-wrap">
+              <li>
+                <Link 
+                  to={`/${currentLanguage}`} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  Home
+                </Link>
+              </li>
+              <ChevronRight className="w-4 h-4 text-white/50" />
+              <li>
+                <Link 
+                  to={`/${currentLanguage}/locations`} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  Locations
+                </Link>
+              </li>
+              <ChevronRight className="w-4 h-4 text-white/50" />
+              <li>
+                <Link 
+                  to={`/${currentLanguage}/locations/${citySlug}`} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  {cityName}
+                </Link>
+              </li>
+              <ChevronRight className="w-4 h-4 text-white/50" />
+              <li className="text-white font-medium truncate max-w-[200px]">
+                {headline}
+              </li>
+            </ol>
+          </nav>
+
+          {/* Language Switcher */}
+          <ContentLanguageSwitcher
+            currentLanguage={currentLanguage}
+            hreflangGroupId={hreflangGroupId}
+            contentType="location"
+            currentSlug={`${citySlug}/${topicSlug}`}
+            variant="hero"
+          />
+        </div>
 
         {/* Main Content */}
         <div className="max-w-4xl">
