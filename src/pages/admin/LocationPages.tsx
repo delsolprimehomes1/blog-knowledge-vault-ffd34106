@@ -18,7 +18,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, Plus, AlertCircle, MapPin, ImageIcon } from "lucide-react";
+import { Search, Eye, Trash2, Plus, AlertCircle, MapPin, ImageIcon, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -105,6 +105,27 @@ const LocationPages = () => {
     },
     onError: (error) => {
       toast.error(`Failed to delete: ${error.message}`);
+    },
+  });
+
+  // Bulk publish
+  const bulkPublishMutation = useMutation({
+    mutationFn: async (pageIds: string[]) => {
+      const { error } = await supabase
+        .from("location_pages")
+        .update({ status: "published" })
+        .in("id", pageIds);
+      
+      if (error) throw error;
+      return pageIds.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["location-pages"] });
+      toast.success(`Successfully published ${count} page${count > 1 ? 's' : ''}`);
+      setSelectedPages([]);
+    },
+    onError: (error) => {
+      toast.error(`Failed to publish: ${error.message}`);
     },
   });
 
@@ -229,15 +250,27 @@ const LocationPages = () => {
                     Clear Selection
                   </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowBulkDeleteDialog(true)}
-                  disabled={bulkDeleteMutation.isPending}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => bulkPublishMutation.mutate(selectedPages)}
+                    disabled={bulkPublishMutation.isPending}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Publish Selected
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowBulkDeleteDialog(true)}
+                    disabled={bulkDeleteMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Selected
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
