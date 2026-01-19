@@ -19,7 +19,8 @@ import {
   getLocalizedHubContent, 
   generateHubSchemaGraph, 
   getHubCanonicalUrl,
-  getHubLocale 
+  getHubLocale,
+  getHubHreflangArray
 } from "@/lib/locationHubSchemaGenerator";
 
 const STATS = [
@@ -90,6 +91,7 @@ const LocationHub = () => {
   const hubContent = getLocalizedHubContent(lang);
   const canonicalUrl = getHubCanonicalUrl(lang);
   const locale = getHubLocale(lang);
+  const hreflangTags = getHubHreflangArray();
   const totalGuides = cities.reduce((sum, city) => sum + city.count, 0);
   
   const schemaGraph = generateHubSchemaGraph(lang, {
@@ -109,6 +111,17 @@ const LocationHub = () => {
         <title>{hubContent.title}</title>
         <meta name="description" content={hubContent.description} />
         <link rel="canonical" href={canonicalUrl} />
+        
+        {/* Hreflang tags - 10 languages + x-default */}
+        {hreflangTags.map((tag) => (
+          <link 
+            key={tag.lang}
+            rel="alternate" 
+            hrefLang={tag.lang} 
+            href={tag.href} 
+          />
+        ))}
+        
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:title" content={hubContent.title} />

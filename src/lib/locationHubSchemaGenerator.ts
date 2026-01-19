@@ -20,7 +20,7 @@ const LOCALE_MAP: Record<string, string> = {
   hu: 'hu_HU',
 };
 
-const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
+export const SUPPORTED_LANGUAGES = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
 
 // Organization schema (reused across all schemas)
 const ORGANIZATION_SCHEMA = {
@@ -363,4 +363,19 @@ export function getHubCanonicalUrl(lang: string): string {
  */
 export function getHubLocale(lang: string): string {
   return LOCALE_MAP[lang] || 'en_GB';
+}
+
+/**
+ * Get hreflang array for React rendering in Helmet
+ */
+export function getHubHreflangArray(): Array<{ lang: string; href: string }> {
+  const tags = SUPPORTED_LANGUAGES.map(langCode => ({
+    lang: langCode,
+    href: `${BASE_URL}/${langCode}/locations`
+  }));
+  
+  // Add x-default pointing to English
+  tags.push({ lang: 'x-default', href: `${BASE_URL}/en/locations` });
+  
+  return tags;
 }

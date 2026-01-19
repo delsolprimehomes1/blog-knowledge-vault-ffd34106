@@ -532,6 +532,173 @@ function generateHreflangTags(siblings: HreflangSibling[], currentLang: string, 
   return tags.join('\n')
 }
 
+/**
+ * Generate full SEO HTML for hub pages (e.g., /{lang}/locations)
+ * Includes all metadata, hreflang tags, and JSON-LD schema
+ */
+function generateHubPageHtml(lang: string, hubType: string): string {
+  const locale = LOCALE_MAP[lang] || 'en_GB'
+  const canonicalUrl = `${BASE_URL}/${lang}/${hubType}`
+  
+  // Localized hub content
+  const hubContent: Record<string, { title: string; description: string; speakableSummary: string }> = {
+    en: {
+      title: "Costa del Sol Location Guides | Del Sol Prime Homes",
+      description: "Explore comprehensive location guides for the Costa del Sol. Expert insights on property buying, best areas, cost of living, and investment opportunities in Marbella, Estepona, Fuengirola, and more.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub provides comprehensive real estate guides for 11 cities across the Costa del Sol. Explore data-driven insights on property prices, investment yields, school zones, safety ratings, and cost of living analysis."
+    },
+    nl: {
+      title: "Costa del Sol Locatiegidsen | Del Sol Prime Homes",
+      description: "Ontdek uitgebreide locatiegidsen voor de Costa del Sol. Expert inzichten over vastgoedaankoop, beste gebieden, kosten van levensonderhoud en investeringsmogelijkheden.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub biedt uitgebreide vastgoedgidsen voor 11 steden aan de Costa del Sol."
+    },
+    de: {
+      title: "Costa del Sol Standortführer | Del Sol Prime Homes",
+      description: "Entdecken Sie umfassende Standortführer für die Costa del Sol. Experteneinblicke zu Immobilienkauf, besten Gegenden, Lebenshaltungskosten und Investitionsmöglichkeiten.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub bietet umfassende Immobilienführer für 11 Städte an der Costa del Sol."
+    },
+    fr: {
+      title: "Guides des Emplacements Costa del Sol | Del Sol Prime Homes",
+      description: "Explorez des guides d'emplacement complets pour la Costa del Sol. Informations d'experts sur l'achat immobilier, les meilleurs quartiers et les opportunités d'investissement.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub fournit des guides immobiliers complets pour 11 villes de la Costa del Sol."
+    },
+    sv: {
+      title: "Costa del Sol Platsguider | Del Sol Prime Homes",
+      description: "Utforska omfattande platsguider för Costa del Sol. Expertinsikter om fastighetsköp, bästa områden och investeringsmöjligheter.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub erbjuder omfattande fastighetsguider för 11 städer på Costa del Sol."
+    },
+    no: {
+      title: "Costa del Sol Stedsguider | Del Sol Prime Homes",
+      description: "Utforsk omfattende stedsguider for Costa del Sol. Ekspertinnsikt om eiendomskjøp, beste områder og investeringsmuligheter.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub tilbyr omfattende eiendomsguider for 11 byer på Costa del Sol."
+    },
+    da: {
+      title: "Costa del Sol Stedguider | Del Sol Prime Homes",
+      description: "Udforsk omfattende stedguider for Costa del Sol. Ekspertindsigt i ejendomskøb, bedste områder og investeringsmuligheder.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub tilbyder omfattende ejendomsguider til 11 byer på Costa del Sol."
+    },
+    fi: {
+      title: "Costa del Sol Sijaintioppaat | Del Sol Prime Homes",
+      description: "Tutustu kattaviin sijaintioppaisiin Costa del Solille. Asiantuntijatietoa kiinteistöjen ostosta ja sijoitusmahdollisuuksista.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub tarjoaa kattavat kiinteistöoppaat 11 kaupungille Costa del Solilla."
+    },
+    pl: {
+      title: "Przewodniki po Lokalizacjach Costa del Sol | Del Sol Prime Homes",
+      description: "Odkryj kompleksowe przewodniki po lokalizacjach Costa del Sol. Eksperckie informacje o zakupie nieruchomości i możliwościach inwestycyjnych.",
+      speakableSummary: "Del Sol Prime Homes Location Intelligence Hub zapewnia kompleksowe przewodniki po nieruchomościach dla 11 miast na Costa del Sol."
+    },
+    hu: {
+      title: "Costa del Sol Helyszín Útmutatók | Del Sol Prime Homes",
+      description: "Fedezze fel a Costa del Sol átfogó helyszín útmutatóit. Szakértői betekintés az ingatlanvásárlásba és befektetési lehetőségekbe.",
+      speakableSummary: "A Del Sol Prime Homes Location Intelligence Hub átfogó ingatlanos útmutatókat kínál 11 városhoz a Costa del Sol-on."
+    }
+  }
+  
+  const content = hubContent[lang] || hubContent.en
+  
+  // Generate hreflang tags for all 10 languages + x-default
+  const hreflangTags = SUPPORTED_LANGUAGES.map(langCode => 
+    `  <link rel="alternate" hreflang="${langCode}" href="${BASE_URL}/${langCode}/${hubType}" />`
+  ).join('\n')
+  const xDefaultTag = `  <link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/${hubType}" />`
+  
+  // Generate JSON-LD schema
+  const schemaGraph = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${BASE_URL}/#organization`,
+        "name": "Del Sol Prime Homes",
+        "url": BASE_URL,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${BASE_URL}/assets/logo-new.png`
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${canonicalUrl}#webpage`,
+        "url": canonicalUrl,
+        "name": content.title,
+        "description": content.description,
+        "inLanguage": locale,
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["#speakable-summary", ".speakable-hub-intro", ".speakable-answer"]
+        }
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": `${canonicalUrl}#collectionpage`,
+        "name": content.title,
+        "url": canonicalUrl,
+        "inLanguage": locale
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${canonicalUrl}#breadcrumb`,
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": `${BASE_URL}/${lang}` },
+          { "@type": "ListItem", "position": 2, "name": "Locations", "item": canonicalUrl }
+        ]
+      }
+    ]
+  }
+  
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${content.title}</title>
+  <meta name="description" content="${content.description}">
+  
+  <!-- Canonical -->
+  <link rel="canonical" href="${canonicalUrl}">
+  
+  <!-- Hreflang tags - 10 languages + x-default -->
+${hreflangTags}
+${xDefaultTag}
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${canonicalUrl}">
+  <meta property="og:title" content="${content.title}">
+  <meta property="og:description" content="${content.description}">
+  <meta property="og:locale" content="${locale}">
+  <meta property="og:site_name" content="Del Sol Prime Homes">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${content.title}">
+  <meta name="twitter:description" content="${content.description}">
+  
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  ${JSON.stringify(schemaGraph, null, 2)}
+  </script>
+  
+  <!-- Redirect to React app for hydration -->
+  <meta http-equiv="refresh" content="0;url=/${lang}/${hubType}">
+</head>
+<body>
+  <!-- Speakable summary for AI/voice assistants -->
+  <div id="speakable-summary">
+    ${content.speakableSummary}
+  </div>
+  
+  <h1>${content.title}</h1>
+  <p>${content.description}</p>
+  
+  <script>window.location.href='/${lang}/${hubType}';</script>
+  <noscript>
+    <p>Loading <a href="/${lang}/${hubType}">${content.title}</a>...</p>
+  </noscript>
+</body>
+</html>`
+}
+
 // Removed FAQPage schema generation - QAPage schema is sufficient for single Q&A pages
 // FAQPage was causing redundancy with QAPage
 
@@ -1028,19 +1195,18 @@ async function handleRequest(req: Request): Promise<Response> {
     const [, lang, hubType] = hubMatch
     console.log(`[SEO] Detected hub page: lang=${lang}, type=${hubType}`)
     
-    // Return metadata for the hub page (SSG handles the actual rendering)
-    // This allows middleware to confirm the page is valid
-    return new Response(
-      JSON.stringify({
-        success: true,
-        type: 'hub',
-        hubType,
-        language: lang,
-        canonical: `${BASE_URL}/${lang}/${hubType}`,
-        message: 'Hub page - SSG pre-rendered, no dynamic metadata needed'
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    // Generate full SEO HTML for hub page
+    const hubHtml = generateHubPageHtml(lang, hubType)
+    
+    return new Response(hubHtml, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        'X-SEO-Source': 'edge-function-hub'
+      }
+    })
   }
 
   // Parse the path: /{lang}/{type}/{slug}
