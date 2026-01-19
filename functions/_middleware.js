@@ -15,9 +15,9 @@ const LANGUAGES = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 const LANG_PATTERN = LANGUAGES.join('|');
 
 // SEO content routes that need edge function
+// NOTE: Language homepages (/en, /de, etc.) are NOT included here
+// They are served as pre-rendered static files via public/_redirects
 const SEO_ROUTE_PATTERNS = [
-  // Language homepages
-  new RegExp(`^/(${LANG_PATTERN})/?$`),
   // Blog articles
   new RegExp(`^/(${LANG_PATTERN})/blog/[^/]+$`),
   // Q&A pages
@@ -26,8 +26,6 @@ const SEO_ROUTE_PATTERNS = [
   new RegExp(`^/(${LANG_PATTERN})/compare/[^/]+$`),
   // Location pages (city index and topic pages)
   new RegExp(`^/(${LANG_PATTERN})/locations/[^/]+(/[^/]+)?$`),
-  // About pages
-  new RegExp(`^/(${LANG_PATTERN})/about$`),
 ];
 
 // Check if path needs SEO edge function
