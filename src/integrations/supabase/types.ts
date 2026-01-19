@@ -2121,6 +2121,7 @@ export type Database = {
           bedrooms_desired: string | null
           budget_range: string | null
           conversation_date: string | null
+          conversation_duration: string | null
           conversation_id: string
           conversation_status: string | null
           country_prefix: string | null
@@ -2130,9 +2131,16 @@ export type Database = {
           exit_point: string | null
           first_name: string | null
           id: string
+          initial_lead_score: number | null
           intake_complete: boolean | null
           last_name: string | null
+          lead_segment: string | null
+          lead_source: string | null
+          lead_source_detail: string | null
           location_preference: Json | null
+          page_title: string | null
+          page_type: string | null
+          page_url: string | null
           phone_number: string | null
           property_purpose: string | null
           property_type: Json | null
@@ -2140,6 +2148,7 @@ export type Database = {
           question_2: string | null
           question_3: string | null
           questions_answered: number | null
+          referrer: string | null
           sea_view_importance: string | null
           timeframe: string | null
           updated_at: string | null
@@ -2156,6 +2165,7 @@ export type Database = {
           bedrooms_desired?: string | null
           budget_range?: string | null
           conversation_date?: string | null
+          conversation_duration?: string | null
           conversation_id: string
           conversation_status?: string | null
           country_prefix?: string | null
@@ -2165,9 +2175,16 @@ export type Database = {
           exit_point?: string | null
           first_name?: string | null
           id?: string
+          initial_lead_score?: number | null
           intake_complete?: boolean | null
           last_name?: string | null
+          lead_segment?: string | null
+          lead_source?: string | null
+          lead_source_detail?: string | null
           location_preference?: Json | null
+          page_title?: string | null
+          page_type?: string | null
+          page_url?: string | null
           phone_number?: string | null
           property_purpose?: string | null
           property_type?: Json | null
@@ -2175,6 +2192,7 @@ export type Database = {
           question_2?: string | null
           question_3?: string | null
           questions_answered?: number | null
+          referrer?: string | null
           sea_view_importance?: string | null
           timeframe?: string | null
           updated_at?: string | null
@@ -2191,6 +2209,7 @@ export type Database = {
           bedrooms_desired?: string | null
           budget_range?: string | null
           conversation_date?: string | null
+          conversation_duration?: string | null
           conversation_id?: string
           conversation_status?: string | null
           country_prefix?: string | null
@@ -2200,9 +2219,16 @@ export type Database = {
           exit_point?: string | null
           first_name?: string | null
           id?: string
+          initial_lead_score?: number | null
           intake_complete?: boolean | null
           last_name?: string | null
+          lead_segment?: string | null
+          lead_source?: string | null
+          lead_source_detail?: string | null
           location_preference?: Json | null
+          page_title?: string | null
+          page_type?: string | null
+          page_url?: string | null
           phone_number?: string | null
           property_purpose?: string | null
           property_type?: Json | null
@@ -2210,6 +2236,7 @@ export type Database = {
           question_2?: string | null
           question_3?: string | null
           questions_answered?: number | null
+          referrer?: string | null
           sea_view_importance?: string | null
           timeframe?: string | null
           updated_at?: string | null
