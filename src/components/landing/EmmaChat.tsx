@@ -41,7 +41,7 @@ const isValidPhoneNumber = (value: string | undefined): boolean => {
 };
 
 // Retry utility with exponential backoff for network resilience
-const invokeWithRetry = async <T>(
+const invokeWithRetry = async <T,>(
     functionName: string,
     body: any,
     maxRetries: number = 2,
