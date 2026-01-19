@@ -70,63 +70,175 @@ export interface LocationHubMetadata {
 }
 
 /**
- * Get localized hub content
+ * UI labels interface for the hub
  */
-export function getLocalizedHubContent(lang: string): {
+interface HubUILabels {
   title: string;
   description: string;
   speakableSummary: string;
-} {
-  const content: Record<string, { title: string; description: string; speakableSummary: string }> = {
+  statsLabels: {
+    cities: string;
+    guides: string;
+    languages: string;
+    dataPoints: string;
+  };
+  heroTitle: string;
+  heroSubtitle: string;
+  scrollCta: string;
+  ctaTitle: string;
+  ctaDescription: string;
+  ctaButton1: string;
+  ctaButton2: string;
+  breadcrumbs: {
+    home: string;
+    locations: string;
+  };
+}
+
+/**
+ * Get localized hub content
+ */
+export function getLocalizedHubContent(lang: string): HubUILabels {
+  const content: Record<string, HubUILabels> = {
     en: {
       title: "Costa del Sol Location Guides | Del Sol Prime Homes",
       description: "Explore comprehensive location guides for the Costa del Sol. Expert insights on property buying, best areas, cost of living, and investment opportunities in Marbella, Estepona, Fuengirola, and more.",
-      speakableSummary: "Our Costa del Sol Location Guides are comprehensive resources covering 8 cities across the region. Each guide addresses specific buyer intents including family relocation, retirement planning, property investment, and cost of living analysis. Every page features expert insights, neighborhood breakdowns, price comparisons, and actionable recommendations to help you make informed real estate decisions."
+      speakableSummary: "Our Costa del Sol Location Guides are comprehensive resources covering 8 cities across the region. Each guide addresses specific buyer intents including family relocation, retirement planning, property investment, and cost of living analysis. Every page features expert insights, neighborhood breakdowns, price comparisons, and actionable recommendations to help you make informed real estate decisions.",
+      statsLabels: { cities: "Cities", guides: "Guides", languages: "Languages", dataPoints: "Data Points" },
+      heroTitle: "Real Estate Intelligence",
+      heroSubtitle: "for {count} Cities",
+      scrollCta: "Explore",
+      ctaTitle: "Ready to Find Your Perfect Location?",
+      ctaDescription: "Our expert team is ready to help you navigate the Costa del Sol property market.",
+      ctaButton1: "Book a Consultation",
+      ctaButton2: "Browse Properties",
+      breadcrumbs: { home: "Home", locations: "Locations" }
     },
     nl: {
       title: "Costa del Sol Locatiegidsen | Del Sol Prime Homes",
       description: "Ontdek uitgebreide locatiegidsen voor de Costa del Sol. Expert inzichten over vastgoedaankoop, beste gebieden, kosten van levensonderhoud en investeringsmogelijkheden in Marbella, Estepona, Fuengirola en meer.",
-      speakableSummary: "Onze Costa del Sol Locatiegidsen zijn uitgebreide bronnen voor 8 steden in de regio. Elke gids behandelt specifieke kopersbehoeften zoals gezinsverhuizing, pensioenplanning, vastgoedinvesteringen en kosten van levensonderhoud."
+      speakableSummary: "Onze Costa del Sol Locatiegidsen zijn uitgebreide bronnen voor 8 steden in de regio. Elke gids behandelt specifieke kopersbehoeften zoals gezinsverhuizing, pensioenplanning, vastgoedinvesteringen en kosten van levensonderhoud.",
+      statsLabels: { cities: "Steden", guides: "Gidsen", languages: "Talen", dataPoints: "Datapunten" },
+      heroTitle: "Vastgoed Intelligentie",
+      heroSubtitle: "voor {count} Steden",
+      scrollCta: "Ontdek",
+      ctaTitle: "Klaar om uw perfecte locatie te vinden?",
+      ctaDescription: "Ons expertteam staat klaar om u te helpen bij het navigeren op de Costa del Sol vastgoedmarkt.",
+      ctaButton1: "Boek een Consultatie",
+      ctaButton2: "Bekijk Woningen",
+      breadcrumbs: { home: "Home", locations: "Locaties" }
     },
     de: {
       title: "Costa del Sol Standortführer | Del Sol Prime Homes",
       description: "Entdecken Sie umfassende Standortführer für die Costa del Sol. Experteneinblicke zu Immobilienkauf, besten Gegenden, Lebenshaltungskosten und Investitionsmöglichkeiten in Marbella, Estepona, Fuengirola und mehr.",
-      speakableSummary: "Unsere Costa del Sol Standortführer sind umfassende Ressourcen für 8 Städte in der Region. Jeder Führer behandelt spezifische Käuferbedürfnisse wie Familienumzug, Ruhestandsplanung, Immobilieninvestitionen und Lebenshaltungskosten."
+      speakableSummary: "Unsere Costa del Sol Standortführer sind umfassende Ressourcen für 8 Städte in der Region. Jeder Führer behandelt spezifische Käuferbedürfnisse wie Familienumzug, Ruhestandsplanung, Immobilieninvestitionen und Lebenshaltungskosten.",
+      statsLabels: { cities: "Städte", guides: "Führer", languages: "Sprachen", dataPoints: "Datenpunkte" },
+      heroTitle: "Immobilien-Intelligenz",
+      heroSubtitle: "für {count} Städte",
+      scrollCta: "Entdecken",
+      ctaTitle: "Bereit, Ihren perfekten Standort zu finden?",
+      ctaDescription: "Unser Expertenteam hilft Ihnen gerne bei der Navigation auf dem Costa del Sol Immobilienmarkt.",
+      ctaButton1: "Beratung buchen",
+      ctaButton2: "Immobilien durchsuchen",
+      breadcrumbs: { home: "Startseite", locations: "Standorte" }
     },
     fr: {
       title: "Guides des Emplacements Costa del Sol | Del Sol Prime Homes",
       description: "Explorez des guides d'emplacement complets pour la Costa del Sol. Informations d'experts sur l'achat immobilier, les meilleurs quartiers, le coût de la vie et les opportunités d'investissement à Marbella, Estepona, Fuengirola et plus.",
-      speakableSummary: "Nos guides d'emplacement Costa del Sol sont des ressources complètes couvrant 8 villes de la région. Chaque guide aborde des besoins spécifiques des acheteurs tels que la relocalisation familiale, la planification de la retraite et les investissements immobiliers."
+      speakableSummary: "Nos guides d'emplacement Costa del Sol sont des ressources complètes couvrant 8 villes de la région. Chaque guide aborde des besoins spécifiques des acheteurs tels que la relocalisation familiale, la planification de la retraite et les investissements immobiliers.",
+      statsLabels: { cities: "Villes", guides: "Guides", languages: "Langues", dataPoints: "Données" },
+      heroTitle: "Intelligence Immobilière",
+      heroSubtitle: "pour {count} Villes",
+      scrollCta: "Explorer",
+      ctaTitle: "Prêt à trouver votre emplacement idéal?",
+      ctaDescription: "Notre équipe d'experts est prête à vous aider à naviguer sur le marché immobilier de la Costa del Sol.",
+      ctaButton1: "Réserver une Consultation",
+      ctaButton2: "Parcourir les Propriétés",
+      breadcrumbs: { home: "Accueil", locations: "Emplacements" }
     },
     sv: {
       title: "Costa del Sol Platsguider | Del Sol Prime Homes",
       description: "Utforska omfattande platsguider för Costa del Sol. Expertinsikter om fastighetsköp, bästa områden, levnadskostnader och investeringsmöjligheter i Marbella, Estepona, Fuengirola och mer.",
-      speakableSummary: "Våra Costa del Sol platsguider är omfattande resurser som täcker 8 städer i regionen. Varje guide behandlar specifika köparbehov som familjeflytt, pensionsplanering och fastighetsinvesteringar."
+      speakableSummary: "Våra Costa del Sol platsguider är omfattande resurser som täcker 8 städer i regionen. Varje guide behandlar specifika köparbehov som familjeflytt, pensionsplanering och fastighetsinvesteringar.",
+      statsLabels: { cities: "Städer", guides: "Guider", languages: "Språk", dataPoints: "Datapunkter" },
+      heroTitle: "Fastighets Intelligens",
+      heroSubtitle: "för {count} Städer",
+      scrollCta: "Utforska",
+      ctaTitle: "Redo att hitta din perfekta plats?",
+      ctaDescription: "Vårt expertteam är redo att hjälpa dig navigera på Costa del Sols fastighetsmarknad.",
+      ctaButton1: "Boka en Konsultation",
+      ctaButton2: "Bläddra Fastigheter",
+      breadcrumbs: { home: "Hem", locations: "Platser" }
     },
     no: {
       title: "Costa del Sol Stedsguider | Del Sol Prime Homes",
       description: "Utforsk omfattende stedsguider for Costa del Sol. Ekspertinnsikt om eiendomskjøp, beste områder, levekostnader og investeringsmuligheter i Marbella, Estepona, Fuengirola og mer.",
-      speakableSummary: "Våre Costa del Sol stedsguider er omfattende ressurser som dekker 8 byer i regionen. Hver guide tar for seg spesifikke kjøperbehov som familieflytting, pensjonsplanlegging og eiendomsinvesteringer."
+      speakableSummary: "Våre Costa del Sol stedsguider er omfattende ressurser som dekker 8 byer i regionen. Hver guide tar for seg spesifikke kjøperbehov som familieflytting, pensjonsplanlegging og eiendomsinvesteringer.",
+      statsLabels: { cities: "Byer", guides: "Guider", languages: "Språk", dataPoints: "Datapunkter" },
+      heroTitle: "Eiendoms Intelligens",
+      heroSubtitle: "for {count} Byer",
+      scrollCta: "Utforsk",
+      ctaTitle: "Klar til å finne din perfekte plassering?",
+      ctaDescription: "Vårt ekspertteam er klare til å hjelpe deg med å navigere på Costa del Sols eiendomsmarked.",
+      ctaButton1: "Book en Konsultasjon",
+      ctaButton2: "Bla gjennom Eiendommer",
+      breadcrumbs: { home: "Hjem", locations: "Steder" }
     },
     da: {
       title: "Costa del Sol Stedguider | Del Sol Prime Homes",
       description: "Udforsk omfattende stedguider for Costa del Sol. Ekspertindsigt i ejendomskøb, bedste områder, leveomkostninger og investeringsmuligheder i Marbella, Estepona, Fuengirola og mere.",
-      speakableSummary: "Vores Costa del Sol stedguider er omfattende ressourcer, der dækker 8 byer i regionen. Hver guide behandler specifikke køberbehov som familieflytning, pensionsplanlægning og ejendomsinvesteringer."
+      speakableSummary: "Vores Costa del Sol stedguider er omfattende ressourcer, der dækker 8 byer i regionen. Hver guide behandler specifikke køberbehov som familieflytning, pensionsplanlægning og ejendomsinvesteringer.",
+      statsLabels: { cities: "Byer", guides: "Guider", languages: "Sprog", dataPoints: "Datapunkter" },
+      heroTitle: "Ejendoms Intelligens",
+      heroSubtitle: "for {count} Byer",
+      scrollCta: "Udforsk",
+      ctaTitle: "Klar til at finde din perfekte placering?",
+      ctaDescription: "Vores ekspertteam er klar til at hjælpe dig med at navigere på Costa del Sols ejendomsmarked.",
+      ctaButton1: "Book en Konsultation",
+      ctaButton2: "Gennemse Ejendomme",
+      breadcrumbs: { home: "Hjem", locations: "Steder" }
     },
     fi: {
       title: "Costa del Sol Sijaintioppaat | Del Sol Prime Homes",
       description: "Tutustu kattaviin sijaintioppaisiin Costa del Solille. Asiantuntijatietoa kiinteistöjen ostosta, parhaista alueista, elinkustannuksista ja sijoitusmahdollisuuksista Marbellassa, Esteponassa, Fuengirolassa ja muualla.",
-      speakableSummary: "Costa del Sol sijaintioppaamme ovat kattavia resursseja, jotka kattavat 8 kaupunkia alueella. Jokainen opas käsittelee tiettyjä ostajien tarpeita, kuten perheen muuttoa, eläkesuunnittelua ja kiinteistösijoituksia."
+      speakableSummary: "Costa del Sol sijaintioppaamme ovat kattavia resursseja, jotka kattavat 8 kaupunkia alueella. Jokainen opas käsittelee tiettyjä ostajien tarpeita, kuten perheen muuttoa, eläkesuunnittelua ja kiinteistösijoituksia.",
+      statsLabels: { cities: "Kaupungit", guides: "Oppaat", languages: "Kielet", dataPoints: "Datapisteet" },
+      heroTitle: "Kiinteistö Älykkyys",
+      heroSubtitle: "{count} Kaupungille",
+      scrollCta: "Tutustu",
+      ctaTitle: "Valmis löytämään täydellisen sijaintisi?",
+      ctaDescription: "Asiantuntijatiimimme on valmis auttamaan sinua Costa del Solin kiinteistömarkkinoilla.",
+      ctaButton1: "Varaa Konsultaatio",
+      ctaButton2: "Selaa Kiinteistöjä",
+      breadcrumbs: { home: "Koti", locations: "Sijainnit" }
     },
     pl: {
       title: "Przewodniki po Lokalizacjach Costa del Sol | Del Sol Prime Homes",
       description: "Odkryj kompleksowe przewodniki po lokalizacjach Costa del Sol. Eksperckie informacje o zakupie nieruchomości, najlepszych dzielnicach, kosztach życia i możliwościach inwestycyjnych w Marbelli, Esteponie, Fuengiroli i nie tylko.",
-      speakableSummary: "Nasze przewodniki po lokalizacjach Costa del Sol to kompleksowe zasoby obejmujące 8 miast w regionie. Każdy przewodnik odpowiada na konkretne potrzeby kupujących, takie jak przeprowadzka rodziny, planowanie emerytury i inwestycje w nieruchomości."
+      speakableSummary: "Nasze przewodniki po lokalizacjach Costa del Sol to kompleksowe zasoby obejmujące 8 miast w regionie. Każdy przewodnik odpowiada na konkretne potrzeby kupujących, takie jak przeprowadzka rodziny, planowanie emerytury i inwestycje w nieruchomości.",
+      statsLabels: { cities: "Miasta", guides: "Przewodniki", languages: "Języki", dataPoints: "Dane" },
+      heroTitle: "Inteligencja Nieruchomości",
+      heroSubtitle: "dla {count} Miast",
+      scrollCta: "Odkryj",
+      ctaTitle: "Gotowy znaleźć swoją idealną lokalizację?",
+      ctaDescription: "Nasz zespół ekspertów jest gotowy pomóc Ci w nawigacji po rynku nieruchomości Costa del Sol.",
+      ctaButton1: "Zarezerwuj Konsultację",
+      ctaButton2: "Przeglądaj Nieruchomości",
+      breadcrumbs: { home: "Strona główna", locations: "Lokalizacje" }
     },
     hu: {
       title: "Costa del Sol Helyszín Útmutatók | Del Sol Prime Homes",
       description: "Fedezze fel a Costa del Sol átfogó helyszín útmutatóit. Szakértői betekintés az ingatlanvásárlásba, a legjobb területekbe, a megélhetési költségekbe és a befektetési lehetőségekbe Marbellában, Esteponában, Fuengirolában és máshol.",
-      speakableSummary: "Costa del Sol helyszín útmutatóink átfogó források, amelyek 8 várost fednek le a régióban. Minden útmutató konkrét vásárlói igényekre válaszol, mint például családi költözés, nyugdíjtervezés és ingatlan befektetések."
+      speakableSummary: "Costa del Sol helyszín útmutatóink átfogó források, amelyek 8 várost fednek le a régióban. Minden útmutató konkrét vásárlói igényekre válaszol, mint például családi költözés, nyugdíjtervezés és ingatlan befektetések.",
+      statsLabels: { cities: "Városok", guides: "Útmutatók", languages: "Nyelvek", dataPoints: "Adatpontok" },
+      heroTitle: "Ingatlan Intelligencia",
+      heroSubtitle: "{count} Városra",
+      scrollCta: "Felfedezés",
+      ctaTitle: "Készen áll megtalálni a tökéletes helyszínt?",
+      ctaDescription: "Szakértői csapatunk készen áll, hogy segítsen eligazodni a Costa del Sol ingatlanpiacán.",
+      ctaButton1: "Konzultáció Foglalása",
+      ctaButton2: "Ingatlanok Böngészése",
+      breadcrumbs: { home: "Kezdőlap", locations: "Helyszínek" }
     }
   };
 

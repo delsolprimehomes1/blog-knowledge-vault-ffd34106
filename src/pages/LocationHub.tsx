@@ -23,12 +23,7 @@ import {
   getHubHreflangArray
 } from "@/lib/locationHubSchemaGenerator";
 
-const STATS = [
-  { icon: MapPin, label: "Cities", value: "11", suffix: "" },
-  { icon: BookOpen, label: "Guides", value: "19+", suffix: "" },
-  { icon: Globe, label: "Languages", value: "10", suffix: "" },
-  { icon: TrendingUp, label: "Data Points", value: "8", suffix: "" },
-];
+// STATS array is now dynamically generated from localized content
 
 interface CityData {
   city_slug: string;
@@ -93,6 +88,14 @@ const LocationHub = () => {
   const locale = getHubLocale(lang);
   const hreflangTags = getHubHreflangArray();
   const totalGuides = cities.reduce((sum, city) => sum + city.count, 0);
+
+  // Dynamically create stats from localized content
+  const stats = [
+    { icon: MapPin, label: hubContent.statsLabels.cities, value: String(cities.length || 11), suffix: "" },
+    { icon: BookOpen, label: hubContent.statsLabels.guides, value: `${totalGuides || 19}+`, suffix: "" },
+    { icon: Globe, label: hubContent.statsLabels.languages, value: "10", suffix: "" },
+    { icon: TrendingUp, label: hubContent.statsLabels.dataPoints, value: "8", suffix: "" },
+  ];
   
   const schemaGraph = generateHubSchemaGraph(lang, {
     language: lang,
@@ -168,10 +171,10 @@ const LocationHub = () => {
             >
               <ol className="flex items-center justify-center gap-2 text-sm text-white/70">
                 <li>
-                  <Link to={`/${lang}`} className="hover:text-primary transition-colors">Home</Link>
+                  <Link to={`/${lang}`} className="hover:text-primary transition-colors">{hubContent.breadcrumbs.home}</Link>
                 </li>
                 <ChevronRight className="w-4 h-4" />
-                <li className="text-white font-medium">Locations</li>
+                <li className="text-white font-medium">{hubContent.breadcrumbs.locations}</li>
               </ol>
             </nav>
 
@@ -179,7 +182,7 @@ const LocationHub = () => {
             <div className={`mb-6 transition-all duration-700 delay-100 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
               <Badge className="bg-white/10 backdrop-blur-md border-white/20 text-white px-5 py-2.5 text-sm font-medium">
                 <Compass className="w-4 h-4 mr-2" />
-                {cities.length || 11} Cities • {totalGuides || '19+'}  Guides • 10 Languages
+                {cities.length || 11} {hubContent.statsLabels.cities} • {totalGuides || '19+'} {hubContent.statsLabels.guides} • 10 {hubContent.statsLabels.languages}
               </Badge>
             </div>
 
@@ -187,8 +190,8 @@ const LocationHub = () => {
             <h1 
               className={`speakable-answer text-4xl md:text-5xl lg:text-7xl font-serif font-bold text-white mb-6 leading-[1.1] transition-all duration-1000 delay-200 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
             >
-              Real Estate Intelligence
-              <span className="block text-gradient-gold">for {cities.length || 11} Cities</span>
+              {hubContent.heroTitle}
+              <span className="block text-gradient-gold">{hubContent.heroSubtitle.replace('{count}', String(cities.length || 11))}</span>
             </h1>
 
             {/* Subtitle */}
@@ -202,7 +205,7 @@ const LocationHub = () => {
             <div 
               className={`inline-flex flex-wrap justify-center gap-6 md:gap-10 bg-white/5 backdrop-blur-lg rounded-2xl px-8 py-6 border border-white/10 transition-all duration-1000 delay-400 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
             >
-              {STATS.map((stat) => (
+              {stats.map((stat) => (
                 <div key={stat.label} className="flex flex-col items-center">
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-2">
                     <stat.icon className="w-5 h-5 text-primary" />
@@ -222,7 +225,7 @@ const LocationHub = () => {
             className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/60 hover:text-primary transition-all cursor-pointer group ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
             aria-label="Scroll to content"
           >
-            <span className="text-xs uppercase tracking-widest font-medium">Explore</span>
+            <span className="text-xs uppercase tracking-widest font-medium">{hubContent.scrollCta}</span>
             <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-2 group-hover:border-primary transition-colors">
               <ChevronDown className="w-4 h-4 animate-scroll-indicator" />
             </div>
@@ -245,17 +248,17 @@ const LocationHub = () => {
         <section className="py-16 md:py-24 bg-gradient-to-b from-background to-primary/5">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-4">
-              Ready to Find Your Perfect Location?
+              {hubContent.ctaTitle}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Our expert team is ready to help you navigate the Costa del Sol property market.
+              {hubContent.ctaDescription}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="btn-luxury">
-                <Link to={`/${lang}/#contact`}>Book a Consultation</Link>
+                <Link to={`/${lang}/#contact`}>{hubContent.ctaButton1}</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link to={`/${lang}/properties`}>Browse Properties</Link>
+                <Link to={`/${lang}/properties`}>{hubContent.ctaButton2}</Link>
               </Button>
             </div>
           </div>
