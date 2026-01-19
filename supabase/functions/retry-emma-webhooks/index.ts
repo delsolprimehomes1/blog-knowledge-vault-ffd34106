@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/281Nzx90nVL8424QY4Af/webhook-trigger/9d43a68c-fd67-4371-8ebb-81cbb47df3e6';
+const GHL_WEBHOOK_URL = 'https://services.leadconnectorhq.com/hooks/281Nzx90nVL8424QY4Af/webhook-trigger/4549e52b-32b2-4fc6-ab3c-8e7fe895433a';
 const MAX_RETRY_ATTEMPTS = 5;
 
 interface EmmaLead {
