@@ -6,6 +6,7 @@ import { BuyersGuideHero } from '@/components/buyers-guide/BuyersGuideHero';
 import { SpeakableIntro } from '@/components/buyers-guide/SpeakableIntro';
 import { ProcessTimeline } from '@/components/buyers-guide/ProcessTimeline';
 import { CostBreakdown } from '@/components/buyers-guide/CostBreakdown';
+import { LocationShowcase } from '@/components/buyers-guide/LocationShowcase';
 import { LegalChecklist } from '@/components/buyers-guide/LegalChecklist';
 import { DigitalNomadVisa } from '@/components/buyers-guide/DigitalNomadVisa';
 import { BuyersGuideFAQ } from '@/components/buyers-guide/BuyersGuideFAQ';
@@ -25,6 +26,7 @@ const BuyersGuide: React.FC = () => {
         <SpeakableIntro />
         <ProcessTimeline />
         <CostBreakdown />
+        <LocationShowcase />
         <LegalChecklist />
         <DigitalNomadVisa />
         <BuyersGuideFAQ />
