@@ -1,5 +1,5 @@
-# Root homepage - serve pre-rendered SEO page (MUST come first)
-/  /home.html  200
+# Root homepage - redirect to English (301 for SEO)
+/  /en  301
 
 # Static files - serve directly (MUST come before SPA routes)
 /sitemap.xml  /sitemap.xml  200
