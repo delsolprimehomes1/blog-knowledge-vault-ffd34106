@@ -78,6 +78,8 @@ const LocationPage = () => {
           featuredImageUrl={page.featured_image_url}
           featuredImageAlt={page.featured_image_alt}
           featuredImageCaption={(page as any).featured_image_caption}
+          currentLanguage={page.language || 'en'}
+          hreflangGroupId={page.hreflang_group_id}
         />
 
         <div className="container mx-auto px-4 py-12 md:py-16 space-y-12 md:space-y-16">
