@@ -1019,6 +1019,30 @@ async function handleRequest(req: Request): Promise<Response> {
 
   console.log(`[SEO] Processing path: ${path}`)
 
+  // ============================================================
+  // HUB PAGE DETECTION: Handle /{lang}/locations hub page
+  // Must come BEFORE the content slug parsing
+  // ============================================================
+  const hubMatch = path.match(/^\/(\w{2})\/(locations)\/?$/)
+  if (hubMatch) {
+    const [, lang, hubType] = hubMatch
+    console.log(`[SEO] Detected hub page: lang=${lang}, type=${hubType}`)
+    
+    // Return metadata for the hub page (SSG handles the actual rendering)
+    // This allows middleware to confirm the page is valid
+    return new Response(
+      JSON.stringify({
+        success: true,
+        type: 'hub',
+        hubType,
+        language: lang,
+        canonical: `${BASE_URL}/${lang}/${hubType}`,
+        message: 'Hub page - SSG pre-rendered, no dynamic metadata needed'
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
   // Parse the path: /{lang}/{type}/{slug}
   const pathMatch = path.match(/^\/(\w{2})\/(qa|blog|compare|locations)\/(.+)$/)
   
