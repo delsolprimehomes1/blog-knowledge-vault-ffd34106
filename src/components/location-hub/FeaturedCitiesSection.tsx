@@ -219,8 +219,8 @@ export const FeaturedCitiesSection: React.FC<FeaturedCitiesSectionProps> = ({
           </p>
         </div>
 
-        {/* Featured Cities - Large Cards with Metadata */}
-        <div className="grid md:grid-cols-3 gap-6 mb-6">
+        {/* Featured Cities - Equal Large Cards with Metadata */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           {featuredCities.map((city, index) => {
             const imageUrl = city.image || CITY_FALLBACK_IMAGES[city.city_slug] || CITY_FALLBACK_IMAGES.marbella;
             const imageAlt = city.imageAlt || `Aerial view of ${city.city_name}, Costa del Sol`;
@@ -230,7 +230,7 @@ export const FeaturedCitiesSection: React.FC<FeaturedCitiesSectionProps> = ({
               <Link
                 key={city.city_slug}
                 to={`/${language}/locations/${city.city_slug}`}
-                className={`group relative rounded-2xl overflow-hidden card-immersive ${index === 0 ? 'md:row-span-2 md:aspect-auto min-h-[400px]' : 'aspect-[4/3]'}`}
+                className="group relative rounded-2xl overflow-hidden card-immersive aspect-[3/4] min-h-[350px] md:min-h-[420px]"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Background Image */}
@@ -267,7 +267,7 @@ export const FeaturedCitiesSection: React.FC<FeaturedCitiesSectionProps> = ({
                       {city.count} {city.count === 1 ? content.guideLabel : content.guidesLabel}
                     </Badge>
 
-                    <h3 className={`font-serif font-bold text-white mb-1 group-hover:text-primary transition-colors ${index === 0 ? 'text-3xl md:text-4xl' : 'text-2xl'}`}>
+                    <h3 className="text-2xl md:text-3xl font-serif font-bold text-white mb-1 group-hover:text-primary transition-colors">
                       {city.city_name}
                     </h3>
                     <p className="text-white/70 text-sm mb-3">{city.region}, Spain</p>
