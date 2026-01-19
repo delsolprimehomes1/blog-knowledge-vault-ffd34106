@@ -59,7 +59,7 @@ const ORGANIZATION_SCHEMA = {
     "@type": "ContactPoint",
     "contactType": "Customer Service",
     "availableLanguage": ["en", "de", "nl", "fr", "pl", "fi", "sv", "da", "no", "hu"],
-    "telephone": "+34 613 578 416",
+    "telephone": "+34 630 03 90 90",
     "email": "info@delsolprimehomes.com"
   }
 };

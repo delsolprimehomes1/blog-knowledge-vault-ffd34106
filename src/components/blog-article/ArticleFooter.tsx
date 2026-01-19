@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 const COMPANY_INFO = {
   name: "Del Sol Prime Homes",
   tagline: "Premium real estate agency specializing in Costa del Sol properties",
-  phone: "+34 613 578 416",
+  phone: "+34 630 03 90 90",
   email: "info@delsolprimehomes.com",
   website: "https://www.delsolprimehomes.com",
   address: {

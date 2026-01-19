@@ -48,7 +48,7 @@ export const BuyersGuideCTA: React.FC = () => {
             {/* Contact Options */}
             <div className="space-y-4">
               <a 
-                href="tel:+34951234567"
+                href="tel:+34630039090"
                 className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors duration-300 group"
               >
                 <div className="w-12 h-12 rounded-full bg-prime-gold/20 flex items-center justify-center">
@@ -56,7 +56,7 @@ export const BuyersGuideCTA: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-400">Call us directly</p>
-                  <p className="text-white font-medium group-hover:text-prime-gold transition-colors">+34 951 234 567</p>
+                  <p className="text-white font-medium group-hover:text-prime-gold transition-colors">+34 630 03 90 90</p>
                 </div>
               </a>
               

@@ -209,7 +209,7 @@ function generateOrganizationSchema(content: AboutPageData) {
     "contactPoint": [
       {
         "@type": "ContactPoint",
-        "telephone": "+34-952-000-000",
+        "telephone": "+34 630 03 90 90",
         "contactType": "sales",
         "availableLanguage": ["English", "Spanish", "Dutch", "French", "German"]
       }
@@ -250,7 +250,7 @@ function generateLocalBusinessSchema(content: AboutPageData) {
       "longitude": -4.8826
     },
     "url": BASE_URL,
-    "telephone": "+34-952-000-000",
+    "telephone": "+34 630 03 90 90",
     "openingHoursSpecification": [
       {
         "@type": "OpeningHoursSpecification",

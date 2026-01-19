@@ -71,7 +71,7 @@ export function LocationCTASection({ cityName, topicName }: LocationCTASectionPr
                     className="border-primary/30 hover:bg-primary/5 hover:border-primary/50 w-full sm:w-auto"
                     asChild
                   >
-                    <a href="tel:+34951123456">
+                    <a href="tel:+34630039090">
                       <Phone className="w-5 h-5 mr-2" />
                       Call Us Now
                     </a>

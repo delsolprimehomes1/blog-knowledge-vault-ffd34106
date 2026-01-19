@@ -131,7 +131,7 @@ export const getStructuredData = () => ({
   "image": "https://www.delsolprimehomes.com/assets/logo-new.png",
   "logo": "https://www.delsolprimehomes.com/assets/logo-new.png",
   "url": "https://www.delsolprimehomes.com",
-  "telephone": "+34 613 578 416",
+  "telephone": "+34 630 03 90 90",
   "email": "info@delsolprimehomes.com",
   "address": {
     "@type": "PostalAddress",
@@ -160,7 +160,7 @@ export const getStructuredData = () => ({
     "@type": "ContactPoint",
     "contactType": "Customer Service",
     "availableLanguage": ["en", "de", "nl", "fr", "pl", "fi", "sv", "da", "no", "hu"],
-    "telephone": "+34 613 578 416",
+    "telephone": "+34 630 03 90 90",
     "email": "info@delsolprimehomes.com"
   }
 });

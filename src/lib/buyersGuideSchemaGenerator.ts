@@ -193,7 +193,7 @@ export const generateBuyersGuideSchema = (
     "url": BASE_URL,
     "logo": LOGO_URL,
     "image": LOGO_URL,
-    "telephone": "+34 951 234 567",
+    "telephone": "+34 630 03 90 90",
     "email": "info@delsolprimehomes.com",
     "address": {
       "@type": "PostalAddress",

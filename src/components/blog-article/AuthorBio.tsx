@@ -128,7 +128,7 @@ export const AuthorBio = ({ author, language = 'en', localizedBio }: AuthorBioPr
                 className="flex-1 min-h-[48px] bg-[#25D366] hover:bg-[#1fb355] text-white shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 <a
-                  href="https://wa.me/34672320772?text=Hi,%20I%20have%20a%20question%20about%20Costa%20del%20Sol%20properties"
+                  href="https://wa.me/34630039090?text=Hi,%20I%20have%20a%20question%20about%20Costa%20del%20Sol%20properties"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

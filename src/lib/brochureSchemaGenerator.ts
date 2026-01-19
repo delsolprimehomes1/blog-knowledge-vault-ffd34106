@@ -54,7 +54,7 @@ const generateRealEstateAgentSchema = (city: CityBrochureData) => ({
   description: `API-accredited real estate agency specializing in luxury properties in ${city.name} and across the Costa del Sol.`,
   url: BASE_URL,
   logo: `${BASE_URL}/assets/logo-new.png`,
-  telephone: '+34 613 578 416',
+  telephone: '+34 630 03 90 90',
   email: 'info@delsolprimehomes.com',
   address: {
     '@type': 'PostalAddress',

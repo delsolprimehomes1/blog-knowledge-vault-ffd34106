@@ -151,7 +151,7 @@ export function generateOrganizationSchema(content: AboutPageContent) {
     "contactPoint": [
       {
         "@type": "ContactPoint",
-        "telephone": "+34-613-578-416",
+        "telephone": "+34 630 03 90 90",
         "contactType": "sales",
         "availableLanguage": ["English", "Spanish", "Dutch", "French", "German"]
       },
@@ -201,7 +201,7 @@ export function generateLocalBusinessSchema(content: AboutPageContent) {
       "longitude": -4.8826
     },
     "url": BASE_URL,
-    "telephone": "+34-952-000-000",
+    "telephone": "+34 630 03 90 90",
     "openingHoursSpecification": [
       {
         "@type": "OpeningHoursSpecification",

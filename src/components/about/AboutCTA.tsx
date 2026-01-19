@@ -55,7 +55,7 @@ export const AboutCTA = () => {
                 <Phone className="w-5 h-5 text-prime-gold" />
               </div>
               <span className="text-sm text-slate-400 mb-1">Call Us</span>
-              <span className="font-medium">+34 952 000 000</span>
+              <span className="font-medium">+34 630 03 90 90</span>
             </div>
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">

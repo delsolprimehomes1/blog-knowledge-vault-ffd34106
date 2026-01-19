@@ -180,7 +180,7 @@ function generateOrganizationSchema() {
       "@type": "ContactPoint",
       "contactType": "Customer Service",
       "availableLanguage": ["en", "de", "nl", "fr", "pl", "sv", "da", "hu", "fi", "no"],
-      "telephone": "+34-952-123-456",
+      "telephone": "+34 630 03 90 90",
       "email": "info@delsolprimehomes.com"
     },
     "sameAs": [
