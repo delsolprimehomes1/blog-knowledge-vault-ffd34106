@@ -37,6 +37,11 @@ export interface LeadFormProps {
         [key: string]: any;
     };
     propertyId?: string;
+    propertyName?: string;
+    propertyCategory?: string;
+    propertyLocation?: string;
+    propertyPrice?: number;
+    propertyRef?: string;
     source?: string;
     onSuccess: () => void;
     className?: string;
@@ -46,6 +51,11 @@ const LeadForm: React.FC<LeadFormProps> = ({
     language,
     translations,
     propertyId,
+    propertyName,
+    propertyCategory,
+    propertyLocation,
+    propertyPrice,
+    propertyRef,
     source = 'landing_form',
     onSuccess,
     className
@@ -75,6 +85,11 @@ const LeadForm: React.FC<LeadFormProps> = ({
                 consent: data.consent,
                 language,
                 propertyInterest: propertyId,
+                propertyName,
+                propertyCategory,
+                propertyLocation,
+                propertyPrice,
+                propertyRef,
                 source
             });
 

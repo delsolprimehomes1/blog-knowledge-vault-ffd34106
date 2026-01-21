@@ -33,7 +33,9 @@ interface LeadPayload {
   
   // Form-specific
   propertyRef?: string;
-  propertyPrice?: string;
+  propertyPrice?: number;
+  propertyType?: string;
+  interest?: string; // Human-readable: "SAVIA - Villa - MIJAS"
   cityName?: string;
   message?: string;
   
@@ -42,9 +44,8 @@ interface LeadPayload {
   seaViewImportance?: string;
   budgetRange?: string;
   bedroomsDesired?: string;
-  propertyType?: string[];
-  propertyPurpose?: string;
   timeframe?: string;
+  propertyPurpose?: string;
 }
 
 interface RoutingRule {
@@ -457,12 +458,14 @@ serve(async (req) => {
         exit_point: payload.exitPoint || null,
         conversation_duration: payload.conversationDuration || null,
         property_ref: payload.propertyRef || null,
+        property_price: payload.propertyPrice ? String(payload.propertyPrice) : null,
+        interest: payload.interest || null,
         message: payload.message || null,
         location_preference: payload.locationPreference || [],
         sea_view_importance: payload.seaViewImportance || null,
         budget_range: payload.budgetRange || null,
         bedrooms_desired: payload.bedroomsDesired || null,
-        property_type: payload.propertyType || [],
+        property_type: Array.isArray(payload.propertyType) ? payload.propertyType : (payload.propertyType ? [payload.propertyType] : []),
         property_purpose: payload.propertyPurpose || null,
         timeframe: payload.timeframe || null,
         lead_segment: segment,

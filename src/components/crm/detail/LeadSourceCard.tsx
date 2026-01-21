@@ -194,8 +194,10 @@ export function FormSubmissionCard({ lead }: FormSubmissionCardProps) {
 
           {lead.interest && (
             <div>
-              <dt className="text-xs text-muted-foreground">Interest Type</dt>
-              <dd className="font-medium">{lead.interest}</dd>
+              <dt className="text-xs text-muted-foreground">Property Interest</dt>
+              <dd className="font-medium text-primary flex items-center gap-1">
+                🏠 {lead.interest}
+              </dd>
             </div>
           )}
 

@@ -15,6 +15,8 @@ interface Property {
     price_eur: number;
     images: string[];
     title?: string;
+    internal_name?: string;
+    internal_ref?: string;
     descriptions?: Record<string, string>;
 }
 
@@ -211,7 +213,16 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations, l
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                const event = new CustomEvent('openLeadForm', { detail: { interest: property.id } });
+                                const event = new CustomEvent('openLeadForm', { 
+                                    detail: { 
+                                        interest: property.id,
+                                        propertyName: property.internal_name || property.title || displayTitle,
+                                        propertyCategory: property.category,
+                                        propertyLocation: property.location,
+                                        propertyPrice: property.price_eur,
+                                        propertyRef: property.internal_ref
+                                    } 
+                                });
                                 window.dispatchEvent(event);
                             }}
                             className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-landing-gold text-white text-[10px] sm:text-xs font-semibold rounded-md hover:bg-landing-gold/90 transition-colors"
@@ -247,8 +258,14 @@ const PropertiesShowcase: React.FC<PropertiesShowcaseProps> = ({ translations, l
                 <div className="mt-5 sm:mt-6 lg:mt-8 text-center">
                     <button
                         onClick={() => {
+                            const categoryName = sectionType === 'apartments' ? 'Apartments & Penthouses' : 'Townhouses & Villas';
                             window.dispatchEvent(new CustomEvent('openLeadForm', {
-                                detail: { interest: sectionType === 'apartments' ? 'Apartments & Penthouses' : 'Townhouses & Villas' }
+                                detail: { 
+                                    interest: categoryName,
+                                    propertyName: categoryName,
+                                    propertyCategory: sectionType === 'apartments' ? 'apartment' : 'villa',
+                                    propertyLocation: 'Costa del Sol'
+                                }
                             }));
                         }}
                         className="text-landing-navy font-semibold text-xs sm:text-sm hover:text-landing-gold transition-colors inline-flex items-center gap-1 group/btn"

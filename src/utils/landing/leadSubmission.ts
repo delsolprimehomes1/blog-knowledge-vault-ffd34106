@@ -12,6 +12,11 @@ export interface LeadData {
     comment?: string;
     consent: boolean;
     propertyInterest?: string;
+    propertyName?: string;
+    propertyCategory?: string;
+    propertyLocation?: string;
+    propertyPrice?: number;
+    propertyRef?: string;
     language: LanguageCode;
     source?: string;
 }
@@ -73,6 +78,11 @@ export const submitLeadFunction = async (data: LeadData): Promise<boolean> => {
     
     console.log('[Lead Submission] GHL webhook sent');
     
+    // Build formatted interest string for CRM
+    const formattedInterest = data.propertyName 
+        ? `${data.propertyName}${data.propertyCategory ? ` - ${data.propertyCategory}` : ''}${data.propertyLocation ? ` - ${data.propertyLocation}` : ''}`
+        : undefined;
+    
     // Register in CRM system for agent dashboard
     await registerCrmLead({
         firstName,
@@ -86,6 +96,10 @@ export const submitLeadFunction = async (data: LeadData): Promise<boolean> => {
         pageUrl: pageMetadata.pageUrl,
         pageTitle: pageMetadata.pageTitle,
         language: data.language,
+        propertyRef: data.propertyRef,
+        propertyPrice: data.propertyPrice,
+        propertyType: data.propertyCategory,
+        interest: formattedInterest,
         message: data.comment,
         referrer: pageMetadata.referrer,
         timestamp: pageMetadata.timestamp,

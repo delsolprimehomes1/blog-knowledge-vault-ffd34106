@@ -19,16 +19,34 @@ interface LandingLayoutProps {
     translations: any;
 }
 
+interface PropertyInterest {
+    id?: string;
+    name?: string;
+    category?: string;
+    location?: string;
+    price?: number;
+    ref?: string;
+}
+
 const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations }) => {
     const [isEmmaOpen, setIsEmmaOpen] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedPropertyId, setSelectedPropertyId] = useState<string | undefined>(undefined);
+    const [propertyInterest, setPropertyInterest] = useState<PropertyInterest | null>(null);
 
     useEffect(() => {
         trackPageView(language);
 
         const handleOpenForm = (e: CustomEvent) => {
             setSelectedPropertyId(e.detail?.interest);
+            setPropertyInterest({
+                id: e.detail?.interest,
+                name: e.detail?.propertyName,
+                category: e.detail?.propertyCategory,
+                location: e.detail?.propertyLocation,
+                price: e.detail?.propertyPrice,
+                ref: e.detail?.propertyRef
+            });
             setIsFormOpen(true);
         };
 
@@ -282,6 +300,11 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                 language={language}
                 translations={t.form || {}}
                 propertyId={selectedPropertyId}
+                propertyName={propertyInterest?.name}
+                propertyCategory={propertyInterest?.category}
+                propertyLocation={propertyInterest?.location}
+                propertyPrice={propertyInterest?.price}
+                propertyRef={propertyInterest?.ref}
             />
         </div>
     );

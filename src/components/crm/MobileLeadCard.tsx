@@ -108,6 +108,8 @@ export interface MobileLeadCardProps {
     last_contacted_at?: string | null;
     last_contact_at?: string | null;
     created_at: string;
+    interest?: string | null;
+    property_ref?: string | null;
   };
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
@@ -231,6 +233,12 @@ export function MobileLeadCard({
               </>
             )}
           </div>
+          {/* Property Interest - Show if available */}
+          {lead.interest && (
+            <div className="mt-1 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-0.5 inline-block">
+              🏠 {lead.interest}
+            </div>
+          )}
         </div>
 
         {/* Quick Action Buttons */}

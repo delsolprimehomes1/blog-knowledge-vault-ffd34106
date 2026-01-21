@@ -9,6 +9,11 @@ interface LeadCaptureFormProps {
     language: LanguageCode;
     translations: any;
     propertyId?: string;
+    propertyName?: string;
+    propertyCategory?: string;
+    propertyLocation?: string;
+    propertyPrice?: number;
+    propertyRef?: string;
     source?: string;
 }
 
@@ -18,6 +23,11 @@ const LeadCaptureForm: React.FC<LeadCaptureFormProps> = ({
     language,
     translations,
     propertyId,
+    propertyName,
+    propertyCategory,
+    propertyLocation,
+    propertyPrice,
+    propertyRef,
     source = 'landing_page_modal'
 }) => {
     const [isSuccess, setIsSuccess] = useState(false);
@@ -49,6 +59,11 @@ const LeadCaptureForm: React.FC<LeadCaptureFormProps> = ({
                         language={language}
                         translations={translations}
                         propertyId={propertyId}
+                        propertyName={propertyName}
+                        propertyCategory={propertyCategory}
+                        propertyLocation={propertyLocation}
+                        propertyPrice={propertyPrice}
+                        propertyRef={propertyRef}
                         source={source}
                         onSuccess={handleSuccess}
                         className="space-y-6"

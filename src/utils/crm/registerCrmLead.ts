@@ -15,6 +15,7 @@ export interface CrmLeadData {
   propertyRef?: string;
   propertyPrice?: number;
   propertyType?: string;
+  interest?: string; // Human-readable: "SAVIA - Villa - MIJAS"
   message?: string;
   referrer?: string;
   timestamp?: string;
