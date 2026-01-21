@@ -98,7 +98,7 @@ export default function LeadDetailPage() {
 
   const handleArchive = useCallback(() => {
     if (confirm("Are you sure you want to archive this lead?")) {
-      archiveLead();
+      archiveLead("Archived by agent");
       navigate("/crm/agent/leads");
     }
   }, [archiveLead, navigate]);
