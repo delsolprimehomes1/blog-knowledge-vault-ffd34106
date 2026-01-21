@@ -28,6 +28,7 @@ export default function CrmLogin() {
         
         if (error) {
           console.error("Session check error:", error);
+          setCheckingSession(false);
           return;
         }
         
