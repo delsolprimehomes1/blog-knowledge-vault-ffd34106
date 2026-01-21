@@ -108,6 +108,10 @@ const BrokenLinkChecker = lazy(() => import("./pages/admin/BrokenLinkChecker"));
 const BulkImageUpdate = lazy(() => import("./pages/admin/BulkImageUpdate"));
 const WebhookTesting = lazy(() => import("./pages/admin/WebhookTesting"));
 
+// CRM Pages
+const AgentLogin = lazy(() => import("./pages/crm/AgentLogin"));
+const CrmLogin = lazy(() => import("./pages/crm/CrmLogin"));
+
 // Landing Pages (Paid Traffic)
 const LandingEn = lazy(() => import("./pages/landing/en"));
 const LandingNl = lazy(() => import("./pages/landing/nl"));
@@ -214,6 +218,10 @@ const App = () => (
 
               {/* Standalone Property Management Page */}
               <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />
+
+              {/* CRM Routes */}
+              <Route path="/crm/login" element={<CrmLogin />} />
+              <Route path="/crm/agent/login" element={<AgentLogin />} />
 
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
