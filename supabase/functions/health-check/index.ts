@@ -12,6 +12,7 @@ interface HealthStatus {
   checks: {
     database: { status: 'ok' | 'error'; latency_ms?: number; error?: string };
     storage: { status: 'ok' | 'error'; error?: string };
+    resend: { status: 'ok' | 'error' | 'not_configured'; error?: string };
   };
   version: string;
 }
@@ -28,8 +29,9 @@ serve(async (req) => {
     checks: {
       database: { status: 'ok' },
       storage: { status: 'ok' },
+      resend: { status: 'ok' },
     },
-    version: '1.0.0',
+    version: '1.1.0',
   };
 
   try {
@@ -78,6 +80,23 @@ serve(async (req) => {
       }
     }
 
+    // Check Resend API key configuration
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      healthStatus.checks.resend = { status: 'not_configured' };
+      // Don't degrade status for missing Resend - it's optional
+    } else {
+      // Verify the API key format (starts with re_)
+      if (!resendApiKey.startsWith('re_')) {
+        healthStatus.checks.resend = { 
+          status: 'error', 
+          error: 'Invalid API key format' 
+        };
+      } else {
+        healthStatus.checks.resend = { status: 'ok' };
+      }
+    }
+
     // Log health check
     console.log(`Health check: ${healthStatus.status}`, JSON.stringify(healthStatus.checks));
 
@@ -102,6 +121,7 @@ serve(async (req) => {
         checks: {
           database: { status: 'error', error: 'Connection failed' },
           storage: { status: 'error', error: 'Connection failed' },
+          resend: { status: 'error', error: 'Check failed' },
         },
         error: err instanceof Error ? err.message : 'Unknown error',
       }),

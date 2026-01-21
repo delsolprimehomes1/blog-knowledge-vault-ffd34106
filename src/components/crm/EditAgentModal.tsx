@@ -50,6 +50,7 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [slackEnabled, setSlackEnabled] = useState(false);
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<string[]>([]);
+  const [urgentEmailsEnabled, setUrgentEmailsEnabled] = useState(true);
 
   const {
     register,
@@ -82,6 +83,7 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
       setSelectedLanguages(agent.languages);
       // @ts-ignore - slack_notifications is newly added
       setSlackEnabled(agent.slack_notifications || false);
+      setUrgentEmailsEnabled(agent.urgent_emails_enabled !== false);
     }
   }, [agent, open, reset]);
 
@@ -124,6 +126,7 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
         timezone: data.timezone,
         // @ts-ignore - slack_notifications is newly added
         slack_notifications: slackEnabled,
+        urgent_emails_enabled: urgentEmailsEnabled,
       };
 
       await updateAgent.mutateAsync({ id: agent.id, data: updateData });
@@ -270,6 +273,22 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
                 id="email_notifications"
                 checked={emailNotifications}
                 onCheckedChange={(checked) => setValue("email_notifications", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="urgent_emails" className="cursor-pointer">
+                  Receive Urgent Email Alerts
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  High-priority emails for direct-assigned and urgent leads
+                </p>
+              </div>
+              <Switch
+                id="urgent_emails"
+                checked={urgentEmailsEnabled}
+                onCheckedChange={setUrgentEmailsEnabled}
               />
             </div>
 

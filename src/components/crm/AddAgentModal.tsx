@@ -43,6 +43,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
   const [slackEnabled, setSlackEnabled] = useState(false);
   const [selectedSlackChannels, setSelectedSlackChannels] = useState<string[]>([]);
+  const [urgentEmailsEnabled, setUrgentEmailsEnabled] = useState(true);
 
   const {
     register,
@@ -106,6 +107,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
       setSelectedLanguages(["en"]);
       setSlackEnabled(false);
       setSelectedSlackChannels([]);
+      setUrgentEmailsEnabled(true);
       onOpenChange(false);
     } catch (error) {
       // Error handled by mutation
@@ -268,6 +270,22 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
                 id="email_notifications"
                 checked={emailNotifications}
                 onCheckedChange={(checked) => setValue("email_notifications", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="urgent_emails" className="cursor-pointer">
+                  Receive Urgent Email Alerts
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  High-priority emails for direct-assigned and urgent leads
+                </p>
+              </div>
+              <Switch
+                id="urgent_emails"
+                checked={urgentEmailsEnabled}
+                onCheckedChange={setUrgentEmailsEnabled}
               />
             </div>
 

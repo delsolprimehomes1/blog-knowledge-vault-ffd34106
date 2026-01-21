@@ -2046,6 +2046,7 @@ export type Database = {
           slack_user_id: string | null
           timezone: string | null
           updated_at: string | null
+          urgent_emails_enabled: boolean | null
         }
         Insert: {
           accepts_new_leads?: boolean | null
@@ -2067,6 +2068,7 @@ export type Database = {
           slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
+          urgent_emails_enabled?: boolean | null
         }
         Update: {
           accepts_new_leads?: boolean | null
@@ -2088,6 +2090,7 @@ export type Database = {
           slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
+          urgent_emails_enabled?: boolean | null
         }
         Relationships: []
       }

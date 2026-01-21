@@ -15,27 +15,37 @@ interface Agent {
   first_name: string;
   last_name: string;
   slack_notifications?: boolean;
+  urgent_emails_enabled?: boolean;
 }
 
 interface Lead {
   id: string;
   first_name: string;
   last_name: string;
-  phone_number: string;
+  phone_number?: string;
+  phone?: string;
   email?: string;
-  language: string;
-  lead_segment: string;
+  language?: string;
+  preferred_language?: string;
+  lead_segment?: string;
   budget_range?: string;
   location_preference?: string[];
+  areas_of_interest?: string[];
   timeframe?: string;
+  timeline?: string;
   lead_source?: string;
+  source?: string;
+  property_type?: string;
   claim_window_expires_at?: string;
+  created_at?: string;
 }
 
 interface NotificationRequest {
   lead: Lead;
   agents: Agent[];
   claimWindowMinutes: number;
+  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent';
+  lead_priority?: string;
 }
 
 function getLanguageFlag(language: string): string {
@@ -49,16 +59,34 @@ function getLanguageFlag(language: string): string {
 function getSegmentColor(segment: string): string {
   const colors: Record<string, string> = {
     Hot: "#EF4444",
+    hot: "#EF4444",
     Warm: "#F59E0B",
+    warm: "#F59E0B",
     Cool: "#3B82F6",
+    cool: "#3B82F6",
     Cold: "#6B7280",
+    cold: "#6B7280",
   };
   return colors[segment] || "#6B7280";
 }
 
+// Normalize lead data to handle different property names
+function normalizeLead(lead: Lead): Lead {
+  return {
+    ...lead,
+    phone_number: lead.phone_number || lead.phone || "Not provided",
+    language: lead.language || lead.preferred_language || "en",
+    lead_segment: lead.lead_segment || "New",
+    location_preference: lead.location_preference || lead.areas_of_interest,
+    timeframe: lead.timeframe || lead.timeline,
+    lead_source: lead.lead_source || lead.source || "Website",
+  };
+}
+
 function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, claimWindowMinutes: number): string {
-  const flag = getLanguageFlag(lead.language);
-  const segmentColor = getSegmentColor(lead.lead_segment);
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
+  const segmentColor = getSegmentColor(normalizedLead.lead_segment!);
   
   return `
 <!DOCTYPE html>
@@ -107,7 +135,7 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
                 Hi ${agentName},
               </p>
               <p style="margin: 0 0 24px; color: #374151; font-size: 16px;">
-                A new ${lead.language.toUpperCase()} lead matching your profile is available for claiming:
+                A new ${normalizedLead.language?.toUpperCase()} lead matching your profile is available for claiming:
               </p>
               
               <!-- Lead Card -->
@@ -121,7 +149,7 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
                             ${lead.first_name} ${lead.last_name}
                           </h2>
                           <span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">
-                            ${lead.lead_segment}
+                            ${normalizedLead.lead_segment}
                           </span>
                         </td>
                       </tr>
@@ -131,7 +159,7 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
                       <tr>
                         <td width="50%" style="padding: 8px 0;">
                           <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p>
-                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.phone_number}</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.phone_number}</p>
                         </td>
                         <td width="50%" style="padding: 8px 0;">
                           <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Budget</p>
@@ -141,17 +169,17 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
                       <tr>
                         <td width="50%" style="padding: 8px 0;">
                           <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Location</p>
-                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.location_preference?.join(", ") || "Not specified"}</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.location_preference?.join(", ") || "Not specified"}</p>
                         </td>
                         <td width="50%" style="padding: 8px 0;">
                           <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Timeframe</p>
-                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.timeframe || "Not specified"}</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.timeframe || "Not specified"}</p>
                         </td>
                       </tr>
                       <tr>
                         <td colspan="2" style="padding: 8px 0;">
                           <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p>
-                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.lead_source || "Website"}</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p>
                         </td>
                       </tr>
                     </table>
@@ -194,15 +222,176 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
 `;
 }
 
+// Generate URGENT email template with red styling
+function generateUrgentEmailHtml(lead: Lead, agentName: string, claimUrl: string, claimWindowMinutes: number, notificationType: string): string {
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
+  const segmentColor = getSegmentColor(normalizedLead.lead_segment!);
+  
+  const urgencyMessage = notificationType === 'sla_escalation' 
+    ? "This lead has been escalated due to SLA breach!"
+    : notificationType === 'direct_assignment'
+    ? "You have been directly assigned to this lead!"
+    : notificationType === 'test_urgent'
+    ? "This is a test of the urgent email template."
+    : "This is a high-priority lead requiring immediate action!";
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 URGENT LEAD</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(220, 38, 38, 0.2);">
+          <!-- URGENT Header - Red Gradient -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">
+                🔥 URGENT LEAD - ACTION REQUIRED
+              </h1>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 16px; font-weight: 500;">
+                ${urgencyMessage}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Priority Alert Banner -->
+          <tr>
+            <td style="background-color: #FEE2E2; padding: 16px 30px; border-bottom: 2px solid #DC2626;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <p style="margin: 0; color: #991B1B; font-size: 15px; font-weight: 700;">
+                      ⚡ THIS LEAD REQUIRES IMMEDIATE ATTENTION
+                    </p>
+                    <p style="margin: 4px 0 0; color: #B91C1C; font-size: 13px;">
+                      You have ${claimWindowMinutes} minutes to respond
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px;">
+                Hi ${agentName},
+              </p>
+              <p style="margin: 0 0 24px; color: #374151; font-size: 16px;">
+                ${flag} A high-priority ${normalizedLead.language?.toUpperCase()} lead requires your immediate attention:
+              </p>
+              
+              <!-- Lead Card - Highlighted -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FEF2F2; border-radius: 8px; border: 2px solid #FCA5A5; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <h2 style="margin: 0 0 8px; color: #111827; font-size: 22px; font-weight: bold;">
+                            ${lead.first_name} ${lead.last_name}
+                          </h2>
+                          <span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">
+                            ${normalizedLead.lead_segment}
+                          </span>
+                          ${lead.budget_range ? `<span style="display: inline-block; background-color: #059669; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">${lead.budget_range}</span>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;">
+                      <tr>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${normalizedLead.phone_number}</p>
+                        </td>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Language</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${flag} ${normalizedLead.language?.toUpperCase()}</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Location</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.location_preference?.join(", ") || "Not specified"}</p>
+                        </td>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Timeframe</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.timeframe || "Not specified"}</p>
+                        </td>
+                      </tr>
+                      ${lead.property_type ? `
+                      <tr>
+                        <td colspan="2" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Property Type</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.property_type}</p>
+                        </td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td colspan="2" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- LARGE URGENT CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${claimUrl}" style="display: inline-block; background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: #ffffff; font-size: 18px; font-weight: bold; text-decoration: none; padding: 20px 60px; border-radius: 10px; box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                      🔥 CLAIM THIS LEAD IMMEDIATELY 🔥
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 24px 0 0; color: #991B1B; font-size: 14px; text-align: center; font-weight: 600;">
+                ⚠️ This is a direct assignment. Your response is expected immediately!
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #1F2937; padding: 20px 30px;">
+              <p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">
+                Del Sol Prime Homes CRM • Priority Alert System<br>
+                <span style="color: #FCA5A5;">This is an automated urgent notification</span>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+}
+
 function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, claimWindowMinutes: number) {
-  const flag = getLanguageFlag(lead.language);
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
   
   return [
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: `${flag} New ${lead.language.toUpperCase()} Lead Available!`,
+        text: `${flag} New ${normalizedLead.language?.toUpperCase()} Lead Available!`,
         emoji: true
       }
     },
@@ -225,11 +414,11 @@ function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, cl
         },
         {
           type: "mrkdwn",
-          text: `*Segment:*\n${lead.lead_segment}`
+          text: `*Segment:*\n${normalizedLead.lead_segment}`
         },
         {
           type: "mrkdwn",
-          text: `*Phone:*\n${lead.phone_number}`
+          text: `*Phone:*\n${normalizedLead.phone_number}`
         },
         {
           type: "mrkdwn",
@@ -237,11 +426,11 @@ function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, cl
         },
         {
           type: "mrkdwn",
-          text: `*Location:*\n${lead.location_preference?.join(", ") || "Not specified"}`
+          text: `*Location:*\n${normalizedLead.location_preference?.join(", ") || "Not specified"}`
         },
         {
           type: "mrkdwn",
-          text: `*Timeframe:*\n${lead.timeframe || "Not specified"}`
+          text: `*Timeframe:*\n${normalizedLead.timeframe || "Not specified"}`
         }
       ]
     },
@@ -250,7 +439,7 @@ function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, cl
       elements: [
         {
           type: "mrkdwn",
-          text: `⏱️ *${claimWindowMinutes} minutes* to claim this lead | Source: ${lead.lead_source || "Website"}`
+          text: `⏱️ *${claimWindowMinutes} minutes* to claim this lead | Source: ${normalizedLead.lead_source}`
         }
       ]
     },
@@ -282,8 +471,9 @@ async function sendSlackMessage(
   slackApiKey: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const normalizedLead = normalizeLead(lead);
     const blocks = generateSlackBlocks(lead, agentName, claimUrl, claimWindowMinutes);
-    const flag = getLanguageFlag(lead.language);
+    const flag = getLanguageFlag(normalizedLead.language!);
     
     const response = await fetch(`${SLACK_GATEWAY_URL}/chat.postMessage`, {
       method: "POST",
@@ -294,7 +484,7 @@ async function sendSlackMessage(
       },
       body: JSON.stringify({
         channel: channelId,
-        text: `${flag} New ${lead.language.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`,
+        text: `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`,
         blocks,
       }),
     });
@@ -336,14 +526,15 @@ serve(async (req) => {
       );
     }
 
-    const { lead, agents, claimWindowMinutes }: NotificationRequest = await req.json();
+    const { lead, agents, claimWindowMinutes, notification_type, lead_priority }: NotificationRequest = await req.json();
 
-    console.log(`[send-lead-notification] Sending notifications to ${agents.length} agents for lead ${lead.id}`);
+    console.log(`[send-lead-notification] Sending notifications to ${agents.length} agents for lead ${lead.id}, type: ${notification_type || 'broadcast'}`);
 
     const appUrl = Deno.env.get("APP_URL") || "https://blog-knowledge-vault.lovable.app";
     const results: Array<{ 
       agent: string; 
       emailSuccess: boolean; 
+      emailType?: 'standard' | 'urgent';
       slackSuccess?: boolean;
       slackChannels?: number;
       error?: string 
@@ -357,31 +548,68 @@ serve(async (req) => {
       console.log("[send-lead-notification] Slack integration not configured - skipping Slack notifications");
     }
 
+    // Determine if this is an urgent notification
+    const isUrgentNotification = 
+      notification_type === 'direct_assignment' ||
+      notification_type === 'sla_escalation' ||
+      notification_type === 'test_urgent' ||
+      lead_priority === 'urgent';
+
+    console.log(`[send-lead-notification] Is urgent: ${isUrgentNotification}`);
+
     for (const agent of agents) {
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
       let emailSuccess = false;
+      let emailType: 'standard' | 'urgent' = 'standard';
       let slackSuccess = false;
       let slackChannelCount = 0;
       
+      // Determine which email template to use
+      const useUrgentTemplate = isUrgentNotification && agent.urgent_emails_enabled !== false;
+      emailType = useUrgentTemplate ? 'urgent' : 'standard';
+
+      const normalizedLead = normalizeLead(lead);
+      const flag = getLanguageFlag(normalizedLead.language!);
+
       // Send email notification
       try {
+        const emailHtml = useUrgentTemplate 
+          ? generateUrgentEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes, notification_type || 'urgent')
+          : generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes);
+
+        const emailSubject = useUrgentTemplate
+          ? `🔥 URGENT LEAD: ${lead.first_name} ${lead.last_name} - ${lead.budget_range || 'Action Required'}`
+          : `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`;
+
+        // Build email headers - add X-Priority for urgent emails
+        const emailPayload: Record<string, unknown> = {
+          from: "Del Sol Prime Homes <crm@notifications.delsolprimehomes.com>",
+          to: [agent.email],
+          subject: emailSubject,
+          html: emailHtml,
+        };
+
+        // Add priority headers for urgent emails
+        if (useUrgentTemplate) {
+          emailPayload.headers = {
+            "X-Priority": "1",
+            "X-MSMail-Priority": "High",
+            "Importance": "high",
+          };
+        }
+
         const emailResponse = await fetch(RESEND_API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${resendApiKey}`,
           },
-          body: JSON.stringify({
-            from: "Del Sol Prime Homes <crm@notifications.delsolprimehomes.com>",
-            to: [agent.email],
-            subject: `${getLanguageFlag(lead.language)} New ${lead.language.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`,
-            html: generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes),
-          }),
+          body: JSON.stringify(emailPayload),
         });
 
         const emailResult = await emailResponse.json();
         emailSuccess = emailResponse.ok;
-        console.log(`[send-lead-notification] Email sent to ${agent.email}:`, emailSuccess);
+        console.log(`[send-lead-notification] ${emailType} email sent to ${agent.email}:`, emailSuccess);
       } catch (emailError: unknown) {
         const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
         console.error(`[send-lead-notification] Failed to send email to ${agent.email}:`, emailError);
@@ -427,14 +655,16 @@ serve(async (req) => {
       results.push({ 
         agent: agent.email, 
         emailSuccess,
+        emailType,
         slackSuccess: slackEnabled ? slackSuccess : undefined,
         slackChannels: slackChannelCount
       });
     }
 
     const emailSuccessCount = results.filter(r => r.emailSuccess).length;
+    const urgentEmailCount = results.filter(r => r.emailType === 'urgent').length;
     const slackSuccessCount = results.filter(r => r.slackSuccess).length;
-    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails, ${slackSuccessCount}/${agents.length} Slack notifications`);
+    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails (${urgentEmailCount} urgent), ${slackSuccessCount}/${agents.length} Slack notifications`);
 
     return new Response(
       JSON.stringify({ success: true, results }),

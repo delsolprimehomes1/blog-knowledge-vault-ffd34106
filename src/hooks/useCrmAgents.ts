@@ -21,6 +21,7 @@ export interface CrmAgent {
   created_at: string;
   last_login: string | null;
   updated_at: string;
+  urgent_emails_enabled: boolean;
 }
 
 export function useCrmAgents() {
