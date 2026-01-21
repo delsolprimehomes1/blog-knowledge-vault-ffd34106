@@ -2148,6 +2148,7 @@ export type Database = {
           assigned_at: string | null
           assignment_method: string | null
           bedrooms_desired: string | null
+          breach_timestamp: string | null
           budget_range: string | null
           city_name: string | null
           city_slug: string | null
@@ -2162,6 +2163,7 @@ export type Database = {
           days_since_last_contact: number | null
           email: string | null
           exit_point: string | null
+          first_action_completed: boolean | null
           first_contact_at: string | null
           first_name: string
           full_phone: string | null
@@ -2169,6 +2171,7 @@ export type Database = {
           initial_lead_score: number | null
           intake_complete: boolean | null
           interest: string | null
+          is_night_held: boolean | null
           language: string
           last_contact_at: string | null
           last_name: string
@@ -2195,7 +2198,9 @@ export type Database = {
           round_broadcast_at: string | null
           round_escalated_at: string | null
           routing_rule_id: string | null
+          scheduled_release_at: string | null
           sea_view_importance: string | null
+          sla_breached: boolean | null
           timeframe: string | null
           total_contacts: number | null
           updated_at: string | null
@@ -2208,6 +2213,7 @@ export type Database = {
           assigned_at?: string | null
           assignment_method?: string | null
           bedrooms_desired?: string | null
+          breach_timestamp?: string | null
           budget_range?: string | null
           city_name?: string | null
           city_slug?: string | null
@@ -2222,6 +2228,7 @@ export type Database = {
           days_since_last_contact?: number | null
           email?: string | null
           exit_point?: string | null
+          first_action_completed?: boolean | null
           first_contact_at?: string | null
           first_name: string
           full_phone?: string | null
@@ -2229,6 +2236,7 @@ export type Database = {
           initial_lead_score?: number | null
           intake_complete?: boolean | null
           interest?: string | null
+          is_night_held?: boolean | null
           language: string
           last_contact_at?: string | null
           last_name: string
@@ -2255,7 +2263,9 @@ export type Database = {
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
           routing_rule_id?: string | null
+          scheduled_release_at?: string | null
           sea_view_importance?: string | null
+          sla_breached?: boolean | null
           timeframe?: string | null
           total_contacts?: number | null
           updated_at?: string | null
@@ -2268,6 +2278,7 @@ export type Database = {
           assigned_at?: string | null
           assignment_method?: string | null
           bedrooms_desired?: string | null
+          breach_timestamp?: string | null
           budget_range?: string | null
           city_name?: string | null
           city_slug?: string | null
@@ -2282,6 +2293,7 @@ export type Database = {
           days_since_last_contact?: number | null
           email?: string | null
           exit_point?: string | null
+          first_action_completed?: boolean | null
           first_contact_at?: string | null
           first_name?: string
           full_phone?: string | null
@@ -2289,6 +2301,7 @@ export type Database = {
           initial_lead_score?: number | null
           intake_complete?: boolean | null
           interest?: string | null
+          is_night_held?: boolean | null
           language?: string
           last_contact_at?: string | null
           last_name?: string
@@ -2315,7 +2328,9 @@ export type Database = {
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
           routing_rule_id?: string | null
+          scheduled_release_at?: string | null
           sea_view_importance?: string | null
+          sla_breached?: boolean | null
           timeframe?: string | null
           total_contacts?: number | null
           updated_at?: string | null
@@ -2585,6 +2600,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
       }
       dead_link_replacements: {
         Row: {
@@ -4575,6 +4614,10 @@ export type Database = {
           original_url: string
           replacement_url: string
         }[]
+      }
+      decrement_agent_lead_count: {
+        Args: { p_agent_id: string }
+        Returns: undefined
       }
       escalate_lead_to_next_round: {
         Args: { p_lead_id: string }

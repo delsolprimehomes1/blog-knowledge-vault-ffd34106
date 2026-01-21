@@ -141,6 +141,23 @@ export function useLeadActivities({ leadId, agentId }: UseLeadActivitiesOptions)
       // Also update lead's last_contact_at
       await updateLeadContact();
 
+      // STOP SLA TIMER: Mark first action completed for meaningful contact activities
+      // This prevents SLA breach when agent takes action on the lead
+      const meaningfulActions: ActivityType[] = ["call", "email", "whatsapp", "meeting"];
+      if (meaningfulActions.includes(input.activityType)) {
+        const { error: slaError } = await supabase
+          .from("crm_leads")
+          .update({ first_action_completed: true })
+          .eq("id", leadId)
+          .eq("first_action_completed", false); // Only update if not already set
+
+        if (slaError) {
+          console.error("[useLeadActivities] Error updating SLA status:", slaError);
+        } else {
+          console.log("[useLeadActivities] SLA timer stopped - first action completed");
+        }
+      }
+
       return input;
     },
     onSuccess: (input) => {

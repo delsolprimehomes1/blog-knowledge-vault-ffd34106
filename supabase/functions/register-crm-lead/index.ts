@@ -65,6 +65,12 @@ interface RoutingRule {
   total_matches: number;
 }
 
+interface BusinessHoursConfig {
+  start: number;
+  end: number;
+  timezone: string;
+}
+
 // Calculate lead score based on criteria
 function calculateLeadScore(payload: LeadPayload): number {
   let score = 0;
@@ -132,6 +138,75 @@ function getLanguageFlag(language: string): string {
   return flags[language?.toLowerCase()] || "🌍";
 }
 
+// Check if current time is within business hours
+async function isWithinBusinessHours(supabase: any): Promise<{
+  isBusinessHours: boolean;
+  nextOpenTime: Date | null;
+  config: BusinessHoursConfig;
+}> {
+  // Get settings from database
+  const { data: settings } = await supabase
+    .from("crm_system_settings")
+    .select("value")
+    .eq("key", "business_hours")
+    .single();
+
+  const config: BusinessHoursConfig = settings?.value || { start: 9, end: 21, timezone: "Europe/Madrid" };
+  
+  // Get current time in Madrid timezone
+  const now = new Date();
+  const madridFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.timezone,
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+  });
+  const madridParts = madridFormatter.formatToParts(now);
+  const currentHour = parseInt(madridParts.find(p => p.type === "hour")?.value || "0");
+  
+  const isOpen = currentHour >= config.start && currentHour < config.end;
+  
+  console.log(`[register-crm-lead] Business hours check: Current hour in ${config.timezone}: ${currentHour}, Open: ${config.start}-${config.end}, Is open: ${isOpen}`);
+  
+  if (!isOpen) {
+    // Calculate next opening time
+    const nextOpen = new Date();
+    
+    // Get Madrid date parts
+    const madridDateFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: config.timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const madridDate = madridDateFormatter.format(now);
+    
+    // If after business hours, next open is tomorrow
+    if (currentHour >= config.end) {
+      nextOpen.setDate(nextOpen.getDate() + 1);
+    }
+    
+    // Set to opening hour in Madrid timezone
+    // Create a date string for the target time in Madrid
+    const targetDateStr = currentHour >= config.end 
+      ? new Date(nextOpen).toISOString().split("T")[0] 
+      : madridDate;
+    
+    // Parse as Madrid time and convert to UTC
+    const madridOpenTime = new Date(`${targetDateStr}T${String(config.start).padStart(2, "0")}:00:00`);
+    
+    // Adjust for timezone offset (Madrid is UTC+1 or UTC+2 depending on DST)
+    const utcFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: config.timezone,
+      timeZoneName: "short",
+    });
+    
+    return { isBusinessHours: false, nextOpenTime: madridOpenTime, config };
+  }
+  
+  return { isBusinessHours: true, nextOpenTime: null, config };
+}
+
 // Check if a lead matches a routing rule
 function ruleMatches(lead: any, rule: RoutingRule): boolean {
   // Check language
@@ -161,7 +236,7 @@ function ruleMatches(lead: any, rule: RoutingRule): boolean {
   
   // Check budget
   if (rule.match_budget_range?.length) {
-    if (!lead.budget_range || !rule.match_budget_range.some(b => lead.budget_range?.includes(b))) {
+    if (!lead.budget_range || !rule.match_budget_range.some((b: string) => lead.budget_range?.includes(b))) {
       return false;
     }
   }
@@ -399,6 +474,10 @@ serve(async (req) => {
         current_round: 1,
         round_broadcast_at: new Date().toISOString(),
         claim_window_expires_at: new Date(Date.now() + claimWindowMinutes * 60 * 1000).toISOString(),
+        // Initialize new SLA tracking fields
+        is_night_held: false,
+        sla_breached: false,
+        first_action_completed: false,
       })
       .select()
       .single();
@@ -410,7 +489,41 @@ serve(async (req) => {
 
     console.log("[register-crm-lead] Lead created:", lead.id);
 
-    // 2. TIER 1: Check for matching routing rules
+    // 2. CHECK BUSINESS HOURS - Night Hold Logic
+    const { isBusinessHours, nextOpenTime, config } = await isWithinBusinessHours(supabase);
+
+    if (!isBusinessHours) {
+      // NIGHT HOLD: Don't route, schedule for release at next business day opening
+      const scheduledRelease = nextOpenTime?.toISOString() || new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+      
+      await supabase
+        .from("crm_leads")
+        .update({
+          is_night_held: true,
+          scheduled_release_at: scheduledRelease,
+          lead_status: "night_held",
+          claim_window_expires_at: null, // Clear claim window during night hold
+        })
+        .eq("id", lead.id);
+
+      console.log(`[register-crm-lead] NIGHT HOLD: Lead ${lead.id} scheduled for release at ${scheduledRelease}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          leadId: lead.id,
+          segment,
+          score,
+          assignmentMethod: "night_held",
+          scheduledRelease,
+          businessHours: config,
+          message: `Lead received outside business hours (${config.start}:00-${config.end}:00 ${config.timezone}). Will be routed at ${scheduledRelease}.`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 3. TIER 1: Check for matching routing rules
     const matchedRule = await findMatchingRule(lead, supabase);
 
     if (matchedRule) {
@@ -439,7 +552,7 @@ serve(async (req) => {
       }
     }
 
-    // 3. TIER 2: No rule matched or fallback - Use round robin config if available
+    // 4. TIER 2: No rule matched or fallback - Use round robin config if available
     let availableAgents: any[] = [];
 
     if (roundConfig && roundConfig.agent_ids?.length > 0) {
@@ -488,7 +601,7 @@ serve(async (req) => {
 
     console.log(`[register-crm-lead] Found ${availableAgents.length} eligible agents for ${language}`);
 
-    // 4. Create notifications for all eligible agents
+    // 5. Create notifications for all eligible agents
     if (availableAgents.length > 0) {
       const notifications = availableAgents.map((agent: { id: string; first_name: string }) => ({
         agent_id: agent.id,
@@ -510,7 +623,7 @@ serve(async (req) => {
         console.log(`[register-crm-lead] Created ${notifications.length} notifications`);
       }
 
-      // 5. Send email notifications
+      // 6. Send email notifications
       try {
         await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
           method: "POST",
