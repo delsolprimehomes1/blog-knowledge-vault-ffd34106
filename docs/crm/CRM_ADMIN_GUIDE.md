@@ -454,4 +454,36 @@ Check:
 
 ---
 
+## Admin Responsibilities Schedule
+
+### Daily Tasks
+
+| Time | Task | Priority |
+|------|------|----------|
+| 9:00 AM | Check unclaimed leads >30 minutes | High |
+| 9:30 AM | Review overnight SLA breaches | High |
+| 10:00 AM | Check error logs in Cloud View | Medium |
+| Throughout | Respond to agent questions | High |
+| 5:00 PM | End of day unclaimed lead check | High |
+
+### Weekly Tasks (Every Friday)
+
+| Task | Description |
+|------|-------------|
+| **Performance Report** | Generate metrics: claim times, SLA compliance, conversion rates |
+| **Agent Feedback** | Collect and review agent feedback |
+| **Improvement Planning** | Identify bottlenecks and plan fixes |
+| **Documentation Updates** | Update guides based on feedback |
+
+### Monthly Tasks (First Monday)
+
+| Task | Description |
+|------|-------------|
+| **Trend Analysis** | Review month-over-month metrics |
+| **Feature Planning** | Plan new features based on needs |
+| **Support Ticket Review** | Analyze common issues |
+| **Training Materials** | Update training docs and videos |
+
+---
+
 *Last Updated: January 2026*
