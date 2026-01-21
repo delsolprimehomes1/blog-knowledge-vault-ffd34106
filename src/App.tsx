@@ -122,6 +122,7 @@ import { CrmAgentRoute } from "@/components/crm/CrmAgentRoute";
 import { CrmAdminRoute } from "@/components/crm/CrmAdminRoute";
 import { CrmAdminLayout } from "@/components/crm/CrmAdminLayout";
 const CrmDashboard = lazy(() => import("./pages/crm/admin/CrmDashboard"));
+const CrmAnalytics = lazy(() => import("./pages/crm/admin/CrmAnalytics"));
 const CrmAgentManagement = lazy(() => import("./pages/crm/admin/AgentManagement"));
 const CrmAgentDetails = lazy(() => import("./pages/crm/admin/AgentDetails"));
 const CrmLeadsOverview = lazy(() => import("./pages/crm/admin/LeadsOverview"));
@@ -252,6 +253,7 @@ const App = () => (
               {/* CRM Admin Protected Routes */}
               <Route path="/crm/admin" element={<CrmAdminRoute><CrmAdminLayout /></CrmAdminRoute>}>
                 <Route path="dashboard" element={<CrmDashboard />} />
+                <Route path="analytics" element={<CrmAnalytics />} />
                 <Route path="agents" element={<CrmAgentManagement />} />
                 <Route path="agents/:id" element={<CrmAgentDetails />} />
                 <Route path="leads" element={<CrmLeadsOverview />} />

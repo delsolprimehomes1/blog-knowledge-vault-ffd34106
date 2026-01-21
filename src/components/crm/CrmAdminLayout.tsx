@@ -14,10 +14,12 @@ import {
   Shield,
   Route,
   RefreshCcw,
+  BarChart3,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/crm/admin/dashboard", icon: LayoutDashboard },
+  { name: "Analytics", href: "/crm/admin/analytics", icon: BarChart3 },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
   { name: "Leads Overview", href: "/crm/admin/leads", icon: ClipboardList },
   { name: "Routing Rules", href: "/crm/admin/routing-rules", icon: Route },
