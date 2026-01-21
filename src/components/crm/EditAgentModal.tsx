@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUpdateAgent, CrmAgent } from "@/hooks/useCrmAgents";
+import {
+  useSlackChannels,
+  useAgentSlackChannels,
+  useUpdateAgentSlackChannels,
+  SlackChannel,
+} from "@/hooks/useSlackChannels";
+import { SlackChannelSelector } from "@/components/crm/SlackChannelSelector";
 import {
   editAgentFormSchema,
   EditAgentFormData,
@@ -35,7 +43,13 @@ interface EditAgentModalProps {
 
 export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProps) {
   const updateAgent = useUpdateAgent();
+  const updateAgentSlackChannels = useUpdateAgentSlackChannels();
+  const { data: allChannels = [] } = useSlackChannels();
+  const { data: agentChannels = [] } = useAgentSlackChannels(agent?.id || "");
+  
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [slackEnabled, setSlackEnabled] = useState(false);
+  const [selectedSlackChannels, setSelectedSlackChannels] = useState<string[]>([]);
 
   const {
     register,
@@ -66,8 +80,19 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
         timezone: agent.timezone,
       });
       setSelectedLanguages(agent.languages);
+      // @ts-ignore - slack_notifications is newly added
+      setSlackEnabled(agent.slack_notifications || false);
     }
   }, [agent, open, reset]);
+
+  // Load agent's assigned Slack channels
+  useEffect(() => {
+    if (agentChannels.length > 0) {
+      setSelectedSlackChannels(agentChannels.map((c) => c.channel_id));
+    } else {
+      setSelectedSlackChannels([]);
+    }
+  }, [agentChannels]);
 
   const toggleLanguage = (code: string) => {
     const updated = selectedLanguages.includes(code)
@@ -77,10 +102,15 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
     setValue("languages", updated);
   };
 
+  const handleSlackChannelsChange = (channelIds: string[], channels: SlackChannel[]) => {
+    setSelectedSlackChannels(channelIds);
+  };
+
   const onSubmit = async (data: EditAgentFormData) => {
     if (!agent) return;
 
     try {
+      // Update agent profile
       const updateData: Partial<CrmAgent> = {
         first_name: data.first_name,
         last_name: data.last_name,
@@ -91,9 +121,19 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
         slack_channel_id: data.slack_channel_id || null,
         email_notifications: data.email_notifications,
         timezone: data.timezone,
+        // @ts-ignore - slack_notifications is newly added
+        slack_notifications: slackEnabled,
       };
 
       await updateAgent.mutateAsync({ id: agent.id, data: updateData });
+
+      // Update Slack channel assignments
+      await updateAgentSlackChannels.mutateAsync({
+        agentId: agent.id,
+        channelIds: slackEnabled ? selectedSlackChannels : [],
+        channels: allChannels,
+      });
+
       onOpenChange(false);
     } catch (error) {
       // Error handled by mutation
@@ -212,22 +252,48 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="slack_channel_id">Slack Channel ID</Label>
-            <Input id="slack_channel_id" {...register("slack_channel_id")} />
-          </div>
+          {/* Notification Settings */}
+          <div className="space-y-4 pt-2 border-t">
+            <h4 className="font-medium text-sm">Notification Settings</h4>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_notifications" className="cursor-pointer">
+                  Email Notifications
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receive lead alerts via email
+                </p>
+              </div>
+              <Switch
+                id="email_notifications"
+                checked={emailNotifications}
+                onCheckedChange={(checked) => setValue("email_notifications", checked)}
+              />
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="email_notifications"
-              checked={emailNotifications}
-              onCheckedChange={(checked) =>
-                setValue("email_notifications", checked as boolean)
-              }
-            />
-            <Label htmlFor="email_notifications" className="cursor-pointer">
-              Enable email notifications
-            </Label>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="slack_notifications" className="cursor-pointer">
+                  Slack Notifications
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receive lead alerts in Slack channels
+                </p>
+              </div>
+              <Switch
+                id="slack_notifications"
+                checked={slackEnabled}
+                onCheckedChange={setSlackEnabled}
+              />
+            </div>
+
+            {slackEnabled && (
+              <SlackChannelSelector
+                selectedChannelIds={selectedSlackChannels}
+                onChannelsChange={handleSlackChannelsChange}
+              />
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -238,8 +304,8 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateAgent.isPending}>
-              {updateAgent.isPending ? (
+            <Button type="submit" disabled={updateAgent.isPending || updateAgentSlackChannels.isPending}>
+              {(updateAgent.isPending || updateAgentSlackChannels.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateAgent } from "@/hooks/useCrmAgents";
+import { useSlackChannels, useUpdateAgentSlackChannels, SlackChannel } from "@/hooks/useSlackChannels";
+import { SlackChannelSelector } from "@/components/crm/SlackChannelSelector";
 import {
   agentFormSchema,
   AgentFormData,
@@ -34,7 +37,12 @@ interface AddAgentModalProps {
 
 export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
   const createAgent = useCreateAgent();
+  const updateAgentSlackChannels = useUpdateAgentSlackChannels();
+  const { data: allChannels = [] } = useSlackChannels();
+  
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
+  const [slackEnabled, setSlackEnabled] = useState(false);
+  const [selectedSlackChannels, setSelectedSlackChannels] = useState<string[]>([]);
 
   const {
     register,
@@ -64,9 +72,13 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
     setValue("languages", updated);
   };
 
+  const handleSlackChannelsChange = (channelIds: string[], channels: SlackChannel[]) => {
+    setSelectedSlackChannels(channelIds);
+  };
+
   const onSubmit = async (data: AgentFormData) => {
     try {
-      await createAgent.mutateAsync({
+      const result = await createAgent.mutateAsync({
         email: data.email,
         password: data.password,
         first_name: data.first_name,
@@ -79,8 +91,20 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
         email_notifications: data.email_notifications,
         timezone: data.timezone,
       });
+
+      // If agent was created and Slack is enabled, assign channels
+      if (result?.agentId && slackEnabled && selectedSlackChannels.length > 0) {
+        await updateAgentSlackChannels.mutateAsync({
+          agentId: result.agentId,
+          channelIds: selectedSlackChannels,
+          channels: allChannels,
+        });
+      }
+
       reset();
       setSelectedLanguages(["en"]);
+      setSlackEnabled(false);
+      setSelectedSlackChannels([]);
       onOpenChange(false);
     } catch (error) {
       // Error handled by mutation
@@ -224,26 +248,48 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="slack_channel_id">Slack Channel ID (optional)</Label>
-            <Input
-              id="slack_channel_id"
-              {...register("slack_channel_id")}
-              placeholder="C01234567"
-            />
-          </div>
+          {/* Notification Settings */}
+          <div className="space-y-4 pt-2 border-t">
+            <h4 className="font-medium text-sm">Notification Settings</h4>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="email_notifications" className="cursor-pointer">
+                  Email Notifications
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receive lead alerts via email
+                </p>
+              </div>
+              <Switch
+                id="email_notifications"
+                checked={emailNotifications}
+                onCheckedChange={(checked) => setValue("email_notifications", checked)}
+              />
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="email_notifications"
-              checked={emailNotifications}
-              onCheckedChange={(checked) =>
-                setValue("email_notifications", checked as boolean)
-              }
-            />
-            <Label htmlFor="email_notifications" className="cursor-pointer">
-              Enable email notifications
-            </Label>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="slack_notifications" className="cursor-pointer">
+                  Slack Notifications
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Receive lead alerts in Slack channels
+                </p>
+              </div>
+              <Switch
+                id="slack_notifications"
+                checked={slackEnabled}
+                onCheckedChange={setSlackEnabled}
+              />
+            </div>
+
+            {slackEnabled && (
+              <SlackChannelSelector
+                selectedChannelIds={selectedSlackChannels}
+                onChannelsChange={handleSlackChannelsChange}
+              />
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

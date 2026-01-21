@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Using fetch instead of Resend SDK for Deno compatibility
 const RESEND_API_URL = "https://api.resend.com/emails";
+const SLACK_GATEWAY_URL = "https://gateway.lovable.dev/slack/api";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,7 @@ interface Agent {
   email: string;
   first_name: string;
   last_name: string;
+  slack_notifications?: boolean;
 }
 
 interface Lead {
@@ -192,6 +194,126 @@ function generateEmailHtml(lead: Lead, agentName: string, claimUrl: string, clai
 `;
 }
 
+function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, claimWindowMinutes: number) {
+  const flag = getLanguageFlag(lead.language);
+  
+  return [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `${flag} New ${lead.language.toUpperCase()} Lead Available!`,
+        emoji: true
+      }
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Hey ${agentName}! A new lead matching your profile is ready to claim.`
+      }
+    },
+    {
+      type: "divider"
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Name:*\n${lead.first_name} ${lead.last_name}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Segment:*\n${lead.lead_segment}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Phone:*\n${lead.phone_number}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Budget:*\n${lead.budget_range || "Not specified"}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Location:*\n${lead.location_preference?.join(", ") || "Not specified"}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Timeframe:*\n${lead.timeframe || "Not specified"}`
+        }
+      ]
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `⏱️ *${claimWindowMinutes} minutes* to claim this lead | Source: ${lead.lead_source || "Website"}`
+        }
+      ]
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "⚡ Claim This Lead",
+            emoji: true
+          },
+          style: "primary",
+          url: claimUrl
+        }
+      ]
+    }
+  ];
+}
+
+async function sendSlackMessage(
+  channelId: string,
+  lead: Lead,
+  agentName: string,
+  claimUrl: string,
+  claimWindowMinutes: number,
+  lovableApiKey: string,
+  slackApiKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const blocks = generateSlackBlocks(lead, agentName, claimUrl, claimWindowMinutes);
+    const flag = getLanguageFlag(lead.language);
+    
+    const response = await fetch(`${SLACK_GATEWAY_URL}/chat.postMessage`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${lovableApiKey}`,
+        "X-Connection-Api-Key": slackApiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        text: `${flag} New ${lead.language.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`,
+        blocks,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok || !data.ok) {
+      console.error(`[Slack] Error posting to ${channelId}:`, data);
+      return { success: false, error: data.error || "Unknown Slack error" };
+    }
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Slack] Exception posting to ${channelId}:`, error);
+    return { success: false, error: errorMessage };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -199,6 +321,13 @@ serve(async (req) => {
 
   try {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const slackApiKey = Deno.env.get("SLACK_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     if (!resendApiKey) {
       console.error("[send-lead-notification] RESEND_API_KEY not configured");
       return new Response(
@@ -209,14 +338,32 @@ serve(async (req) => {
 
     const { lead, agents, claimWindowMinutes }: NotificationRequest = await req.json();
 
-    console.log(`[send-lead-notification] Sending emails to ${agents.length} agents for lead ${lead.id}`);
+    console.log(`[send-lead-notification] Sending notifications to ${agents.length} agents for lead ${lead.id}`);
 
     const appUrl = Deno.env.get("APP_URL") || "https://blog-knowledge-vault.lovable.app";
-    const results: Array<{ agent: string; success: boolean; error?: string }> = [];
+    const results: Array<{ 
+      agent: string; 
+      emailSuccess: boolean; 
+      slackSuccess?: boolean;
+      slackChannels?: number;
+      error?: string 
+    }> = [];
+
+    // Check if Slack is configured
+    const slackEnabled = !!(lovableApiKey && slackApiKey);
+    if (slackEnabled) {
+      console.log("[send-lead-notification] Slack integration is enabled");
+    } else {
+      console.log("[send-lead-notification] Slack integration not configured - skipping Slack notifications");
+    }
 
     for (const agent of agents) {
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
+      let emailSuccess = false;
+      let slackSuccess = false;
+      let slackChannelCount = 0;
       
+      // Send email notification
       try {
         const emailResponse = await fetch(RESEND_API_URL, {
           method: "POST",
@@ -233,17 +380,61 @@ serve(async (req) => {
         });
 
         const emailResult = await emailResponse.json();
-        console.log(`[send-lead-notification] Email sent to ${agent.email}:`, emailResult);
-        results.push({ agent: agent.email, success: emailResponse.ok });
+        emailSuccess = emailResponse.ok;
+        console.log(`[send-lead-notification] Email sent to ${agent.email}:`, emailSuccess);
       } catch (emailError: unknown) {
         const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-        console.error(`[send-lead-notification] Failed to send to ${agent.email}:`, emailError);
-        results.push({ agent: agent.email, success: false, error: errorMessage });
+        console.error(`[send-lead-notification] Failed to send email to ${agent.email}:`, emailError);
       }
+
+      // Send Slack notifications if enabled and agent has Slack notifications turned on
+      if (slackEnabled && agent.slack_notifications) {
+        try {
+          // Get agent's assigned Slack channels
+          const { data: agentChannels, error: channelsError } = await supabase
+            .from("agent_slack_channels")
+            .select("channel_id, channel_name")
+            .eq("agent_id", agent.id)
+            .eq("is_active", true);
+
+          if (channelsError) {
+            console.error(`[send-lead-notification] Error fetching Slack channels for ${agent.email}:`, channelsError);
+          } else if (agentChannels && agentChannels.length > 0) {
+            slackChannelCount = agentChannels.length;
+            console.log(`[send-lead-notification] Sending to ${slackChannelCount} Slack channels for ${agent.email}`);
+
+            let successCount = 0;
+            for (const channel of agentChannels) {
+              const result = await sendSlackMessage(
+                channel.channel_id,
+                lead,
+                agent.first_name,
+                claimUrl,
+                claimWindowMinutes,
+                lovableApiKey!,
+                slackApiKey!
+              );
+              if (result.success) successCount++;
+            }
+            slackSuccess = successCount > 0;
+            console.log(`[send-lead-notification] Slack: ${successCount}/${slackChannelCount} channels notified for ${agent.email}`);
+          }
+        } catch (slackError: unknown) {
+          console.error(`[send-lead-notification] Slack error for ${agent.email}:`, slackError);
+        }
+      }
+
+      results.push({ 
+        agent: agent.email, 
+        emailSuccess,
+        slackSuccess: slackEnabled ? slackSuccess : undefined,
+        slackChannels: slackChannelCount
+      });
     }
 
-    const successCount = results.filter(r => r.success).length;
-    console.log(`[send-lead-notification] Sent ${successCount}/${agents.length} emails successfully`);
+    const emailSuccessCount = results.filter(r => r.emailSuccess).length;
+    const slackSuccessCount = results.filter(r => r.slackSuccess).length;
+    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails, ${slackSuccessCount}/${agents.length} Slack notifications`);
 
     return new Response(
       JSON.stringify({ success: true, results }),

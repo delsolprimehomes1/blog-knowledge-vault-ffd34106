@@ -104,6 +104,41 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_slack_channels: {
+        Row: {
+          agent_id: string
+          channel_id: string
+          channel_name: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+        }
+        Insert: {
+          agent_id: string
+          channel_id: string
+          channel_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Update: {
+          agent_id?: string
+          channel_id?: string
+          channel_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_slack_channels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approved_domains: {
         Row: {
           category: string
@@ -2007,6 +2042,7 @@ export type Database = {
           phone: string | null
           role: string
           slack_channel_id: string | null
+          slack_notifications: boolean | null
           slack_user_id: string | null
           timezone: string | null
           updated_at: string | null
@@ -2027,6 +2063,7 @@ export type Database = {
           phone?: string | null
           role?: string
           slack_channel_id?: string | null
+          slack_notifications?: boolean | null
           slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -2047,6 +2084,7 @@ export type Database = {
           phone?: string | null
           role?: string
           slack_channel_id?: string | null
+          slack_notifications?: boolean | null
           slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -4178,6 +4216,33 @@ export type Database = {
           validation_duration_ms?: number | null
           xml_is_valid?: boolean
           xml_validation_errors?: Json | null
+        }
+        Relationships: []
+      }
+      slack_channels: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_private: boolean | null
+          last_synced_at: string | null
+          member_count: number | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          is_private?: boolean | null
+          last_synced_at?: string | null
+          member_count?: number | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_private?: boolean | null
+          last_synced_at?: string | null
+          member_count?: number | null
+          name?: string
         }
         Relationships: []
       }
