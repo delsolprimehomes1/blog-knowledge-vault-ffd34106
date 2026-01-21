@@ -93,9 +93,10 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
       });
 
       // If agent was created and Slack is enabled, assign channels
-      if (result?.agentId && slackEnabled && selectedSlackChannels.length > 0) {
+      const agentId = result?.agentId ?? result?.agent?.id;
+      if (agentId && slackEnabled && selectedSlackChannels.length > 0) {
         await updateAgentSlackChannels.mutateAsync({
-          agentId: result.agentId,
+          agentId,
           channelIds: selectedSlackChannels,
           channels: allChannels,
         });

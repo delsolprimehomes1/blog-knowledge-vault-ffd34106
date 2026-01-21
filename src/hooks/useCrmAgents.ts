@@ -167,7 +167,23 @@ export function useCreateAgent() {
         body: data,
       });
 
-      if (error) throw error;
+      // Parse error from response body if available
+      if (error) {
+        // Try to extract error message from the response context
+        let errorMessage = error.message;
+        try {
+          if (error.context && typeof error.context === 'object' && 'json' in error.context) {
+            const body = await (error.context as Response).json();
+            if (body?.error) {
+              errorMessage = body.error;
+            }
+          }
+        } catch {
+          // Use original error message if parsing fails
+        }
+        throw new Error(errorMessage);
+      }
+      
       if (result?.error) throw new Error(result.error);
       return result;
     },
