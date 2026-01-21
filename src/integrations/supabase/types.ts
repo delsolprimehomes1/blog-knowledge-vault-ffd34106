@@ -1916,6 +1916,7 @@ export type Database = {
         Row: {
           activity_type: string
           agent_id: string
+          auto_status_update: string | null
           call_duration: number | null
           callback_completed: boolean | null
           callback_datetime: string | null
@@ -1923,15 +1924,19 @@ export type Database = {
           callback_requested: boolean | null
           created_at: string | null
           id: string
+          interest_level: string | null
           lead_id: string
           notes: string
           outcome: string | null
           scheduled_for: string | null
+          sentiment_score: number | null
           subject: string | null
+          whatsapp_template_used: string | null
         }
         Insert: {
           activity_type: string
           agent_id: string
+          auto_status_update?: string | null
           call_duration?: number | null
           callback_completed?: boolean | null
           callback_datetime?: string | null
@@ -1939,15 +1944,19 @@ export type Database = {
           callback_requested?: boolean | null
           created_at?: string | null
           id?: string
+          interest_level?: string | null
           lead_id: string
           notes: string
           outcome?: string | null
           scheduled_for?: string | null
+          sentiment_score?: number | null
           subject?: string | null
+          whatsapp_template_used?: string | null
         }
         Update: {
           activity_type?: string
           agent_id?: string
+          auto_status_update?: string | null
           call_duration?: number | null
           callback_completed?: boolean | null
           callback_datetime?: string | null
@@ -1955,11 +1964,14 @@ export type Database = {
           callback_requested?: boolean | null
           created_at?: string | null
           id?: string
+          interest_level?: string | null
           lead_id?: string
           notes?: string
           outcome?: string | null
           scheduled_for?: string | null
+          sentiment_score?: number | null
           subject?: string | null
+          whatsapp_template_used?: string | null
         }
         Relationships: [
           {

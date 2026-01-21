@@ -112,14 +112,30 @@ function ActivityTimelineItem({
           </p>
         </div>
 
-        {activity.outcome && (
-          <Badge
-            variant="secondary"
-            className={cn("text-xs mb-2", getOutcomeColor(activity.outcome))}
-          >
-            {activity.outcome.replace(/_/g, " ")}
-          </Badge>
-        )}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {activity.outcome && (
+            <Badge
+              variant="secondary"
+              className={cn("text-xs", getOutcomeColor(activity.outcome))}
+            >
+              {activity.outcome.replace(/_/g, " ")}
+            </Badge>
+          )}
+          {(activity as any).interest_level && (
+            <Badge variant="outline" className="text-xs">
+              {(activity as any).interest_level === "very_interested" && "🤩"}
+              {(activity as any).interest_level === "interested" && "😊"}
+              {(activity as any).interest_level === "neutral" && "😐"}
+              {(activity as any).interest_level === "not_interested" && "😞"}
+              {" "}{(activity as any).interest_level.replace(/_/g, " ")}
+            </Badge>
+          )}
+          {(activity as any).whatsapp_template_used && (
+            <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+              📱 WhatsApp sent
+            </Badge>
+          )}
+        </div>
 
         {activity.notes && (
           <p className="text-sm text-muted-foreground mb-2">{activity.notes}</p>

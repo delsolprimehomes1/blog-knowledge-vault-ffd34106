@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 // Hooks
 import { useLeadDetail } from "@/hooks/useLeadDetail";
@@ -18,14 +17,13 @@ import { EmmaConversationCard } from "@/components/crm/detail/EmmaConversationCa
 import { ActivityTimeline } from "@/components/crm/detail/ActivityTimeline";
 import { LeadSourceCard, AssignmentCard, FormSubmissionCard } from "@/components/crm/detail/LeadSourceCard";
 import { QuickNotesCard } from "@/components/crm/detail/QuickNotesCard";
-import { LogActivityDialog } from "@/components/crm/detail/LogActivityDialog";
+import { QuickActionButtons } from "@/components/crm/activities/QuickActionButtons";
 
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
 
-  // Get agent ID
+  // Get agent info
   const { data: session } = useQuery({
     queryKey: ["auth-session"],
     queryFn: async () => {
@@ -34,6 +32,22 @@ export default function LeadDetailPage() {
     },
   });
   const agentId = session?.user?.id;
+
+  // Get agent name
+  const { data: agentData } = useQuery({
+    queryKey: ["agent-profile", agentId],
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data } = await supabase
+        .from("crm_agents")
+        .select("first_name, last_name")
+        .eq("id", agentId)
+        .single();
+      return data;
+    },
+    enabled: !!agentId,
+  });
+  const agentName = agentData?.first_name || "Agent";
 
   // Lead data hook
   const {
@@ -74,7 +88,6 @@ export default function LeadDetailPage() {
     if (lead?.phone_number) {
       window.location.href = `tel:${lead.phone_number}`;
       logContact();
-      setActivityDialogOpen(true);
     }
   }, [lead, logContact]);
 
@@ -102,6 +115,17 @@ export default function LeadDetailPage() {
       navigate("/crm/agent/leads");
     }
   }, [archiveLead, navigate]);
+
+  const handleUpdateLeadStatus = useCallback((status: string) => {
+    if (lead) {
+      quickUpdate("lead_status", status);
+    }
+  }, [lead, quickUpdate]);
+
+  const handleAddNote = useCallback((text: string, isPinned: boolean) => {
+    addNote(text);
+    // Note: isPinned would need additional logic in the hook
+  }, [addNote]);
 
   // Loading state
   if (isLoading) {
@@ -145,6 +169,26 @@ export default function LeadDetailPage() {
         onWhatsApp={handleWhatsApp}
         onArchive={handleArchive}
       />
+
+      {/* Quick Action Buttons */}
+      <div className="px-4 sm:px-6 py-4 border-b bg-muted/30">
+        <QuickActionButtons
+          lead={{
+            id: lead.id,
+            first_name: lead.first_name || "",
+            last_name: lead.last_name || "",
+            phone_number: lead.phone_number || "",
+            full_phone: lead.full_phone || "",
+            email: lead.email || "",
+            language: lead.language || "en",
+            lead_status: lead.lead_status || "new",
+          }}
+          agentName={agentName}
+          onLogActivity={createActivity}
+          onUpdateLeadStatus={handleUpdateLeadStatus}
+          onAddNote={handleAddNote}
+        />
+      </div>
 
       {/* Main Content - Two Column Layout */}
       <div className="p-4 sm:p-6">
@@ -206,13 +250,6 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* Log Activity Dialog */}
-      <LogActivityDialog
-        open={activityDialogOpen}
-        onOpenChange={setActivityDialogOpen}
-        onLogActivity={createActivity}
-      />
     </div>
   );
 }

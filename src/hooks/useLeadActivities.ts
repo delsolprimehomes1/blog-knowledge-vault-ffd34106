@@ -32,6 +32,10 @@ interface CreateActivityInput {
   callbackRequested?: boolean;
   callbackDatetime?: string;
   callbackNotes?: string;
+  interestLevel?: "very_interested" | "interested" | "neutral" | "not_interested";
+  sentimentScore?: number;
+  whatsappTemplateUsed?: string;
+  autoStatusUpdate?: string;
 }
 
 export function useLeadActivities({ leadId, agentId }: UseLeadActivitiesOptions) {
@@ -125,6 +129,10 @@ export function useLeadActivities({ leadId, agentId }: UseLeadActivitiesOptions)
         callback_datetime: input.callbackDatetime || null,
         callback_notes: input.callbackNotes || null,
         callback_completed: false,
+        interest_level: input.interestLevel || null,
+        sentiment_score: input.sentimentScore || null,
+        whatsapp_template_used: input.whatsappTemplateUsed || null,
+        auto_status_update: input.autoStatusUpdate || null,
         created_at: new Date().toISOString(),
       });
 
