@@ -1,5 +1,5 @@
-import { ReactNode, useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -13,10 +13,6 @@ import {
   Building2,
 } from "lucide-react";
 
-interface CrmAdminLayoutProps {
-  children: ReactNode;
-}
-
 const navigation = [
   { name: "Dashboard", href: "/crm/admin/dashboard", icon: LayoutDashboard },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
@@ -24,7 +20,7 @@ const navigation = [
   { name: "Settings", href: "/crm/admin/settings", icon: Settings },
 ];
 
-export function CrmAdminLayout({ children }: CrmAdminLayoutProps) {
+export function CrmAdminLayout() {
   const navigate = useNavigate();
   const [adminName, setAdminName] = useState("");
 
@@ -143,7 +139,7 @@ export function CrmAdminLayout({ children }: CrmAdminLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6"><Outlet /></main>
       </div>
     </div>
   );
