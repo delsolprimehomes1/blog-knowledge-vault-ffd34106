@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,13 +14,18 @@ import { RefreshCw, Download, Columns, Eye, EyeOff } from "lucide-react";
 import { useAgentLeadsTable, ColumnVisibility, AgentLead } from "@/hooks/useAgentLeadsTable";
 import { useLeadsExport } from "@/hooks/useLeadsExport";
 import { useTableNavigation } from "@/hooks/useKeyboardShortcuts";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { LeadsFilterBar } from "@/components/crm/LeadsFilterBar";
 import { LeadsTable } from "@/components/crm/LeadsTable";
 import { LeadsPagination } from "@/components/crm/LeadsPagination";
 import { BulkActionsBar } from "@/components/crm/BulkActionsBar";
 import { CreateReminderSheet } from "@/components/crm/calendar/CreateReminderSheet";
+import { MobileLeadsList } from "@/components/crm/MobileLeadsList";
+import { MobileFilterSheet } from "@/components/crm/MobileFilterSheet";
 
 export default function AgentLeads() {
+  const isMobile = useIsMobile();
+
   // Get current agent
   const { data: session } = useQuery({
     queryKey: ["auth-session"],
@@ -72,9 +76,9 @@ export default function AgentLeads() {
   // Export hook
   const { exportToCsv } = useLeadsExport();
 
-  // Keyboard navigation
+  // Keyboard navigation (desktop only)
   useTableNavigation({
-    enabled: paginatedLeads.length > 0,
+    enabled: !isMobile && paginatedLeads.length > 0,
   });
 
   // Handle schedule reminder
@@ -129,86 +133,121 @@ export default function AgentLeads() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20 md:pb-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">My Leads</h1>
-          <p className="text-muted-foreground text-sm">
-            {filteredLeads.length} lead{filteredLeads.length !== 1 ? "s" : ""}{" "}
-            {selectedLeads.size > 0 && (
-              <span className="text-primary">
-                • {selectedLeads.size} selected
-              </span>
-            )}
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">My Leads</h1>
+            <p className="text-muted-foreground text-sm">
+              {filteredLeads.length} lead{filteredLeads.length !== 1 ? "s" : ""}{" "}
+              {selectedLeads.size > 0 && (
+                <span className="text-primary">
+                  • {selectedLeads.size} selected
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Desktop actions */}
+          <div className="hidden sm:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Columns className="w-4 h-4" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.entries(visibleColumns).map(([key, visible]) => (
+                  <DropdownMenuCheckboxItem
+                    key={key}
+                    checked={visible}
+                    onCheckedChange={(checked) =>
+                      toggleColumnVisibility(
+                        key as keyof ColumnVisibility,
+                        checked
+                      )
+                    }
+                  >
+                    {visible ? (
+                      <Eye className="w-3 h-3 mr-2" />
+                    ) : (
+                      <EyeOff className="w-3 h-3 mr-2" />
+                    )}
+                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
+
+          {/* Mobile actions */}
+          <div className="flex sm:hidden items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              className="h-10 w-10"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Refresh */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-
-          {/* Column Visibility */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Columns className="w-4 h-4" />
-                <span className="hidden sm:inline">Columns</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {Object.entries(visibleColumns).map(([key, visible]) => (
-                <DropdownMenuCheckboxItem
-                  key={key}
-                  checked={visible}
-                  onCheckedChange={(checked) =>
-                    toggleColumnVisibility(
-                      key as keyof ColumnVisibility,
-                      checked
-                    )
-                  }
-                >
-                  {visible ? (
-                    <Eye className="w-3 h-3 mr-2" />
-                  ) : (
-                    <EyeOff className="w-3 h-3 mr-2" />
-                  )}
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Export */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-          </Button>
-        </div>
+        {/* Mobile: Filter Sheet + Export */}
+        {isMobile && (
+          <div className="flex items-center gap-2">
+            <MobileFilterSheet
+              filters={filters}
+              onFilterChange={updateFilter}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleExport}
+              className="h-12 gap-2"
+            >
+              <Download className="w-5 h-5" />
+              Export
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Filter Bar */}
-      <LeadsFilterBar
-        filters={filters}
-        onFilterChange={updateFilter}
-        onClearFilters={clearFilters}
-        hasActiveFilters={hasActiveFilters}
-      />
+      {/* Desktop Filter Bar */}
+      {!isMobile && (
+        <LeadsFilterBar
+          filters={filters}
+          onFilterChange={updateFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
+      )}
 
       {/* Bulk Actions Bar */}
       <BulkActionsBar
@@ -219,22 +258,35 @@ export default function AgentLeads() {
         isUpdating={bulkUpdateStatus.isPending || bulkArchive.isPending}
       />
 
-      {/* Table */}
-      <LeadsTable
-        leads={paginatedLeads}
-        isLoading={isLoading}
-        selectedLeads={selectedLeads}
-        expandedRows={expandedRows}
-        visibleColumns={visibleColumns}
-        sort={sort}
-        onSort={handleSort}
-        onToggleSelectAll={toggleSelectAll}
-        onToggleSelect={toggleSelectLead}
-        onToggleExpand={toggleExpandRow}
-        onUpdateField={handleUpdateField}
-        onArchive={handleArchive}
-        onScheduleReminder={handleScheduleReminder}
-      />
+      {/* Mobile: Card List */}
+      {isMobile ? (
+        <MobileLeadsList
+          leads={paginatedLeads}
+          isLoading={isLoading}
+          selectedLeads={selectedLeads}
+          onToggleSelect={toggleSelectLead}
+          onUpdateField={handleUpdateField}
+          onArchive={handleArchive}
+          onScheduleReminder={handleScheduleReminder}
+        />
+      ) : (
+        /* Desktop: Table */
+        <LeadsTable
+          leads={paginatedLeads}
+          isLoading={isLoading}
+          selectedLeads={selectedLeads}
+          expandedRows={expandedRows}
+          visibleColumns={visibleColumns}
+          sort={sort}
+          onSort={handleSort}
+          onToggleSelectAll={toggleSelectAll}
+          onToggleSelect={toggleSelectLead}
+          onToggleExpand={toggleExpandRow}
+          onUpdateField={handleUpdateField}
+          onArchive={handleArchive}
+          onScheduleReminder={handleScheduleReminder}
+        />
+      )}
 
       {/* Pagination */}
       <LeadsPagination
