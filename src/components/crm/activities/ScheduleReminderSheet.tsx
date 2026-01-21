@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -34,6 +35,8 @@ import {
 } from "lucide-react";
 import { format, addHours, addDays, setHours, setMinutes, nextMonday } from "date-fns";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useCreateReminder } from "@/hooks/useReminders";
 import type { ActivityType } from "@/hooks/useLeadActivities";
 
 interface ScheduleReminderSheetProps {
@@ -83,6 +86,19 @@ export function ScheduleReminderSheet({
   const [notes, setNotes] = useState("");
   const [emailReminder, setEmailReminder] = useState(true);
 
+  // Get current agent ID
+  const { data: session } = useQuery({
+    queryKey: ["auth-session"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session;
+    },
+  });
+  const agentId = session?.user?.id;
+
+  // Create reminder hook
+  const createReminder = useCreateReminder();
+
   const resetForm = useCallback(() => {
     setReminderType("callback");
     setReminderDate(undefined);
@@ -123,18 +139,37 @@ export function ScheduleReminderSheet({
       return;
     }
 
+    if (!agentId) {
+      toast.error("Agent session not found");
+      return;
+    }
+
     setSaving(true);
 
     try {
       const dateStr = format(reminderDate, "yyyy-MM-dd");
       const callbackDatetime = new Date(`${dateStr}T${reminderTime}`).toISOString();
+      const reminderTypeLabel = REMINDER_TYPES.find((t) => t.value === reminderType)?.label?.replace(/^[^\s]+\s/, "") || "Reminder";
 
+      // 1. Log activity (existing behavior)
       onLogActivity({
         activityType: "callback",
         notes: `[${reminderType.toUpperCase()}] ${notes || "Reminder scheduled"}`,
         callbackRequested: true,
         callbackDatetime,
         callbackNotes: notes,
+      });
+
+      // 2. Create reminder in crm_reminders table (NEW - for dashboard & email notifications)
+      await createReminder.mutateAsync({
+        agentId,
+        leadId: lead.id,
+        title: `${reminderTypeLabel} - ${lead.first_name} ${lead.last_name}`,
+        description: notes || undefined,
+        reminderType: reminderType as "callback" | "follow_up" | "viewing" | "appointment" | "deadline",
+        reminderDatetime: new Date(callbackDatetime),
+        sendEmail: emailReminder,
+        sendSlack: false,
       });
 
       toast.success("Reminder scheduled", {
