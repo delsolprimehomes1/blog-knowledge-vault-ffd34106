@@ -12,12 +12,14 @@ import {
   Menu,
   Building2,
   Shield,
+  Route,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/crm/admin/dashboard", icon: LayoutDashboard },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
   { name: "Leads Overview", href: "/crm/admin/leads", icon: ClipboardList },
+  { name: "Routing Rules", href: "/crm/admin/routing-rules", icon: Route },
   { name: "Verification", href: "/crm/admin/verification", icon: Shield },
   { name: "Settings", href: "/crm/admin/settings", icon: Settings },
 ];

@@ -20,6 +20,7 @@ interface LeadPayload {
   pageUrl?: string;
   pageType?: string;
   pageTitle?: string;
+  pageSlug?: string;
   referrer?: string;
   language: string;
   
@@ -44,6 +45,24 @@ interface LeadPayload {
   propertyType?: string[];
   propertyPurpose?: string;
   timeframe?: string;
+}
+
+interface RoutingRule {
+  id: string;
+  rule_name: string;
+  priority: number;
+  is_active: boolean;
+  match_language: string[] | null;
+  match_page_type: string[] | null;
+  match_page_slug: string[] | null;
+  match_lead_source: string[] | null;
+  match_lead_segment: string[] | null;
+  match_budget_range: string[] | null;
+  match_property_type: string[] | null;
+  match_timeframe: string[] | null;
+  assign_to_agent_id: string;
+  fallback_to_broadcast: boolean;
+  total_matches: number;
 }
 
 // Calculate lead score based on criteria
@@ -113,6 +132,197 @@ function getLanguageFlag(language: string): string {
   return flags[language?.toLowerCase()] || "🌍";
 }
 
+// Check if a lead matches a routing rule
+function ruleMatches(lead: any, rule: RoutingRule): boolean {
+  // Check language
+  if (rule.match_language?.length && !rule.match_language.includes(lead.language)) {
+    return false;
+  }
+  
+  // Check page type
+  if (rule.match_page_type?.length && lead.page_type && !rule.match_page_type.includes(lead.page_type)) {
+    return false;
+  }
+  
+  // Check page slug
+  if (rule.match_page_slug?.length && lead.page_slug && !rule.match_page_slug.includes(lead.page_slug)) {
+    return false;
+  }
+  
+  // Check lead source
+  if (rule.match_lead_source?.length && !rule.match_lead_source.includes(lead.lead_source)) {
+    return false;
+  }
+  
+  // Check segment
+  if (rule.match_lead_segment?.length && !rule.match_lead_segment.includes(lead.lead_segment)) {
+    return false;
+  }
+  
+  // Check budget
+  if (rule.match_budget_range?.length) {
+    if (!lead.budget_range || !rule.match_budget_range.some(b => lead.budget_range?.includes(b))) {
+      return false;
+    }
+  }
+  
+  // Check property type
+  if (rule.match_property_type?.length) {
+    const leadPropertyTypes = lead.property_type || [];
+    if (!leadPropertyTypes.some((t: string) => rule.match_property_type!.includes(t))) {
+      return false;
+    }
+  }
+  
+  // Check timeframe
+  if (rule.match_timeframe?.length) {
+    if (!lead.timeframe || !rule.match_timeframe.includes(lead.timeframe)) {
+      return false;
+    }
+  }
+  
+  return true; // All criteria matched
+}
+
+// Find matching routing rule
+async function findMatchingRule(lead: any, supabase: any): Promise<RoutingRule | null> {
+  const { data: rules, error } = await supabase
+    .from("crm_routing_rules")
+    .select("*")
+    .eq("is_active", true)
+    .order("priority", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error || !rules) {
+    console.log("[register-crm-lead] No routing rules found or error:", error);
+    return null;
+  }
+
+  console.log(`[register-crm-lead] Checking ${rules.length} routing rules`);
+
+  for (const rule of rules) {
+    if (ruleMatches(lead, rule)) {
+      console.log(`[register-crm-lead] Rule matched: ${rule.rule_name}`);
+      
+      // Update rule stats
+      await supabase
+        .from("crm_routing_rules")
+        .update({
+          last_matched_at: new Date().toISOString(),
+          total_matches: (rule.total_matches || 0) + 1,
+        })
+        .eq("id", rule.id);
+
+      return rule;
+    }
+  }
+
+  console.log("[register-crm-lead] No routing rules matched");
+  return null;
+}
+
+// Assign lead via routing rule (instant assignment)
+async function assignLeadViaRule(
+  lead: any,
+  rule: RoutingRule,
+  supabase: any,
+  supabaseUrl: string,
+  supabaseKey: string
+): Promise<{ success: boolean; agent?: any }> {
+  // Get target agent
+  const { data: agent, error: agentError } = await supabase
+    .from("crm_agents")
+    .select("*")
+    .eq("id", rule.assign_to_agent_id)
+    .single();
+
+  if (agentError || !agent) {
+    console.log("[register-crm-lead] Target agent not found");
+    return { success: false };
+  }
+
+  // Check if agent is available
+  if (!agent.is_active || !agent.accepts_new_leads) {
+    console.log("[register-crm-lead] Agent not active or not accepting leads");
+    return { success: false };
+  }
+
+  // Check capacity
+  if (agent.current_lead_count >= agent.max_active_leads) {
+    console.log("[register-crm-lead] Agent at capacity");
+    return { success: false };
+  }
+
+  // Update lead with instant assignment
+  const { error: updateError } = await supabase
+    .from("crm_leads")
+    .update({
+      assigned_agent_id: agent.id,
+      assigned_at: new Date().toISOString(),
+      assignment_method: "rule_based",
+      lead_claimed: true,
+      claimed_by: `Rule: ${rule.rule_name}`,
+      routing_rule_id: rule.id,
+      claim_window_expires_at: null, // No claim window needed
+    })
+    .eq("id", lead.id);
+
+  if (updateError) {
+    console.error("[register-crm-lead] Error updating lead:", updateError);
+    return { success: false };
+  }
+
+  // Increment agent's lead count
+  await supabase
+    .from("crm_agents")
+    .update({ current_lead_count: agent.current_lead_count + 1 })
+    .eq("id", agent.id);
+
+  // Create notification for agent
+  await supabase.from("crm_notifications").insert({
+    agent_id: agent.id,
+    lead_id: lead.id,
+    notification_type: "rule_assigned",
+    title: `⚡ Lead Auto-Assigned: ${rule.rule_name}`,
+    message: `${lead.first_name} ${lead.last_name} - ${lead.lead_segment} - ${lead.budget_range || "Budget TBD"}`,
+    action_url: `/crm/agent/leads/${lead.id}`,
+    read: false,
+  });
+
+  // Trigger email notification
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        lead,
+        agents: [agent],
+        claimWindowMinutes: 0, // Instant assignment
+        isRuleAssignment: true,
+        ruleName: rule.rule_name,
+      }),
+    });
+    console.log("[register-crm-lead] Rule assignment notification sent");
+  } catch (emailError) {
+    console.error("[register-crm-lead] Error sending notification:", emailError);
+  }
+
+  // Log activity
+  await supabase.from("crm_activities").insert({
+    lead_id: lead.id,
+    agent_id: agent.id,
+    activity_type: "note",
+    notes: `Lead automatically assigned via routing rule: "${rule.rule_name}"`,
+    created_at: new Date().toISOString(),
+  });
+
+  console.log(`[register-crm-lead] Lead assigned to ${agent.first_name} via rule: ${rule.rule_name}`);
+  return { success: true, agent };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -154,6 +364,7 @@ serve(async (req) => {
         lead_source_detail: payload.leadSourceDetail || null,
         page_url: payload.pageUrl || null,
         page_type: payload.pageType || null,
+        page_slug: payload.pageSlug || null,
         referrer: payload.referrer || null,
         questions_answered: payload.questionsAnswered || 0,
         qa_pairs: payload.qaPairs || null,
@@ -187,7 +398,36 @@ serve(async (req) => {
 
     console.log("[register-crm-lead] Lead created:", lead.id);
 
-    // 2. Find eligible agents (language match + active + accepting leads + under capacity)
+    // 2. TIER 1: Check for matching routing rules
+    const matchedRule = await findMatchingRule(lead, supabase);
+
+    if (matchedRule) {
+      // Try to assign via rule
+      const ruleResult = await assignLeadViaRule(lead, matchedRule, supabase, supabaseUrl, supabaseKey);
+      
+      if (ruleResult.success) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            leadId: lead.id,
+            segment,
+            score,
+            assignmentMethod: "rule_based",
+            ruleName: matchedRule.rule_name,
+            assignedTo: ruleResult.agent?.id,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Rule matched but agent unavailable - check fallback
+      if (!matchedRule.fallback_to_broadcast) {
+        console.log("[register-crm-lead] No fallback, assigning to admin");
+        // Would assign to admin here - for now continue to broadcast
+      }
+    }
+
+    // 3. TIER 2: No rule matched or fallback - Broadcast to eligible agents
     const { data: eligibleAgents, error: agentsError } = await supabase
       .from("crm_agents")
       .select("*")
@@ -207,7 +447,7 @@ serve(async (req) => {
 
     console.log(`[register-crm-lead] Found ${availableAgents.length} eligible agents for ${language}`);
 
-    // 3. Create notifications for all eligible agents
+    // 4. Create notifications for all eligible agents
     if (availableAgents.length > 0) {
       const notifications = availableAgents.map((agent: { id: string; first_name: string }) => ({
         agent_id: agent.id,
@@ -229,7 +469,7 @@ serve(async (req) => {
         console.log(`[register-crm-lead] Created ${notifications.length} notifications`);
       }
 
-      // 4. Send email notifications
+      // 5. Send email notifications
       try {
         await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
           method: "POST",
@@ -258,6 +498,7 @@ serve(async (req) => {
         leadId: lead.id,
         segment,
         score,
+        assignmentMethod: "broadcast",
         broadcastTo: availableAgents.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

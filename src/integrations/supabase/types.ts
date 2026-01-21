@@ -2153,6 +2153,7 @@ export type Database = {
           qa_pairs: Json | null
           questions_answered: number | null
           referrer: string | null
+          routing_rule_id: string | null
           sea_view_importance: string | null
           timeframe: string | null
           total_contacts: number | null
@@ -2209,6 +2210,7 @@ export type Database = {
           qa_pairs?: Json | null
           questions_answered?: number | null
           referrer?: string | null
+          routing_rule_id?: string | null
           sea_view_importance?: string | null
           timeframe?: string | null
           total_contacts?: number | null
@@ -2265,6 +2267,7 @@ export type Database = {
           qa_pairs?: Json | null
           questions_answered?: number | null
           referrer?: string | null
+          routing_rule_id?: string | null
           sea_view_importance?: string | null
           timeframe?: string | null
           total_contacts?: number | null
@@ -2276,6 +2279,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_routing_rule_id_fkey"
+            columns: ["routing_rule_id"]
+            isOneToOne: false
+            referencedRelation: "crm_routing_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -2412,6 +2422,83 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_routing_rules: {
+        Row: {
+          assign_to_agent_id: string
+          created_at: string | null
+          created_by: string | null
+          fallback_to_broadcast: boolean | null
+          id: string
+          is_active: boolean | null
+          last_matched_at: string | null
+          match_budget_range: string[] | null
+          match_language: string[] | null
+          match_lead_segment: string[] | null
+          match_lead_source: string[] | null
+          match_page_slug: string[] | null
+          match_page_type: string[] | null
+          match_property_type: string[] | null
+          match_timeframe: string[] | null
+          priority: number | null
+          rule_description: string | null
+          rule_name: string
+          total_matches: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          assign_to_agent_id: string
+          created_at?: string | null
+          created_by?: string | null
+          fallback_to_broadcast?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          last_matched_at?: string | null
+          match_budget_range?: string[] | null
+          match_language?: string[] | null
+          match_lead_segment?: string[] | null
+          match_lead_source?: string[] | null
+          match_page_slug?: string[] | null
+          match_page_type?: string[] | null
+          match_property_type?: string[] | null
+          match_timeframe?: string[] | null
+          priority?: number | null
+          rule_description?: string | null
+          rule_name: string
+          total_matches?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          assign_to_agent_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          fallback_to_broadcast?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          last_matched_at?: string | null
+          match_budget_range?: string[] | null
+          match_language?: string[] | null
+          match_lead_segment?: string[] | null
+          match_lead_source?: string[] | null
+          match_page_slug?: string[] | null
+          match_page_type?: string[] | null
+          match_property_type?: string[] | null
+          match_timeframe?: string[] | null
+          priority?: number | null
+          rule_description?: string | null
+          rule_name?: string
+          total_matches?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_routing_rules_assign_to_agent_id_fkey"
+            columns: ["assign_to_agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
             referencedColumns: ["id"]
           },
         ]
