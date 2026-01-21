@@ -11,12 +11,14 @@ import {
   LogOut,
   Menu,
   Building2,
+  Shield,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/crm/admin/dashboard", icon: LayoutDashboard },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
   { name: "Leads Overview", href: "/crm/admin/leads", icon: ClipboardList },
+  { name: "Verification", href: "/crm/admin/verification", icon: Shield },
   { name: "Settings", href: "/crm/admin/settings", icon: Settings },
 ];
 

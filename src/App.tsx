@@ -126,6 +126,7 @@ const CrmAgentManagement = lazy(() => import("./pages/crm/admin/AgentManagement"
 const CrmAgentDetails = lazy(() => import("./pages/crm/admin/AgentDetails"));
 const CrmLeadsOverview = lazy(() => import("./pages/crm/admin/LeadsOverview"));
 const CrmSettings = lazy(() => import("./pages/crm/admin/CrmSettings"));
+const CrmSystemVerification = lazy(() => import("./pages/crm/admin/SystemVerification"));
 const LandingEn = lazy(() => import("./pages/landing/en"));
 const LandingNl = lazy(() => import("./pages/landing/nl"));
 const LandingFr = lazy(() => import("./pages/landing/fr"));
@@ -252,6 +253,7 @@ const App = () => (
                 <Route path="agents" element={<CrmAgentManagement />} />
                 <Route path="agents/:id" element={<CrmAgentDetails />} />
                 <Route path="leads" element={<CrmLeadsOverview />} />
+                <Route path="verification" element={<CrmSystemVerification />} />
                 <Route path="settings" element={<CrmSettings />} />
               </Route>
 

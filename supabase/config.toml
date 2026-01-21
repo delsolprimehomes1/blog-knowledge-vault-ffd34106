@@ -338,3 +338,6 @@ verify_jwt = false
 
 [functions.send-lead-notification]
 verify_jwt = false
+
+[functions.crm-test-lead]
+verify_jwt = false
