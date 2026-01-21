@@ -225,6 +225,19 @@ export default function RoundRobinConfig() {
       return;
     }
 
+    // Check for duplicate when creating new (not editing)
+    if (!editingConfig) {
+      const existingRound = configs?.find(
+        (c) => c.language === formData.language && c.round_number === formData.round_number
+      );
+      if (existingRound) {
+        toast.error(
+          `Round ${formData.round_number} for ${LANGUAGES.find(l => l.code === formData.language)?.name || formData.language.toUpperCase()} already exists. Please edit the existing round or choose a different round number.`
+        );
+        return;
+      }
+    }
+
     saveMutation.mutate({
       ...formData,
       id: editingConfig?.id,
@@ -299,9 +312,20 @@ export default function RoundRobinConfig() {
                   <Label>Language</Label>
                   <Select
                     value={formData.language}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, language: value, agent_ids: [] }))
-                    }
+                    onValueChange={(value) => {
+                      // Find the highest round number for this language and auto-increment
+                      const existingRoundsForLanguage = configs?.filter(c => c.language === value) || [];
+                      const maxRound = existingRoundsForLanguage.length > 0 
+                        ? Math.max(...existingRoundsForLanguage.map(c => c.round_number))
+                        : 0;
+                      
+                      setFormData((prev) => ({ 
+                        ...prev, 
+                        language: value, 
+                        agent_ids: [],
+                        round_number: editingConfig ? prev.round_number : maxRound + 1,
+                      }));
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select language" />
@@ -330,6 +354,14 @@ export default function RoundRobinConfig() {
                       }))
                     }
                   />
+                  {formData.language && !editingConfig && (
+                    <p className="text-xs text-muted-foreground">
+                      Existing rounds: {configs?.filter(c => c.language === formData.language)
+                        .map(c => c.round_number)
+                        .sort((a, b) => a - b)
+                        .join(", ") || "None"}
+                    </p>
+                  )}
                 </div>
               </div>
 
