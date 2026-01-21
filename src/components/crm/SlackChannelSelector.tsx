@@ -110,23 +110,25 @@ export function SlackChannelSelector({
               {channels.map((channel) => (
                 <div
                   key={channel.id}
-                  className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer hover:bg-accent/50 transition-colors ${
+                  className={`flex items-center space-x-2 p-2 rounded-md hover:bg-accent/50 transition-colors ${
                     localSelected.includes(channel.id) ? "bg-accent" : ""
                   }`}
-                  onClick={() => !disabled && handleToggleChannel(channel.id)}
                 >
                   <Checkbox
+                    id={`channel-${channel.id}`}
                     checked={localSelected.includes(channel.id)}
-                    onCheckedChange={() => handleToggleChannel(channel.id)}
+                    onCheckedChange={() => !disabled && handleToggleChannel(channel.id)}
                     disabled={disabled}
                   />
-                  <Hash className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm flex-1">{channel.name}</span>
-                  {channel.member_count !== null && (
-                    <span className="text-xs text-muted-foreground">
-                      {channel.member_count} members
-                    </span>
-                  )}
+                  <Label htmlFor={`channel-${channel.id}`} className="cursor-pointer flex items-center gap-2 flex-1">
+                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm flex-1">{channel.name}</span>
+                    {channel.member_count !== null && (
+                      <span className="text-xs text-muted-foreground">
+                        {channel.member_count} members
+                      </span>
+                    )}
+                  </Label>
                 </div>
               ))}
             </div>

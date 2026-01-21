@@ -201,15 +201,17 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <div
                   key={lang.code}
-                  className="flex items-center space-x-2 cursor-pointer"
-                  onClick={() => toggleLanguage(lang.code)}
+                  className="flex items-center space-x-2"
                 >
                   <Checkbox
+                    id={`lang-${lang.code}`}
                     checked={selectedLanguages.includes(lang.code)}
                     onCheckedChange={() => toggleLanguage(lang.code)}
                   />
-                  <span className="text-lg">{lang.flag}</span>
-                  <span className="text-sm">{lang.name}</span>
+                  <Label htmlFor={`lang-${lang.code}`} className="cursor-pointer flex items-center gap-1">
+                    <span className="text-lg">{lang.flag}</span>
+                    <span className="text-sm">{lang.name}</span>
+                  </Label>
                 </div>
               ))}
             </div>
