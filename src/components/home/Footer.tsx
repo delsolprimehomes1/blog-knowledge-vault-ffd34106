@@ -67,6 +67,7 @@ export const Footer: React.FC = () => {
               <li><Link to={`/${currentLanguage}/blog`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.blogInsights}</Link></li>
               <li><Link to={`/${currentLanguage}/glossary`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.glossary || "Property Glossary"}</Link></li>
               <li><Link to={`/${currentLanguage}/compare`} className="hover:text-prime-gold transition-colors font-nav">{t.footer.links.comparisons || "Comparisons"}</Link></li>
+              <li><Link to="/crm/agent/login" className="hover:text-prime-gold transition-colors font-nav">Dashboard</Link></li>
             </ul>
           </div>
 
