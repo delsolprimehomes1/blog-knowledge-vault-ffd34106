@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -18,10 +18,12 @@ import { ActivityTimeline } from "@/components/crm/detail/ActivityTimeline";
 import { LeadSourceCard, AssignmentCard, FormSubmissionCard } from "@/components/crm/detail/LeadSourceCard";
 import { QuickNotesCard } from "@/components/crm/detail/QuickNotesCard";
 import { QuickActionButtons } from "@/components/crm/activities/QuickActionButtons";
+import { AdminLeadActions } from "@/components/crm/admin/AdminLeadActions";
 
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Get agent info
   const { data: session } = useQuery({
@@ -237,6 +239,13 @@ export default function LeadDetailPage() {
 
           {/* RIGHT COLUMN (1/3 width) */}
           <div className="space-y-6">
+            {/* Admin Controls - only visible to admins */}
+            <AdminLeadActions 
+              leadId={lead.id}
+              currentAgentId={lead.assigned_agent_id || undefined}
+              onLeadUpdated={() => queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] })}
+            />
+            
             <LeadSourceCard lead={lead} />
             <AssignmentCard lead={lead} />
             <QuickNotesCard
