@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as fal from "npm:@fal-ai/serverless-client";
+import * as fal from "https://esm.sh/@fal-ai/serverless-client@0.15.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
