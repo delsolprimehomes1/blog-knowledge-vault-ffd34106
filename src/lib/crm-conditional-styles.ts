@@ -178,3 +178,122 @@ export const CALL_OUTCOME_STYLES = {
   wrong_number: { icon: 'XCircle', color: 'bg-red-100 text-red-600', label: 'Wrong Number' },
   not_interested: { icon: 'ThumbsDown', color: 'bg-gray-100 text-gray-600', label: 'Not Interested' },
 } as const;
+
+// ============================================
+// Lead Row Conditional Styling (Airtable-style)
+// ============================================
+
+export const getLeadRowStyle = (lead: {
+  lead_status: string;
+  created_at: string;
+  last_contact_at: string | null;
+  days_since_last_contact: number | null;
+}): string => {
+  const hoursOld = differenceInHours(new Date(), new Date(lead.created_at));
+  const daysSinceContact = lead.days_since_last_contact;
+
+  // New lead not contacted for 24+ hours - RED (urgent)
+  if (lead.lead_status === 'new' && hoursOld > 24) {
+    return 'bg-red-50 border-l-4 border-red-500 hover:bg-red-100';
+  }
+
+  // Not contacted in 5+ days - AMBER (warning)
+  if (daysSinceContact !== null && daysSinceContact > 5) {
+    return 'bg-amber-50 border-l-4 border-amber-500 hover:bg-amber-100';
+  }
+
+  // Recently contacted today - GREEN (good)
+  if (daysSinceContact === 0) {
+    return 'bg-green-50 border-l-4 border-green-500 hover:bg-green-100';
+  }
+
+  // Newly assigned (< 6 hours) - BLUE (fresh)
+  if (hoursOld < 6) {
+    return 'bg-blue-50 border-l-4 border-blue-500 hover:bg-blue-100';
+  }
+
+  // Not interested / archived - GRAY (inactive)
+  if (lead.lead_status === 'not_interested') {
+    return 'bg-gray-100 opacity-60 hover:bg-gray-200';
+  }
+
+  return 'hover:bg-muted/50';
+};
+
+// Priority icon configurations
+export const PRIORITY_CONFIG = {
+  urgent: { icon: 'Flame', color: 'text-red-500', animation: 'animate-pulse', bg: 'bg-red-50' },
+  high: { icon: 'Star', color: 'text-orange-500', animation: '', bg: 'bg-orange-50' },
+  medium: { icon: 'Circle', color: 'text-yellow-500', animation: '', bg: 'bg-yellow-50' },
+  low: { icon: 'Minus', color: 'text-gray-400', animation: '', bg: 'bg-gray-50' },
+} as const;
+
+// Status badge styling with proper colors
+export const getStatusBadgeClass = (status: string): string => {
+  const classes: Record<string, string> = {
+    new: 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse',
+    contacted: 'bg-gray-100 text-gray-800 border-gray-200',
+    qualified: 'bg-green-100 text-green-800 border-green-200',
+    nurture: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    showing_scheduled: 'bg-purple-100 text-purple-800 border-purple-200',
+    offer_pending: 'bg-orange-100 text-orange-800 border-orange-200',
+    closed_won: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    closed_lost: 'bg-red-100 text-red-800 border-red-200',
+    not_interested: 'bg-gray-100 text-gray-500 border-gray-200 line-through',
+  };
+  return classes[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
+// Segment badge styling for quick visual distinction
+export const SEGMENT_BADGE_STYLES = {
+  Hot: 'bg-red-500 text-white',
+  Hot_Investor: 'bg-red-500 text-white',
+  Warm: 'bg-orange-500 text-white',
+  Warm_Family: 'bg-orange-500 text-white',
+  Cool: 'bg-blue-500 text-white',
+  Cool_Holiday: 'bg-blue-500 text-white',
+  Cold: 'bg-gray-500 text-white',
+  Cold_General: 'bg-gray-500 text-white',
+} as const;
+
+// Get segment display style
+export const getSegmentStyle = (segment: string): string => {
+  if (segment.includes('Hot')) return SEGMENT_BADGE_STYLES.Hot;
+  if (segment.includes('Warm')) return SEGMENT_BADGE_STYLES.Warm;
+  if (segment.includes('Cool')) return SEGMENT_BADGE_STYLES.Cool;
+  return SEGMENT_BADGE_STYLES.Cold;
+};
+
+// All available statuses for filtering/selection
+export const ALL_STATUSES = [
+  'new',
+  'contacted',
+  'qualified',
+  'nurture',
+  'showing_scheduled',
+  'offer_pending',
+  'closed_won',
+  'closed_lost',
+  'not_interested',
+] as const;
+
+// All available segments
+export const ALL_SEGMENTS = [
+  'Hot_Investor',
+  'Warm_Family',
+  'Cool_Holiday',
+  'Cold_General',
+] as const;
+
+// All available priorities
+export const ALL_PRIORITIES = ['urgent', 'high', 'medium', 'low'] as const;
+
+// Format status for display
+export const formatStatus = (status: string): string => {
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+// Format segment for display
+export const formatSegment = (segment: string): string => {
+  return segment.replace(/_/g, ' ');
+};

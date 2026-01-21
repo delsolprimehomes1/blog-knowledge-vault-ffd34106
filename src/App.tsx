@@ -111,8 +111,13 @@ const WebhookTesting = lazy(() => import("./pages/admin/WebhookTesting"));
 // CRM Pages
 const AgentLogin = lazy(() => import("./pages/crm/AgentLogin"));
 const CrmLogin = lazy(() => import("./pages/crm/CrmLogin"));
+const AgentDashboard = lazy(() => import("./pages/crm/agent/AgentDashboard"));
+const AgentLeads = lazy(() => import("./pages/crm/agent/AgentLeads"));
+const ClaimLeadPage = lazy(() => import("./pages/crm/agent/ClaimLeadPage"));
 
-// Landing Pages (Paid Traffic)
+// CRM Layout and Route Guard
+import { CrmAgentLayout } from "@/components/crm/CrmAgentLayout";
+import { CrmAgentRoute } from "@/components/crm/CrmAgentRoute";
 const LandingEn = lazy(() => import("./pages/landing/en"));
 const LandingNl = lazy(() => import("./pages/landing/nl"));
 const LandingFr = lazy(() => import("./pages/landing/fr"));
@@ -222,6 +227,14 @@ const App = () => (
               {/* CRM Routes */}
               <Route path="/crm/login" element={<CrmLogin />} />
               <Route path="/crm/agent/login" element={<AgentLogin />} />
+              
+              {/* CRM Agent Protected Routes */}
+              <Route path="/crm/agent" element={<CrmAgentRoute><CrmAgentLayout /></CrmAgentRoute>}>
+                <Route path="dashboard" element={<AgentDashboard />} />
+                <Route path="leads" element={<AgentLeads />} />
+                <Route path="leads/:id" element={<AgentLeads />} />
+                <Route path="leads/:id/claim" element={<ClaimLeadPage />} />
+              </Route>
 
               {/* ========================================== */}
               {/* OTHER PUBLIC ROUTES (no language prefix)  */}
