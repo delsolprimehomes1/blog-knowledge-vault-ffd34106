@@ -1912,6 +1912,495 @@ export type Database = {
           },
         ]
       }
+      crm_activities: {
+        Row: {
+          activity_type: string
+          agent_id: string
+          call_duration: number | null
+          callback_completed: boolean | null
+          callback_datetime: string | null
+          callback_notes: string | null
+          callback_requested: boolean | null
+          created_at: string | null
+          id: string
+          lead_id: string
+          notes: string
+          outcome: string | null
+          scheduled_for: string | null
+          subject: string | null
+        }
+        Insert: {
+          activity_type: string
+          agent_id: string
+          call_duration?: number | null
+          callback_completed?: boolean | null
+          callback_datetime?: string | null
+          callback_notes?: string | null
+          callback_requested?: boolean | null
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          notes: string
+          outcome?: string | null
+          scheduled_for?: string | null
+          subject?: string | null
+        }
+        Update: {
+          activity_type?: string
+          agent_id?: string
+          call_duration?: number | null
+          callback_completed?: boolean | null
+          callback_datetime?: string | null
+          callback_notes?: string | null
+          callback_requested?: boolean | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string
+          outcome?: string | null
+          scheduled_for?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activities_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_agents: {
+        Row: {
+          accepts_new_leads: boolean | null
+          created_at: string | null
+          current_lead_count: number | null
+          email: string
+          email_notifications: boolean | null
+          first_name: string
+          id: string
+          is_active: boolean | null
+          languages: string[]
+          last_login: string | null
+          last_name: string
+          max_active_leads: number | null
+          phone: string | null
+          slack_channel_id: string | null
+          slack_user_id: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accepts_new_leads?: boolean | null
+          created_at?: string | null
+          current_lead_count?: number | null
+          email: string
+          email_notifications?: boolean | null
+          first_name: string
+          id: string
+          is_active?: boolean | null
+          languages?: string[]
+          last_login?: string | null
+          last_name: string
+          max_active_leads?: number | null
+          phone?: string | null
+          slack_channel_id?: string | null
+          slack_user_id?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accepts_new_leads?: boolean | null
+          created_at?: string | null
+          current_lead_count?: number | null
+          email?: string
+          email_notifications?: boolean | null
+          first_name?: string
+          id?: string
+          is_active?: boolean | null
+          languages?: string[]
+          last_login?: string | null
+          last_name?: string
+          max_active_leads?: number | null
+          phone?: string | null
+          slack_channel_id?: string | null
+          slack_user_id?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      crm_lead_notes: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          lead_id: string
+          note_text: string
+          note_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          lead_id: string
+          note_text: string
+          note_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          lead_id?: string
+          note_text?: string
+          note_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          archived: boolean | null
+          archived_at: string | null
+          archived_reason: string | null
+          assigned_agent_id: string | null
+          assigned_at: string | null
+          assignment_method: string | null
+          bedrooms_desired: string | null
+          budget_range: string | null
+          city_name: string | null
+          city_slug: string | null
+          claim_broadcast_sent: boolean | null
+          claim_window_expires_at: string | null
+          claimed_by: string | null
+          conversation_duration: string | null
+          country_prefix: string | null
+          created_at: string | null
+          current_lead_score: number | null
+          days_since_last_contact: number | null
+          email: string | null
+          exit_point: string | null
+          first_contact_at: string | null
+          first_name: string
+          full_phone: string | null
+          id: string
+          initial_lead_score: number | null
+          intake_complete: boolean | null
+          interest: string | null
+          language: string
+          last_contact_at: string | null
+          last_name: string
+          lead_claimed: boolean | null
+          lead_priority: string | null
+          lead_segment: string | null
+          lead_source: string
+          lead_source_detail: string
+          lead_status: string | null
+          location_preference: string[] | null
+          message: string | null
+          page_slug: string | null
+          page_title: string | null
+          page_type: string | null
+          page_url: string
+          phone_number: string
+          property_price: string | null
+          property_purpose: string | null
+          property_ref: string | null
+          property_type: string[] | null
+          qa_pairs: Json | null
+          questions_answered: number | null
+          referrer: string | null
+          sea_view_importance: string | null
+          timeframe: string | null
+          total_contacts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
+          archived_reason?: string | null
+          assigned_agent_id?: string | null
+          assigned_at?: string | null
+          assignment_method?: string | null
+          bedrooms_desired?: string | null
+          budget_range?: string | null
+          city_name?: string | null
+          city_slug?: string | null
+          claim_broadcast_sent?: boolean | null
+          claim_window_expires_at?: string | null
+          claimed_by?: string | null
+          conversation_duration?: string | null
+          country_prefix?: string | null
+          created_at?: string | null
+          current_lead_score?: number | null
+          days_since_last_contact?: number | null
+          email?: string | null
+          exit_point?: string | null
+          first_contact_at?: string | null
+          first_name: string
+          full_phone?: string | null
+          id?: string
+          initial_lead_score?: number | null
+          intake_complete?: boolean | null
+          interest?: string | null
+          language: string
+          last_contact_at?: string | null
+          last_name: string
+          lead_claimed?: boolean | null
+          lead_priority?: string | null
+          lead_segment?: string | null
+          lead_source: string
+          lead_source_detail: string
+          lead_status?: string | null
+          location_preference?: string[] | null
+          message?: string | null
+          page_slug?: string | null
+          page_title?: string | null
+          page_type?: string | null
+          page_url: string
+          phone_number: string
+          property_price?: string | null
+          property_purpose?: string | null
+          property_ref?: string | null
+          property_type?: string[] | null
+          qa_pairs?: Json | null
+          questions_answered?: number | null
+          referrer?: string | null
+          sea_view_importance?: string | null
+          timeframe?: string | null
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          archived?: boolean | null
+          archived_at?: string | null
+          archived_reason?: string | null
+          assigned_agent_id?: string | null
+          assigned_at?: string | null
+          assignment_method?: string | null
+          bedrooms_desired?: string | null
+          budget_range?: string | null
+          city_name?: string | null
+          city_slug?: string | null
+          claim_broadcast_sent?: boolean | null
+          claim_window_expires_at?: string | null
+          claimed_by?: string | null
+          conversation_duration?: string | null
+          country_prefix?: string | null
+          created_at?: string | null
+          current_lead_score?: number | null
+          days_since_last_contact?: number | null
+          email?: string | null
+          exit_point?: string | null
+          first_contact_at?: string | null
+          first_name?: string
+          full_phone?: string | null
+          id?: string
+          initial_lead_score?: number | null
+          intake_complete?: boolean | null
+          interest?: string | null
+          language?: string
+          last_contact_at?: string | null
+          last_name?: string
+          lead_claimed?: boolean | null
+          lead_priority?: string | null
+          lead_segment?: string | null
+          lead_source?: string
+          lead_source_detail?: string
+          lead_status?: string | null
+          location_preference?: string[] | null
+          message?: string | null
+          page_slug?: string | null
+          page_title?: string | null
+          page_type?: string | null
+          page_url?: string
+          phone_number?: string
+          property_price?: string | null
+          property_purpose?: string | null
+          property_ref?: string | null
+          property_type?: string[] | null
+          qa_pairs?: Json | null
+          questions_answered?: number | null
+          referrer?: string | null
+          sea_view_importance?: string | null
+          timeframe?: string | null
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_notifications: {
+        Row: {
+          action_url: string | null
+          agent_id: string
+          created_at: string | null
+          id: string
+          lead_id: string | null
+          message: string | null
+          notification_type: string
+          read: boolean | null
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          action_url?: string | null
+          agent_id: string
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message?: string | null
+          notification_type: string
+          read?: boolean | null
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          action_url?: string | null
+          agent_id?: string
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          message?: string | null
+          notification_type?: string
+          read?: boolean | null
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notifications_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_reminders: {
+        Row: {
+          activity_id: string | null
+          agent_id: string
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          email_sent: boolean | null
+          id: string
+          is_completed: boolean | null
+          lead_id: string | null
+          notification_sent_at: string | null
+          reminder_datetime: string
+          reminder_type: string | null
+          send_email: boolean | null
+          send_slack: boolean | null
+          slack_sent: boolean | null
+          snoozed_until: string | null
+          title: string
+        }
+        Insert: {
+          activity_id?: string | null
+          agent_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          email_sent?: boolean | null
+          id?: string
+          is_completed?: boolean | null
+          lead_id?: string | null
+          notification_sent_at?: string | null
+          reminder_datetime: string
+          reminder_type?: string | null
+          send_email?: boolean | null
+          send_slack?: boolean | null
+          slack_sent?: boolean | null
+          snoozed_until?: string | null
+          title: string
+        }
+        Update: {
+          activity_id?: string | null
+          agent_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          email_sent?: boolean | null
+          id?: string
+          is_completed?: boolean | null
+          lead_id?: string | null
+          notification_sent_at?: string | null
+          reminder_datetime?: string
+          reminder_type?: string | null
+          send_email?: boolean | null
+          send_slack?: boolean | null
+          slack_sent?: boolean | null
+          snoozed_until?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_reminders_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_reminders_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_reminders_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dead_link_replacements: {
         Row: {
           applied_at: string | null
@@ -3851,6 +4340,10 @@ export type Database = {
         Args: { p_article_id: string }
         Returns: number
       }
+      can_access_lead: {
+        Args: { _lead_id: string; _user_id: string }
+        Returns: boolean
+      }
       check_extension_exists: {
         Args: { extension_name: string }
         Returns: boolean
@@ -3945,6 +4438,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_crm_agent: { Args: { _user_id: string }; Returns: boolean }
       normalize_url: {
         Args: { domain_only?: boolean; strip_query?: boolean; url: string }
         Returns: string
