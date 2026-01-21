@@ -52,6 +52,99 @@ export const URGENCY_STYLES = {
   },
 } as const;
 
+// Extended urgency levels for calendar system
+export type ExtendedUrgencyLevel = 
+  | 'overdue' 
+  | 'critical' 
+  | 'urgent' 
+  | 'warning' 
+  | 'today' 
+  | 'upcoming' 
+  | 'scheduled';
+
+export const getExtendedUrgency = (datetime: Date | string): ExtendedUrgencyLevel => {
+  const target = typeof datetime === 'string' ? new Date(datetime) : datetime;
+  const now = new Date();
+  const minutesUntil = differenceInMinutes(target, now);
+  const hoursUntil = minutesUntil / 60;
+  const daysUntil = hoursUntil / 24;
+  
+  if (minutesUntil < 0) return 'overdue';
+  if (minutesUntil < 30) return 'critical';
+  if (minutesUntil < 60) return 'urgent';
+  if (hoursUntil < 4) return 'warning';
+  if (daysUntil < 1) return 'today';
+  if (daysUntil < 7) return 'upcoming';
+  return 'scheduled';
+};
+
+export const EXTENDED_URGENCY_STYLES = {
+  overdue: {
+    bg: 'bg-red-100',
+    border: 'border-red-500',
+    text: 'text-red-700',
+    badge: 'bg-red-500 text-white animate-pulse',
+    dot: 'bg-red-500',
+    hex: '#EF4444',
+  },
+  critical: {
+    bg: 'bg-orange-100',
+    border: 'border-orange-600',
+    text: 'text-orange-700',
+    badge: 'bg-orange-600 text-white',
+    dot: 'bg-orange-600',
+    hex: '#DC2626',
+  },
+  urgent: {
+    bg: 'bg-orange-50',
+    border: 'border-orange-500',
+    text: 'text-orange-600',
+    badge: 'bg-orange-500 text-white',
+    dot: 'bg-orange-500',
+    hex: '#F97316',
+  },
+  warning: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-500',
+    text: 'text-amber-600',
+    badge: 'bg-amber-500 text-white',
+    dot: 'bg-amber-500',
+    hex: '#F59E0B',
+  },
+  today: {
+    bg: 'bg-yellow-50',
+    border: 'border-yellow-400',
+    text: 'text-yellow-700',
+    badge: 'bg-yellow-500 text-white',
+    dot: 'bg-yellow-500',
+    hex: '#FACC15',
+  },
+  upcoming: {
+    bg: 'bg-green-50',
+    border: 'border-green-400',
+    text: 'text-green-600',
+    badge: 'bg-green-500 text-white',
+    dot: 'bg-green-500',
+    hex: '#10B981',
+  },
+  scheduled: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-300',
+    text: 'text-blue-600',
+    badge: 'bg-blue-500 text-white',
+    dot: 'bg-blue-500',
+    hex: '#3B82F6',
+  },
+} as const;
+
+export const REMINDER_TYPE_CONFIG = {
+  callback: { icon: '📞', label: 'Callback', color: 'bg-blue-100 text-blue-700' },
+  follow_up: { icon: '📧', label: 'Follow-up', color: 'bg-purple-100 text-purple-700' },
+  viewing: { icon: '🏠', label: 'Viewing', color: 'bg-green-100 text-green-700' },
+  meeting: { icon: '🤝', label: 'Meeting', color: 'bg-amber-100 text-amber-700' },
+  deadline: { icon: '⏰', label: 'Deadline', color: 'bg-red-100 text-red-700' },
+} as const;
+
 // Lead age warning (time since created)
 export type LeadAgeLevel = 'brand-new' | 'fresh' | 'aging' | 'stale';
 

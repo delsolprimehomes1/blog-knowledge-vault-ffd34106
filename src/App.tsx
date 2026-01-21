@@ -114,6 +114,7 @@ const CrmLogin = lazy(() => import("./pages/crm/CrmLogin"));
 const AgentDashboard = lazy(() => import("./pages/crm/agent/AgentDashboard"));
 const AgentLeads = lazy(() => import("./pages/crm/agent/AgentLeads"));
 const ClaimLeadPage = lazy(() => import("./pages/crm/agent/ClaimLeadPage"));
+const CalendarPage = lazy(() => import("./pages/crm/agent/CalendarPage"));
 
 // CRM Layout and Route Guard
 import { CrmAgentLayout } from "@/components/crm/CrmAgentLayout";
@@ -236,11 +237,13 @@ const App = () => (
               <Route path="/crm/agent/login" element={<AgentLogin />} />
               
               {/* CRM Agent Protected Routes */}
+              {/* CRM Agent Protected Routes */}
               <Route path="/crm/agent" element={<CrmAgentRoute><CrmAgentLayout /></CrmAgentRoute>}>
                 <Route path="dashboard" element={<AgentDashboard />} />
                 <Route path="leads" element={<AgentLeads />} />
                 <Route path="leads/:id" element={<AgentLeads />} />
                 <Route path="leads/:id/claim" element={<ClaimLeadPage />} />
+                <Route path="calendar" element={<CalendarPage />} />
               </Route>
 
               {/* CRM Admin Protected Routes */}
