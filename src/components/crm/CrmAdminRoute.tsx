@@ -44,11 +44,10 @@ export function CrmAdminRoute({ children }: CrmAdminRouteProps) {
         .eq("id", userId)
         .single();
 
-      const agentData = agent as { role: string; is_active: boolean } | null;
-      if (error || !agentData || !agentData.is_active) {
+      if (error || !agent || !agent.is_active) {
         setIsAdmin(false);
       } else {
-        setIsAdmin(agentData.role === "admin");
+        setIsAdmin((agent as unknown as { role: string }).role === "admin");
       }
     } catch {
       setIsAdmin(false);

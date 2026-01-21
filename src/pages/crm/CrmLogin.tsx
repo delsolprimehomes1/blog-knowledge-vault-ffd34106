@@ -31,9 +31,9 @@ export default function CrmLogin() {
           .eq("id", session.user.id)
           .single();
 
-        const agentData = agent as { role: string; is_active: boolean } | null;
-        if (agentData?.is_active) {
-          if (agentData.role === "admin") {
+        if (agent?.is_active) {
+          const role = (agent as unknown as { role: string }).role;
+          if (role === "admin") {
             navigate("/crm/admin/dashboard", { replace: true });
           } else {
             navigate("/crm/agent/dashboard", { replace: true });
@@ -76,9 +76,7 @@ export default function CrmLogin() {
         .eq("id", data.user.id)
         .single();
 
-      const agentData = agent as { role: string; is_active: boolean } | null;
-
-      if (agentError || !agentData) {
+      if (agentError || !agent) {
         await supabase.auth.signOut();
         toast({
           title: "Access Denied",
@@ -89,7 +87,7 @@ export default function CrmLogin() {
         return;
       }
 
-      if (!agentData.is_active) {
+      if (!agent.is_active) {
         await supabase.auth.signOut();
         toast({
           title: "Account Inactive",
@@ -102,7 +100,8 @@ export default function CrmLogin() {
 
       toast({ title: "Login successful" });
 
-      if (agentData.role === "admin") {
+      const role = (agent as unknown as { role: string }).role;
+      if (role === "admin") {
         navigate("/crm/admin/dashboard", { replace: true });
       } else {
         navigate("/crm/agent/dashboard", { replace: true });
