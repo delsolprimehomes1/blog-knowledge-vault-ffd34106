@@ -225,7 +225,7 @@ serve(async (req) => {
             Authorization: `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: "Del Sol Prime Homes <onboarding@resend.dev>",
+            from: "Del Sol Prime Homes <crm@notifications.delsolprimehomes.com>",
             to: [agent.email],
             subject: `${getLanguageFlag(lead.language)} New ${lead.language.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`,
             html: generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes),
