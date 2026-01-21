@@ -163,7 +163,7 @@ export function RoutingRuleCard({ rule, position, onEdit }: RoutingRuleCardProps
                   {rule.match_language?.length > 0 && (
                     <Badge variant="secondary" className="gap-1">
                       <Globe className="h-3 w-3" />
-                      {rule.match_language.map(l => LANGUAGE_FLAGS[l] || l.toUpperCase()).join(" ")}
+                      {rule.match_language.map(l => `${LANGUAGE_FLAGS[l] || ""} ${l.toUpperCase()}`).join(" ")}
                     </Badge>
                   )}
                   {rule.match_lead_source?.length > 0 && (

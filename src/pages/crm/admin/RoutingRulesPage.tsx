@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Plus, Route, Target, TrendingUp, Clock, Zap } from "lucide-react";
+import { Plus, Route, Target, TrendingUp, Clock, Zap, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRoutingRules, useRoutingRuleStats } from "@/hooks/useRoutingRules";
 import { RoutingRuleCard } from "@/components/crm/admin/RoutingRuleCard";
 import { CreateRoutingRuleDialog } from "@/components/crm/admin/CreateRoutingRuleDialog";
+import { RuleTestDialog } from "@/components/crm/admin/RuleTestDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RoutingRulesPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isTestOpen, setIsTestOpen] = useState(false);
   const [editRuleId, setEditRuleId] = useState<string | null>(null);
 
   const { data: rules, isLoading: rulesLoading } = useRoutingRules();
@@ -39,10 +41,20 @@ export default function RoutingRulesPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Rule
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsTestOpen(true)} 
+            className="gap-2"
+          >
+            <FlaskConical className="h-4 w-4" />
+            Run Rule Test
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create Rule
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -164,6 +176,12 @@ export default function RoutingRulesPage() {
         open={isCreateOpen}
         onOpenChange={handleCloseDialog}
         editRuleId={editRuleId}
+      />
+
+      {/* Rule Test Dialog */}
+      <RuleTestDialog
+        open={isTestOpen}
+        onOpenChange={setIsTestOpen}
       />
     </div>
   );
