@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { RefreshCw, Download, Columns, Eye, EyeOff } from "lucide-react";
-import { useAgentLeadsTable, ColumnVisibility } from "@/hooks/useAgentLeadsTable";
+import { useAgentLeadsTable, ColumnVisibility, AgentLead } from "@/hooks/useAgentLeadsTable";
 import { useLeadsExport } from "@/hooks/useLeadsExport";
 import { useTableNavigation } from "@/hooks/useKeyboardShortcuts";
 import { LeadsFilterBar } from "@/components/crm/LeadsFilterBar";
 import { LeadsTable } from "@/components/crm/LeadsTable";
 import { LeadsPagination } from "@/components/crm/LeadsPagination";
 import { BulkActionsBar } from "@/components/crm/BulkActionsBar";
+import { CreateReminderSheet } from "@/components/crm/calendar/CreateReminderSheet";
 
 export default function AgentLeads() {
   // Get current agent
@@ -64,6 +65,10 @@ export default function AgentLeads() {
     refetch,
   } = useAgentLeadsTable(agentId);
 
+  // Schedule reminder state
+  const [scheduleSheetOpen, setScheduleSheetOpen] = useState(false);
+  const [selectedLeadForSchedule, setSelectedLeadForSchedule] = useState<AgentLead | null>(null);
+
   // Export hook
   const { exportToCsv } = useLeadsExport();
 
@@ -71,6 +76,12 @@ export default function AgentLeads() {
   useTableNavigation({
     enabled: paginatedLeads.length > 0,
   });
+
+  // Handle schedule reminder
+  const handleScheduleReminder = useCallback((lead: AgentLead) => {
+    setSelectedLeadForSchedule(lead);
+    setScheduleSheetOpen(true);
+  }, []);
 
   // Handle field update
   const handleUpdateField = useCallback(
@@ -222,6 +233,7 @@ export default function AgentLeads() {
         onToggleExpand={toggleExpandRow}
         onUpdateField={handleUpdateField}
         onArchive={handleArchive}
+        onScheduleReminder={handleScheduleReminder}
       />
 
       {/* Pagination */}
@@ -236,6 +248,20 @@ export default function AgentLeads() {
           setPage(1);
         }}
       />
+
+      {/* Schedule Reminder Sheet */}
+      {agentId && (
+        <CreateReminderSheet
+          isOpen={scheduleSheetOpen}
+          onClose={() => {
+            setScheduleSheetOpen(false);
+            setSelectedLeadForSchedule(null);
+          }}
+          agentId={agentId}
+          leadId={selectedLeadForSchedule?.id}
+          leadName={selectedLeadForSchedule ? `${selectedLeadForSchedule.first_name} ${selectedLeadForSchedule.last_name}` : undefined}
+        />
+      )}
     </div>
   );
 }

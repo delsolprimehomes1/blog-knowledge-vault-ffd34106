@@ -13,6 +13,7 @@ import {
   DollarSign,
   Calendar,
   ExternalLink,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgentLead } from "@/hooks/useAgentLeadsTable";
@@ -23,6 +24,7 @@ interface ExpandedLeadRowProps {
   onEmail?: () => void;
   onWhatsApp?: () => void;
   onAddNote?: () => void;
+  onSchedule?: () => void;
 }
 
 export function ExpandedLeadRow({
@@ -31,6 +33,7 @@ export function ExpandedLeadRow({
   onEmail,
   onWhatsApp,
   onAddNote,
+  onSchedule,
 }: ExpandedLeadRowProps) {
   return (
     <div className="p-4 bg-muted/30 border-t">
@@ -164,6 +167,15 @@ export function ExpandedLeadRow({
                 >
                   <FileText className="w-4 h-4 mr-2 text-amber-600" />
                   Add Note
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onSchedule}
+                  className="justify-start col-span-2"
+                >
+                  <Bell className="w-4 h-4 mr-2 text-primary" />
+                  Schedule Reminder
                 </Button>
               </div>
             </CardContent>

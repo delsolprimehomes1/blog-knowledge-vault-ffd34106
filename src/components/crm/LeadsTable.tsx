@@ -37,6 +37,7 @@ import {
   Circle,
   Minus,
   AlertCircle,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -64,6 +65,7 @@ interface LeadsTableProps {
   onToggleExpand: (leadId: string) => void;
   onUpdateField: (leadId: string, field: string, value: any) => void;
   onArchive: (leadId: string) => void;
+  onScheduleReminder: (lead: AgentLead) => void;
 }
 
 export function LeadsTable({
@@ -79,6 +81,7 @@ export function LeadsTable({
   onToggleExpand,
   onUpdateField,
   onArchive,
+  onScheduleReminder,
 }: LeadsTableProps) {
   const navigate = useNavigate();
 
@@ -528,6 +531,13 @@ export function LeadsTable({
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            onClick={() => onScheduleReminder(lead)}
+                          >
+                            <Bell className="w-4 h-4 mr-2" />
+                            Schedule Reminder
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
                             onClick={() => onArchive(lead.id)}
                             className="text-destructive"
                           >
@@ -562,6 +572,7 @@ export function LeadsTable({
                                 `https://wa.me/${lead.phone_number.replace(/[^0-9]/g, "")}`
                               )
                             }
+                            onSchedule={() => onScheduleReminder(lead)}
                           />
                         </motion.div>
                       </TableCell>
