@@ -353,3 +353,6 @@ verify_jwt = false
 
 [functions.release-night-held-leads]
 verify_jwt = false
+
+[functions.seo-status-check]
+verify_jwt = false

@@ -26,6 +26,7 @@ import {
   ArrowRightLeft,
   Link2Off,
   Webhook,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -52,6 +53,7 @@ const navigation = [
 
   // Health & Monitoring
   { name: "SEO Monitor", href: "/admin/seo-monitor", icon: Globe2 },
+  { name: "SEO Status", href: "/admin/seo-status", icon: Search },
   { name: "Citation Health", href: "/admin/citation-health", icon: Activity },
   { name: "System Health", href: "/admin/system-health", icon: HeartPulse },
   { name: "Image Health", href: "/admin/image-health", icon: Image },

@@ -1316,8 +1316,29 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   // ============================================================
+  // WRECKING BALL POLICY: Language Mismatch Check → 410 Gone
+  // If the URL's language prefix doesn't match the content's actual language
+  // ============================================================
+  if (metadata.language && metadata.language !== lang) {
+    console.log(`[SEO] WRECKING BALL: Language mismatch ${lang} vs ${metadata.language} for ${path} → returning 410 Gone`)
+    return new Response(
+      generate410GoneHtml(lang),
+      { 
+        status: 410, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Robots-Tag': 'noindex',
+          'X-Wrecking-Ball': `language-mismatch:${lang}->${metadata.language}`
+        } 
+      }
+    )
+  }
+
+  // ============================================================
   // WRECKING BALL POLICY: Check for empty content → 410 Gone
   // Prevents indexing of "ghost pages" with null/placeholder content
+  // Extended to cover ALL content types (blog, qa, compare, locations)
   // ============================================================
   let hasEmptyContent = false
   let contentField = ''
@@ -1340,6 +1361,31 @@ async function handleRequest(req: Request): Promise<Response> {
       .maybeSingle()
     hasEmptyContent = isEmptyContent(data?.answer_main)
     contentField = 'answer_main'
+  } else if (contentType === 'compare') {
+    const { data } = await supabase
+      .from('comparison_pages')
+      .select('detailed_comparison, verdict')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle()
+    hasEmptyContent = isEmptyContent(data?.detailed_comparison) && isEmptyContent(data?.verdict)
+    contentField = 'detailed_comparison/verdict'
+  } else if (contentType === 'locations') {
+    // Location pages use city_slug/topic_slug format
+    const slugParts = slug.split('/')
+    if (slugParts.length >= 2) {
+      const [citySlug, topicSlug] = slugParts
+      const { data } = await supabase
+        .from('location_pages')
+        .select('location_overview, speakable_answer')
+        .eq('city_slug', citySlug)
+        .eq('topic_slug', topicSlug)
+        .eq('language', lang)
+        .eq('status', 'published')
+        .maybeSingle()
+      hasEmptyContent = isEmptyContent(data?.location_overview) && isEmptyContent(data?.speakable_answer)
+      contentField = 'location_overview/speakable_answer'
+    }
   }
   
   if (hasEmptyContent) {
