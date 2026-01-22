@@ -178,6 +178,30 @@ serve(async (req) => {
               read: false,
             });
 
+            // Send email notification to admin with full lead details
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  lead: {
+                    ...lead,
+                    current_round: lead.current_round,
+                  },
+                  agents: [admin],
+                  claimWindowMinutes: 0,
+                  notification_type: 'admin_unclaimed',
+                  isAdminFallback: true,
+                }),
+              });
+              console.log(`[check-unclaimed-leads] Admin email sent to ${admin.email} for lead ${lead.id}`);
+            } catch (emailError) {
+              console.error(`[check-unclaimed-leads] Failed to send admin email:`, emailError);
+            }
+
             // Log activity
             await supabase.from("crm_activities").insert({
               lead_id: lead.id,
