@@ -38,14 +38,18 @@ interface Lead {
   property_type?: string;
   claim_window_expires_at?: string;
   created_at?: string;
+  interest?: string;
+  property_ref?: string;
+  current_round?: number;
 }
 
 interface NotificationRequest {
   lead: Lead;
   agents: Agent[];
   claimWindowMinutes: number;
-  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent';
+  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent' | 'admin_unclaimed';
   lead_priority?: string;
+  isAdminFallback?: boolean;
 }
 
 function getLanguageFlag(language: string): string {
@@ -382,6 +386,181 @@ function generateUrgentEmailHtml(lead: Lead, agentName: string, claimUrl: string
 `;
 }
 
+// Generate Admin Unclaimed Lead email template
+function generateAdminUnclaimedEmailHtml(
+  lead: Lead, 
+  adminName: string, 
+  leadDetailUrl: string,
+  roundsAttempted: number
+): string {
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
+  const segmentColor = getSegmentColor(normalizedLead.lead_segment!);
+  const createdAt = lead.created_at ? new Date(lead.created_at).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }) : 'Unknown';
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚨 Unclaimed Lead - Admin Action Required</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(234, 88, 12, 0.2);">
+          <!-- URGENT Header - Orange/Red Gradient -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: bold;">
+                🚨 UNCLAIMED LEAD - MANUAL ACTION REQUIRED
+              </h1>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 15px; font-weight: 500;">
+                This lead was not claimed after ${roundsAttempted} round${roundsAttempted !== 1 ? 's' : ''}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Warning Banner -->
+          <tr>
+            <td style="background-color: #FED7AA; padding: 16px 30px; border-bottom: 2px solid #EA580C;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <p style="margin: 0; color: #9A3412; font-size: 15px; font-weight: 700;">
+                      ⚠️ No agents claimed this lead within the claim window
+                    </p>
+                    <p style="margin: 4px 0 0; color: #C2410C; font-size: 13px;">
+                      This lead has been auto-assigned to you for manual handling
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px;">
+                Hi ${adminName},
+              </p>
+              <p style="margin: 0 0 24px; color: #374151; font-size: 16px;">
+                A lead requires your manual intervention. Please review the details below and assign to an appropriate agent:
+              </p>
+              
+              <!-- Lead Card - Full Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FFF7ED; border-radius: 8px; border: 2px solid #FDBA74; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <h2 style="margin: 0 0 8px; color: #111827; font-size: 22px; font-weight: bold;">
+                            ${lead.first_name} ${lead.last_name}
+                          </h2>
+                          <span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">
+                            ${normalizedLead.lead_segment}
+                          </span>
+                          <span style="display: inline-block; background-color: #6366F1; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">
+                            ${flag} ${normalizedLead.language?.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;">
+                      <tr>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${normalizedLead.phone_number}</p>
+                        </td>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Email</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${lead.email || 'Not provided'}</p>
+                        </td>
+                      </tr>
+                      ${lead.interest ? `
+                      <tr>
+                        <td colspan="2" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Property Interest</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600; background-color: #FEF3C7; padding: 8px; border-radius: 4px;">${lead.interest}</p>
+                        </td>
+                      </tr>
+                      ` : ''}
+                      ${lead.property_ref ? `
+                      <tr>
+                        <td colspan="2" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Property Reference</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.property_ref}</p>
+                        </td>
+                      </tr>
+                      ` : ''}
+                      <tr>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Budget</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.budget_range || "Not specified"}</p>
+                        </td>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Property Type</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.property_type || "Not specified"}</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p>
+                        </td>
+                        <td width="50%" style="padding: 8px 0;">
+                          <p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Created</p>
+                          <p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${createdAt}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${leadDetailUrl}" style="display: inline-block; background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%); color: #ffffff; font-size: 18px; font-weight: bold; text-decoration: none; padding: 18px 50px; border-radius: 10px; box-shadow: 0 6px 20px rgba(234, 88, 12, 0.4); text-transform: uppercase;">
+                      📋 View Lead & Assign Agent
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 24px 0 0; color: #9A3412; font-size: 14px; text-align: center; font-weight: 500;">
+                You can assign this lead to any available agent from the lead detail page.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #1F2937; padding: 20px 30px;">
+              <p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">
+                Del Sol Prime Homes CRM • Admin Fallback System<br>
+                <span style="color: #FDBA74;">This lead was auto-assigned after failing to be claimed</span>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+}
+
 function generateSlackBlocks(lead: Lead, agentName: string, claimUrl: string, claimWindowMinutes: number) {
   const normalizedLead = normalizeLead(lead);
   const flag = getLanguageFlag(normalizedLead.language!);
@@ -526,7 +705,7 @@ serve(async (req) => {
       );
     }
 
-    const { lead, agents, claimWindowMinutes, notification_type, lead_priority }: NotificationRequest = await req.json();
+    const { lead, agents, claimWindowMinutes, notification_type, lead_priority, isAdminFallback }: NotificationRequest = await req.json();
 
     console.log(`[send-lead-notification] Sending notifications to ${agents.length} agents for lead ${lead.id}, type: ${notification_type || 'broadcast'}`);
 
@@ -534,7 +713,7 @@ serve(async (req) => {
     const results: Array<{ 
       agent: string; 
       emailSuccess: boolean; 
-      emailType?: 'standard' | 'urgent';
+      emailType?: 'standard' | 'urgent' | 'admin_unclaimed';
       slackSuccess?: boolean;
       slackChannels?: number;
       error?: string 
@@ -548,6 +727,9 @@ serve(async (req) => {
       console.log("[send-lead-notification] Slack integration not configured - skipping Slack notifications");
     }
 
+    // Handle admin unclaimed notification type
+    const isAdminUnclaimedNotification = notification_type === 'admin_unclaimed';
+
     // Determine if this is an urgent notification
     const isUrgentNotification = 
       notification_type === 'direct_assignment' ||
@@ -559,27 +741,39 @@ serve(async (req) => {
 
     for (const agent of agents) {
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
+      const leadDetailUrl = `${appUrl}/crm/agent/leads/${lead.id}`;
       let emailSuccess = false;
-      let emailType: 'standard' | 'urgent' = 'standard';
+      let emailType: 'standard' | 'urgent' | 'admin_unclaimed' = 'standard';
       let slackSuccess = false;
       let slackChannelCount = 0;
       
       // Determine which email template to use
-      const useUrgentTemplate = isUrgentNotification && agent.urgent_emails_enabled !== false;
-      emailType = useUrgentTemplate ? 'urgent' : 'standard';
+      const useAdminUnclaimedTemplate = isAdminUnclaimedNotification;
+      const useUrgentTemplate = !useAdminUnclaimedTemplate && isUrgentNotification && agent.urgent_emails_enabled !== false;
+      emailType = useAdminUnclaimedTemplate ? 'admin_unclaimed' : (useUrgentTemplate ? 'urgent' : 'standard');
 
       const normalizedLead = normalizeLead(lead);
       const flag = getLanguageFlag(normalizedLead.language!);
 
       // Send email notification
       try {
-        const emailHtml = useUrgentTemplate 
-          ? generateUrgentEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes, notification_type || 'urgent')
-          : generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes);
+        let emailHtml: string;
+        if (useAdminUnclaimedTemplate) {
+          emailHtml = generateAdminUnclaimedEmailHtml(lead, agent.first_name, leadDetailUrl, lead.current_round || 1);
+        } else if (useUrgentTemplate) {
+          emailHtml = generateUrgentEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes, notification_type || 'urgent');
+        } else {
+          emailHtml = generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes);
+        }
 
-        const emailSubject = useUrgentTemplate
-          ? `🔥 URGENT LEAD: ${lead.first_name} ${lead.last_name} - ${lead.budget_range || 'Action Required'}`
-          : `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`;
+        let emailSubject: string;
+        if (useAdminUnclaimedTemplate) {
+          emailSubject = `🚨 UNCLAIMED: ${lead.first_name} ${lead.last_name} - Manual Assignment Required`;
+        } else if (useUrgentTemplate) {
+          emailSubject = `🔥 URGENT LEAD: ${lead.first_name} ${lead.last_name} - ${lead.budget_range || 'Action Required'}`;
+        } else {
+          emailSubject = `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`;
+        }
 
         // Build email headers - add X-Priority for urgent emails
         const emailPayload: Record<string, unknown> = {
