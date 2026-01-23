@@ -14,7 +14,6 @@ interface CreateAgentRequest {
   role: string;
   languages: string[];
   max_active_leads: number;
-  slack_channel_id?: string;
   email_notifications: boolean;
   timezone: string;
 }
@@ -277,7 +276,6 @@ Deno.serve(async (req) => {
         role: body.role || "agent",
         languages: body.languages || ["en"],
         max_active_leads: body.max_active_leads || 50,
-        slack_channel_id: body.slack_channel_id || null,
         email_notifications: body.email_notifications ?? true,
         timezone: body.timezone || "Europe/Madrid",
         is_active: true,
