@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { 
   Select,
   SelectContent,
@@ -203,8 +203,8 @@ export function CreateRoutingRuleDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[calc(90vh-180px)] pr-4">
-          <div className="space-y-6 pb-4">
+        <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+          <div className="space-y-6 pb-6">
             {/* Basic Info */}
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -450,7 +450,7 @@ export function CreateRoutingRuleDialog({
               </Alert>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="pt-4 border-t mt-auto flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
