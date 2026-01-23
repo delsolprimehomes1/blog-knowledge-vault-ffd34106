@@ -388,6 +388,84 @@ export function useBulkAssignLeads() {
   });
 }
 
+// Bulk delete leads mutation
+export function useBulkDeleteLeads() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      leadIds,
+      adminId,
+    }: {
+      leadIds: string[];
+      adminId: string;
+    }) => {
+      // Get leads with their current agents to decrement counts
+      const { data: leads } = await supabase
+        .from("crm_leads")
+        .select("id, assigned_agent_id")
+        .in("id", leadIds);
+
+      // Collect agents to decrement
+      const agentCounts = new Map<string, number>();
+      leads?.forEach(l => {
+        if (l.assigned_agent_id) {
+          agentCounts.set(
+            l.assigned_agent_id,
+            (agentCounts.get(l.assigned_agent_id) || 0) + 1
+          );
+        }
+      });
+
+      // Decrement agent lead counts
+      for (const [agentId, count] of agentCounts) {
+        await updateAgentLeadCount(agentId, -count);
+      }
+
+      // Delete related activities first
+      await supabase
+        .from("crm_activities")
+        .delete()
+        .in("lead_id", leadIds);
+
+      // Delete related notes
+      await supabase
+        .from("crm_lead_notes")
+        .delete()
+        .in("lead_id", leadIds);
+
+      // Delete related notifications
+      await supabase
+        .from("crm_notifications")
+        .delete()
+        .in("lead_id", leadIds);
+
+      // Delete the leads
+      const { error } = await supabase
+        .from("crm_leads")
+        .delete()
+        .in("id", leadIds);
+
+      if (error) throw error;
+
+      return { success: true, count: leadIds.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-agent-stats"] });
+      toast({ title: `${data.count} lead${data.count !== 1 ? 's' : ''} permanently deleted` });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete leads",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 // Restart round robin mutation
 export function useRestartRoundRobin() {
   const queryClient = useQueryClient();

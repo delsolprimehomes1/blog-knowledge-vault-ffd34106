@@ -56,6 +56,7 @@ import {
   useRestartRoundRobin,
   useArchiveLead,
   useBulkAssignLeads,
+  useBulkDeleteLeads,
   useAdminStats,
   getSuggestedAgent,
   AdminLead,
@@ -98,6 +99,7 @@ export default function LeadsOverview() {
   const { data: agents = [] } = useEligibleAgents();
   const assignLead = useAssignLead();
   const bulkAssign = useBulkAssignLeads();
+  const bulkDelete = useBulkDeleteLeads();
   const restartRoundRobin = useRestartRoundRobin();
   const archiveLead = useArchiveLead();
 
@@ -139,6 +141,14 @@ export default function LeadsOverview() {
       leadIds: Array.from(selectedLeads),
       agentId,
       reason: "Bulk assignment by admin",
+      adminId,
+    });
+    setSelectedLeads(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    bulkDelete.mutate({
+      leadIds: Array.from(selectedLeads),
       adminId,
     });
     setSelectedLeads(new Set());
@@ -238,7 +248,9 @@ export default function LeadsOverview() {
         agents={agents}
         onClearSelection={() => setSelectedLeads(new Set())}
         onBulkAssign={handleBulkAssign}
+        onBulkDelete={handleBulkDelete}
         isAssigning={bulkAssign.isPending}
+        isDeleting={bulkDelete.isPending}
       />
 
       {/* Leads Table */}
