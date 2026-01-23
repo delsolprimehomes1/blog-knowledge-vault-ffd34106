@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
@@ -15,12 +16,12 @@ import { TLDRSummary } from "@/components/comparison/TLDRSummary";
 import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import { ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
-import { ArrowRight, BookOpen, Layers, ChevronDown } from "lucide-react";
+import { ArrowRight, ArrowLeft, BookOpen, Layers, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default function ComparisonPage() {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
-  const navigate = useNavigate();
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
   const [showUseCases, setShowUseCases] = useState(false);
 
@@ -40,12 +41,6 @@ export default function ComparisonPage() {
     enabled: !!slug,
   });
 
-  // Redirect if URL language doesn't match content language
-  useEffect(() => {
-    if (comparison && comparison.language && comparison.language !== lang) {
-      navigate(`/${comparison.language}/compare/${comparison.slug}`, { replace: true });
-    }
-  }, [comparison, lang, navigate]);
 
   const handleChatClick = () => {
     const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
@@ -71,7 +66,7 @@ export default function ComparisonPage() {
           <div className="text-center space-y-4">
             <h1 className="text-2xl font-bold">Comparison Not Found</h1>
             <p className="text-muted-foreground">The comparison you're looking for doesn't exist.</p>
-            <Link to="/compare" className="inline-flex items-center gap-2 text-primary hover:underline">
+            <Link to={`/${lang}/compare`} className="inline-flex items-center gap-2 text-primary hover:underline">
               View all comparisons
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -82,6 +77,34 @@ export default function ComparisonPage() {
     );
   }
 
+  // Language mismatch - return noindex page instead of redirect (SEO-safe pattern)
+  if (comparison.language !== lang) {
+    return (
+      <>
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+          <title>Comparison Not Available | Del Sol Prime Homes</title>
+        </Helmet>
+        <Header />
+        <main className="min-h-screen flex flex-col items-center justify-center bg-background">
+          <div className="container mx-auto px-4 py-16 text-center">
+            <h1 className="text-3xl font-bold mb-4">Comparison Not Available</h1>
+            <p className="text-muted-foreground mb-8">
+              This comparison is not available in this language.
+            </p>
+            <Button asChild>
+              <Link to={`/${lang}/compare`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Comparisons
+              </Link>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   const quickComparisonTable = Array.isArray(comparison.quick_comparison_table) 
     ? comparison.quick_comparison_table 
     : [];
@@ -89,9 +112,14 @@ export default function ComparisonPage() {
     ? comparison.qa_entities 
     : [];
 
+  const canonicalUrl = (comparison as any).canonical_url || 
+    `https://www.delsolprimehomes.com/${comparison.language}/compare/${comparison.slug}`;
+
   return (
     <>
-      {/* SEO tags are handled by server/edge - no Helmet needed */}
+      <Helmet>
+        <link rel="canonical" href={canonicalUrl} />
+      </Helmet>
       <Header />
       
       <main className="min-h-screen bg-background">
