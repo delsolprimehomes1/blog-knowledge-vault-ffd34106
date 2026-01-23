@@ -106,6 +106,7 @@ export default function ClaimLeadPage() {
   const navigate = useNavigate();
   const [claimResult, setClaimResult] = useState<"success" | "failed" | null>(null);
   const [celebrating, setCelebrating] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
 
   const claimMutation = useClaimLead();
 
@@ -311,7 +312,11 @@ export default function ClaimLeadPage() {
                 <p className="text-sm text-muted-foreground mb-1">Time Remaining</p>
                 <CountdownTimer 
                   expiresAt={lead.claim_window_expires_at}
-                  onExpire={() => !claimResult && setClaimResult("failed")}
+                  onExpire={() => {
+                    if (!claimResult) {
+                      setIsExpired(true);
+                    }
+                  }}
                 />
               </div>
 
@@ -334,6 +339,26 @@ export default function ClaimLeadPage() {
                   >
                     <XCircle className="w-8 h-8" />
                     <span className="font-bold text-xl">Unavailable</span>
+                  </motion.div>
+                ) : isExpired ? (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="flex flex-col items-center gap-2 text-amber-600"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-bold text-lg">Claim Window Expired</span>
+                    <span className="text-xs text-muted-foreground text-center max-w-[200px]">
+                      Being reassigned to next round...
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => navigate("/crm/agent/dashboard")}
+                    >
+                      Return to Dashboard
+                    </Button>
                   </motion.div>
                 ) : (
                   <Button
