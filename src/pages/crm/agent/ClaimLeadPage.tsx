@@ -173,9 +173,10 @@ export default function ClaimLeadPage() {
       setClaimResult("success");
       setCelebrating(true);
 
+      // Redirect to dashboard after showing success message
       setTimeout(() => {
-        navigate(`/crm/agent/leads/${lead.id}`);
-      }, 2000);
+        navigate("/crm/agent/dashboard");
+      }, 3000);
     } catch (error) {
       setClaimResult("failed");
     }
@@ -203,12 +204,23 @@ export default function ClaimLeadPage() {
 
   if (lead.lead_claimed && lead.assigned_agent_id !== session?.user?.id && claimResult !== "success") {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <XCircle className="w-16 h-16 text-destructive" />
-        <h2 className="text-2xl font-semibold">Lead Already Claimed</h2>
-        <p className="text-muted-foreground">This lead was claimed by another agent.</p>
-        <Button onClick={() => navigate("/crm/agent/dashboard")}>
-          Back to Dashboard
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6 p-6">
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-full p-6">
+          <XCircle className="w-16 h-16 text-amber-600" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold">Lead Already Claimed</h2>
+          <p className="text-muted-foreground max-w-md">
+            Another agent claimed this lead first. Don't worry — new leads are assigned regularly. 
+            Check your dashboard for other opportunities.
+          </p>
+        </div>
+        <Button 
+          size="lg"
+          onClick={() => navigate("/crm/agent/dashboard")}
+          className="mt-4"
+        >
+          Go to Dashboard
         </Button>
       </div>
     );
@@ -281,10 +293,11 @@ export default function ClaimLeadPage() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="flex items-center gap-2 text-green-600"
+                    className="flex flex-col items-center gap-2 text-green-600"
                   >
-                    <CheckCircle2 className="w-8 h-8" />
-                    <span className="font-bold text-xl">Claimed!</span>
+                    <CheckCircle2 className="w-10 h-10" />
+                    <span className="font-bold text-xl">Lead Claimed!</span>
+                    <span className="text-sm text-muted-foreground">Redirecting to dashboard...</span>
                   </motion.div>
                 ) : claimResult === "failed" ? (
                   <motion.div

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,9 @@ const loginSchema = z.object({
 
 export default function CrmLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || null;
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,10 @@ export default function CrmLogin() {
 
           if (agent?.is_active) {
             const role = (agent as unknown as { role: string }).role;
-            if (role === "admin") {
+            // If agent has a pending destination (e.g., claim page), redirect there
+            if (from && role !== "admin") {
+              navigate(from, { replace: true });
+            } else if (role === "admin") {
               navigate("/crm/admin/dashboard", { replace: true });
             } else {
               navigate("/crm/agent/dashboard", { replace: true });
@@ -114,7 +120,10 @@ export default function CrmLogin() {
       toast({ title: "Login successful" });
 
       const role = (agent as unknown as { role: string }).role;
-      if (role === "admin") {
+      // Redirect agent back to intended destination (e.g., claim page) if available
+      if (from && role !== "admin") {
+        navigate(from, { replace: true });
+      } else if (role === "admin") {
         navigate("/crm/admin/dashboard", { replace: true });
       } else {
         navigate("/crm/agent/dashboard", { replace: true });
