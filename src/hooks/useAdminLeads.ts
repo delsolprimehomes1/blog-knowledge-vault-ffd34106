@@ -131,15 +131,17 @@ export function useAdminLeads(filters: AdminLeadFilters = {}) {
     },
   });
 
-  // Real-time subscription
+  // Real-time subscription for automatic updates
   useEffect(() => {
     const channel = supabase
-      .channel("admin-leads-changes")
+      .channel("admin-leads-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "crm_leads" },
-        () => {
+        (payload) => {
+          console.log("📡 Real-time lead update:", payload.eventType, payload);
           queryClient.invalidateQueries({ queryKey: ["admin-leads"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
         }
       )
       .subscribe();
