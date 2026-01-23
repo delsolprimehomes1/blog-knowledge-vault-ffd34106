@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Claimable leads do NOT include phone/email - these are protected until claimed
 export interface ClaimableLead {
   id: string;
   first_name: string;
   last_name: string;
-  phone_number: string;
-  email: string | null;
+  // phone_number and email EXCLUDED - protected until lead is claimed
   language: string;
   lead_segment: string;
   budget_range: string | null;
@@ -75,9 +75,24 @@ export function useClaimableLeads(agentId: string | null, agentLanguages: string
         return;
       }
 
+      // Only select non-sensitive columns - phone_number and email are PROTECTED
       const { data: leads, error } = await supabase
         .from("crm_leads")
-        .select("*")
+        .select(`
+          id,
+          first_name,
+          last_name,
+          language,
+          lead_segment,
+          budget_range,
+          location_preference,
+          timeframe,
+          claim_window_expires_at,
+          lead_source,
+          current_lead_score,
+          lead_priority,
+          created_at
+        `)
         .in("id", leadIds)
         .eq("lead_claimed", false);
 

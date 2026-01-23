@@ -71,10 +71,21 @@ serve(async (req) => {
       p_claiming_agent_id: agentId,
     });
 
+    // Fetch the FULL lead data now that it's claimed - agent gets access to contact info
+    const { data: fullLead, error: fetchError } = await supabase
+      .from("crm_leads")
+      .select("*")
+      .eq("id", leadId)
+      .single();
+
+    if (fetchError) {
+      console.error("[claim-lead] Error fetching full lead:", fetchError);
+    }
+
     console.log(`[claim-lead] Lead ${leadId} successfully claimed by agent ${agentId}`);
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ ...result, lead: fullLead }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

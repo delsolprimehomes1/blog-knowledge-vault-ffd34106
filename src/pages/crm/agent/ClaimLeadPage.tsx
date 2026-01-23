@@ -25,6 +25,8 @@ import {
   ArrowLeft,
   Loader2,
   ExternalLink,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -115,14 +117,39 @@ export default function ClaimLeadPage() {
     },
   });
 
+  // Fetch lead with LIMITED data - phone/email are protected until claimed
   const { data: lead, isLoading, error, refetch } = useQuery({
     queryKey: ["claim-lead", leadId],
     queryFn: async () => {
       if (!leadId) throw new Error("No lead ID");
 
+      // Only fetch non-sensitive columns for unclaimed leads
       const { data, error } = await supabase
         .from("crm_leads")
-        .select("*")
+        .select(`
+          id,
+          first_name,
+          last_name,
+          language,
+          lead_segment,
+          budget_range,
+          location_preference,
+          property_type,
+          timeframe,
+          bedrooms_desired,
+          sea_view_importance,
+          claim_window_expires_at,
+          lead_source,
+          page_url,
+          current_lead_score,
+          lead_priority,
+          current_round,
+          lead_claimed,
+          assigned_agent_id,
+          questions_answered,
+          qa_pairs,
+          created_at
+        `)
         .eq("id", leadId)
         .single();
 
@@ -173,10 +200,10 @@ export default function ClaimLeadPage() {
       setClaimResult("success");
       setCelebrating(true);
 
-      // Redirect to dashboard after showing success message
+      // Redirect to lead detail page (where they'll have full access) after showing success message
       setTimeout(() => {
-        navigate("/crm/agent/dashboard");
-      }, 3000);
+        navigate(`/crm/agent/leads/${lead.id}`);
+      }, 2500);
     } catch (error) {
       setClaimResult("failed");
     }
@@ -376,34 +403,32 @@ export default function ClaimLeadPage() {
 
             <Separator />
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Phone</p>
-                  <a
-                    href={`tel:${lead.phone_number}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {lead.phone_number}
-                  </a>
+            {/* Contact info is LOCKED until claimed */}
+            <div className="mt-4 p-4 bg-muted/50 border border-dashed border-muted-foreground/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                  <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
-              </div>
-
-              {lead.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <a
-                      href={`mailto:${lead.email}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {lead.email}
-                    </a>
+                <div className="flex-1">
+                  <h4 className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    Contact Details Protected
+                  </h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Phone number and email will be visible after you successfully claim this lead.
+                  </p>
+                  <div className="mt-3 flex gap-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm">••••••••••</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="w-4 h-4" />
+                      <span className="text-sm">••••@••••.com</span>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </CardContent>
         </Card>
