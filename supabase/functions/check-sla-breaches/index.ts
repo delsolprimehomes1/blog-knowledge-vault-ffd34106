@@ -25,7 +25,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("[check-sla-breaches] Starting SLA breach check...");
+    console.log("[check-sla-breaches] Starting SLA breach check (notification-only mode)...");
 
     // Get SLA settings from database
     const { data: slaSettings } = await supabase
@@ -35,7 +35,6 @@ serve(async (req) => {
       .single();
 
     const slaMinutes = slaSettings?.value?.first_action_minutes || 10;
-    const adminId = slaSettings?.value?.admin_id || "95808453-dde1-421c-85ba-52fe534ef288"; // Hans
 
     // Calculate cutoff time
     const cutoffTime = new Date(Date.now() - slaMinutes * 60 * 1000).toISOString();
@@ -74,31 +73,22 @@ serve(async (req) => {
 
     console.log(`[check-sla-breaches] Found ${breachedLeads.length} SLA breaches to process`);
 
-    // Get admin agent info
-    const { data: adminAgent } = await supabase
-      .from("crm_agents")
-      .select("*")
-      .eq("id", adminId)
-      .single();
-
     let processedCount = 0;
+    const appUrl = Deno.env.get("APP_URL") || "https://blog-knowledge-vault.lovable.app";
 
     for (const lead of breachedLeads) {
-      const originalAgent = lead.crm_agents;
-      const originalAgentId = lead.assigned_agent_id;
+      const assignedAgent = lead.crm_agents;
+      const timeSinceAssignment = Math.round((Date.now() - new Date(lead.assigned_at).getTime()) / 60000);
 
-      console.log(`[check-sla-breaches] Processing lead ${lead.id} - assigned to ${originalAgent?.first_name || "Unknown"}`);
+      console.log(`[check-sla-breaches] Processing lead ${lead.id} - assigned to ${assignedAgent?.first_name || "Unknown"} for ${timeSinceAssignment} mins`);
 
-      // 1. Mark lead as SLA breached
+      // 1. Mark lead as SLA breached (for tracking/reporting) - DO NOT reassign
       const { error: updateError } = await supabase
         .from("crm_leads")
         .update({
           sla_breached: true,
           breach_timestamp: new Date().toISOString(),
-          // Reassign to admin
-          assigned_agent_id: adminId,
-          assigned_at: new Date().toISOString(),
-          assignment_method: "sla_escalation",
+          // NOTE: Lead stays with the original agent - no reassignment
         })
         .eq("id", lead.id);
 
@@ -107,65 +97,111 @@ serve(async (req) => {
         continue;
       }
 
-      // 2. Decrement original agent's lead count
-      if (originalAgentId) {
-        await supabase.rpc("decrement_agent_lead_count", { p_agent_id: originalAgentId });
+      // 2. Find the language-specific admin from round robin config
+      const { data: adminConfig } = await supabase
+        .from("crm_round_robin_config")
+        .select("agent_ids")
+        .eq("language", lead.language)
+        .eq("is_admin_fallback", true)
+        .eq("is_active", true)
+        .single();
+
+      let adminAgentId = adminConfig?.agent_ids?.[0];
+
+      // Fallback to default admin if no language-specific admin found
+      if (!adminAgentId) {
+        adminAgentId = slaSettings?.value?.admin_id || "95808453-dde1-421c-85ba-52fe534ef288";
       }
 
-      // 3. Increment admin's lead count
-      if (adminAgent) {
-        await supabase
-          .from("crm_agents")
-          .update({ current_lead_count: (adminAgent.current_lead_count || 0) + 1 })
-          .eq("id", adminId);
+      // Get admin agent details
+      const { data: adminAgent } = await supabase
+        .from("crm_agents")
+        .select("id, email, first_name, last_name")
+        .eq("id", adminAgentId)
+        .single();
+
+      // 3. Send SLA warning email to admin (notification only - no reassignment)
+      if (adminAgent?.email) {
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              lead: {
+                id: lead.id,
+                first_name: lead.first_name,
+                last_name: lead.last_name,
+                phone_number: lead.phone_number,
+                email: lead.email,
+                language: lead.language,
+                lead_segment: lead.lead_segment,
+                budget_range: lead.budget_range,
+                location_preference: lead.location_preference,
+                property_type: lead.property_type,
+                lead_source: lead.lead_source,
+              },
+              agents: [adminAgent],
+              claimWindowMinutes: slaMinutes,
+              notification_type: "sla_warning",
+              assigned_agent_name: `${assignedAgent?.first_name || "Unknown"} ${assignedAgent?.last_name || "Agent"}`,
+              time_since_assignment_minutes: timeSinceAssignment,
+            }),
+          });
+          console.log(`[check-sla-breaches] SLA warning email sent to admin ${adminAgent.email}:`, response.ok);
+        } catch (emailError) {
+          console.error(`[check-sla-breaches] Failed to send SLA warning email:`, emailError);
+        }
       }
 
-      // 4. Notify original agent (SLA failure warning)
-      if (originalAgentId) {
-        await supabase.from("crm_notifications").insert({
-          agent_id: originalAgentId,
-          lead_id: lead.id,
-          notification_type: "sla_breach",
-          title: `⚠️ SLA Breach - Lead Reassigned`,
-          message: `${getLanguageFlag(lead.language)} ${lead.first_name} ${lead.last_name} was reassigned to admin due to no action within ${slaMinutes} minutes.`,
-          action_url: `/crm/agent/leads`,
-          read: false,
-        });
-      }
-
-      // 5. Notify Admin (escalation)
+      // 4. Create in-app notification for admin (informational)
       await supabase.from("crm_notifications").insert({
-        agent_id: adminId,
+        agent_id: adminAgentId,
         lead_id: lead.id,
-        notification_type: "sla_escalation",
-        title: `🚨 SLA Escalation: ${lead.first_name} ${lead.last_name}`,
-        message: `${getLanguageFlag(lead.language)} Lead reassigned from ${originalAgent?.first_name || "Unknown Agent"} - No first action in ${slaMinutes}+ minutes. Segment: ${lead.lead_segment}, Budget: ${lead.budget_range || "TBD"}`,
+        notification_type: "sla_warning",
+        title: `⚠️ SLA Warning: Lead Not Worked`,
+        message: `${getLanguageFlag(lead.language)} ${lead.first_name} ${lead.last_name} has not been worked by ${assignedAgent?.first_name || "Agent"} after ${timeSinceAssignment} minutes. Lead remains assigned to agent.`,
         action_url: `/crm/agent/leads/${lead.id}`,
         read: false,
       });
 
-      // 6. Log activity for audit trail
+      // 5. Create softer reminder notification for the assigned agent
+      if (lead.assigned_agent_id) {
+        await supabase.from("crm_notifications").insert({
+          agent_id: lead.assigned_agent_id,
+          lead_id: lead.id,
+          notification_type: "sla_reminder",
+          title: `⏰ SLA Reminder: Action Required`,
+          message: `${getLanguageFlag(lead.language)} You have exceeded the ${slaMinutes}-minute first action window for ${lead.first_name} ${lead.last_name}. Please take action soon.`,
+          action_url: `/crm/agent/leads/${lead.id}`,
+          read: false,
+        });
+      }
+
+      // 6. Log activity for audit trail (softer message)
       await supabase.from("crm_activities").insert({
         lead_id: lead.id,
-        agent_id: adminId,
+        agent_id: lead.assigned_agent_id,
         activity_type: "note",
-        notes: `⚠️ SLA BREACH: Lead automatically reassigned from ${originalAgent?.first_name || "Unknown"} ${originalAgent?.last_name || "Agent"}. No first action was logged within the ${slaMinutes}-minute SLA window. Lead escalated to admin for immediate attention.`,
+        notes: `⚠️ SLA WARNING: No first action logged within the ${slaMinutes}-minute SLA window. Admin (${adminAgent?.first_name || "Admin"}) has been notified. Lead remains assigned to ${assignedAgent?.first_name || "Agent"} ${assignedAgent?.last_name || ""}.`,
         created_at: new Date().toISOString(),
       });
 
       processedCount++;
-      console.log(`[check-sla-breaches] Lead ${lead.id} escalated to admin (${adminAgent?.first_name || "Admin"})`);
+      console.log(`[check-sla-breaches] Lead ${lead.id} - SLA warning sent to admin ${adminAgent?.first_name || "Admin"} (no reassignment)`);
     }
 
-    console.log(`[check-sla-breaches] Completed - Processed ${processedCount} SLA breaches`);
+    console.log(`[check-sla-breaches] Completed - Processed ${processedCount} SLA warnings (notification-only)`);
 
     return new Response(
       JSON.stringify({
         success: true,
         processed: processedCount,
         slaMinutes,
-        adminId,
-        message: `Processed ${processedCount} SLA breach escalations`,
+        mode: "notification_only",
+        message: `Sent ${processedCount} SLA warning notifications to admins`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
