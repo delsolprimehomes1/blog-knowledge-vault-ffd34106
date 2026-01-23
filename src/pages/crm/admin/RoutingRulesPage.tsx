@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, Route, Target, TrendingUp, Clock, Zap, FlaskConical } from "lucide-react";
+import { Plus, Route, Target, TrendingUp, Clock, Zap, FlaskConical, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useRoutingRules, useRoutingRuleStats } from "@/hooks/useRoutingRules";
 import { RoutingRuleCard } from "@/components/crm/admin/RoutingRuleCard";
 import { CreateRoutingRuleDialog } from "@/components/crm/admin/CreateRoutingRuleDialog";
@@ -123,6 +124,22 @@ export default function RoutingRulesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Warning banner when no active rules */}
+      {!statsLoading && stats?.activeRules === 0 && (
+        <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <Users className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">
+            Pure Round Robin Mode Active
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            All routing rules are disabled. Lead distribution is now handled entirely by 
+            competitive Round Robin claiming. All leads will broadcast to eligible agents 
+            based on language, and the first agent to claim wins. To re-enable auto-assignment 
+            for specific languages, activate the corresponding routing rule.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Rules List */}
       <div className="space-y-4">
