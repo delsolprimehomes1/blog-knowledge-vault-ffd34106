@@ -9,7 +9,6 @@ export const agentFormSchema = z.object({
   role: z.enum(["agent", "admin"]),
   languages: z.array(z.string()).min(1, "At least one language is required"),
   max_active_leads: z.number().min(1).max(200).default(50),
-  slack_channel_id: z.string().optional(),
   email_notifications: z.boolean().default(true),
   timezone: z.string().default("Europe/Madrid"),
 });

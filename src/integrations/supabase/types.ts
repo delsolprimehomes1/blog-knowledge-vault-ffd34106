@@ -104,41 +104,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_slack_channels: {
-        Row: {
-          agent_id: string
-          channel_id: string
-          channel_name: string | null
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-        }
-        Insert: {
-          agent_id: string
-          channel_id: string
-          channel_name?: string | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-        }
-        Update: {
-          agent_id?: string
-          channel_id?: string
-          channel_name?: string | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_slack_channels_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "crm_agents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       approved_domains: {
         Row: {
           category: string
@@ -2041,9 +2006,7 @@ export type Database = {
           max_active_leads: number | null
           phone: string | null
           role: string
-          slack_channel_id: string | null
           slack_notifications: boolean | null
-          slack_user_id: string | null
           timezone: string | null
           updated_at: string | null
           urgent_emails_enabled: boolean | null
@@ -2063,9 +2026,7 @@ export type Database = {
           max_active_leads?: number | null
           phone?: string | null
           role?: string
-          slack_channel_id?: string | null
           slack_notifications?: boolean | null
-          slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
           urgent_emails_enabled?: boolean | null
@@ -2085,9 +2046,7 @@ export type Database = {
           max_active_leads?: number | null
           phone?: string | null
           role?: string
-          slack_channel_id?: string | null
           slack_notifications?: boolean | null
-          slack_user_id?: string | null
           timezone?: string | null
           updated_at?: string | null
           urgent_emails_enabled?: boolean | null
@@ -2424,7 +2383,6 @@ export type Database = {
           reminder_datetime: string
           reminder_type: string | null
           send_email: boolean | null
-          send_slack: boolean | null
           slack_sent: boolean | null
           snoozed_until: string | null
           title: string
@@ -2443,7 +2401,6 @@ export type Database = {
           reminder_datetime: string
           reminder_type?: string | null
           send_email?: boolean | null
-          send_slack?: boolean | null
           slack_sent?: boolean | null
           snoozed_until?: string | null
           title: string
@@ -2462,7 +2419,6 @@ export type Database = {
           reminder_datetime?: string
           reminder_type?: string | null
           send_email?: boolean | null
-          send_slack?: boolean | null
           slack_sent?: boolean | null
           snoozed_until?: string | null
           title?: string
@@ -4258,33 +4214,6 @@ export type Database = {
           validation_duration_ms?: number | null
           xml_is_valid?: boolean
           xml_validation_errors?: Json | null
-        }
-        Relationships: []
-      }
-      slack_channels: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_private: boolean | null
-          last_synced_at: string | null
-          member_count: number | null
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          id: string
-          is_private?: boolean | null
-          last_synced_at?: string | null
-          member_count?: number | null
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_private?: boolean | null
-          last_synced_at?: string | null
-          member_count?: number | null
-          name?: string
         }
         Relationships: []
       }

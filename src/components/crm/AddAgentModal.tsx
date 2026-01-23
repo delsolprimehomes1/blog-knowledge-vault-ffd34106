@@ -20,8 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateAgent } from "@/hooks/useCrmAgents";
-import { useSlackChannels, useUpdateAgentSlackChannels, SlackChannel } from "@/hooks/useSlackChannels";
-import { SlackChannelSelector } from "@/components/crm/SlackChannelSelector";
 import {
   agentFormSchema,
   AgentFormData,
@@ -37,12 +35,8 @@ interface AddAgentModalProps {
 
 export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
   const createAgent = useCreateAgent();
-  const updateAgentSlackChannels = useUpdateAgentSlackChannels();
-  const { data: allChannels = [] } = useSlackChannels();
   
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["en"]);
-  const [slackEnabled, setSlackEnabled] = useState(false);
-  const [selectedSlackChannels, setSelectedSlackChannels] = useState<string[]>([]);
   const [urgentEmailsEnabled, setUrgentEmailsEnabled] = useState(true);
 
   const {
@@ -73,13 +67,9 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
     setValue("languages", updated);
   };
 
-  const handleSlackChannelsChange = (channelIds: string[], channels: SlackChannel[]) => {
-    setSelectedSlackChannels(channelIds);
-  };
-
   const onSubmit = async (data: AgentFormData) => {
     try {
-      const result = await createAgent.mutateAsync({
+      await createAgent.mutateAsync({
         email: data.email,
         password: data.password,
         first_name: data.first_name,
@@ -88,25 +78,12 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
         role: data.role,
         languages: selectedLanguages,
         max_active_leads: data.max_active_leads,
-        slack_channel_id: data.slack_channel_id,
         email_notifications: data.email_notifications,
         timezone: data.timezone,
       });
 
-      // If agent was created and Slack is enabled, assign channels
-      const agentId = result?.agentId ?? result?.agent?.id;
-      if (agentId && slackEnabled && selectedSlackChannels.length > 0) {
-        await updateAgentSlackChannels.mutateAsync({
-          agentId,
-          channelIds: selectedSlackChannels,
-          channels: allChannels,
-        });
-      }
-
       reset();
       setSelectedLanguages(["en"]);
-      setSlackEnabled(false);
-      setSelectedSlackChannels([]);
       setUrgentEmailsEnabled(true);
       onOpenChange(false);
     } catch (error) {
@@ -288,29 +265,6 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
                 onCheckedChange={setUrgentEmailsEnabled}
               />
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="slack_notifications" className="cursor-pointer">
-                  Slack Notifications
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Receive lead alerts in Slack channels
-                </p>
-              </div>
-              <Switch
-                id="slack_notifications"
-                checked={slackEnabled}
-                onCheckedChange={setSlackEnabled}
-              />
-            </div>
-
-            {slackEnabled && (
-              <SlackChannelSelector
-                selectedChannelIds={selectedSlackChannels}
-                onChannelsChange={handleSlackChannelsChange}
-              />
-            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

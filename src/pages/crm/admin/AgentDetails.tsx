@@ -123,12 +123,12 @@ export default function AgentDetails() {
                   <span>Email notifications</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {agent.slack_channel_id ? (
+                  {agent.urgent_emails_enabled ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
                     <XCircle className="h-4 w-4 text-muted-foreground" />
                   )}
-                  <span>Slack notifications</span>
+                  <span>Urgent email alerts</span>
                 </div>
               </div>
             </div>
