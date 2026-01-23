@@ -49,10 +49,22 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
     formState: { errors },
   } = useForm<EditAgentFormData>({
     resolver: zodResolver(editAgentFormSchema),
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      role: "agent",
+      languages: [],
+      max_active_leads: 100,
+      email_notifications: true,
+      timezone: "Europe/Madrid",
+    },
   });
 
-  const emailNotifications = watch("email_notifications");
-  const currentRole = watch("role");
+  const emailNotifications = watch("email_notifications") ?? true;
+  const currentRole = watch("role") ?? "agent";
+  const currentTimezone = watch("timezone") ?? "Europe/Madrid";
 
   useEffect(() => {
     if (agent && open) {
@@ -198,7 +210,7 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
             <div className="space-y-2">
               <Label>Timezone</Label>
               <Select
-                value={watch("timezone")}
+                value={currentTimezone}
                 onValueChange={(value) => setValue("timezone", value)}
               >
                 <SelectTrigger>
