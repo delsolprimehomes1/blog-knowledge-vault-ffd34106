@@ -46,6 +46,9 @@ import {
   ArrowUpDown,
   AlertTriangle,
   CheckCircle2,
+  Zap,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { getLanguageFlag } from "@/lib/crm-conditional-styles";
 
@@ -95,6 +98,10 @@ export default function RoundRobinConfig() {
     is_admin_fallback: false,
     is_active: true,
   });
+  
+  // Manual automation controls state
+  const [processingExpired, setProcessingExpired] = useState(false);
+  const [processingSLA, setProcessingSLA] = useState(false);
 
   // Fetch round robin configs
   const { data: configs, isLoading: configsLoading } = useQuery({
@@ -273,8 +280,105 @@ export default function RoundRobinConfig() {
     (agent) => !formData.language || agent.languages?.includes(formData.language)
   );
 
+  // Manual automation handlers
+  const handleProcessExpired = async () => {
+    setProcessingExpired(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-unclaimed-leads', {
+        body: { triggered_by: 'manual' }
+      });
+      
+      if (error) throw error;
+      
+      toast.success(
+        `Processed ${data?.processed || 0} leads. ` +
+        `Escalated: ${data?.escalated || 0}, Admin fallback: ${data?.assignedToAdmin || 0}`
+      );
+    } catch (error: any) {
+      toast.error(`Failed to process: ${error.message}`);
+    } finally {
+      setProcessingExpired(false);
+    }
+  };
+
+  const handleCheckSLA = async () => {
+    setProcessingSLA(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-sla-breaches', {
+        body: { triggered_by: 'manual' }
+      });
+      
+      if (error) throw error;
+      
+      toast.success(
+        `SLA check complete. Breaches found: ${data?.breached || 0}`
+      );
+    } catch (error: any) {
+      toast.error(`Failed to check SLA: ${error.message}`);
+    } finally {
+      setProcessingSLA(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Manual Automation Controls */}
+      <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Zap className="w-5 h-5 text-amber-600" />
+            Manual Automation Controls
+          </CardTitle>
+          <CardDescription>
+            Trigger automation functions manually without waiting for cron schedules
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="outline"
+              onClick={handleProcessExpired}
+              disabled={processingExpired}
+              className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/30"
+            >
+              {processingExpired ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Process Expired Leads
+                </>
+              )}
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={handleCheckSLA}
+              disabled={processingSLA}
+              className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/30"
+            >
+              {processingSLA ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4 mr-2" />
+                  Check SLA Breaches
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            <span className="font-medium">Cron Status:</span> Active • Expired leads checked every 1 min • SLA breaches checked every 1 min
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
