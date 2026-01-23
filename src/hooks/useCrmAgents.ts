@@ -11,8 +11,6 @@ export interface CrmAgent {
   role: string;
   languages: string[];
   email_notifications: boolean;
-  slack_channel_id: string | null;
-  slack_user_id: string | null;
   max_active_leads: number;
   accepts_new_leads: boolean;
   current_lead_count: number;
@@ -160,7 +158,6 @@ export function useCreateAgent() {
       role: string;
       languages: string[];
       max_active_leads: number;
-      slack_channel_id?: string;
       email_notifications: boolean;
       timezone: string;
     }) => {
