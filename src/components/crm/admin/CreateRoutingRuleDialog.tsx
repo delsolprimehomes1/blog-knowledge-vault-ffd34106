@@ -203,8 +203,8 @@ export function CreateRoutingRuleDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
+        <ScrollArea className="flex-1 max-h-[calc(90vh-180px)] pr-4">
+          <div className="space-y-6 pb-4">
             {/* Basic Info */}
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -452,7 +452,7 @@ export function CreateRoutingRuleDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="pt-4 border-t">
+        <DialogFooter className="pt-4 border-t mt-auto flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
