@@ -74,6 +74,25 @@ export async function onRequest({ request, next, env }) {
     });
   }
 
+  // ============================================================
+  // RULE 2: Redirect CRM routes from Lovable subdomain to production
+  // Catches old email links that used the fallback subdomain
+  // ============================================================
+  if (url.hostname === 'blog-knowledge-vault.lovable.app' && url.pathname.startsWith('/crm/')) {
+    const redirectUrl = new URL(url);
+    redirectUrl.hostname = 'www.delsolprimehomes.com';
+    
+    console.log(`[Middleware] Redirecting CRM from Lovable subdomain: ${url.pathname} → ${redirectUrl.toString()}`);
+    
+    return new Response(null, {
+      status: 301,
+      headers: {
+        Location: redirectUrl.toString(),
+        'X-Middleware-Status': 'Active',
+      },
+    });
+  }
+
   const pathname = url.pathname;
 
   // Adds a debug header so we can verify middleware execution in the Network tab.
