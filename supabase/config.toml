@@ -300,9 +300,6 @@ verify_jwt = false
 [functions.migrate-emma-leads]
 verify_jwt = false
 
-[functions.retry-emma-webhooks]
-verify_jwt = false
-
 [functions.generate-missing-captions]
 verify_jwt = false
 
