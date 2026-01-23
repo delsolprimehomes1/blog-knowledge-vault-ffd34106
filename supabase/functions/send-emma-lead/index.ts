@@ -246,6 +246,71 @@ serve(async (req) => {
     // Update lead tracking with success
     await updateLeadWebhookStatus(supabase, conversationId || '', true, payload);
 
+    // 🆕 REGISTER IN CRM FOR ROUND ROBIN ROUTING
+    // This ensures Emma leads go through the same routing as form leads
+    try {
+      const crmPayload = {
+        // Contact info
+        firstName: payload.contact_info.first_name,
+        lastName: payload.contact_info.last_name,
+        phone: payload.contact_info.phone_number,
+        countryPrefix: payload.contact_info.country_prefix,
+        
+        // Source tracking
+        leadSource: 'Emma Chatbot',
+        leadSourceDetail: payload.page_context?.lead_source_detail || `Emma - ${payload.system_data.exit_point || 'conversation'}`,
+        pageUrl: payload.page_context?.page_url || '',
+        pageType: payload.page_context?.page_type || '',
+        pageTitle: payload.page_context?.page_title || '',
+        referrer: payload.page_context?.referrer || 'Direct',
+        language: (payload.page_context?.language || payload.system_data.detected_language || 'en').toLowerCase().substring(0, 2),
+        
+        // Emma-specific fields
+        questionsAnswered: payload.content_phase?.questions_answered || 0,
+        qaPairs: [
+          { question: payload.content_phase?.question_1 || '', answer: payload.content_phase?.answer_1 || '' },
+          { question: payload.content_phase?.question_2 || '', answer: payload.content_phase?.answer_2 || '' },
+          { question: payload.content_phase?.question_3 || '', answer: payload.content_phase?.answer_3 || '' },
+        ].filter(qa => qa.question && qa.answer),
+        intakeComplete: payload.system_data?.intake_complete || false,
+        exitPoint: payload.system_data?.exit_point || 'unknown',
+        conversationDuration: payload.page_context?.conversation_duration || '',
+        
+        // Property criteria
+        locationPreference: payload.property_criteria?.location_preference || [],
+        seaViewImportance: payload.property_criteria?.sea_view_importance || '',
+        budgetRange: payload.property_criteria?.budget_range || '',
+        bedroomsDesired: payload.property_criteria?.bedrooms_desired || '',
+        propertyType: Array.isArray(payload.property_criteria?.property_type) 
+          ? payload.property_criteria.property_type.join(', ') 
+          : (payload.property_criteria?.property_type || ''),
+        propertyPurpose: payload.property_criteria?.property_purpose || '',
+        timeframe: payload.property_criteria?.timeframe || '',
+      };
+
+      console.log('📤 Registering Emma lead in CRM for round robin:', crmPayload.firstName, crmPayload.lastName);
+
+      const crmResponse = await fetch(`${supabaseUrl}/functions/v1/register-crm-lead`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify(crmPayload),
+      });
+
+      if (crmResponse.ok) {
+        const crmResult = await crmResponse.json();
+        console.log('✅ Emma lead registered in CRM:', crmResult.lead_id || 'success');
+      } else {
+        const crmError = await crmResponse.text();
+        console.error('⚠️ CRM registration failed (non-blocking):', crmError);
+      }
+    } catch (crmError) {
+      // Non-blocking: Don't fail the GHL webhook if CRM registration fails
+      console.error('⚠️ CRM registration error (non-blocking):', crmError);
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
