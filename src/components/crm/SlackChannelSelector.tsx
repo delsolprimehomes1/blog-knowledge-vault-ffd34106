@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -24,20 +24,27 @@ export function SlackChannelSelector({
 }: SlackChannelSelectorProps) {
   const { data: channels = [], isLoading: isLoadingChannels } = useSlackChannels();
   const syncChannels = useSyncSlackChannels();
-  const [localSelected, setLocalSelected] = useState<string[]>(selectedChannelIds);
-  const [initialized, setInitialized] = useState(false);
+  const [localSelected, setLocalSelected] = useState<string[]>(() => selectedChannelIds);
+  const isInitializedRef = useRef(false);
+  const previousIdsRef = useRef<string>(JSON.stringify(selectedChannelIds.sort()));
 
-  // Only sync from parent to local on initial load or when parent IDs meaningfully change
+  // Sync from parent only when parent IDs actually change (after initial mount)
   useEffect(() => {
-    const parentStr = JSON.stringify([...selectedChannelIds].sort());
-    const localStr = JSON.stringify([...localSelected].sort());
+    const currentIdsStr = JSON.stringify([...selectedChannelIds].sort());
     
-    // Only update if this is the first load or if parent changed externally
-    if (!initialized || parentStr !== localStr) {
-      setLocalSelected(selectedChannelIds);
-      setInitialized(true);
+    // Skip the first render (we already initialized with useState)
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      previousIdsRef.current = currentIdsStr;
+      return;
     }
-  }, [selectedChannelIds]); // intentionally exclude localSelected to prevent loop
+    
+    // Only update if the parent IDs have actually changed
+    if (currentIdsStr !== previousIdsRef.current) {
+      previousIdsRef.current = currentIdsStr;
+      setLocalSelected(selectedChannelIds);
+    }
+  }, [selectedChannelIds]);
 
   const handleToggleChannel = (channelId: string) => {
     const updated = localSelected.includes(channelId)
