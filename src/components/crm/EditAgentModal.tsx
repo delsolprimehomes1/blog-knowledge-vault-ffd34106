@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -39,6 +39,7 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
   
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [urgentEmailsEnabled, setUrgentEmailsEnabled] = useState(true);
+  const initKeyRef = useRef<string | null>(null);
 
   const {
     register,
@@ -67,22 +68,29 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
   const currentTimezone = watch("timezone") ?? "Europe/Madrid";
 
   useEffect(() => {
-    if (agent && open) {
-      reset({
-        first_name: agent.first_name,
-        last_name: agent.last_name,
-        email: agent.email,
-        phone: agent.phone || "",
-        role: agent.role as "agent" | "admin",
-        languages: agent.languages,
-        max_active_leads: agent.max_active_leads,
-        email_notifications: agent.email_notifications,
-        timezone: agent.timezone,
-      });
-      setSelectedLanguages(agent.languages);
-      setUrgentEmailsEnabled(agent.urgent_emails_enabled !== false);
-    }
-  }, [agent, open, reset]);
+    if (!agent || !open) return;
+
+    // Prevent re-initialization loops if the parent passes a new `agent` object
+    // reference on each render.
+    const initKey = `${agent.id}:${agent.updated_at ?? ""}`;
+    if (initKeyRef.current === initKey) return;
+    initKeyRef.current = initKey;
+
+    reset({
+      first_name: agent.first_name ?? "",
+      last_name: agent.last_name ?? "",
+      email: agent.email ?? "",
+      phone: agent.phone || "",
+      role: (agent.role as "agent" | "admin") ?? "agent",
+      languages: agent.languages ?? [],
+      max_active_leads: agent.max_active_leads ?? 100,
+      email_notifications: agent.email_notifications ?? true,
+      timezone: agent.timezone ?? "Europe/Madrid",
+    });
+
+    setSelectedLanguages(agent.languages ?? []);
+    setUrgentEmailsEnabled(agent.urgent_emails_enabled ?? true);
+  }, [agent?.id, agent?.updated_at, open, reset, agent]);
 
   const toggleLanguage = (code: string) => {
     const updated = selectedLanguages.includes(code)
@@ -175,28 +183,30 @@ export function EditAgentModal({ agent, open, onOpenChange }: EditAgentModalProp
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Languages *</Label>
-            <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/30">
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <div
-                  key={lang.code}
-                  className="flex items-center space-x-2 cursor-pointer"
-                  onClick={() => toggleLanguage(lang.code)}
-                >
-                  <Checkbox
-                    checked={selectedLanguages.includes(lang.code)}
-                    onCheckedChange={() => toggleLanguage(lang.code)}
-                  />
-                  <span className="text-lg">{lang.flag}</span>
-                  <span className="text-sm">{lang.name}</span>
-                </div>
-              ))}
-            </div>
-            {errors.languages && (
-              <p className="text-sm text-destructive">{errors.languages.message}</p>
-            )}
-          </div>
+           <div className="space-y-2">
+             <Label>Languages *</Label>
+             <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/30">
+               {SUPPORTED_LANGUAGES.map((lang) => (
+                 <div key={lang.code} className="flex items-center space-x-2">
+                   <Checkbox
+                     id={`edit-lang-${lang.code}`}
+                     checked={selectedLanguages.includes(lang.code)}
+                     onCheckedChange={() => toggleLanguage(lang.code)}
+                   />
+                   <Label
+                     htmlFor={`edit-lang-${lang.code}`}
+                     className="cursor-pointer flex items-center gap-1"
+                   >
+                     <span className="text-lg">{lang.flag}</span>
+                     <span className="text-sm">{lang.name}</span>
+                   </Label>
+                 </div>
+               ))}
+             </div>
+             {errors.languages && (
+               <p className="text-sm text-destructive">{errors.languages.message}</p>
+             )}
+           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
