@@ -81,7 +81,7 @@ const GoneURLsManager = () => {
   const [newUrl, setNewUrl] = useState("");
   const [newReason, setNewReason] = useState("legacy_structure");
   const [testUrl, setTestUrl] = useState("");
-  const [testResult, setTestResult] = useState<{ status: number; ok: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<{ status: number; ok: boolean; details?: any } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [csvContent, setCsvContent] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -260,14 +260,39 @@ const GoneURLsManager = () => {
     setTestResult(null);
 
     try {
-      const fullUrl = testUrl.startsWith("http")
-        ? testUrl
-        : `https://www.delsolprimehomes.com${testUrl.startsWith("/") ? testUrl : "/" + testUrl}`;
+      // Extract path from full URL or use as-is
+      let path = testUrl.trim();
+      if (path.startsWith("http")) {
+        const url = new URL(path);
+        path = url.pathname;
+      }
+      if (!path.startsWith("/")) {
+        path = "/" + path;
+      }
 
-      const response = await fetch(fullUrl, { method: "HEAD" });
-      setTestResult({ status: response.status, ok: response.ok });
+      // Call edge function to avoid CORS issues
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seo-status-check?path=${encodeURIComponent(path)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Edge function returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTestResult({ 
+        status: data.expectedStatus, 
+        ok: data.expectedStatus === 200,
+        details: data 
+      });
     } catch (error) {
-      toast.error("Failed to test URL - it may not exist or CORS is blocking");
+      console.error("URL test error:", error);
+      toast.error("Failed to test URL - check console for details");
     } finally {
       setIsTesting(false);
     }
@@ -482,21 +507,37 @@ const GoneURLsManager = () => {
               </Button>
             </div>
             {testResult && (
-              <div
-                className={`flex items-center gap-2 p-3 rounded-lg ${
-                  testResult.status === 410
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                }`}
-              >
-                {testResult.status === 410 ? (
-                  <CheckCircle2 className="h-5 w-5" />
-                ) : (
-                  <AlertCircle className="h-5 w-5" />
+              <div className="space-y-2">
+                <div
+                  className={`flex items-center gap-2 p-3 rounded-lg ${
+                    testResult.status === 410
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : testResult.status === 200
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                  }`}
+                >
+                  {testResult.status === 410 ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5" />
+                  )}
+                  <span className="font-medium">
+                    Status: {testResult.status} {testResult.status === 410 ? "(Gone - Correct!)" : testResult.status === 200 ? "(Live - May need to be added)" : "(Error)"}
+                  </span>
+                </div>
+                {testResult.details && (
+                  <div className="text-sm space-y-1 p-3 bg-muted rounded-lg">
+                    {testResult.details.wreckingBallReason && (
+                      <p><strong>Wrecking Ball Reason:</strong> <code className="bg-background px-1 rounded">{testResult.details.wreckingBallReason}</code></p>
+                    )}
+                    {testResult.details.contentType && (
+                      <p><strong>Content Type:</strong> {testResult.details.contentType}</p>
+                    )}
+                    <p><strong>In Sitemap:</strong> {testResult.details.shouldBeInSitemap ? "Yes" : "No"}</p>
+                    <p><strong>In gone_urls table:</strong> {testResult.details.checks?.inGoneUrls ? "Yes" : "No"}</p>
+                  </div>
                 )}
-                <span className="font-medium">
-                  Status: {testResult.status} {testResult.status === 410 ? "(Gone - Correct!)" : "(Not 410 - May need to be added)"}
-                </span>
               </div>
             )}
           </CardContent>
