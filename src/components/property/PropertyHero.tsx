@@ -25,14 +25,6 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
 
-  // Fallback to w400 if high-res fails
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    const fallbackUrl = img.src.replace(/\/w\d+\//g, '/w400/');
-    if (img.src !== fallbackUrl) {
-      img.src = fallbackUrl;
-    }
-  };
 
   // Detect touch device
   useEffect(() => {
@@ -121,7 +113,6 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
             src={getHighResImageUrl(images[currentIndex], 'hero')}
             alt={`${title} - Image ${currentIndex + 1}`}
             className="w-full h-full object-cover animate-ken-burns scale-110"
-            onError={handleImageError}
           />
         </motion.div>
 
@@ -251,7 +242,6 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
                   src={getHighResImageUrl(image, 'thumbnail')}
                   alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
-                  onError={handleImageError}
                 />
               </button>
             ))}
@@ -311,7 +301,6 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               src={getHighResImageUrl(images[currentIndex], 'lightbox')}
-              onError={handleImageError}
               alt={`${title} - Image ${currentIndex + 1}`}
               className="max-w-[95vw] max-h-[85vh] md:max-w-[92vw] md:max-h-[88vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
@@ -341,7 +330,6 @@ export const PropertyHero = ({ images, title, location, price, reference, bedroo
                     src={getHighResImageUrl(image, 'thumbnail')}
                     alt={`Thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
-                    onError={handleImageError}
                   />
                 </button>
               ))}

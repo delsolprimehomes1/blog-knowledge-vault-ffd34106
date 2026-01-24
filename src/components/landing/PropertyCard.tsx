@@ -149,15 +149,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, lang }) => {
                     alt={`Property in ${property.location}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                        const img = e.currentTarget;
-                        // First try w400 fallback
-                        const fallbackUrl = img.src.replace(/\/w\d+\//g, '/w400/');
-                        if (img.src !== fallbackUrl) {
-                            img.src = fallbackUrl;
-                        } else {
-                            // If w400 also fails, use placeholder
-                            img.src = '/images/properties/placeholder.jpg';
-                        }
+                        e.currentTarget.src = '/placeholder.svg';
                     }}
                 />
 

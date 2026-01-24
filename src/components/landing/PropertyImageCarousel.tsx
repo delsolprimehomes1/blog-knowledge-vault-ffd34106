@@ -48,14 +48,6 @@ export const PropertyImageCarousel: React.FC<PropertyImageCarouselProps> = ({ im
     );
   }
 
-  // Fallback to w400 if high-res fails
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    const fallbackUrl = img.src.replace(/\/w\d+\//g, '/w400/');
-    if (img.src !== fallbackUrl) {
-      img.src = fallbackUrl;
-    }
-  };
 
   // Single image - no carousel needed
   if (images.length === 1) {
@@ -65,7 +57,6 @@ export const PropertyImageCarousel: React.FC<PropertyImageCarouselProps> = ({ im
         alt={alt}
         className="absolute inset-0 w-full h-full object-cover"
         loading="lazy"
-        onError={handleImageError}
       />
     );
   }
@@ -82,7 +73,6 @@ export const PropertyImageCarousel: React.FC<PropertyImageCarouselProps> = ({ im
                 alt={`${alt} ${idx + 1}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
-                onError={handleImageError}
               />
             </div>
           ))}
