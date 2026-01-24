@@ -59,7 +59,7 @@ export const Hero: React.FC = () => {
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center pt-24 md:pt-32 pb-32 md:pb-40">
         
         {/* Trust Line */}
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 mb-10 reveal-on-scroll [text-shadow:_0_2px_12px_rgb(0_0_0_/_80%)]">
+        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 mb-10 reveal-on-scroll [text-shadow:_0_0_8px_rgb(0_0_0),_0_0_20px_rgb(0_0_0_/_80%),_0_2px_4px_rgb(0_0_0)]">
           <div className="flex items-center gap-2 text-white text-xs md:text-sm font-medium tracking-wide">
              <ShieldCheck size={16} className="text-prime-gold drop-shadow-lg" />
              <span>{t.hero.trustBadges.api}</span>
@@ -77,27 +77,27 @@ export const Hero: React.FC = () => {
         </div>
 
         {/* Headline */}
-        <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-6 md:mb-8 leading-[1.05] tracking-tight max-w-6xl reveal-on-scroll stagger-1 animate-zoom-in [text-shadow:_0_4px_24px_rgb(0_0_0_/_90%),_0_2px_8px_rgb(0_0_0_/_70%)]" style={{ letterSpacing: '-0.02em' }}>
+        <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-6 md:mb-8 leading-[1.05] tracking-tight max-w-6xl reveal-on-scroll stagger-1 animate-zoom-in [text-shadow:_0_0_10px_rgb(0_0_0),_0_0_30px_rgb(0_0_0),_0_0_60px_rgb(0_0_0_/_80%),_0_4px_4px_rgb(0_0_0)]" style={{ letterSpacing: '-0.02em' }}>
           {t.hero.headline} <br className="hidden md:block" />
-          <span className="text-gradient-gold italic pr-2 drop-shadow-2xl">{t.hero.headlineHighlight}</span>
+          <span className="text-prime-gold italic pr-2 [text-shadow:_0_0_15px_rgb(0_0_0),_0_0_30px_rgb(0_0_0),_0_4px_4px_rgb(0_0_0)]">{t.hero.headlineHighlight}</span>
         </h1>
 
         {/* Subheadline */}
-         <div className="mb-8 md:mb-10 reveal-on-scroll stagger-2 animate-fade-in-up [text-shadow:_0_2px_16px_rgb(0_0_0_/_80%)]">
-            <span className="inline-block text-xl md:text-2xl lg:text-3xl font-light text-white border-b border-prime-gold/50 pb-2 mb-4 md:mb-6">
+         <div className="mb-8 md:mb-10 reveal-on-scroll stagger-2 animate-fade-in-up [text-shadow:_0_0_8px_rgb(0_0_0),_0_0_20px_rgb(0_0_0),_0_2px_4px_rgb(0_0_0)]">
+            <span className="inline-block text-xl md:text-2xl lg:text-3xl font-medium text-white border-b border-prime-gold/50 pb-2 mb-4 md:mb-6">
               {t.hero.tagline}
             </span>
-            <p className="text-white text-base md:text-lg lg:text-xl max-w-4xl mx-auto font-light leading-relaxed [text-shadow:_0_2px_12px_rgb(0_0_0_/_70%)]" style={{ letterSpacing: '0.01em', lineHeight: '1.75' }}>
+            <p className="text-white text-base md:text-lg lg:text-xl max-w-4xl mx-auto font-normal leading-relaxed [text-shadow:_0_0_6px_rgb(0_0_0),_0_0_15px_rgb(0_0_0),_0_1px_3px_rgb(0_0_0)]" style={{ letterSpacing: '0.01em', lineHeight: '1.75' }}>
               {t.hero.description}
             </p>
          </div>
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-4 md:gap-5 w-full sm:w-auto reveal-on-scroll stagger-4 animate-slide-in-left">
-          <Button variant="secondary" size="lg" className="shadow-2xl shadow-prime-gold/20 min-w-[200px] md:min-w-[240px]">
+          <Button variant="secondary" size="lg" className="shadow-2xl shadow-prime-gold/30 min-w-[200px] md:min-w-[240px]">
             {t.hero.ctaPrimary}
           </Button>
-          <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-prime-900 backdrop-blur-sm min-w-[200px] md:min-w-[240px]">
+          <Button variant="outline" size="lg" className="border-white/50 text-white hover:bg-white hover:text-prime-900 backdrop-blur-md bg-black/20 shadow-[0_0_20px_rgb(0_0_0_/_40%)] min-w-[200px] md:min-w-[240px]">
             {t.hero.ctaSecondary}
           </Button>
         </div>
