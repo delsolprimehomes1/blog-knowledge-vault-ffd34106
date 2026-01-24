@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BlogArticle, ArticleStatus, FunnelStage, Language } from "@/types/blog";
+import { BlogArticle, ArticleStatus, FunnelStage } from "@/types/blog";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { Search, Edit, Eye, Trash2, Plus, AlertCircle, X } from "lucide-react";
+import { Search, Edit, Eye, Trash2, Plus, AlertCircle, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Articles = () => {
@@ -29,6 +29,7 @@ const Articles = () => {
   const clusterIdFromUrl = searchParams.get("cluster");
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [languageFilter, setLanguageFilter] = useState<string>("all");
@@ -40,6 +41,20 @@ const Articles = () => {
   const [articleToDelete, setArticleToDelete] = useState<string | null>(null);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset to first page on new search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, categoryFilter, languageFilter, funnelFilter, clusterFilter]);
+
   // Sync cluster filter with URL param
   useEffect(() => {
     if (clusterIdFromUrl) {
@@ -47,18 +62,66 @@ const Articles = () => {
     }
   }, [clusterIdFromUrl]);
 
-  const { data: articles, isLoading, error } = useQuery({
-    queryKey: ["articles"],
+  // Helper to build query with filters
+  const buildFilteredQuery = (baseQuery: any) => {
+    let query = baseQuery;
+    
+    if (languageFilter !== "all") {
+      query = query.eq("language", languageFilter);
+    }
+    if (statusFilter !== "all") {
+      query = query.eq("status", statusFilter);
+    }
+    if (categoryFilter !== "all") {
+      query = query.eq("category", categoryFilter);
+    }
+    if (funnelFilter !== "all") {
+      query = query.eq("funnel_stage", funnelFilter);
+    }
+    if (clusterFilter !== "all") {
+      query = query.eq("cluster_id", clusterFilter);
+    }
+    if (debouncedSearch) {
+      query = query.or(`headline.ilike.%${debouncedSearch}%,slug.ilike.%${debouncedSearch}%`);
+    }
+    
+    return query;
+  };
+
+  // Count query for total filtered articles
+  const { data: totalCount, isLoading: isCountLoading } = useQuery({
+    queryKey: ["articles-count", statusFilter, categoryFilter, languageFilter, funnelFilter, clusterFilter, debouncedSearch],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
+        .from("blog_articles")
+        .select("*", { count: "exact", head: true });
+      
+      query = buildFilteredQuery(query);
+      
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  // Paginated articles query
+  const { data: articles, isLoading, error } = useQuery({
+    queryKey: ["articles", currentPage, statusFilter, categoryFilter, languageFilter, funnelFilter, clusterFilter, debouncedSearch],
+    queryFn: async () => {
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      
+      let query = supabase
         .from("blog_articles")
         .select("*")
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .range(from, to);
       
+      query = buildFilteredQuery(query);
+      
+      const { data, error } = await query;
       if (error) throw error;
-      if (!data) return [];
-
-      return data as unknown as BlogArticle[];
+      return (data || []) as unknown as BlogArticle[];
     },
   });
 
@@ -115,6 +178,7 @@ const Articles = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["articles"] });
+      queryClient.invalidateQueries({ queryKey: ["articles-count"] });
       toast.success("Article deleted successfully");
       setArticleToDelete(null);
     },
@@ -136,6 +200,7 @@ const Articles = () => {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["articles"] });
+      queryClient.invalidateQueries({ queryKey: ["articles-count"] });
       toast.success(`Successfully deleted ${count} article${count > 1 ? 's' : ''}`);
       setSelectedArticles([]);
       setShowBulkDeleteDialog(false);
@@ -176,25 +241,9 @@ const Articles = () => {
     setSearchParams({});
   };
 
-  // Filter articles
-  const filteredArticles = articles?.filter(article => {
-    const matchesSearch = searchQuery === "" || 
-      article.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      article.slug.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || article.status === statusFilter;
-    const matchesCategory = categoryFilter === "all" || article.category === categoryFilter;
-    const matchesLanguage = languageFilter === "all" || article.language === languageFilter;
-    const matchesFunnel = funnelFilter === "all" || article.funnel_stage === funnelFilter;
-    const matchesCluster = clusterFilter === "all" || article.cluster_id === clusterFilter;
-
-    return matchesSearch && matchesStatus && matchesCategory && matchesLanguage && matchesFunnel && matchesCluster;
-  }) || [];
-
-  // Pagination
-  const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedArticles = filteredArticles.slice(startIndex, startIndex + itemsPerPage);
+  // Pagination calculations
+  const totalPages = Math.ceil((totalCount || 0) / itemsPerPage);
+  const paginatedArticles = articles || [];
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -232,6 +281,42 @@ const Articles = () => {
     }
   };
 
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 7;
+    
+    if (totalPages <= maxVisiblePages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    // Always show first page
+    pages.push(1);
+    
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+    
+    // Show pages around current page
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+    
+    // Always show last page
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   return (
     <AdminLayout>
       <div className="container mx-auto p-6 space-y-6">
@@ -240,7 +325,12 @@ const Articles = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Articles</h1>
             <p className="text-muted-foreground">
-              Manage your blog content ({filteredArticles.length} total)
+              Manage your blog content
+              {isCountLoading ? (
+                <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <span> ({totalCount?.toLocaleString() || 0} total)</span>
+              )}
             </p>
           </div>
           <Button onClick={() => navigate('/admin/articles/new')} size="lg">
@@ -357,6 +447,8 @@ const Articles = () => {
                   <SelectItem value="sv">Swedish</SelectItem>
                   <SelectItem value="da">Danish</SelectItem>
                   <SelectItem value="hu">Hungarian</SelectItem>
+                  <SelectItem value="fi">Finnish</SelectItem>
+                  <SelectItem value="no">Norwegian</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -424,6 +516,7 @@ const Articles = () => {
                   {isLoading ? (
                     <tr>
                       <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                         Loading articles...
                       </td>
                     </tr>
@@ -510,30 +603,45 @@ const Articles = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages} ({totalCount?.toLocaleString()} articles)
+            </p>
+            <div className="flex items-center gap-1">
               <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                onClick={() => setCurrentPage(page)}
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
               >
-                {page}
+                Previous
               </Button>
-            ))}
-            <Button
-              variant="outline"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
+              {getPageNumbers().map((page, index) => (
+                typeof page === 'number' ? (
+                  <Button
+                    key={index}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="min-w-[40px]"
+                  >
+                    {page}
+                  </Button>
+                ) : (
+                  <span key={index} className="px-2 text-muted-foreground">
+                    {page}
+                  </span>
+                )
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
 
