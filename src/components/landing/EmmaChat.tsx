@@ -529,8 +529,38 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             // Save progressively (non-blocking)
             upsertEmmaLead(leadData).catch(err => console.error('Progressive save error:', err));
             
+            // FALLBACK: Detect conversation completion from response content if AI forgot CUSTOM_FIELDS
+            const responseContent = data.response?.toLowerCase() || '';
+            const closingPhrases = [
+                'this gives a clear picture',
+                'personalized selection will be shared',
+                'within 24 hours',
+                'within a maximum of 24 hours',
+                'experts will be in touch',
+                'we\'ll leave it here for now',
+                'that option is always open'
+            ];
+            const isClosingMessage = closingPhrases.some(phrase => responseContent.includes(phrase));
+            
+            // Set intake_complete based on content detection if AI didn't tag it
+            if (isClosingMessage && !newAccumulatedFields.intake_complete && !newAccumulatedFields.declined_selection) {
+                console.log('🔧 FALLBACK: Detected closing message without CUSTOM_FIELDS - marking intake_complete');
+                if (responseContent.includes('leave it here')) {
+                    newAccumulatedFields.declined_selection = true;
+                } else {
+                    newAccumulatedFields.intake_complete = true;
+                }
+            }
+            
             // Check if intake is complete and we haven't already submitted
-            if (!hasSubmittedLead && (data.customFields?.intake_complete || data.customFields?.declined_selection)) {
+            const shouldSubmit = !hasSubmittedLead && (
+                data.customFields?.intake_complete || 
+                data.customFields?.declined_selection ||
+                newAccumulatedFields.intake_complete ||
+                newAccumulatedFields.declined_selection
+            );
+            
+            if (shouldSubmit) {
                 console.log('🎯 TRIGGER 1: Complete conversation - GHL webhook triggered!');
                 
                 // CLEAR INACTIVITY TIMER - prevent duplicate send
@@ -539,8 +569,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     setInactivityTimer(null);
                     console.log('⏱️ Inactivity timer cleared (Trigger 1 fired)');
                 }
-                console.log('   intake_complete:', data.customFields?.intake_complete);
-                console.log('   declined_selection:', data.customFields?.declined_selection);
+                console.log('   intake_complete:', newAccumulatedFields.intake_complete);
+                console.log('   declined_selection:', newAccumulatedFields.declined_selection);
+                console.log('   fallback_detection:', isClosingMessage && !data.customFields?.intake_complete);
                 
                 // Also merge userData if available (from database record) - but validate phone
                 if (userData.name || userData.whatsapp) {
