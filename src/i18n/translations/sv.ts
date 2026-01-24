@@ -112,8 +112,14 @@ export const sv = {
     areas: {
       marbella: "Juvel på Costa del Sol, känd för sin Golden Mile, Puerto Banús och året runt internationella gemenskap.",
       estepona: "Trädgården på Costa del Sol — charmig andalusisk atmosfär med växande modern infrastruktur och utmärkt värde.",
+      fuengirola: "Familjevänlig strandstad med livlig strandpromenad, utmärkta bekvämligheter och starkt helårsgemenskap.",
+      benalmadena: "Marina-livsstil och kullcharme med fantastiska kustpanoramor, nöjesparker och linbana.",
+      mijas: "Autentisk vit by med panoramautsikt och traditionell andalusisk karaktär, blandning av bergslugn och kusttillgång.",
       sotogrande: "Integritet och prestige. Hem för världsklass golf, polo och marinaliv i ett av Europas mest exklusiva bostadsområden.",
       malaga: "Ett livligt kulturellt centrum med museer, universitet och stark kapitaltillväxt — plus de bästa flygförbindelserna på kusten.",
+      casares: "Traditionellt pueblo blanco på en kullertopp med hisnande dalutsikt och orörd andalusisk charm.",
+      manilva: "Marina- och vingårdslivsstil där bergen möter Medelhavet, med utmärkt värde och autentisk karaktär.",
+      torremolinos: "Klassisk strandpromenaddestination med livlig underhållningsscen, utmärkta matställen och bekväm flygnärhet.",
     },
   },
   process: {

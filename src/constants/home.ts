@@ -5,6 +5,12 @@ import marbellaHero from '@/assets/brochures/marbella-hero.jpg';
 import esteponaHero from '@/assets/brochures/estepona-hero.jpg';
 import sotograndeHero from '@/assets/brochures/sotogrande-hero.jpg';
 import malagaHero from '@/assets/brochures/malaga-hero.jpg';
+import fuengirolaHero from '@/assets/brochures/fuengirola-hero.jpg';
+import benalmadenaHero from '@/assets/brochures/benalmadena-hero.jpg';
+import mijasHero from '@/assets/brochures/mijas-hero.jpg';
+import casaresHero from '@/assets/brochures/casares-hero.jpg';
+import manilvaHero from '@/assets/brochures/manilva-hero.jpg';
+import torremolinosHero from '@/assets/brochures/torremolinos-hero.jpg';
 
 // Map of full language names
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -60,31 +66,67 @@ export const BUDGET_RANGES = [
   { label: '€3M+', value: '3000000+' },
 ];
 
-// Featured Areas Data (Keeping main highlights)
+// Featured Areas Data - All 10 Costa del Sol locations for carousel
 export const FEATURED_AREAS: Area[] = [
   {
     id: 'marbella',
     name: 'Marbella',
-    image: marbellaHero, // Puerto Banús marina with luxury yachts
+    image: marbellaHero,
     description: 'The jewel of the Costa del Sol. Luxury living, golden miles, and exclusive amenities.'
   },
   {
     id: 'estepona',
     name: 'Estepona',
-    image: esteponaHero, // Flower-lined old town streets
+    image: esteponaHero,
     description: 'The Garden of the Costa del Sol. Traditional charm meets modern luxury developments.'
+  },
+  {
+    id: 'fuengirola',
+    name: 'Fuengirola',
+    image: fuengirolaHero,
+    description: 'Family-friendly beach town with vibrant promenade and excellent amenities.'
+  },
+  {
+    id: 'benalmadena',
+    name: 'Benalmádena',
+    image: benalmadenaHero,
+    description: 'Marina lifestyle and hillside charm with stunning coastal panoramas.'
+  },
+  {
+    id: 'mijas',
+    name: 'Mijas',
+    image: mijasHero,
+    description: 'Authentic white village with panoramic views and traditional Andalusian character.'
   },
   {
     id: 'sotogrande',
     name: 'Sotogrande',
-    image: sotograndeHero, // Marina with sailboats, golf courses
+    image: sotograndeHero,
     description: 'Privacy and prestige. World-class polo, golf, and marina lifestyle.'
   },
   {
-    id: 'malaga',
+    id: 'malaga-city',
     name: 'Málaga City',
-    image: malagaHero, // Cathedral and historic center skyline
+    image: malagaHero,
     description: 'A vibrant cultural hub blending history with futuristic urban living.'
+  },
+  {
+    id: 'casares',
+    name: 'Casares',
+    image: casaresHero,
+    description: 'Traditional pueblo blanco perched on a hillside with breathtaking valley views.'
+  },
+  {
+    id: 'manilva',
+    name: 'Manilva',
+    image: manilvaHero,
+    description: 'Marina and vineyard lifestyle where the mountains meet the Mediterranean.'
+  },
+  {
+    id: 'torremolinos',
+    name: 'Torremolinos',
+    image: torremolinosHero,
+    description: 'Classic beach promenade destination with a vibrant entertainment scene.'
   }
 ];
 

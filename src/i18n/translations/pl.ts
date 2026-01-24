@@ -112,8 +112,14 @@ export const pl = {
     areas: {
       marbella: "Klejnot Costa del Sol, słynący ze swojej Golden Mile, Puerto Banús i całorocznej międzynarodowej społeczności.",
       estepona: "Ogród Costa del Sol — urokliwa andaluzyjska atmosfera z rozwijającą się nowoczesną infrastrukturą i doskonałym stosunkiem jakości do ceny.",
+      fuengirola: "Przyjazne rodzinom nadmorskie miasto z tętniącą życiem promenadą, doskonałymi udogodnieniami i silną całoroczną społecznością.",
+      benalmadena: "Styl życia przy marinie i wzgórzach z zapierającymi dech panoramami wybrzeża, parkami rozrywki i kolejką linową.",
+      mijas: "Autentyczna biała wioska z panoramicznymi widokami i tradycyjnym andaluzyjskim charakterem, łącząca górski spokój z dostępem do wybrzeża.",
       sotogrande: "Prywatność i prestiż. Dom światowej klasy golfa, polo i życia przy marinie w jednym z najbardziej ekskluzywnych obszarów mieszkalnych w Europie.",
       malaga: "Tętniące życiem centrum kulturalne z muzeami, uniwersytetami i silnym wzrostem kapitału — plus najlepsze połączenia lotnicze na wybrzeżu.",
+      casares: "Tradycyjne pueblo blanco na wzgórzu z zapierającymi dech widokami na dolinę i nieskażonym andaluzyjskim urokiem.",
+      manilva: "Styl życia przy marinie i winnicach, gdzie góry spotykają Morze Śródziemne, oferując doskonały stosunek jakości do ceny i autentyczny charakter.",
+      torremolinos: "Klasyczny nadmorski kurort z tętniącą życiem sceną rozrywkową, doskonałą gastronomią i wygodną bliskością lotniska.",
     },
   },
   process: {

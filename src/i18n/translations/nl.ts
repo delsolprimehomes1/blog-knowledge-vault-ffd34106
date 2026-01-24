@@ -112,8 +112,14 @@ export const nl = {
     areas: {
       marbella: "Het juweel van de Costa del Sol, beroemd om zijn Golden Mile, Puerto Banús en het hele jaar door internationale gemeenschap.",
       estepona: "De Tuin van de Costa del Sol — charmante Andalusische sfeer met groeiende moderne infrastructuur en uitstekende prijs-kwaliteitverhouding.",
+      fuengirola: "Familievriendelijke badplaats met een levendige boulevard, uitstekende voorzieningen en een sterke jaarrondgemeenschap.",
+      benalmadena: "Marina-levensstijl en heuveltjescharme met prachtig kustpanorama, attractieparken en kabelbaan.",
+      mijas: "Authentiek wit dorp met panoramisch uitzicht en traditioneel Andalusisch karakter, een mix van bergrust en kusttoegang.",
       sotogrande: "Privacy en prestige. Thuisbasis van golf, polo en jachthavenleven van wereldklasse in een van Europa's meest exclusieve woongebieden.",
       malaga: "Een levendig cultureel centrum met musea, universiteiten en sterke kapitaalgroei — plus de beste vliegverbindingen aan de kust.",
+      casares: "Traditioneel pueblo blanco op een heuvel met adembenemend uitzicht over het dal en ongerepte Andalusische charme.",
+      manilva: "Marina- en wijngaardlevensstijl waar de bergen de Middellandse Zee ontmoeten, met uitstekende prijs-kwaliteit en authentiek karakter.",
+      torremolinos: "Klassieke strandboulevard-bestemming met een bruisend uitgaansleven, uitstekend eten en handige luchthavennabijheid.",
     },
   },
   process: {

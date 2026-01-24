@@ -110,10 +110,16 @@ export const hu = {
     description: "A Costa del Sol minden területének megvan a maga jellege, életstílusa és befektetési potenciálja. Elvezetünk a látásodat tükröző helyszínre.",
     cta: "Fedezd Fel Minden Területet",
     areas: {
-      marbella: "A Costa del Sol ékkö ve, híres Golden Mile-járól, Puerto Banúsról és egész éves nemzetközi közösségéről.",
+      marbella: "A Costa del Sol ékköve, híres Golden Mile-járól, Puerto Banúsról és egész éves nemzetközi közösségéről.",
       estepona: "A Costa del Sol kertje — bájos andalúz légkör fejlődő modern infrastruktúrával és kiváló értékkel.",
+      fuengirola: "Családbarát tengerparti város élénk sétánnyal, kiváló szolgáltatásokkal és erős egész éves közösséggel.",
+      benalmadena: "Marina életstílus és domboldali báj lélegzetelállító tengerparti panorámával, vidámparkokkal és drótkötélpályával.",
+      mijas: "Autentikus fehér falu panorámás kilátással és hagyományos andalúz karakterrel, ötvözve a hegyvidéki nyugalmat a tengerparti hozzáféréssel.",
       sotogrande: "Magánélet és presztízs. Világszínvonalú golf, póló és marina életének otthona Európa egyik legexkluzívabb lakóövezetében.",
       malaga: "Élénk kulturális központ múzeumokkal, egyetemekkel és erős tőkenövekedéssel — plusz a legjobb légi összeköttetések a parton.",
+      casares: "Hagyományos pueblo blanco egy dombtetőn lélegzetelállító völgyi kilátással és érintetlen andalúz bájjal.",
+      manilva: "Marina és szőlőskert életstílus, ahol a hegyek találkoznak a Földközi-tengerrel, kiváló ár-érték arányban és autentikus karakterrel.",
+      torremolinos: "Klasszikus tengerparti sétány célpont élénk szórakozási élettel, kiváló étkezéssel és kényelmes repülőtéri közelséggel.",
     },
   },
   process: {

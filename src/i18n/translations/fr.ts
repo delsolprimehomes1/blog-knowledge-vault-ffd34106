@@ -112,8 +112,14 @@ export const fr = {
     areas: {
       marbella: "Le joyau de la Costa del Sol, célèbre pour son Golden Mile, Puerto Banús et sa communauté internationale toute l'année.",
       estepona: "Le Jardin de la Costa del Sol — atmosphère andalouse charmante avec une infrastructure moderne en croissance et un excellent rapport qualité-prix.",
+      fuengirola: "Station balnéaire familiale avec une promenade animée, d'excellentes commodités et une forte communauté toute l'année.",
+      benalmadena: "Style de vie marina et charme des collines avec panoramas côtiers époustouflants, parcs à thème et téléphérique.",
+      mijas: "Authentique village blanc avec vues panoramiques et caractère andalou traditionnel, mêlant sérénité montagnarde et accès côtier.",
       sotogrande: "Intimité et prestige. Accueil du golf, du polo et de la vie de marina de classe mondiale dans l'une des zones résidentielles les plus exclusives d'Europe.",
       malaga: "Un centre culturel dynamique avec musées, universités et forte croissance du capital — plus les meilleures connexions aériennes de la côte.",
+      casares: "Pueblo blanco traditionnel perché sur une colline avec vues à couper le souffle sur la vallée et charme andalou préservé.",
+      manilva: "Style de vie marina et vignoble où les montagnes rencontrent la Méditerranée, offrant excellent rapport qualité-prix et caractère authentique.",
+      torremolinos: "Destination classique de promenade de plage avec une scène de divertissement animée, excellente gastronomie et proximité aéroportuaire pratique.",
     },
   },
   process: {

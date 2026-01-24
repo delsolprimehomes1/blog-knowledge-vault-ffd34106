@@ -112,8 +112,14 @@ export const fi = {
     areas: {
       marbella: "Costa del Solin helmi, kuuluisa Golden Mile -alueestaan, Puerto Banúsista ja ympärivuotisesta kansainvälisestä yhteisöstään.",
       estepona: "Costa del Solin puutarha — viehättävä andalusialainen tunnelma kasvavalla modernilla infrastruktuurilla ja erinomaisella hinta-laatusuhteella.",
+      fuengirola: "Perheystävällinen rantakaupunki vilkkaalla rantapromenadilla, erinomaisilla palveluilla ja vahvalla ympärivuotisella yhteisöllä.",
+      benalmadena: "Marina-elämäntyyli ja kukkulacharmi upeilla rantanäkymillä, huvipuistoilla ja köysiratalla.",
+      mijas: "Aito valkoinen kylä panoraamanäkymin ja perinteisellä andalusialaisella luonteella, yhdistäen vuoristorauhan ja rannikko-pääsyn.",
       sotogrande: "Yksityisyyttä ja arvovaltaa. Maailmanluokan golfin, poolon ja venesataman koti yhdellä Euroopan eksklusiivisimmista asuinalueista.",
       malaga: "Vilkas kulttuurikeskus museoilla, yliopistoilla ja vahvalla pääoman kasvulla — sekä rannikon parhaat lentoyhteydet.",
+      casares: "Perinteinen pueblo blanco kukkulan rinteellä henkeäsalpaavilla laaksonäkymillä ja koskemattomalla andalusialaisella charmilla.",
+      manilva: "Marina- ja viinitarhaelämäntyyli missä vuoret kohtaavat Välimeren, tarjoten erinomaisen hinta-laatusuhteen ja autenttisen luonteen.",
+      torremolinos: "Klassinen rantapromenadikohde vilkkaalla viihde-elämällä, erinomaisilla ravintoloilla ja kätevällä lentokentän läheisyydellä.",
     },
   },
   process: {
