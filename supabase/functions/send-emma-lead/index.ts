@@ -6,6 +6,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface ContentPhase {
+  question_1?: string;
+  answer_1?: string;
+  question_2?: string;
+  answer_2?: string;
+  question_3?: string;
+  answer_3?: string;
+  question_4?: string;
+  answer_4?: string;
+  question_5?: string;
+  answer_5?: string;
+  question_6?: string;
+  answer_6?: string;
+  question_7?: string;
+  answer_7?: string;
+  question_8?: string;
+  answer_8?: string;
+  question_9?: string;
+  answer_9?: string;
+  question_10?: string;
+  answer_10?: string;
+  questions_answered: number;
+}
+
 interface LeadPayload {
   contact_info: {
     first_name: string;
@@ -13,15 +37,7 @@ interface LeadPayload {
     phone_number: string;
     country_prefix: string;
   };
-  content_phase: {
-    question_1: string;
-    answer_1: string;
-    question_2: string;
-    answer_2: string;
-    question_3: string;
-    answer_3: string;
-    questions_answered: number;
-  };
+  content_phase: ContentPhase;
   property_criteria: {
     location_preference: string[];
     sea_view_importance: string;
@@ -52,6 +68,25 @@ interface LeadPayload {
     conversation_duration: string;
   };
   conversation_id?: string;
+}
+
+// Build Q&A pairs array from content phase (up to 10 pairs)
+function buildQAPairsArray(contentPhase: ContentPhase | undefined): Array<{ question: string; answer: string }> {
+  if (!contentPhase) return [];
+  
+  const pairs: Array<{ question: string; answer: string }> = [];
+  
+  // Check up to 10 Q&A pairs
+  for (let i = 1; i <= 10; i++) {
+    const question = contentPhase[`question_${i}` as keyof ContentPhase] as string | undefined;
+    const answer = contentPhase[`answer_${i}` as keyof ContentPhase] as string | undefined;
+    
+    if (question && answer) {
+      pairs.push({ question, answer });
+    }
+  }
+  
+  return pairs;
 }
 
 // Update emma_leads table for conversation history tracking
@@ -146,13 +181,9 @@ async function registerInCRM(
     referrer: payload.page_context?.referrer || 'Direct',
     language: (payload.page_context?.language || payload.system_data.detected_language || 'en').toLowerCase().substring(0, 2),
     
-    // Emma-specific conversation data
+    // Emma-specific conversation data - capture up to 10 Q&A pairs
     questionsAnswered: payload.content_phase?.questions_answered || 0,
-    qaPairs: [
-      { question: payload.content_phase?.question_1 || '', answer: payload.content_phase?.answer_1 || '' },
-      { question: payload.content_phase?.question_2 || '', answer: payload.content_phase?.answer_2 || '' },
-      { question: payload.content_phase?.question_3 || '', answer: payload.content_phase?.answer_3 || '' },
-    ].filter(qa => qa.question && qa.answer),
+    qaPairs: buildQAPairsArray(payload.content_phase),
     intakeComplete: payload.system_data?.intake_complete || false,
     exitPoint: payload.system_data?.exit_point || 'unknown',
     conversationDuration: payload.page_context?.conversation_duration || '',

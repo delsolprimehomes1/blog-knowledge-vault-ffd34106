@@ -684,13 +684,28 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         return 'greeting';
     };
 
-    // Count questions answered
+    // Count questions answered (up to 10)
     const countQuestionsAnswered = (fields: Record<string, any>): number => {
         let count = 0;
-        if (fields.question_1 && fields.answer_1) count++;
-        if (fields.question_2 && fields.answer_2) count++;
-        if (fields.question_3 && fields.answer_3) count++;
+        for (let i = 1; i <= 10; i++) {
+            if (fields[`question_${i}`] && fields[`answer_${i}`]) count++;
+        }
         return count;
+    };
+
+    // Build content phase payload with up to 10 Q&A pairs
+    const buildContentPhasePayload = (fields: Record<string, any>): Record<string, any> => {
+        const payload: Record<string, any> = {
+            questions_answered: countQuestionsAnswered(fields)
+        };
+        
+        // Add up to 10 Q&A pairs
+        for (let i = 1; i <= 10; i++) {
+            payload[`question_${i}`] = fields[`question_${i}`] || '';
+            payload[`answer_${i}`] = fields[`answer_${i}`] || '';
+        }
+        
+        return payload;
     };
 
     // FALLBACK: Extract contact info from conversation history when COLLECTED_INFO is not output
@@ -801,24 +816,56 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         return contact;
     };
 
-    // Extract Q&A from conversation history - captures RAW sequential turns during content phase
+    // Extract Q&A from conversation history - captures Emma's prompts as Questions, user replies as Answers
+    // Semantic mapping: Question = What Emma asked, Answer = What user replied
     const extractQAFromHistory = (msgs: Message[]): Record<string, string> => {
         const qa: Record<string, string> = {};
         
-        // Patterns that indicate content phase start (after contact collection, before property criteria)
+        // Patterns that indicate content phase start (after contact collection)
+        // Expanded to capture more variations of Emma's conversation openers
         const contentPhaseStartPatterns = [
+            // English variations
             'what is currently the main thing on your mind',
             'what would you like to know',
             'i can now handle your questions',
+            'what questions do you have',
+            'how can i help you today',
+            'what brings you to',
+            'what are you looking for',
+            'tell me about your',
+            'what kind of property',
+            'what areas are you considering',
+            'what is your budget',
+            'when are you planning',
+            // Dutch
             'wat houdt je momenteel het meest bezig',
+            'wat wil je graag weten',
+            'hoe kan ik je helpen',
+            // German
             'ich kann jetzt ihre fragen bearbeiten',
+            'was kann ich für sie tun',
+            'wie kann ich ihnen helfen',
+            // French
             'je peux maintenant traiter vos questions',
+            'comment puis-je vous aider',
+            // Polish
             'co jest obecnie główną rzeczą',
+            'jak mogę ci pomóc',
+            // Swedish
             'vad har du för huvudfrågor',
+            'hur kan jag hjälpa dig',
+            // Danish
             'hvad har du mest på sinde',
+            'hvordan kan jeg hjælpe dig',
+            // Finnish
             'mikä on tällä hetkellä tärkein asia',
+            'miten voin auttaa sinua',
+            // Hungarian
             'mi a legfontosabb dolog',
-            'hva er det viktigste'
+            'hogyan segíthetek',
+            // Norwegian
+            'hva er det viktigste',
+            'hvordan kan jeg hjelpe deg'
         ];
         
         // Patterns that indicate transition OUT of content phase (into property criteria intake)
@@ -838,7 +885,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             'hogy ne maradjunk túl általánosak',
             'for å unngå å bli for generell',
             'which area or areas along the costa del sol',
-            'which location or locations'
+            'which location or locations',
+            'let me ask you a few questions',
+            'i\'d like to understand your needs better'
         ];
         
         let contentPhaseStart = -1;
@@ -865,30 +914,40 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             }
         }
         
-        // If no content phase found, return empty
+        // If no content phase found via patterns, capture ANY assistant-user exchanges after greeting
         if (contentPhaseStart === -1) {
-            console.log('📋 Q&A: No content phase detected');
-            return qa;
+            // Start after first 2 messages (greeting exchange)
+            contentPhaseStart = Math.min(1, msgs.length - 1);
+            console.log('📋 Q&A: No content phase pattern detected, capturing all exchanges after greeting');
         }
         
-        // Capture RAW sequential user-assistant turns during content phase (up to 3)
+        // Capture sequential assistant-user turns (Emma asks, user answers) - up to 10 pairs
+        // FIXED: Question = Emma's prompt, Answer = User's reply (semantically correct)
         let turnCount = 0;
-        for (let i = contentPhaseStart + 1; i < transitionPoint && turnCount < 3; i++) {
+        const maxTurns = 10;
+        
+        for (let i = contentPhaseStart; i < transitionPoint && turnCount < maxTurns; i++) {
             const msg = msgs[i];
             const nextMsg = msgs[i + 1];
             
-            // Capture user message followed by assistant response
-            if (msg.role === 'user' && nextMsg && nextMsg.role === 'assistant') {
+            // Emma (assistant) asks a question, user responds
+            if (msg.role === 'assistant' && nextMsg && nextMsg.role === 'user') {
+                // Skip very short Emma messages that aren't real questions (acknowledgments like "Great!")
+                const emmaContent = msg.content.trim();
+                if (emmaContent.length < 15 && !emmaContent.includes('?')) {
+                    continue;
+                }
+                
                 turnCount++;
                 const qKey = `question_${turnCount}`;
                 const aKey = `answer_${turnCount}`;
                 
-                // Capture raw content (including short responses like "yes", "ok", etc.)
-                qa[qKey] = msg.content.trim().substring(0, 500);
+                // Question = Emma's prompt, Answer = User's reply
+                qa[qKey] = emmaContent.substring(0, 500);
                 qa[aKey] = nextMsg.content.trim().substring(0, 500);
                 
-                console.log(`📋 Q&A: Turn ${turnCount} - User: "${qa[qKey].substring(0, 50)}..." → Emma: "${qa[aKey].substring(0, 50)}..."`);
-                i++; // Skip the assistant message we just processed
+                console.log(`📋 Q&A: Turn ${turnCount} - Emma asked: "${qa[qKey].substring(0, 50)}..." → User replied: "${qa[aKey].substring(0, 50)}..."`);
+                i++; // Skip the user message we just processed
             }
         }
         
@@ -981,15 +1040,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     phone_number: fields.phone || fields.phone_number || '',
                     country_prefix: fields.country_prefix || ''
                 },
-                content_phase: {
-                    question_1: fields.question_1 || '',
-                    answer_1: fields.answer_1 || '',
-                    question_2: fields.question_2 || '',
-                    answer_2: fields.answer_2 || '',
-                    question_3: fields.question_3 || '',
-                    answer_3: fields.answer_3 || '',
-                    questions_answered: countQuestionsAnswered(fields)
-                },
+                content_phase: buildContentPhasePayload(fields),
                 property_criteria: {
                     location_preference: Array.isArray(fields.location_preference) 
                         ? fields.location_preference 
