@@ -38,9 +38,14 @@ export const da = {
   },
   hero: {
     trustBadges: {
-      api: "API-akkrediteret team",
-      experience: "35+ års kombineret erfaring",
-      buyers: "Hundredvis af guidede købere",
+      api: "API Akkrediteret",
+      experience: "35+ År",
+      buyers: "500+ Købere",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Find Dit Nybyggede Hjem på",
     headlineHighlight: "Costa del Sol",
@@ -48,6 +53,22 @@ export const da = {
     description: "DelSolPrimeHomes guider internationale købere gennem kvalitets nybyggede og off-plan ejendomme fra Málaga til Sotogrande — med API-akkrediterede rådgivere, 35+ års kombineret erfaring og avancerede AI-værktøjer til at hjælpe dig med at træffe den rigtige beslutning.",
     ctaPrimary: "Start Din Ejendomssøgning",
     ctaSecondary: "Book et Opkald Med en Rådgiver",
+  },
+  whyChooseUs: {
+    eyebrow: "Hvorfor Vælge Os",
+    headline: "Hvorfor DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "API-Akkrediterede Rådgivere",
+      experience: "35+ Års Erfaring",
+      aiTools: "AI-Forbedret Udvælgelse",
+      multilingual: "10 Sprog Understøttet",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Vi opererer efter strenge spanske standarder for professionalisme, etik og lovlig overholdelse.",
+      experienceDesc: "Vores team har hjulpet hundredvis af familier med at købe sikkert i Spanien.",
+      aiToolsDesc: "Avancerede AI-værktøjer til at matche dig med den perfekte ejendom.",
+      multilingualDesc: "Fuld vejledning på dansk, engelsk, hollandsk, tysk og 6 andre sprog.",
+    },
   },
   quickSearch: {
     headline: "Start Med de Rigtige Ejendomme — Ikke Endeløs Scrolling",

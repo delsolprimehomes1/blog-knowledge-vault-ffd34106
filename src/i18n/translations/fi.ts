@@ -38,9 +38,14 @@ export const fi = {
   },
   hero: {
     trustBadges: {
-      api: "API-akkreditoitu tiimi",
-      experience: "35+ vuotta yhdistettyä kokemusta",
-      buyers: "Satoja ohjattuja ostajia",
+      api: "API Akkreditoitu",
+      experience: "35+ Vuotta",
+      buyers: "500+ Ostajaa",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Löydä Uudiskotisi",
     headlineHighlight: "Costa del Solilta",
@@ -48,6 +53,22 @@ export const fi = {
     description: "DelSolPrimeHomes ohjaa kansainvälisiä ostajia korkealaatuisten uudiskohteiden ja pohjapiirustuksella myytävien kiinteistöjen pariin Málagasta Sotograndeen — API-akkreditoidut neuvonantajat, 35+ vuoden yhdistetty kokemus ja edistyneet tekoälytyökalut auttavat sinua tekemään oikean päätöksen.",
     ctaPrimary: "Aloita Kiinteistöhaku",
     ctaSecondary: "Varaa Puhelu Neuvonantajan Kanssa",
+  },
+  whyChooseUs: {
+    eyebrow: "Miksi Valita Meidät",
+    headline: "Miksi DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "API-Akkreditoidut Neuvonantajat",
+      experience: "35+ Vuoden Kokemus",
+      aiTools: "Tekoälyavusteinen Valinta",
+      multilingual: "10 Kieltä Tuettu",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Toimimme tiukkojen espanjalaisten ammattimaisuus-, etiikka- ja lakistandardien mukaisesti.",
+      experienceDesc: "Tiimimme on auttanut satoja perheitä ostamaan turvallisesti Espanjasta.",
+      aiToolsDesc: "Edistyneet tekoälytyökalut auttavat löytämään sinulle täydellisen kiinteistön.",
+      multilingualDesc: "Täysi opastus suomeksi, englanniksi, hollanniksi, saksaksi ja 6 muulla kielellä.",
+    },
   },
   quickSearch: {
     headline: "Aloita Oikeilla Kiinteistöillä — Ei Loputonta Selailua",

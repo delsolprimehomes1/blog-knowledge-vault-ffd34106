@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ShieldCheck, Users, Star } from 'lucide-react';
+import { ShieldCheck, Users, Star, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useTranslation } from '../../../i18n';
 
@@ -48,59 +48,89 @@ export const Hero: React.FC = () => {
           playsInline
           preload="auto"
           poster="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop"
+          aria-label="Costa del Sol property showcase video"
           className={`absolute inset-0 w-full h-full object-cover scale-110 transition-opacity duration-700 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
           onCanPlay={() => setVideoLoaded(true)}
         >
           <source src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/692d1c5b82f4c5ebf1442f43.mp4" type="video/mp4" />
         </video>
-        {/* No overlay - full video brightness */}
+        {/* Subtle gradient overlay for text readability while keeping video visible */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/40" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center pt-24 md:pt-32 pb-32 md:pb-40">
+      <div className="relative z-10 container mx-auto px-4 flex flex-col items-center text-center pt-10 md:pt-32 pb-24 md:pb-40">
         
-        {/* Trust Line */}
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 mb-10 reveal-on-scroll [text-shadow:_0_0_8px_rgb(0_0_0),_0_0_20px_rgb(0_0_0_/_80%),_0_2px_4px_rgb(0_0_0)]">
-          <div className="flex items-center gap-2 text-white text-xs md:text-sm font-medium tracking-wide">
-             <ShieldCheck size={16} className="text-prime-gold drop-shadow-lg" />
-             <span>{t.hero.trustBadges.api}</span>
+        {/* Trust Badges - Desktop: Pill shapes, Mobile: Compact */}
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-8 md:mb-12 reveal-on-scroll">
+          {/* API Badge */}
+          <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm">
+            <ShieldCheck size={16} className="text-prime-gold md:w-5 md:h-5" />
+            <span className="text-white text-xs md:text-sm font-medium [text-shadow:_0_1px_2px_rgb(0_0_0)]">
+              <span className="hidden md:inline">{t.hero.trustBadges.api}</span>
+              <span className="md:hidden">{(t.hero as any).trustBadgesMobile?.api || 'API'}</span>
+            </span>
           </div>
-          <span className="hidden md:inline-block w-1 h-1 rounded-full bg-prime-gold/50"></span>
-          <div className="flex items-center gap-2 text-white text-xs md:text-sm font-medium tracking-wide">
-             <Star size={16} className="text-prime-gold drop-shadow-lg" />
-             <span>{t.hero.trustBadges.experience}</span>
+          
+          {/* Experience Badge */}
+          <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm">
+            <Star size={16} className="text-prime-gold md:w-5 md:h-5" />
+            <span className="text-white text-xs md:text-sm font-medium [text-shadow:_0_1px_2px_rgb(0_0_0)]">
+              <span className="hidden md:inline">{t.hero.trustBadges.experience}</span>
+              <span className="md:hidden">{(t.hero as any).trustBadgesMobile?.experience || '35+'}</span>
+            </span>
           </div>
-          <span className="hidden md:inline-block w-1 h-1 rounded-full bg-prime-gold/50"></span>
-          <div className="flex items-center gap-2 text-white text-xs md:text-sm font-medium tracking-wide">
-             <Users size={16} className="text-prime-gold drop-shadow-lg" />
-             <span>{t.hero.trustBadges.buyers}</span>
+          
+          {/* Buyers Badge */}
+          <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm">
+            <Users size={16} className="text-prime-gold md:w-5 md:h-5" />
+            <span className="text-white text-xs md:text-sm font-medium [text-shadow:_0_1px_2px_rgb(0_0_0)]">
+              <span className="hidden md:inline">{t.hero.trustBadges.buyers}</span>
+              <span className="md:hidden">{(t.hero as any).trustBadgesMobile?.buyers || '500+'}</span>
+            </span>
           </div>
         </div>
 
         {/* Headline */}
-        <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white mb-6 md:mb-8 leading-[1.05] tracking-tight max-w-6xl reveal-on-scroll stagger-1 animate-zoom-in [text-shadow:_0_0_10px_rgb(0_0_0),_0_0_30px_rgb(0_0_0),_0_0_60px_rgb(0_0_0_/_80%),_0_4px_4px_rgb(0_0_0)]" style={{ letterSpacing: '-0.02em' }}>
+        <h1 
+          className="font-serif text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 md:mb-6 leading-[1.1] max-w-[900px] reveal-on-scroll stagger-1 animate-zoom-in [text-shadow:_2px_2px_8px_rgb(0_0_0_/_50%)]" 
+          style={{ letterSpacing: '-0.02em' }}
+        >
           {t.hero.headline} <br className="hidden md:block" />
-          <span className="text-prime-gold italic pr-2 [text-shadow:_0_0_15px_rgb(0_0_0),_0_0_30px_rgb(0_0_0),_0_4px_4px_rgb(0_0_0)]">{t.hero.headlineHighlight}</span>
+          <span className="text-prime-gold italic [text-shadow:_2px_2px_8px_rgb(0_0_0_/_50%)]">
+            {t.hero.headlineHighlight}
+          </span>
         </h1>
 
-        {/* Subheadline */}
-         <div className="mb-8 md:mb-10 reveal-on-scroll stagger-2 animate-fade-in-up [text-shadow:_0_0_8px_rgb(0_0_0),_0_0_20px_rgb(0_0_0),_0_2px_4px_rgb(0_0_0)]">
-            <span className="inline-block text-xl md:text-2xl lg:text-3xl font-medium text-white border-b border-prime-gold/50 pb-2 mb-4 md:mb-6">
-              {t.hero.tagline}
-            </span>
-            <p className="text-white text-base md:text-lg lg:text-xl max-w-4xl mx-auto font-normal leading-relaxed [text-shadow:_0_0_6px_rgb(0_0_0),_0_0_15px_rgb(0_0_0),_0_1px_3px_rgb(0_0_0)]" style={{ letterSpacing: '0.01em', lineHeight: '1.75' }}>
-              {t.hero.description}
-            </p>
-         </div>
+        {/* Tagline - No description, just the tagline */}
+        <p 
+          className="text-lg md:text-2xl text-white font-normal mb-10 md:mb-12 reveal-on-scroll stagger-2 animate-fade-in-up [text-shadow:_1px_1px_4px_rgb(0_0_0_/_40%)]"
+          style={{ letterSpacing: '0.02em' }}
+        >
+          {t.hero.tagline}
+        </p>
 
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-4 md:gap-5 w-full sm:w-auto reveal-on-scroll stagger-4 animate-slide-in-left">
-          <Button variant="secondary" size="lg" className="shadow-2xl shadow-prime-gold/30 min-w-[200px] md:min-w-[240px]">
+        {/* CTAs - Desktop: Side by side, Mobile: Stacked full width */}
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 w-[90%] md:w-auto reveal-on-scroll stagger-3 animate-slide-in-left">
+          <Button 
+            variant="secondary" 
+            size="lg" 
+            className="h-12 md:h-14 px-6 md:px-8 bg-prime-gold hover:bg-[#C19A2E] text-prime-900 font-semibold rounded-lg shadow-[0_4px_12px_rgb(0_0_0_/_15%)] transition-all duration-300"
+          >
             {t.hero.ctaPrimary}
           </Button>
-          <Button variant="outline" size="lg" className="border-white/50 text-white hover:bg-white hover:text-prime-900 backdrop-blur-md bg-black/20 shadow-[0_0_20px_rgb(0_0_0_/_40%)] min-w-[200px] md:min-w-[240px]">
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="h-12 md:h-14 px-6 md:px-8 bg-transparent border-2 border-white text-white hover:bg-white/10 font-semibold rounded-lg transition-all duration-300"
+          >
             {t.hero.ctaSecondary}
           </Button>
         </div>
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-20 animate-bounce">
+        <ChevronDown size={32} className="text-white/70" />
       </div>
     </div>
   );

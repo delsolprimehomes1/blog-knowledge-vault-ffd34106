@@ -38,9 +38,14 @@ export const en = {
   },
   hero: {
     trustBadges: {
-      api: "API-accredited team",
-      experience: "35+ years combined experience",
-      buyers: "Hundreds of guided buyers",
+      api: "API Accredited",
+      experience: "35+ Years",
+      buyers: "500+ Buyers",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Find Your New-Build Home on the",
     headlineHighlight: "Costa del Sol",
@@ -48,6 +53,22 @@ export const en = {
     description: "DelSolPrimeHomes guides international buyers through high-quality new-build and off-plan real estate from Málaga to Sotogrande — with API-accredited advisors, 35+ years of combined experience, and advanced AI tools to help you make the right decision.",
     ctaPrimary: "Start Your Property Search",
     ctaSecondary: "Book a Call With an Advisor",
+  },
+  whyChooseUs: {
+    eyebrow: "Why Choose Us",
+    headline: "Why DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "API-Accredited Advisors",
+      experience: "35+ Years Experience",
+      aiTools: "AI-Enhanced Selection",
+      multilingual: "10 Languages Supported",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "We operate under strict Spanish standards of professionalism, ethics, and legal compliance.",
+      experienceDesc: "Our team has helped hundreds of families buy safely in Spain.",
+      aiToolsDesc: "Advanced AI tools to match you with the perfect property.",
+      multilingualDesc: "Full guidance in English, Dutch, French, German, and 6 more languages.",
+    },
   },
   quickSearch: {
     headline: "Start With the Right Properties — Not Endless Scrolling",

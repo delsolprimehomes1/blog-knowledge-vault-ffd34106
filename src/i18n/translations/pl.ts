@@ -38,9 +38,14 @@ export const pl = {
   },
   hero: {
     trustBadges: {
-      api: "Zespół z akredytacją API",
-      experience: "35+ lat łącznego doświadczenia",
-      buyers: "Setki prowadzonych kupujących",
+      api: "Akredytacja API",
+      experience: "35+ Lat",
+      buyers: "500+ Kupujących",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Znajdź Swój Nowy Dom na",
     headlineHighlight: "Costa del Sol",
@@ -48,6 +53,22 @@ export const pl = {
     description: "DelSolPrimeHomes prowadzi międzynarodowych kupujących przez wysokiej jakości nieruchomości nowo budowane i w planie od Málagi do Sotogrande — z doradcami akredytowanymi przez API, 35+ latami łącznego doświadczenia i zaawansowanymi narzędziami AI, aby pomóc Ci podjąć właściwą decyzję.",
     ctaPrimary: "Rozpocznij Poszukiwanie Nieruchomości",
     ctaSecondary: "Umów Rozmowę z Doradcą",
+  },
+  whyChooseUs: {
+    eyebrow: "Dlaczego My",
+    headline: "Dlaczego DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "Doradcy z Akredytacją API",
+      experience: "35+ Lat Doświadczenia",
+      aiTools: "Selekcja Wspierana przez AI",
+      multilingual: "10 Obsługiwanych Języków",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Działamy zgodnie ze ścisłymi hiszpańskimi standardami profesjonalizmu, etyki i zgodności z prawem.",
+      experienceDesc: "Nasz zespół pomógł setkom rodzin bezpiecznie kupić w Hiszpanii.",
+      aiToolsDesc: "Zaawansowane narzędzia AI, aby dopasować Cię do idealnej nieruchomości.",
+      multilingualDesc: "Pełne wsparcie po polsku, angielsku, holendersku, niemiecku i 6 innych językach.",
+    },
   },
   quickSearch: {
     headline: "Zacznij od Właściwych Nieruchomości — Bez Niekończącego Się Przewijania",

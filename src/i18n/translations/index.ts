@@ -10,11 +10,14 @@ import { hu } from './hu';
 import { sv } from './sv';
 import { no } from './no';
 
-// Use a flexible type that allows for brochure structure variations across languages
-type TranslationBase = Omit<typeof en, 'brochures'> & { brochures: Record<string, unknown> };
+// Use a flexible type that allows for optional properties across languages
+type TranslationBase = Omit<typeof en, 'brochures' | 'whyChooseUs'> & { 
+  brochures: Record<string, unknown>;
+  whyChooseUs?: typeof en.whyChooseUs;
+};
 
 export const translations: Record<Language, TranslationBase> = {
-  [Language.EN]: en,
+  [Language.EN]: en as TranslationBase,
   [Language.NL]: nl as TranslationBase,
   [Language.FR]: fr as TranslationBase,
   [Language.DE]: de as TranslationBase,

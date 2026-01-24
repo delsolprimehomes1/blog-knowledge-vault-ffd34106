@@ -38,9 +38,14 @@ export const hu = {
   },
   hero: {
     trustBadges: {
-      api: "API-akkreditált csapat",
-      experience: "35+ év kombinált tapasztalat",
-      buyers: "Több száz támogatott vásárló",
+      api: "API Akkreditált",
+      experience: "35+ Év",
+      buyers: "500+ Vásárló",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Találd Meg Új Építésű Otthonodat a",
     headlineHighlight: "Costa del Solon",
@@ -48,6 +53,22 @@ export const hu = {
     description: "A DelSolPrimeHomes nemzetközi vásárlókat vezet át magas minőségű új építésű és tervezett ingatlanok között Málagától Sotograndéig — API-akkreditált tanácsadókkal, 35+ év kombinált tapasztalattal és fejlett AI eszközökkel, hogy segítsen a helyes döntés meghozatalában.",
     ctaPrimary: "Kezdd El az Ingatlankeresést",
     ctaSecondary: "Foglalj Hívást Tanácsadóval",
+  },
+  whyChooseUs: {
+    eyebrow: "Miért Minket",
+    headline: "Miért a DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "API-Akkreditált Tanácsadók",
+      experience: "35+ Év Tapasztalat",
+      aiTools: "AI-Támogatott Kiválasztás",
+      multilingual: "10 Nyelv Támogatott",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Szigorú spanyol szakmai, etikai és jogi megfelelési szabványok szerint működünk.",
+      experienceDesc: "Csapatunk több száz családnak segített biztonságosan vásárolni Spanyolországban.",
+      aiToolsDesc: "Fejlett AI eszközök a tökéletes ingatlan megtalálásához.",
+      multilingualDesc: "Teljes körű segítség magyarul, angolul, hollandul, németül és 6 másik nyelven.",
+    },
   },
   quickSearch: {
     headline: "Kezdd a Megfelelő Ingatlanokkal — Ne Végtelen Görgetéssel",

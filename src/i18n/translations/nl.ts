@@ -38,9 +38,14 @@ export const nl = {
   },
   hero: {
     trustBadges: {
-      api: "API-geaccrediteerd team",
-      experience: "35+ jaar gecombineerde ervaring",
-      buyers: "Honderden begeleidde kopers",
+      api: "API Geaccrediteerd",
+      experience: "35+ Jaar",
+      buyers: "500+ Kopers",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Vind Uw Nieuwbouwwoning aan de",
     headlineHighlight: "Costa del Sol",
@@ -48,6 +53,22 @@ export const nl = {
     description: "DelSolPrimeHomes begeleidt internationale kopers door hoogwaardige nieuwbouw- en off-plan vastgoed van Málaga tot Sotogrande — met API-geaccrediteerde adviseurs, 35+ jaar gecombineerde ervaring en geavanceerde AI-tools om u te helpen de juiste beslissing te nemen.",
     ctaPrimary: "Start Uw Woningzoektocht",
     ctaSecondary: "Boek een Gesprek met een Adviseur",
+  },
+  whyChooseUs: {
+    eyebrow: "Waarom Ons Kiezen",
+    headline: "Waarom DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "API-Geaccrediteerde Adviseurs",
+      experience: "35+ Jaar Ervaring",
+      aiTools: "AI-Verbeterde Selectie",
+      multilingual: "10 Talen Ondersteund",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Wij werken volgens strikte Spaanse normen voor professionaliteit, ethiek en wettelijke naleving.",
+      experienceDesc: "Ons team heeft honderden families geholpen veilig in Spanje te kopen.",
+      aiToolsDesc: "Geavanceerde AI-tools om u te matchen met het perfecte vastgoed.",
+      multilingualDesc: "Volledige begeleiding in Nederlands, Engels, Frans, Duits en 6 andere talen.",
+    },
   },
   quickSearch: {
     headline: "Begin Met de Juiste Woningen — Niet Eindeloos Scrollen",

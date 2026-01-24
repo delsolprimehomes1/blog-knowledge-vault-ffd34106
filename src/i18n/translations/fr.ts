@@ -38,9 +38,14 @@ export const fr = {
   },
   hero: {
     trustBadges: {
-      api: "Équipe accréditée API",
-      experience: "35+ ans d'expérience combinée",
-      buyers: "Des centaines d'acheteurs guidés",
+      api: "Accrédité API",
+      experience: "35+ Ans",
+      buyers: "500+ Acheteurs",
+    },
+    trustBadgesMobile: {
+      api: "API",
+      experience: "35+",
+      buyers: "500+",
     },
     headline: "Trouvez Votre Maison Neuve sur la",
     headlineHighlight: "Costa del Sol",
@@ -48,6 +53,22 @@ export const fr = {
     description: "DelSolPrimeHomes guide les acheteurs internationaux à travers l'immobilier neuf et sur plan de haute qualité de Málaga à Sotogrande — avec des conseillers accrédités API, 35+ ans d'expérience combinée et des outils d'IA avancés pour vous aider à prendre la bonne décision.",
     ctaPrimary: "Commencez Votre Recherche",
     ctaSecondary: "Réservez un Appel avec un Conseiller",
+  },
+  whyChooseUs: {
+    eyebrow: "Pourquoi Nous Choisir",
+    headline: "Pourquoi DelSolPrimeHomes?",
+    benefits: {
+      apiAccredited: "Conseillers Accrédités API",
+      experience: "35+ Ans d'Expérience",
+      aiTools: "Sélection Améliorée par IA",
+      multilingual: "10 Langues Supportées",
+    },
+    benefitsDesc: {
+      apiAccreditedDesc: "Nous opérons selon les normes espagnoles strictes de professionnalisme, d'éthique et de conformité légale.",
+      experienceDesc: "Notre équipe a aidé des centaines de familles à acheter en toute sécurité en Espagne.",
+      aiToolsDesc: "Outils d'IA avancés pour vous trouver la propriété parfaite.",
+      multilingualDesc: "Accompagnement complet en français, anglais, néerlandais, allemand et 6 autres langues.",
+    },
   },
   quickSearch: {
     headline: "Commencez Avec les Bonnes Propriétés — Pas de Défilement Sans Fin",

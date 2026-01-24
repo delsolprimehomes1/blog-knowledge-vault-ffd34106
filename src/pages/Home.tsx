@@ -4,6 +4,7 @@ import { Header } from '../components/home/Header';
 import { Footer } from '../components/home/Footer';
 import { LanguageSuggestionBanner } from '../components/LanguageSuggestionBanner';
 import { Hero } from '../components/home/sections/Hero';
+import { WhyChooseUs } from '../components/home/sections/WhyChooseUs';
 import { QuickSearch } from '../components/home/sections/QuickSearch';
 import { MiniAbout, USPSection } from '../components/home/sections/ContentBlocks';
 import { FeaturedAreas } from '../components/home/sections/FeaturedAreas';
@@ -54,7 +55,10 @@ function Home() {
         {/* 1. Hero Section */}
         <Hero />
         
-        {/* 2 & 3. Quick Search (overlaps Hero) & Mini About */}
+        {/* 2. Why Choose Us - Moved content from Hero */}
+        <WhyChooseUs />
+        
+        {/* 3 & 4. Quick Search & Mini About */}
         <div className="relative z-20">
           <QuickSearch />
           <div className="mt-0">
@@ -62,7 +66,7 @@ function Home() {
           </div>
         </div>
 
-        {/* 4. USPs */}
+        {/* 5. USPs */}
         <USPSection />
 
         {/* 5. Featured Areas */}
