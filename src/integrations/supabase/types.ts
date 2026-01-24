@@ -2053,6 +2053,82 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_email_logs: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          recipient_email: string
+          recipient_name: string | null
+          reminder_id: string | null
+          resend_message_id: string | null
+          sent_at: string
+          status: string
+          subject: string
+          template_type: string
+          trigger_reason: string | null
+          triggered_by: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          reminder_id?: string | null
+          resend_message_id?: string | null
+          sent_at?: string
+          status?: string
+          subject: string
+          template_type: string
+          trigger_reason?: string | null
+          triggered_by: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          reminder_id?: string | null
+          resend_message_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_type?: string
+          trigger_reason?: string | null
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_email_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_email_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_email_logs_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "crm_reminders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_notes: {
         Row: {
           agent_id: string
