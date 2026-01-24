@@ -26,7 +26,7 @@ export default function ComparisonPage() {
   const [showUseCases, setShowUseCases] = useState(false);
 
   const { data: comparison, isLoading, error } = useQuery({
-    queryKey: ['comparison', slug],
+    queryKey: ['comparison', lang, slug],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('comparison_pages')

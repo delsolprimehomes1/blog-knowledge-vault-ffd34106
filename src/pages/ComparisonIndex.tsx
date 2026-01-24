@@ -123,7 +123,7 @@ export default function ComparisonIndex() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {comparisons?.map((comparison) => (
-                <Link key={comparison.id} to={`/${lang}/compare/${comparison.slug}`}>
+                <Link key={comparison.id} to={`/${comparison.language}/compare/${comparison.slug}`}>
                   <Card className="h-full hover:shadow-lg transition-shadow group">
                     <CardHeader>
                       <div className="flex items-center gap-2 mb-2">
