@@ -45,13 +45,14 @@ interface NotificationRequest {
   lead: Lead;
   agents: Agent[];
   claimWindowMinutes: number;
-  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent' | 'admin_unclaimed' | 'sla_warning';
+  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert';
   lead_priority?: string;
   isAdminFallback?: boolean;
   assigned_agent_name?: string;
   time_since_assignment_minutes?: number;
   triggered_by?: string;
   trigger_reason?: string;
+  scheduled_release_at?: string;
 }
 
 function getLanguageFlag(language: string): string {
@@ -118,6 +119,31 @@ function generateSlaWarningEmailHtml(lead: Lead, adminName: string, leadDetailUr
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>⚠️ SLA Warning</title></head><body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f3f4f6;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(245, 158, 11, 0.2);"><tr><td style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 30px; text-align: center;"><h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: bold;">⚠️ SLA WARNING - LEAD NOT WORKED</h1><p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 15px; font-weight: 500;">This lead was claimed but has not received any activity</p></td></tr><tr><td style="background-color: #FEF3C7; padding: 16px 30px; border-bottom: 2px solid #F59E0B;"><p style="margin: 0; color: #92400E; font-size: 15px; font-weight: 700;">⏱️ SLA window of ${slaMinutes} minutes has been exceeded</p><p style="margin: 4px 0 0; color: #B45309; font-size: 13px;">Lead has been assigned for ${timeSinceAssignment} minutes with no activity logged</p></td></tr><tr><td style="padding: 30px;"><p style="margin: 0 0 20px; color: #374151; font-size: 16px;">Hi ${adminName},</p><p style="margin: 0 0 24px; color: #374151; font-size: 16px;">A lead claimed by <strong>${assignedAgentName}</strong> has exceeded the SLA window without any activity being logged. The lead remains assigned to the agent, but you may want to follow up:</p><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FFFBEB; border-radius: 8px; border: 2px solid #FCD34D; margin-bottom: 24px;"><tr><td style="padding: 20px;"><h2 style="margin: 0 0 8px; color: #111827; font-size: 22px; font-weight: bold;">${lead.first_name} ${lead.last_name}</h2><span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">${normalizedLead.lead_segment}</span><span style="display: inline-block; background-color: #6366F1; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">${flag} ${normalizedLead.language?.toUpperCase()}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;"><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p><p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${normalizedLead.phone_number}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Email</p><p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${lead.email || 'Not provided'}</p></td></tr><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Budget</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.budget_range || "Not specified"}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p></td></tr><tr><td colspan="2" style="padding: 12px 0 0 0; border-top: 1px dashed #FCD34D; margin-top: 8px;"><p style="margin: 0; color: #92400E; font-size: 13px;"><strong>Assigned Agent:</strong> ${assignedAgentName}</p><p style="margin: 4px 0 0; color: #92400E; font-size: 13px;"><strong>Time Since Assignment:</strong> ${timeSinceAssignment} minutes</p></td></tr></table></td></tr></table><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><a href="${leadDetailUrl}" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #ffffff; font-size: 18px; font-weight: bold; text-decoration: none; padding: 18px 50px; border-radius: 10px; box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);">📋 View Lead Details</a></td></tr></table><p style="margin: 24px 0 0; color: #92400E; font-size: 14px; text-align: center; font-weight: 500;">The lead remains with ${assignedAgentName}. You may choose to reassign manually if needed.</p></td></tr><tr><td style="background-color: #1F2937; padding: 20px 30px;"><p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">Del Sol Prime Homes CRM • SLA Monitoring System<br><span style="color: #FCD34D;">This is an automated SLA warning notification</span></p></td></tr></table></td></tr></table></body></html>`;
 }
 
+function generateNightHoldAlertEmailHtml(lead: Lead, adminName: string, leadDetailUrl: string, scheduledRelease: string, triggerReason: string): string {
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
+  const segmentColor = getSegmentColor(normalizedLead.lead_segment!);
+  const createdAt = lead.created_at ? new Date(lead.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown';
+  
+  // Parse scheduled release time for display
+  let releaseTimeDisplay = 'Tomorrow at 09:00';
+  try {
+    if (scheduledRelease) {
+      const releaseDate = new Date(scheduledRelease);
+      releaseTimeDisplay = releaseDate.toLocaleString('en-US', { 
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+    }
+  } catch { /* Use default */ }
+  
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>🌙 After-Hours Lead</title></head><body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f3f4f6;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.15);"><tr><td style="background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); padding: 30px; text-align: center;"><h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">🌙 AFTER-HOURS LEAD RECEIVED</h1><p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 15px; font-weight: 500;">This lead has been placed on Night Hold</p></td></tr><tr><td style="background-color: #E0E7FF; padding: 16px 30px; border-bottom: 2px solid #6366F1;"><p style="margin: 0; color: #3730A3; font-size: 14px; font-weight: 700;">⏰ Scheduled for automatic release: ${releaseTimeDisplay}</p><p style="margin: 4px 0 0; color: #4338CA; font-size: 13px;">No immediate action required • Lead will be routed to agents during business hours</p></td></tr><tr><td style="padding: 30px;"><p style="margin: 0 0 20px; color: #374151; font-size: 16px;">Hi ${adminName},</p><p style="margin: 0 0 24px; color: #374151; font-size: 16px;">A new ${flag} ${normalizedLead.language?.toUpperCase()} lead arrived outside business hours and has been automatically placed on hold:</p><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F5F3FF; border-radius: 8px; border: 2px solid #C4B5FD; margin-bottom: 24px;"><tr><td style="padding: 20px;"><h2 style="margin: 0 0 8px; color: #111827; font-size: 20px; font-weight: bold;">${lead.first_name} ${lead.last_name}</h2><span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">${normalizedLead.lead_segment}</span><span style="display: inline-block; background-color: #6366F1; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">${flag} ${normalizedLead.language?.toUpperCase()}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;"><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.phone_number}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Email</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.email || 'Not provided'}</p></td></tr><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Budget</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.budget_range || "Not specified"}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p></td></tr><tr><td colspan="2" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Created At</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${createdAt}</p></td></tr></table></td></tr></table><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><a href="${leadDetailUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">📋 View Lead Details</a></td></tr></table><p style="margin: 24px 0 0; color: #6B7280; font-size: 14px; text-align: center;">This lead will be automatically routed at ${releaseTimeDisplay}. If urgent, you can manually assign it now.</p></td></tr><tr><td style="background-color: #1F2937; padding: 20px 30px;"><p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">Del Sol Prime Homes CRM • Night Hold System<br><span style="color: #A5B4FC;">This is an informational after-hours notification</span></p></td></tr></table></td></tr></table></body></html>`;
+}
+
 // Log email to database for audit trail
 async function logEmail(
   supabase: any,
@@ -177,12 +203,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { lead, agents, claimWindowMinutes, notification_type, lead_priority, assigned_agent_name, time_since_assignment_minutes, triggered_by, trigger_reason }: NotificationRequest = await req.json();
+    const { lead, agents, claimWindowMinutes, notification_type, lead_priority, assigned_agent_name, time_since_assignment_minutes, triggered_by, trigger_reason, scheduled_release_at }: NotificationRequest = await req.json();
     console.log(`[send-lead-notification] Sending email notifications to ${agents.length} agents for lead ${lead.id}, type: ${notification_type || 'broadcast'}`);
 
     const appUrl = Deno.env.get("APP_URL") || "https://blog-knowledge-vault.lovable.app";
-    const results: Array<{ agent: string; emailSuccess: boolean; emailType?: 'standard' | 'urgent' | 'admin_unclaimed' | 'sla_warning'; error?: string }> = [];
+    const results: Array<{ agent: string; emailSuccess: boolean; emailType?: 'standard' | 'urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert'; error?: string }> = [];
 
+    const isNightHoldAlertNotification = notification_type === 'night_hold_alert';
     const isSlaWarningNotification = notification_type === 'sla_warning';
     const isAdminUnclaimedNotification = notification_type === 'admin_unclaimed';
     const isUrgentNotification = notification_type === 'direct_assignment' || notification_type === 'sla_escalation' || notification_type === 'test_urgent' || lead_priority === 'urgent';
@@ -197,10 +224,11 @@ serve(async (req) => {
       let resendMessageId: string | undefined;
       let errorMessage: string | undefined;
       
+      const useNightHoldAlertTemplate = isNightHoldAlertNotification;
       const useAdminUnclaimedTemplate = isAdminUnclaimedNotification;
       const useSlaWarningTemplate = isSlaWarningNotification;
-      const useUrgentTemplate = !useAdminUnclaimedTemplate && !useSlaWarningTemplate && isUrgentNotification && agent.urgent_emails_enabled !== false;
-      const emailType = useSlaWarningTemplate ? 'sla_warning' : (useAdminUnclaimedTemplate ? 'admin_unclaimed' : (useUrgentTemplate ? 'urgent' : 'standard'));
+      const useUrgentTemplate = !useNightHoldAlertTemplate && !useAdminUnclaimedTemplate && !useSlaWarningTemplate && isUrgentNotification && agent.urgent_emails_enabled !== false;
+      const emailType = useNightHoldAlertTemplate ? 'night_hold_alert' : (useSlaWarningTemplate ? 'sla_warning' : (useAdminUnclaimedTemplate ? 'admin_unclaimed' : (useUrgentTemplate ? 'urgent' : 'standard')));
 
       const normalizedLead = normalizeLead(lead);
       const flag = getLanguageFlag(normalizedLead.language!);
@@ -211,7 +239,9 @@ serve(async (req) => {
       // Build trigger reason if not provided
       let reasonText = trigger_reason;
       if (!reasonText) {
-        if (useSlaWarningTemplate) {
+        if (useNightHoldAlertTemplate) {
+          reasonText = `Lead arrived after hours - scheduled for release at ${scheduled_release_at || 'next business day'}`;
+        } else if (useSlaWarningTemplate) {
           reasonText = `SLA breach - no activity after ${time_since_assignment_minutes || claimWindowMinutes} minutes`;
         } else if (useAdminUnclaimedTemplate) {
           reasonText = `Lead unclaimed after ${lead.current_round || 1} round(s)`;
@@ -226,7 +256,15 @@ serve(async (req) => {
 
       try {
         let emailHtml: string;
-        if (useSlaWarningTemplate) {
+        if (useNightHoldAlertTemplate) {
+          emailHtml = generateNightHoldAlertEmailHtml(
+            lead, 
+            agent.first_name, 
+            leadDetailUrl, 
+            scheduled_release_at || '',
+            reasonText
+          );
+        } else if (useSlaWarningTemplate) {
           emailHtml = generateSlaWarningEmailHtml(
             lead, 
             agent.first_name, 
@@ -243,7 +281,9 @@ serve(async (req) => {
           emailHtml = generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes);
         }
 
-        if (useSlaWarningTemplate) {
+        if (useNightHoldAlertTemplate) {
+          emailSubject = `🌙 After-Hours Lead: ${lead.first_name} ${lead.last_name} (${flag} ${normalizedLead.language?.toUpperCase()})`;
+        } else if (useSlaWarningTemplate) {
           emailSubject = `⚠️ SLA Warning: ${lead.first_name} ${lead.last_name} not worked by ${assigned_agent_name || 'Agent'}`;
         } else if (useAdminUnclaimedTemplate) {
           emailSubject = `🚨 UNCLAIMED: ${lead.first_name} ${lead.last_name} - Manual Assignment Required`;
@@ -315,7 +355,8 @@ serve(async (req) => {
     const emailSuccessCount = results.filter(r => r.emailSuccess).length;
     const urgentEmailCount = results.filter(r => r.emailType === 'urgent').length;
     const slaWarningCount = results.filter(r => r.emailType === 'sla_warning').length;
-    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails sent (${urgentEmailCount} urgent, ${slaWarningCount} SLA warnings)`);
+    const nightHoldAlertCount = results.filter(r => r.emailType === 'night_hold_alert').length;
+    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails sent (${urgentEmailCount} urgent, ${slaWarningCount} SLA warnings, ${nightHoldAlertCount} night-hold alerts)`);
 
     return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: unknown) {

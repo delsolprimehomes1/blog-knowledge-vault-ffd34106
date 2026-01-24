@@ -536,6 +536,38 @@ serve(async (req) => {
 
       console.log(`[register-crm-lead] NIGHT HOLD: Lead ${lead.id} scheduled for release at ${scheduledRelease}`);
 
+      // Send admin alert email for after-hours lead
+      try {
+        const { data: adminAgents } = await supabase
+          .from("crm_agents")
+          .select("id, email, first_name, last_name")
+          .eq("role", "admin")
+          .eq("is_active", true);
+
+        if (adminAgents?.length) {
+          console.log(`[register-crm-lead] Sending night hold alert to ${adminAgents.length} admins`);
+          await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              lead,
+              agents: adminAgents,
+              claimWindowMinutes: 0,
+              notification_type: "night_hold_alert",
+              triggered_by: "register-crm-lead",
+              trigger_reason: `Lead arrived after hours (${config.end}:00 ${config.timezone}). Scheduled for release at ${scheduledRelease}.`,
+              scheduled_release_at: scheduledRelease,
+            }),
+          });
+          console.log("[register-crm-lead] Night hold admin alert sent");
+        }
+      } catch (alertError) {
+        console.error("[register-crm-lead] Error sending night hold alert:", alertError);
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
