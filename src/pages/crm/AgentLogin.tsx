@@ -113,8 +113,8 @@ export default function AgentLogin() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-purple-900">
-        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-prime-950 via-prime-900 to-prime-950">
+        <Loader2 className="w-8 h-8 text-prime-gold animate-spin" />
       </div>
     );
   }
@@ -122,14 +122,18 @@ export default function AgentLogin() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-700 to-purple-900 animate-gradient-x" />
+      <div className="absolute inset-0 bg-gradient-to-br from-prime-950 via-prime-900 to-prime-950" />
+      
+      {/* Decorative gradient orbs */}
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-prime-gold/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-prime-gold/5 rounded-full blur-3xl" />
       
       {/* Floating particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(40)].map((_, i) => (
+        {[...Array(25)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-white/30 rounded-full animate-float"
+            className="absolute w-1 h-1 bg-prime-gold/40 rounded-full animate-float"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -141,15 +145,20 @@ export default function AgentLogin() {
       </div>
 
       {/* Login card */}
-      <Card className="relative z-10 w-full max-w-md mx-4 backdrop-blur-xl bg-white/10 border-white/20 shadow-2xl animate-scale-in">
-        <CardHeader className="space-y-1 text-center pb-6">
+      <Card className="relative z-10 w-full max-w-md mx-4 backdrop-blur-xl bg-prime-900/40 border border-prime-gold/20 shadow-2xl animate-scale-in rounded-2xl overflow-hidden">
+        {/* Gold accent line */}
+        <div className="h-1 bg-gradient-to-r from-transparent via-prime-gold to-transparent" />
+        
+        <CardHeader className="space-y-1 text-center pb-6 pt-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-              <Building2 className="w-8 h-8 text-white" />
-            </div>
+            <img 
+              src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+              alt="Del Sol Prime Homes"
+              className="h-16 md:h-20 w-auto object-contain"
+            />
           </div>
           <h1 className="text-3xl font-serif font-bold text-white">Del Sol Prime Homes</h1>
-          <p className="text-blue-200">Agent Portal</p>
+          <p className="text-transparent bg-clip-text bg-gradient-to-r from-prime-goldLight via-prime-gold to-prime-goldLight font-medium">Agent Portal</p>
         </CardHeader>
 
         <CardContent>
@@ -160,12 +169,12 @@ export default function AgentLogin() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-12 px-4 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary focus:ring-2 focus:ring-primary/50"
+                className="w-full h-12 px-4 bg-prime-800/50 border-prime-gold/20 text-white placeholder:text-white/40 focus:border-prime-gold/50 focus:ring-2 focus:ring-prime-gold/20"
                 placeholder="Email Address"
                 required
               />
               {emailValid && email && (
-                <Check className="absolute right-4 top-3.5 w-5 h-5 text-green-400 animate-scale-in" />
+                <Check className="absolute right-4 top-3.5 w-5 h-5 text-prime-gold animate-scale-in" />
               )}
             </div>
 
@@ -175,14 +184,14 @@ export default function AgentLogin() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 px-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary focus:ring-2 focus:ring-primary/50"
+                className="w-full h-12 px-4 pr-12 bg-prime-800/50 border-prime-gold/20 text-white placeholder:text-white/40 focus:border-prime-gold/50 focus:ring-2 focus:ring-prime-gold/20"
                 placeholder="Password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5 text-white/50 hover:text-white transition-colors"
+                className="absolute right-4 top-3.5 text-white/40 hover:text-prime-gold transition-colors"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -194,11 +203,11 @@ export default function AgentLogin() {
                 <Switch
                   checked={rememberMe}
                   onCheckedChange={setRememberMe}
-                  className="data-[state=checked]:bg-primary"
+                  className="data-[state=checked]:bg-prime-gold"
                 />
-                <label className="text-sm text-blue-200">Remember me</label>
+                <label className="text-sm text-white/60">Remember me</label>
               </div>
-              <button type="button" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              <button type="button" className="text-sm text-prime-gold hover:text-prime-goldLight transition-colors">
                 Forgot password?
               </button>
             </div>
@@ -208,8 +217,9 @@ export default function AgentLogin() {
               type="submit"
               disabled={loading}
               className={cn(
-                "w-full h-12 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70",
-                "text-white font-semibold rounded-lg shadow-lg hover:shadow-xl",
+                "w-full h-12 bg-prime-gold hover:bg-prime-goldLight",
+                "text-prime-950 font-semibold rounded-lg",
+                "shadow-lg shadow-prime-gold/20 hover:shadow-xl hover:shadow-prime-gold/30",
                 "transition-all duration-300 transform hover:scale-[1.02]"
               )}
             >
@@ -227,7 +237,7 @@ export default function AgentLogin() {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-blue-200/60">
+          <p className="mt-6 text-center text-sm text-white/40">
             Contact your administrator if you need access
           </p>
         </CardContent>
