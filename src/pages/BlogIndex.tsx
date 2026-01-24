@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/home/Header";
 import { BlogHeader } from "@/components/blog-index/BlogHeader";
 import { FilterBar } from "@/components/blog-index/FilterBar";
 import { SearchBar } from "@/components/blog-index/SearchBar";
@@ -150,8 +151,9 @@ const BlogIndex = () => {
 
   return (
     <>
+      <Header variant="solid" />
       {/* SEO tags are handled by server/edge - no Helmet needed */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 pt-24 pb-12">
         <BlogHeader totalCount={totalArticles} />
 
       <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />

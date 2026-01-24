@@ -78,9 +78,9 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
           : 'bg-transparent py-4 border-transparent'
       }`}
     >
-      <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 z-50">
+      <div className="container mx-auto px-4 md:px-6 grid grid-cols-2 lg:grid-cols-3 items-center">
+        {/* Logo - left aligned */}
+        <Link to="/" className="flex items-center gap-2.5 z-50 justify-self-start">
           <img 
             src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png" 
             alt="DelSolPrimeHomes" 
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
             height={64}
             loading="eager"
             decoding="async"
-            className={`h-12 md:h-16 w-auto object-contain transition-all duration-500 ${
+            className={`h-10 md:h-12 w-auto min-w-[120px] object-contain transition-all duration-500 ${
               isLightBackground 
                 ? 'brightness-0 sepia saturate-[10] hue-rotate-[15deg]' 
                 : ''
@@ -96,8 +96,8 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
           />
         </Link>
 
-        {/* Desktop Mega Menu */}
-        <div className="hidden lg:flex items-center">
+        {/* Desktop Mega Menu - truly centered */}
+        <div className="hidden lg:flex items-center justify-center">
           <Menu setActive={setActive}>
             {/* Explore Menu */}
             <MenuItem setActive={setActive} active={active} item="Explore">
@@ -204,8 +204,8 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
           </Menu>
         </div>
 
-        {/* Actions */}
-        <div className="hidden lg:flex items-center gap-6">
+        {/* Actions - right aligned */}
+        <div className="hidden lg:flex items-center gap-6 justify-self-end">
           {/* Language Selector - Content-aware or generic */}
           {contentContext ? (
             <ContentLanguageSwitcher
@@ -227,10 +227,10 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
           </Button>
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Mobile Toggle - positioned in grid column 2 (or 3 on lg) */}
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className={`lg:hidden z-50 transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-foreground' : 'text-white'}`}
+          className={`lg:hidden z-50 justify-self-end transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-foreground' : 'text-white'}`}
         >
           {isMobileMenuOpen ? <X size={28} /> : <MenuIcon size={28} />}
         </button>
