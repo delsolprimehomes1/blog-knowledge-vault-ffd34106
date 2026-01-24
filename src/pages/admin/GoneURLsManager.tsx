@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Ban,
@@ -21,7 +22,9 @@ import {
   CheckCircle2,
   FileText,
   Download,
+  Sparkles,
 } from "lucide-react";
+import { GSCImportWizard } from "@/components/admin/GSCImportWizard";
 import {
   Table,
   TableBody,
@@ -350,11 +353,29 @@ const GoneURLsManager = () => {
           </Card>
         </div>
 
-        {/* Upload CSV Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
+        {/* Tabs for Import Methods */}
+        <Tabs defaultValue="wizard" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="wizard" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              GSC Import Wizard
+            </TabsTrigger>
+            <TabsTrigger value="simple" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Simple CSV Import
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="wizard">
+            <GSCImportWizard />
+          </TabsContent>
+
+          <TabsContent value="simple">
+            {/* Simple Upload CSV Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
               Import from Google Search Console
             </CardTitle>
             <CardDescription>
@@ -384,6 +405,8 @@ const GoneURLsManager = () => {
             </Button>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Add Single URL */}
         <Card>
