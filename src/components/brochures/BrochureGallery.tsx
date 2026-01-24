@@ -206,7 +206,7 @@ export const BrochureGallery: React.FC<BrochureGalleryProps> = ({ images, featur
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={getHighResImageUrl(validImages[lightboxIndex].image, 'lightbox')}
+              src={validImages[lightboxIndex].image}
               alt={validImages[lightboxIndex].title || ''}
               className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg"
             />

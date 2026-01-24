@@ -120,7 +120,7 @@ export const PropertyCard = ({ property, lang = Language.EN }: PropertyCardProps
             } group-hover:scale-110`}
             onLoad={() => setImageLoaded(true)}
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/placeholder.svg';
+              e.currentTarget.src = '/placeholder.svg';
               setImageLoaded(true);
             }}
           />
