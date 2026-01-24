@@ -16,6 +16,15 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
   const displayImages = images.slice(0, 5);
   const remainingCount = Math.max(0, images.length - 5);
 
+  // Fallback to w400 if high-res fails
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const fallbackUrl = img.src.replace(/\/w\d+\//g, '/w400/');
+    if (img.src !== fallbackUrl) {
+      img.src = fallbackUrl;
+    }
+  };
+
   const openLightbox = (index: number) => {
     setCurrentIndex(index);
     setIsLightboxOpen(true);
@@ -67,6 +76,7 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
               src={getHighResImageUrl(displayImages[0], 'hero')}
               alt={`${title} - Main view`}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={handleImageError}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -91,6 +101,7 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
                 src={getHighResImageUrl(image, 'card')}
                 alt={`${title} - View ${index + 2}`}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                onError={handleImageError}
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
               
@@ -123,6 +134,7 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
                     src={getHighResImageUrl(image, 'card')}
                     alt={`${title} - View ${index + 1}`}
                     className="w-full h-full object-cover"
+                    onError={handleImageError}
                   />
                 </div>
               </motion.div>
@@ -226,6 +238,7 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
                 src={getHighResImageUrl(images[currentIndex], 'lightbox')}
                 alt={`${title} - Photo ${currentIndex + 1}`}
                 className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                onError={handleImageError}
               />
             </motion.div>
 
@@ -255,6 +268,7 @@ export const PropertyGalleryGrid = ({ images, title }: PropertyGalleryGridProps)
                     src={getHighResImageUrl(image, 'thumbnail')}
                     alt={`Thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
+                    onError={handleImageError}
                   />
                 </button>
               ))}
