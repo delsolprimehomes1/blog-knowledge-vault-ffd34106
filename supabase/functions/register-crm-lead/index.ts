@@ -555,28 +555,31 @@ serve(async (req) => {
     const matchedRule = await findMatchingRule(lead, supabase);
 
     if (matchedRule) {
-      // Try to assign via rule
-      const ruleResult = await assignLeadViaRule(lead, matchedRule, supabase, supabaseUrl, supabaseKey);
-      
-      if (ruleResult.success) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            leadId: lead.id,
-            segment,
-            score,
-            assignmentMethod: "rule_based",
-            ruleName: matchedRule.rule_name,
-            assignedTo: ruleResult.agent?.id,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Rule matched but agent unavailable - check fallback
-      if (!matchedRule.fallback_to_broadcast) {
-        console.log("[register-crm-lead] No fallback, assigning to admin");
-        // Would assign to admin here - for now continue to broadcast
+      // Check fallback_to_broadcast FIRST - if true, skip direct assignment entirely
+      if (matchedRule.fallback_to_broadcast) {
+        console.log(`[register-crm-lead] Rule "${matchedRule.rule_name}" has fallback_to_broadcast=true, skipping direct assignment → proceeding to Tier 2 broadcast`);
+        // Don't return - fall through to round robin below
+      } else {
+        // Only do direct assignment if NOT fallback_to_broadcast
+        const ruleResult = await assignLeadViaRule(lead, matchedRule, supabase, supabaseUrl, supabaseKey);
+        
+        if (ruleResult.success) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              leadId: lead.id,
+              segment,
+              score,
+              assignmentMethod: "rule_based",
+              ruleName: matchedRule.rule_name,
+              assignedTo: ruleResult.agent?.id,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Rule matched but agent unavailable - continue to broadcast
+        console.log("[register-crm-lead] Agent unavailable, falling through to Tier 2 broadcast");
       }
     }
 
