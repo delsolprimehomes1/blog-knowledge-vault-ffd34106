@@ -53,11 +53,12 @@ export const extractPropertyCriteriaFromHistory = (messages: Array<{ role: strin
   ];
   
   // Budget patterns
+  // Budget patterns - separators optional to handle "350k500k", "350k-500k", "350 500", etc.
   const budgetPatterns = [
-    { pattern: /€?350k?\s*[-–]\s*€?500k?|350,?000|350000|under 500/i, value: '€350k-€500k' },
-    { pattern: /€?500k?\s*[-–]\s*€?750k?|500,?000|600k?|650k?|700k?/i, value: '€500k-€750k' },
-    { pattern: /€?750k?\s*[-–]\s*€?1[,.]?0{3}k?|€?1\s*m|800k?|900k?/i, value: '€750k-€1M' },
-    { pattern: /€?1[,.]?0{3}k?\+|over 1\s*m|1 million\+|above 1m/i, value: '€1M+' }
+    { pattern: /€?350k?\s*[-–]?\s*€?500k?|350,?000|350000|under 500|350\s*500/i, value: '€350k-€500k' },
+    { pattern: /€?500k?\s*[-–]?\s*€?750k?|500,?000|600k?|650k?|700k?|500\s*750/i, value: '€500k-€750k' },
+    { pattern: /€?750k?\s*[-–]?\s*€?1[,.]?0{3}k?|€?1\s*m|800k?|900k?|750\s*1000/i, value: '€750k-€1M' },
+    { pattern: /€?1[,.]?0{3}k?\+?|over 1\s*m|1 million\+?|above 1m|1m\+?/i, value: '€1M+' }
   ];
   
   // Property type patterns
