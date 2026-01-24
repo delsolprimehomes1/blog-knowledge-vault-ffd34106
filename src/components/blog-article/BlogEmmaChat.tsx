@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import EmmaChat from '@/components/landing/EmmaChat';
 
@@ -8,6 +8,18 @@ interface BlogEmmaChatProps {
 
 const BlogEmmaChat: React.FC<BlogEmmaChatProps> = ({ language }) => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Listen for external open triggers (from CTA buttons, etc.)
+  useEffect(() => {
+    const handleOpenChatbot = () => {
+      setIsOpen(true);
+    };
+    
+    window.addEventListener('openChatbot', handleOpenChatbot);
+    return () => {
+      window.removeEventListener('openChatbot', handleOpenChatbot);
+    };
+  }, []);
   
   // Emma's avatar for the floating button
   const emmaAvatar = 'https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/695df9a00597dfcfb07a11d0.jpeg';

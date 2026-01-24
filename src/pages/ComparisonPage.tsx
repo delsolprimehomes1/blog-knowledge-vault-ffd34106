@@ -43,8 +43,7 @@ export default function ComparisonPage() {
 
 
   const handleChatClick = () => {
-    const widget = document.querySelector('[data-chatbot-trigger]') as HTMLButtonElement;
-    if (widget) widget.click();
+    window.dispatchEvent(new CustomEvent('openChatbot'));
   };
 
   if (isLoading) {
