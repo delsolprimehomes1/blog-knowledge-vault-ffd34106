@@ -38,13 +38,16 @@ const PropertyDetail = () => {
 
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke("search-properties", {
+        // Use get-property-details for high-resolution images (w1200)
+        const { data, error } = await supabase.functions.invoke("get-property-details", {
           body: { reference, lang: currentLanguage },
         });
 
         if (error) throw error;
 
         if (data.property) {
+          console.log('📸 Image resolution:', data.imageResolution);
+          console.log('📸 Data source:', data.source);
           setProperty(data.property);
         } else {
           toast({
