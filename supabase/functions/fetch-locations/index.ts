@@ -7,6 +7,30 @@ const corsHeaders = {
 
 const PROXY_BASE_URL = 'http://188.34.164.137:3000';
 
+// Static fallback locations for Costa del Sol when API is unavailable
+const FALLBACK_LOCATIONS = [
+  { label: 'Marbella', value: 'Marbella' },
+  { label: 'Estepona', value: 'Estepona' },
+  { label: 'Benahavís', value: 'Benahavís' },
+  { label: 'Mijas', value: 'Mijas' },
+  { label: 'Fuengirola', value: 'Fuengirola' },
+  { label: 'Benalmádena', value: 'Benalmádena' },
+  { label: 'Torremolinos', value: 'Torremolinos' },
+  { label: 'Málaga', value: 'Málaga' },
+  { label: 'Nerja', value: 'Nerja' },
+  { label: 'Manilva', value: 'Manilva' },
+  { label: 'Casares', value: 'Casares' },
+  { label: 'Ojén', value: 'Ojén' },
+  { label: 'Istán', value: 'Istán' },
+  { label: 'Coin', value: 'Coin' },
+  { label: 'Alhaurín el Grande', value: 'Alhaurín el Grande' },
+  { label: 'Alhaurín de la Torre', value: 'Alhaurín de la Torre' },
+  { label: 'Rincón de la Victoria', value: 'Rincón de la Victoria' },
+  { label: 'Vélez-Málaga', value: 'Vélez-Málaga' },
+  { label: 'Torrox', value: 'Torrox' },
+  { label: 'Sotogrande', value: 'Sotogrande' },
+];
+
 // Module-level cache
 let cachedLocations: { label: string; value: string }[] | null = null;
 let cacheTimestamp: number | null = null;
@@ -33,43 +57,57 @@ serve(async (req) => {
     }
 
     console.log('Fetching locations from API...');
-    const response = await fetch(`${PROXY_BASE_URL}/locations`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}: ${response.statusText}`);
-    }
-
-    const apiData = await response.json();
-    console.log('API response structure:', JSON.stringify(apiData).substring(0, 500));
-
-    // Parse the response structure
-    // Expected: { success: true, data: { LocationData: { ProvinceArea: { Locations: { Location: [...] } } } } }
     let locations: { label: string; value: string }[] = [];
+    let usedFallback = false;
 
-    if (apiData?.success && apiData?.data?.LocationData) {
-      const provinceArea = apiData.data.LocationData.ProvinceArea;
-      
-      if (provinceArea) {
-        // Handle both single ProvinceArea and array of ProvinceAreas
-        const areas = Array.isArray(provinceArea) ? provinceArea : [provinceArea];
-        
-        for (const area of areas) {
-          if (area?.Locations?.Location) {
-            const locationList = Array.isArray(area.Locations.Location) 
-              ? area.Locations.Location 
-              : [area.Locations.Location];
+    try {
+      const response = await fetch(`${PROXY_BASE_URL}/locations`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        console.log(`API returned ${response.status}, using fallback data`);
+        locations = [...FALLBACK_LOCATIONS];
+        usedFallback = true;
+      } else {
+        const apiData = await response.json();
+        console.log('API response structure:', JSON.stringify(apiData).substring(0, 500));
+
+        // Parse the response structure
+        if (apiData?.success && apiData?.data?.LocationData) {
+          const provinceArea = apiData.data.LocationData.ProvinceArea;
+          
+          if (provinceArea) {
+            const areas = Array.isArray(provinceArea) ? provinceArea : [provinceArea];
             
-            for (const loc of locationList) {
-              if (typeof loc === 'string' && loc.trim()) {
-                locations.push({ label: loc.trim(), value: loc.trim() });
+            for (const area of areas) {
+              if (area?.Locations?.Location) {
+                const locationList = Array.isArray(area.Locations.Location) 
+                  ? area.Locations.Location 
+                  : [area.Locations.Location];
+                
+                for (const loc of locationList) {
+                  if (typeof loc === 'string' && loc.trim()) {
+                    locations.push({ label: loc.trim(), value: loc.trim() });
+                  }
+                }
               }
             }
           }
         }
+
+        // If parsing failed, use fallback
+        if (locations.length === 0) {
+          console.log('No locations parsed from API, using fallback');
+          locations = [...FALLBACK_LOCATIONS];
+          usedFallback = true;
+        }
       }
+    } catch (fetchError) {
+      console.log('API fetch failed, using fallback data:', fetchError);
+      locations = [...FALLBACK_LOCATIONS];
+      usedFallback = true;
     }
 
     // Remove duplicates and sort alphabetically
@@ -77,7 +115,7 @@ serve(async (req) => {
       new Map(locations.map(l => [l.value, l])).values()
     ).sort((a, b) => a.label.localeCompare(b.label));
 
-    console.log(`Parsed ${uniqueLocations.length} unique locations`);
+    console.log(`Returning ${uniqueLocations.length} locations (fallback: ${usedFallback})`);
 
     // Update cache
     cachedLocations = uniqueLocations;
@@ -87,19 +125,22 @@ serve(async (req) => {
       success: true,
       data: uniqueLocations,
       count: uniqueLocations.length,
-      cached: false
+      cached: false,
+      fallback: usedFallback
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: unknown) {
     console.error('Error fetching locations:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch locations';
+    // Even on error, return fallback data instead of failing
     return new Response(JSON.stringify({
-      success: false,
-      error: errorMessage
+      success: true,
+      data: FALLBACK_LOCATIONS,
+      count: FALLBACK_LOCATIONS.length,
+      cached: false,
+      fallback: true
     }), {
-      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
