@@ -72,8 +72,9 @@ export const PropertyFilters = ({
   const [bathrooms, setBathrooms] = useState(initialParams.bathrooms?.toString() || "");
   const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "");
   const [priceMax, setPriceMax] = useState(initialParams.priceMax?.toString() || "");
+  // Default to New Developments unless explicitly set otherwise
   const [status, setStatus] = useState(
-    initialParams.newDevs === "only" ? "new-developments" : "sales"
+    initialParams.newDevs === "only" || initialParams.newDevs === undefined ? "new-developments" : "sales"
   );
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export const PropertyFilters = ({
     setBathrooms(initialParams.bathrooms?.toString() || "");
     setPriceMin(initialParams.priceMin?.toString() || "");
     setPriceMax(initialParams.priceMax?.toString() || "");
-    setStatus(initialParams.newDevs === "only" ? "new-developments" : "sales");
+    setStatus(initialParams.newDevs === "only" || initialParams.newDevs === undefined ? "new-developments" : "sales");
   }, [initialParams]);
 
   const handleSearch = () => {
@@ -115,8 +116,8 @@ export const PropertyFilters = ({
     setBathrooms("");
     setPriceMin("");
     setPriceMax("");
-    setStatus("sales");
-    onSearch({ transactionType: "sale" });
+    setStatus("new-developments");
+    onSearch({ transactionType: "sale", newDevs: "only" });
   };
 
   const isLoading = locationsLoading || typesLoading;
