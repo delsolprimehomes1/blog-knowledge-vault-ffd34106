@@ -1,49 +1,57 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
+import { useContext } from 'react';
+import { LanguageContext } from '@/i18n/LanguageContext';
 
-const locations = [
+const locationData = [
   {
-    name: 'Marbella',
+    key: 'marbella',
     image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80',
     slug: 'marbella',
-    description: 'Luxury capital of the Costa del Sol'
   },
   {
-    name: 'Puerto Banús',
+    key: 'puertoBanus',
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=80',
     slug: 'marbella',
-    description: 'World-famous marina and nightlife'
   },
   {
-    name: 'Estepona',
+    key: 'estepona',
     image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600&q=80',
     slug: 'estepona',
-    description: 'The Garden of the Costa del Sol'
   },
   {
-    name: 'Fuengirola',
+    key: 'fuengirola',
     image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&q=80',
     slug: 'fuengirola',
-    description: 'Family-friendly beach town'
   },
   {
-    name: 'Benalmádena',
+    key: 'benalmadena',
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80',
     slug: 'benalmadena',
-    description: 'Marina and charming pueblo'
   },
   {
-    name: 'Mijas',
+    key: 'mijas',
     image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80',
     slug: 'mijas',
-    description: 'White village with sea views'
   },
 ];
 
 export const LocationShowcase: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
+  const languageContext = useContext(LanguageContext);
+  const currentLanguage = languageContext?.currentLanguage || 'en';
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Build locations with translated content
+  const locations = locationData.map(loc => ({
+    ...loc,
+    name: t.locations.areas[loc.key as keyof typeof t.locations.areas]?.name || loc.key,
+    description: t.locations.areas[loc.key as keyof typeof t.locations.areas]?.description || '',
+  }));
 
   useEffect(() => {
     const scrollContainer = scrollRef.current;
@@ -79,17 +87,17 @@ export const LocationShowcase: React.FC = () => {
           <div className="reveal-on-scroll">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-prime-gold/10 border border-prime-gold/20 rounded-full mb-4">
               <MapPin className="w-3 h-3 text-prime-gold" />
-              <span className="text-prime-gold text-xs font-semibold tracking-wide uppercase">Explore Locations</span>
+              <span className="text-prime-gold text-xs font-semibold tracking-wide uppercase">{t.locations.badge}</span>
             </span>
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
-              Prime Costa del Sol Locations
+              {t.locations.headline}
             </h2>
           </div>
           <Link 
-            to="/en/locations"
+            to={`/${currentLanguage}/locations`}
             className="hidden md:flex items-center gap-2 text-prime-gold font-medium hover:gap-3 transition-all duration-300"
           >
-            View all locations
+            {t.locations.viewAll}
             <span className="text-lg">→</span>
           </Link>
         </div>
@@ -107,7 +115,7 @@ export const LocationShowcase: React.FC = () => {
         {[...locations, ...locations].map((location, index) => (
           <Link
             key={`${location.slug}-${index}`}
-            to={`/en/locations/${location.slug}`}
+            to={`/${currentLanguage}/locations/${location.slug}`}
             className="group relative flex-shrink-0 w-80 h-48 rounded-2xl overflow-hidden"
           >
             {/* Image */}
@@ -140,10 +148,10 @@ export const LocationShowcase: React.FC = () => {
       {/* Mobile CTA */}
       <div className="md:hidden mt-8 text-center">
         <Link 
-          to="/en/locations"
+          to={`/${currentLanguage}/locations`}
           className="inline-flex items-center gap-2 text-prime-gold font-medium"
         >
-          View all locations
+          {t.locations.viewAll}
           <span className="text-lg">→</span>
         </Link>
       </div>

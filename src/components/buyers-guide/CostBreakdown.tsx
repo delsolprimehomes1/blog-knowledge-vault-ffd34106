@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calculator, Percent, Euro, ChevronDown, ChevronUp, Home, Building2 } from 'lucide-react';
-import { defaultCosts } from '@/lib/buyersGuideSchemaGenerator';
+import { Calculator, Percent, Euro, ChevronDown, Home, Building2 } from 'lucide-react';
 import propertyInterior from '@/assets/buyers-guide/property-interior.jpg';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
 export const CostBreakdown: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
   const [propertyPrice, setPropertyPrice] = useState(500000);
   const [isNewBuild, setIsNewBuild] = useState(false);
   const [expandedCost, setExpandedCost] = useState<number | null>(null);
   const [animatedTotal, setAnimatedTotal] = useState(0);
   const totalRef = useRef<HTMLDivElement>(null);
-  const [hasAnimated, setHasAnimated] = useState(false);
 
   // Calculate costs
   const transferTax = isNewBuild ? 0 : propertyPrice * 0.07;
@@ -54,13 +54,13 @@ export const CostBreakdown: React.FC = () => {
   };
 
   const costBreakdownItems = [
-    { label: 'Transfer Tax (ITP) 7%', value: transferTax, show: !isNewBuild },
-    { label: 'VAT (IVA) 10%', value: vat, show: isNewBuild },
-    { label: 'Stamp Duty (AJD) 1.2%', value: stampDuty, show: isNewBuild },
-    { label: 'Notary Fees ~0.75%', value: notaryFees, show: true },
-    { label: 'Registry Fees ~0.75%', value: registryFees, show: true },
-    { label: 'Legal Fees ~1.25%', value: legalFees, show: true },
-    { label: 'Bank Charges', value: bankCharges, show: true },
+    { label: t.costs.breakdownLabels.transferTax, value: transferTax, show: !isNewBuild },
+    { label: t.costs.breakdownLabels.vat, value: vat, show: isNewBuild },
+    { label: t.costs.breakdownLabels.stampDuty, value: stampDuty, show: isNewBuild },
+    { label: t.costs.breakdownLabels.notaryFees, value: notaryFees, show: true },
+    { label: t.costs.breakdownLabels.registryFees, value: registryFees, show: true },
+    { label: t.costs.breakdownLabels.legalFees, value: legalFees, show: true },
+    { label: t.costs.breakdownLabels.bankCharges, value: bankCharges, show: true },
   ];
 
   return (
@@ -78,13 +78,13 @@ export const CostBreakdown: React.FC = () => {
         <div className="text-center mb-20 reveal-on-scroll">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold/10 border border-prime-gold/20 rounded-full mb-6">
             <Euro className="w-4 h-4 text-prime-gold" />
-            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">Transparent Pricing</span>
+            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">{t.costs.badge}</span>
           </span>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-6">
-            All Costs Explained
+            {t.costs.headline}
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            No hidden fees. Calculate exactly what you'll pay when buying property in Spain.
+            {t.costs.subheadline}
           </p>
         </div>
 
@@ -106,15 +106,15 @@ export const CostBreakdown: React.FC = () => {
                     <Calculator className="w-7 h-7 text-prime-gold" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-serif font-bold text-white">Cost Calculator</h3>
-                    <p className="text-white/60 text-sm">Adjust values to see your costs</p>
+                    <h3 className="text-2xl font-serif font-bold text-white">{t.costs.calculator.title}</h3>
+                    <p className="text-white/60 text-sm">{t.costs.calculator.subtitle}</p>
                   </div>
                 </div>
 
                 {/* Property Price Slider */}
                 <div className="mb-8">
                   <label className="flex justify-between text-sm font-medium text-white/80 mb-3">
-                    <span>Property Price</span>
+                    <span>{t.costs.calculator.propertyPrice}</span>
                     <span className="text-prime-gold">{formatCurrency(propertyPrice)}</span>
                   </label>
                   <div className="relative">
@@ -145,7 +145,7 @@ export const CostBreakdown: React.FC = () => {
                 {/* Property Type Toggle */}
                 <div className="mb-10">
                   <label className="block text-sm font-medium text-white/80 mb-3">
-                    Property Type
+                    {t.costs.calculator.propertyType}
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -157,7 +157,7 @@ export const CostBreakdown: React.FC = () => {
                       }`}
                     >
                       <Home className="w-5 h-5" />
-                      <span>Resale</span>
+                      <span>{t.costs.calculator.resale}</span>
                     </button>
                     <button
                       onClick={() => setIsNewBuild(true)}
@@ -168,7 +168,7 @@ export const CostBreakdown: React.FC = () => {
                       }`}
                     >
                       <Building2 className="w-5 h-5" />
-                      <span>New Build</span>
+                      <span>{t.costs.calculator.newBuild}</span>
                     </button>
                   </div>
                 </div>
@@ -193,11 +193,11 @@ export const CostBreakdown: React.FC = () => {
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-prime-gold/10 rounded-full blur-3xl" />
                   <div className="relative text-center">
-                    <p className="text-white/60 text-sm mb-2 uppercase tracking-wide">Total Additional Costs</p>
+                    <p className="text-white/60 text-sm mb-2 uppercase tracking-wide">{t.costs.calculator.totalCosts}</p>
                     <p className="text-4xl md:text-5xl font-bold text-prime-gold mb-2 font-serif">
                       {formatCurrency(animatedTotal)}
                     </p>
-                    <p className="text-white/50 text-sm">≈ {totalPercentage}% of purchase price</p>
+                    <p className="text-white/50 text-sm">≈ {totalPercentage}% {t.costs.calculator.ofPurchasePrice}</p>
                   </div>
                 </div>
               </div>
@@ -207,10 +207,10 @@ export const CostBreakdown: React.FC = () => {
           {/* Cost Explanations */}
           <div className="reveal-on-scroll stagger-2">
             <h3 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-8">
-              Understanding Each Cost
+              {t.costs.understanding}
             </h3>
             <div className="space-y-4">
-              {defaultCosts.map((cost, index) => (
+              {t.costs.items.map((cost, index) => (
                 <div
                   key={index}
                   className={`group rounded-2xl border overflow-hidden transition-all duration-300 ${

@@ -2,14 +2,19 @@ import React from 'react';
 import { ArrowRight, Phone, Mail, Calendar, Download, Shield, Award, Users, Star, Quote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ctaBackground from '@/assets/buyers-guide/luxury-villa-cta.jpg';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
-const trustSignals = [
-  { icon: Shield, label: 'API Accredited' },
-  { icon: Award, label: '15+ Years Experience' },
-  { icon: Users, label: '500+ Satisfied Buyers' },
-];
+const trustIcons = [Shield, Award, Users];
 
 export const BuyersGuideCTA: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
+
+  const trustSignals = [
+    { icon: Shield, label: t.cta.trustSignals.api },
+    { icon: Award, label: t.cta.trustSignals.experience },
+    { icon: Users, label: t.cta.trustSignals.buyers },
+  ];
+
   return (
     <section id="contact-cta" className="py-24 md:py-32 relative overflow-hidden">
       {/* Full-width background image */}
@@ -34,11 +39,11 @@ export const BuyersGuideCTA: React.FC = () => {
           <div className="reveal-on-scroll">
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold/20 border border-prime-gold/30 rounded-full mb-6">
               <span className="w-2 h-2 bg-prime-gold rounded-full animate-pulse" />
-              <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">Ready to Start?</span>
+              <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">{t.cta.badge}</span>
             </span>
             
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-6 leading-tight">
-              Let Us Guide You{' '}
+              {t.cta.headline}{' '}
               <span className="bg-gradient-to-r from-prime-gold via-prime-goldLight to-prime-gold bg-[length:200%_auto] animate-text-shimmer"
                 style={{ 
                   WebkitBackgroundClip: 'text',
@@ -46,13 +51,12 @@ export const BuyersGuideCTA: React.FC = () => {
                   backgroundClip: 'text'
                 }}
               >
-                Home
+                {t.cta.headlineHighlight}
               </span>
             </h2>
             
             <p className="text-xl text-white/80 mb-10 leading-relaxed max-w-lg">
-              Our multilingual team has helped hundreds of international buyers find their perfect property 
-              on the Costa del Sol. Book a free consultation to discuss your requirements.
+              {t.cta.subheadline}
             </p>
 
             {/* Trust Signals */}
@@ -78,8 +82,8 @@ export const BuyersGuideCTA: React.FC = () => {
                   <Phone className="w-6 h-6 text-prime-gold" />
                 </div>
                 <div>
-                  <p className="text-sm text-white/60">Call or WhatsApp</p>
-                  <p className="text-xl text-white font-semibold group-hover:text-prime-gold transition-colors">+34 630 03 90 90</p>
+                  <p className="text-sm text-white/60">{t.cta.phone.label}</p>
+                  <p className="text-xl text-white font-semibold group-hover:text-prime-gold transition-colors">{t.cta.phone.number}</p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-white/40 ml-auto group-hover:text-prime-gold group-hover:translate-x-1 transition-all duration-300" />
               </a>
@@ -92,8 +96,8 @@ export const BuyersGuideCTA: React.FC = () => {
                   <Mail className="w-6 h-6 text-prime-gold" />
                 </div>
                 <div>
-                  <p className="text-sm text-white/60">Email us</p>
-                  <p className="text-lg text-white font-semibold group-hover:text-prime-gold transition-colors">info@delsolprimehomes.com</p>
+                  <p className="text-sm text-white/60">{t.cta.email.label}</p>
+                  <p className="text-lg text-white font-semibold group-hover:text-prime-gold transition-colors">{t.cta.email.address}</p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-white/40 ml-auto group-hover:text-prime-gold group-hover:translate-x-1 transition-all duration-300" />
               </a>
@@ -103,14 +107,14 @@ export const BuyersGuideCTA: React.FC = () => {
             <div className="mt-10 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
               <Quote className="w-8 h-8 text-prime-gold/40 mb-3" />
               <p className="text-white/80 italic mb-4">
-                "Del Sol Prime Homes made our dream of owning a home in Spain a reality. Professional, knowledgeable, and genuinely caring."
+                {t.cta.testimonial.quote}
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-prime-gold/20 flex items-center justify-center">
                   <span className="text-prime-gold font-bold">M</span>
                 </div>
                 <div>
-                  <p className="text-white font-medium text-sm">Michael & Sarah Thompson</p>
+                  <p className="text-white font-medium text-sm">{t.cta.testimonial.author}</p>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-3 h-3 fill-prime-gold text-prime-gold" />
@@ -132,16 +136,16 @@ export const BuyersGuideCTA: React.FC = () => {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold text-white text-sm font-bold rounded-full shadow-lg shadow-prime-gold/30">
                     <Calendar className="w-4 h-4" />
-                    Free Consultation
+                    {t.cta.form.freeConsultation}
                   </span>
                 </div>
 
                 <div className="pt-4">
                   <h3 className="text-2xl md:text-3xl font-serif font-bold text-prime-900 mb-4 text-center">
-                    Book Your Free Consultation
+                    {t.cta.form.title}
                   </h3>
                   <p className="text-slate-600 mb-8 text-center">
-                    Discuss your requirements with our property experts. No obligation, no pressure—just expert advice.
+                    {t.cta.form.description}
                   </p>
 
                   <div className="space-y-4">
@@ -150,7 +154,7 @@ export const BuyersGuideCTA: React.FC = () => {
                       className="group flex items-center justify-center gap-2 w-full py-4 px-6 bg-prime-gold text-white font-semibold rounded-xl hover:bg-prime-gold/90 transition-all duration-300 shadow-lg shadow-prime-gold/30 hover:shadow-xl hover:shadow-prime-gold/40"
                     >
                       <Calendar className="w-5 h-5" />
-                      Schedule a Call
+                      {t.cta.form.schedule}
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Link>
 
@@ -158,14 +162,14 @@ export const BuyersGuideCTA: React.FC = () => {
                       to="/property-finder"
                       className="flex items-center justify-center gap-2 w-full py-4 px-6 bg-prime-900 text-white font-semibold rounded-xl hover:bg-prime-900/90 transition-all duration-300"
                     >
-                      Browse Available Properties
+                      {t.cta.form.browse}
                     </Link>
 
                     <button
                       className="flex items-center justify-center gap-2 w-full py-4 px-6 border-2 border-prime-900 text-prime-900 font-semibold rounded-xl hover:bg-prime-900 hover:text-white transition-all duration-300"
                     >
                       <Download className="w-5 h-5" />
-                      Download PDF Guide
+                      {t.cta.form.download}
                     </button>
                   </div>
 
@@ -173,7 +177,7 @@ export const BuyersGuideCTA: React.FC = () => {
                   <div className="mt-8 pt-6 border-t border-slate-200 text-center">
                     <div className="flex items-center justify-center gap-2 text-slate-500 text-sm">
                       <Shield className="w-4 h-4 text-green-500" />
-                      Your information is secure and will never be shared
+                      {t.cta.form.secure}
                     </div>
                   </div>
                 </div>

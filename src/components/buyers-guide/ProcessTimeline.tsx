@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   ChevronRight
 } from 'lucide-react';
-import { defaultBuyingSteps } from '@/lib/buyersGuideSchemaGenerator';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
 const stepIcons = [Search, FileText, Building2, Eye, HandCoins, Scale, FileSignature, Key];
 
@@ -27,8 +27,11 @@ const stepImages = [
 ];
 
 export const ProcessTimeline: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
   const [activeStep, setActiveStep] = useState(0);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  const steps = t.process.steps;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -43,8 +46,8 @@ export const ProcessTimeline: React.FC = () => {
       { threshold: 0.5, rootMargin: '-100px 0px' }
     );
 
-    const steps = document.querySelectorAll('[data-step]');
-    steps.forEach((step) => observer.observe(step));
+    const stepElements = document.querySelectorAll('[data-step]');
+    stepElements.forEach((step) => observer.observe(step));
 
     return () => observer.disconnect();
   }, []);
@@ -60,19 +63,19 @@ export const ProcessTimeline: React.FC = () => {
         <div className="text-center mb-20 reveal-on-scroll">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold/10 border border-prime-gold/20 rounded-full mb-6">
             <span className="w-2 h-2 bg-prime-gold rounded-full animate-pulse" />
-            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">Step-by-Step Process</span>
+            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">{t.process.badge}</span>
           </span>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-6">
-            Your Journey to Ownership
+            {t.process.headline}
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Follow these eight essential steps to successfully purchase your property on the Costa del Sol.
+            {t.process.subheadline}
           </p>
         </div>
 
         {/* Progress indicator */}
         <div className="hidden lg:flex items-center justify-center gap-2 mb-16 reveal-on-scroll">
-          {defaultBuyingSteps.map((_, index) => (
+          {steps.map((_, index) => (
             <div key={index} className="flex items-center">
               <div 
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ${
@@ -83,7 +86,7 @@ export const ProcessTimeline: React.FC = () => {
               >
                 {index + 1}
               </div>
-              {index < defaultBuyingSteps.length - 1 && (
+              {index < steps.length - 1 && (
                 <div className="w-12 h-1 mx-1">
                   <div 
                     className={`h-full rounded-full transition-all duration-700 ${
@@ -103,12 +106,12 @@ export const ProcessTimeline: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-prime-gold via-prime-gold/50 to-prime-gold rounded-full" />
             <div 
               className="absolute top-0 left-0 w-full bg-prime-gold rounded-full transition-all duration-700"
-              style={{ height: `${(activeStep / (defaultBuyingSteps.length - 1)) * 100}%` }}
+              style={{ height: `${(activeStep / (steps.length - 1)) * 100}%` }}
             />
           </div>
 
           <div className="space-y-6 md:space-y-0">
-            {defaultBuyingSteps.map((step, index) => {
+            {steps.map((step, index) => {
               const Icon = stepIcons[index];
               const isEven = index % 2 === 0;
               const isActive = index === activeStep;
@@ -143,9 +146,9 @@ export const ProcessTimeline: React.FC = () => {
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
                         <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
-                        {step.documents && isActive && (
+                        {step.documents && step.documents.length > 0 && isActive && (
                           <div className="mt-4 pt-4 border-t border-border/50">
-                            <p className="text-xs text-prime-gold font-semibold mb-2 uppercase tracking-wide">Required Documents</p>
+                            <p className="text-xs text-prime-gold font-semibold mb-2 uppercase tracking-wide">{t.process.requiredDocuments}</p>
                             <ul className="space-y-1">
                               {step.documents.map((doc, i) => (
                                 <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -202,11 +205,11 @@ export const ProcessTimeline: React.FC = () => {
                             {step.description}
                           </p>
                           
-                          {step.documents && (
+                          {step.documents && step.documents.length > 0 && (
                             <div className={`mt-6 pt-6 border-t border-white/10 overflow-hidden transition-all duration-500 ${
                               isActive ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
                             }`}>
-                              <p className="text-prime-gold font-semibold text-sm mb-3 uppercase tracking-wide">Required Documents</p>
+                              <p className="text-prime-gold font-semibold text-sm mb-3 uppercase tracking-wide">{t.process.requiredDocuments}</p>
                               <ul className="space-y-2">
                                 {step.documents.map((doc, i) => (
                                   <li key={i} className="flex items-center gap-2 text-white/70 text-sm">

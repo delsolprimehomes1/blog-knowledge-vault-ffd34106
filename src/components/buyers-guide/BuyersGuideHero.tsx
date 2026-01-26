@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Clock, MapPin, Languages, FileCheck } from 'lucide-react';
 import heroImage from '@/assets/buyers-guide/hero-coastline.jpg';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
 // Animated counter component
 const AnimatedCounter: React.FC<{
@@ -93,15 +94,16 @@ const FloatingParticle: React.FC<{
 };
 
 export const BuyersGuideHero: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
 
   const stats = [
-    { icon: FileCheck, value: '8', label: 'Simple Steps', delay: 0 },
-    { icon: Clock, value: '3-6', label: 'Month Timeline', delay: 100 },
-    { icon: MapPin, value: '15+', label: 'Prime Locations', delay: 200 },
-    { icon: Languages, value: '10+', label: 'Languages', delay: 300 },
+    { icon: FileCheck, value: t.hero.stats.steps.value, label: t.hero.stats.steps.label, delay: 0 },
+    { icon: Clock, value: t.hero.stats.timeline.value, label: t.hero.stats.timeline.label, delay: 100 },
+    { icon: MapPin, value: t.hero.stats.locations.value, label: t.hero.stats.locations.label, delay: 200 },
+    { icon: Languages, value: t.hero.stats.languages.value, label: t.hero.stats.languages.label, delay: 300 },
   ];
 
   useEffect(() => {
@@ -177,7 +179,7 @@ export const BuyersGuideHero: React.FC = () => {
           style={{ animationDelay: '100ms' }}
         >
           <span className="w-2 h-2 bg-prime-gold rounded-full animate-pulse" />
-          <span className="text-white/90 text-sm font-medium tracking-wide">Complete 2024 Guide</span>
+          <span className="text-white/90 text-sm font-medium tracking-wide">{t.hero.badge}</span>
         </div>
 
         {/* Main Headline */}
@@ -186,7 +188,7 @@ export const BuyersGuideHero: React.FC = () => {
             ${isVisible ? 'animate-hero-title-reveal' : 'opacity-0'}`}
           style={{ animationDelay: '200ms' }}
         >
-          <span className="block speakable-summary">The Complete Guide to Buying Property on the</span>
+          <span className="block speakable-summary">{t.hero.headline}</span>
           <span 
             className="block mt-3 bg-gradient-to-r from-prime-gold via-prime-goldLight to-prime-gold bg-[length:200%_auto] animate-text-shimmer"
             style={{ 
@@ -195,7 +197,7 @@ export const BuyersGuideHero: React.FC = () => {
               backgroundClip: 'text'
             }}
           >
-            Costa del Sol
+            {t.hero.headlineHighlight}
           </span>
         </h1>
 
@@ -205,8 +207,7 @@ export const BuyersGuideHero: React.FC = () => {
             ${isVisible ? 'animate-hero-title-reveal' : 'opacity-0'}`}
           style={{ animationDelay: '400ms' }}
         >
-          Everything you need to know about purchasing your dream home in Spain's most desirable region. 
-          From legal requirements to hidden costs—we've got you covered.
+          {t.hero.subheadline}
         </p>
 
         {/* Stats Grid with Glassmorphism */}
@@ -255,7 +256,7 @@ export const BuyersGuideHero: React.FC = () => {
           style={{ animationDelay: '1200ms' }}
         >
           <div className="flex flex-col items-center gap-3">
-            <span className="text-xs text-white/50 uppercase tracking-widest font-medium">Scroll to explore</span>
+            <span className="text-xs text-white/50 uppercase tracking-widest font-medium">{t.hero.scrollText}</span>
             <div className="w-7 h-12 border-2 border-white/30 rounded-full flex items-start justify-center p-2 hover:border-prime-gold/60 transition-colors duration-300">
               <div className="w-1.5 h-3 bg-prime-gold rounded-full animate-scroll-indicator" />
             </div>

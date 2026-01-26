@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { ChevronDown, HelpCircle, MessageCircle, Search } from 'lucide-react';
-import { defaultFAQs } from '@/lib/buyersGuideSchemaGenerator';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
 export const BuyersGuideFAQ: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredFAQs = defaultFAQs.filter(
+  const faqs = t.faq.items;
+
+  const filteredFAQs = faqs.filter(
     faq => 
       faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
@@ -25,13 +28,13 @@ export const BuyersGuideFAQ: React.FC = () => {
         <div className="text-center mb-16 reveal-on-scroll">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold/10 border border-prime-gold/20 rounded-full mb-6">
             <HelpCircle className="w-4 h-4 text-prime-gold" />
-            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">Common Questions</span>
+            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">{t.faq.badge}</span>
           </span>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-6">
-            Frequently Asked Questions
+            {t.faq.headline}
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Get quick answers to the most common questions about buying property in Spain.
+            {t.faq.subheadline}
           </p>
         </div>
 
@@ -40,7 +43,7 @@ export const BuyersGuideFAQ: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search questions..."
+            placeholder={t.faq.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-4 bg-card border rounded-2xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-prime-gold/50 focus:border-prime-gold/50 transition-all duration-300"
@@ -107,7 +110,7 @@ export const BuyersGuideFAQ: React.FC = () => {
         {/* No results message */}
         {filteredFAQs.length === 0 && searchQuery && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No questions found matching "{searchQuery}"</p>
+            <p className="text-muted-foreground">{t.faq.noResults} "{searchQuery}"</p>
           </div>
         )}
 
@@ -118,14 +121,14 @@ export const BuyersGuideFAQ: React.FC = () => {
               <MessageCircle className="w-7 h-7 text-prime-gold" />
             </div>
             <div className="text-center sm:text-left">
-              <p className="font-semibold text-foreground mb-1">Still have questions?</p>
-              <p className="text-muted-foreground text-sm">Our team is here to help you.</p>
+              <p className="font-semibold text-foreground mb-1">{t.faq.stillQuestions}</p>
+              <p className="text-muted-foreground text-sm">{t.faq.teamHelp}</p>
             </div>
             <a 
               href="/#contact" 
               className="px-6 py-3 bg-prime-gold text-white font-medium rounded-xl hover:bg-prime-gold/90 transition-colors duration-300 shadow-lg shadow-prime-gold/30"
             >
-              Contact Us
+              {t.faq.contactUs}
             </a>
           </div>
         </div>

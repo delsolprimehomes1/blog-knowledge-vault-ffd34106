@@ -2,40 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Laptop, Globe, Users, TrendingUp, CheckCircle2, ArrowRight, Plane, Wifi, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import lifestyleImage from '@/assets/buyers-guide/digital-nomad-lifestyle.jpg';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
-const benefits = [
-  {
-    icon: Laptop,
-    title: 'Work Remotely from Spain',
-    description: 'Legally work for non-Spanish companies while living on the Costa del Sol'
-  },
-  {
-    icon: Globe,
-    title: 'Schengen Area Access',
-    description: 'Travel freely across 26 European countries without additional visas'
-  },
-  {
-    icon: Users,
-    title: 'Family Inclusion',
-    description: 'Bring your spouse, children under 18, and dependent parents with you'
-  },
-  {
-    icon: TrendingUp,
-    title: 'Path to Permanent Residency',
-    description: 'Renewable up to 5 years, then eligible for permanent residency'
-  }
-];
-
-const requirements = [
-  'Minimum monthly income of €2,520 (or €30,240 annually)',
-  'Remote work contract with non-Spanish company OR 80%+ income from non-Spanish clients',
-  'At least 3 years of professional experience or relevant university degree',
-  'Valid private health insurance covering all medical expenses in Spain',
-  'Clean criminal record certificate from countries of residence (last 5 years)',
-  'Proof of employment contract, freelance agreements, or business registration'
-];
+const benefitIcons = [Laptop, Globe, Users, TrendingUp];
 
 export const DigitalNomadVisa: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
   const [animatedIncome, setAnimatedIncome] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
   const incomeRef = useRef<HTMLDivElement>(null);
@@ -95,13 +67,13 @@ export const DigitalNomadVisa: React.FC = () => {
         <div className="text-center mb-20 reveal-on-scroll">
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-prime-gold/10 border border-prime-gold/20 rounded-full mb-6">
             <Laptop className="w-4 h-4 text-prime-gold" />
-            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">Remote Work Residency</span>
+            <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase">{t.digitalNomad.badge}</span>
           </span>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-foreground mb-6">
-            Spain's Digital Nomad Visa
+            {t.digitalNomad.headline}
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Spain's Digital Nomad Visa allows remote workers and freelancers to live legally in Spain while working for companies outside of Spain. Perfect for those seeking Mediterranean lifestyle while maintaining their international career.
+            {t.digitalNomad.subheadline}
           </p>
         </div>
 
@@ -119,20 +91,19 @@ export const DigitalNomadVisa: React.FC = () => {
             <div className="absolute inset-0 flex items-center">
               <div className="p-8 md:p-12 max-w-xl">
                 <h3 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
-                  Your Office with a View
+                  {t.digitalNomad.lifestyleTitle}
                 </h3>
                 <p className="text-white/80 text-lg mb-6">
-                  Imagine working from a sun-drenched terrace overlooking the Mediterranean. 
-                  With Spain's Digital Nomad Visa, this lifestyle is within reach.
+                  {t.digitalNomad.lifestyleDescription}
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                     <Wifi className="w-4 h-4 text-prime-gold" />
-                    <span className="text-white text-sm">Fast Fiber Internet</span>
+                    <span className="text-white text-sm">{t.digitalNomad.fastInternet}</span>
                   </div>
                   <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                     <Plane className="w-4 h-4 text-prime-gold" />
-                    <span className="text-white text-sm">3 Int'l Airports</span>
+                    <span className="text-white text-sm">{t.digitalNomad.airports}</span>
                   </div>
                 </div>
               </div>
@@ -144,28 +115,31 @@ export const DigitalNomadVisa: React.FC = () => {
           {/* Benefits - Bento Grid Style */}
           <div className="reveal-on-scroll">
             <h3 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-8">
-              Key Benefits
+              {t.digitalNomad.benefits.title}
             </h3>
             <div className="grid sm:grid-cols-2 gap-4">
-              {benefits.map((benefit, index) => (
-                <div
-                  key={index}
-                  className={`group relative bg-card rounded-2xl p-6 border hover:border-prime-gold/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl overflow-hidden ${
-                    index === 0 ? 'sm:col-span-2' : ''
-                  }`}
-                >
-                  {/* Hover glow */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-prime-gold/0 via-prime-gold/5 to-prime-gold/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl bg-prime-gold/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-prime-gold/20 transition-all duration-300">
-                      <benefit.icon className="w-7 h-7 text-prime-gold" />
+              {t.digitalNomad.benefits.items.map((benefit, index) => {
+                const Icon = benefitIcons[index] || Laptop;
+                return (
+                  <div
+                    key={index}
+                    className={`group relative bg-card rounded-2xl p-6 border hover:border-prime-gold/30 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl overflow-hidden ${
+                      index === 0 ? 'sm:col-span-2' : ''
+                    }`}
+                  >
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-prime-gold/0 via-prime-gold/5 to-prime-gold/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-2xl bg-prime-gold/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-prime-gold/20 transition-all duration-300">
+                        <Icon className="w-7 h-7 text-prime-gold" />
+                      </div>
+                      <h4 className="font-bold text-foreground text-lg mb-2">{benefit.title}</h4>
+                      <p className="text-muted-foreground">{benefit.description}</p>
                     </div>
-                    <h4 className="font-bold text-foreground text-lg mb-2">{benefit.title}</h4>
-                    <p className="text-muted-foreground">{benefit.description}</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Income Requirement Highlight */}
@@ -179,8 +153,8 @@ export const DigitalNomadVisa: React.FC = () => {
                   €{animatedIncome.toLocaleString()}
                 </div>
                 <div>
-                  <p className="font-bold text-foreground text-lg">Minimum Monthly Income</p>
-                  <p className="text-muted-foreground">From non-Spanish employment</p>
+                  <p className="font-bold text-foreground text-lg">{t.digitalNomad.income.label}</p>
+                  <p className="text-muted-foreground">{t.digitalNomad.income.sublabel}</p>
                 </div>
               </div>
             </div>
@@ -189,11 +163,11 @@ export const DigitalNomadVisa: React.FC = () => {
           {/* Requirements */}
           <div className="reveal-on-scroll stagger-2">
             <h3 className="text-2xl md:text-3xl font-serif font-bold text-foreground mb-8">
-              Requirements
+              {t.digitalNomad.requirements.title}
             </h3>
             <div className="bg-card rounded-3xl p-8 border shadow-lg">
               <ul className="space-y-4">
-                {requirements.map((requirement, index) => (
+                {t.digitalNomad.requirements.items.map((requirement, index) => (
                   <li 
                     key={index} 
                     className="flex items-start gap-4 group"
@@ -213,7 +187,7 @@ export const DigitalNomadVisa: React.FC = () => {
                   to="/blog?search=digital+nomad+visa"
                   className="inline-flex items-center gap-2 text-prime-gold font-semibold hover:gap-3 transition-all duration-300 group"
                 >
-                  Learn more about Digital Nomad Visa
+                  {t.digitalNomad.learnMore}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
@@ -226,16 +200,11 @@ export const DigitalNomadVisa: React.FC = () => {
               <div className="relative">
                 <div className="flex items-center gap-3 mb-6">
                   <Clock className="w-6 h-6 text-prime-gold" />
-                  <h4 className="font-bold text-white text-xl">Processing Timeline</h4>
+                  <h4 className="font-bold text-white text-xl">{t.digitalNomad.timeline.title}</h4>
                 </div>
                 
                 <div className="space-y-4">
-                  {[
-                    { label: 'Application review', value: '20 working days' },
-                    { label: 'Initial visa validity', value: '3 years' },
-                    { label: 'Renewal period', value: 'Additional 2 years' },
-                    { label: 'Permanent residency eligibility', value: 'After 5 years' },
-                  ].map((item, index) => (
+                  {t.digitalNomad.timeline.items.map((item, index) => (
                     <div 
                       key={index} 
                       className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10"

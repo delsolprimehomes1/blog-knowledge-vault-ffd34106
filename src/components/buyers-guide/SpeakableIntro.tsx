@@ -1,7 +1,10 @@
 import React from 'react';
 import { Volume2, Sparkles, MapPin, Clock, CreditCard } from 'lucide-react';
+import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
 export const SpeakableIntro: React.FC = () => {
+  const { t } = useBuyersGuideTranslation();
+
   return (
     <section className="py-20 md:py-28 bg-gradient-to-b from-prime-900 via-prime-900/95 to-background relative overflow-hidden">
       {/* Background decorative elements */}
@@ -27,9 +30,9 @@ export const SpeakableIntro: React.FC = () => {
               <div>
                 <span className="text-prime-gold text-sm font-semibold tracking-wide uppercase flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  Quick Answer
+                  {t.speakable.badge}
                 </span>
-                <h2 className="text-xl font-serif font-bold text-white">AI-Ready Summary</h2>
+                <h2 className="text-xl font-serif font-bold text-white">{t.speakable.title}</h2>
               </div>
             </div>
 
@@ -38,31 +41,27 @@ export const SpeakableIntro: React.FC = () => {
               <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
                 <CreditCard className="w-6 h-6 text-prime-gold mx-auto mb-2" />
                 <span className="text-2xl font-bold text-white block">10-13%</span>
-                <span className="text-xs text-white/60">Extra Costs</span>
+                <span className="text-xs text-white/60">{t.speakable.extraCosts}</span>
               </div>
               <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
                 <Clock className="w-6 h-6 text-prime-gold mx-auto mb-2" />
                 <span className="text-2xl font-bold text-white block">3-6</span>
-                <span className="text-xs text-white/60">Months</span>
+                <span className="text-xs text-white/60">{t.speakable.months}</span>
               </div>
               <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
                 <MapPin className="w-6 h-6 text-prime-gold mx-auto mb-2" />
                 <span className="text-2xl font-bold text-white block">€2,520</span>
-                <span className="text-xs text-white/60">Visa Income</span>
+                <span className="text-xs text-white/60">{t.speakable.visaIncome}</span>
               </div>
             </div>
 
             {/* Speakable Content */}
             <div className="speakable-intro quick-answer space-y-5">
               <p className="text-lg md:text-xl leading-relaxed text-white/90">
-                <strong className="text-prime-gold">Buying property on the Costa del Sol</strong> is a straightforward process for international buyers. 
-                You'll need a <span className="text-prime-gold font-medium">NIE</span> (tax identification number), a Spanish bank account, and typically <span className="text-prime-gold font-medium">10-13%</span> of the purchase 
-                price to cover taxes and fees.
+                {t.speakable.paragraph1}
               </p>
               <p className="text-lg md:text-xl leading-relaxed text-white/90">
-                The process takes <strong className="text-prime-gold">3-6 months</strong> from finding your property to receiving the keys. 
-                Remote workers and digital nomads can qualify for Spain's <strong className="text-prime-gold">Digital Nomad Visa</strong>, 
-                allowing you to live and work from the beautiful Costa del Sol while maintaining your international career.
+                {t.speakable.paragraph2}
               </p>
             </div>
 
@@ -70,7 +69,7 @@ export const SpeakableIntro: React.FC = () => {
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
               <p className="text-sm text-white/50 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-prime-gold animate-pulse" />
-                Optimized for voice assistants and AI search
+                {t.speakable.optimizedFor}
               </p>
               <div className="flex items-center gap-1">
                 {[...Array(3)].map((_, i) => (
