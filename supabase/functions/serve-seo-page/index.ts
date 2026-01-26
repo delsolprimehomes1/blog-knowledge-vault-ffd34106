@@ -1127,10 +1127,98 @@ ${hreflangTags}
   return html
 }
 
+// Localized messages for 410 page
+const GONE_PAGE_MESSAGES: Record<string, { title: string; subtitle: string; message: string; browseProperties: string; readBlog: string; home: string }> = {
+  en: {
+    title: 'Content Removed',
+    subtitle: 'Page No Longer Available',
+    message: 'This page has been permanently removed and is no longer available. We apologize for any inconvenience.',
+    browseProperties: 'Browse Properties',
+    readBlog: 'Read Our Blog',
+    home: 'Go Home'
+  },
+  de: {
+    title: 'Inhalt Entfernt',
+    subtitle: 'Seite Nicht Mehr Verfügbar',
+    message: 'Diese Seite wurde dauerhaft entfernt und ist nicht mehr verfügbar. Wir entschuldigen uns für etwaige Unannehmlichkeiten.',
+    browseProperties: 'Immobilien Durchsuchen',
+    readBlog: 'Blog Lesen',
+    home: 'Startseite'
+  },
+  nl: {
+    title: 'Inhoud Verwijderd',
+    subtitle: 'Pagina Niet Meer Beschikbaar',
+    message: 'Deze pagina is permanent verwijderd en is niet meer beschikbaar. Onze excuses voor het ongemak.',
+    browseProperties: 'Vastgoed Bekijken',
+    readBlog: 'Blog Lezen',
+    home: 'Home'
+  },
+  fr: {
+    title: 'Contenu Supprimé',
+    subtitle: 'Page Non Disponible',
+    message: 'Cette page a été définitivement supprimée et n\'est plus disponible. Nous nous excusons pour tout inconvénient.',
+    browseProperties: 'Parcourir les Propriétés',
+    readBlog: 'Lire le Blog',
+    home: 'Accueil'
+  },
+  sv: {
+    title: 'Innehåll Borttaget',
+    subtitle: 'Sidan Inte Längre Tillgänglig',
+    message: 'Den här sidan har tagits bort permanent och är inte längre tillgänglig. Vi ber om ursäkt för eventuella olägenheter.',
+    browseProperties: 'Bläddra Fastigheter',
+    readBlog: 'Läs Bloggen',
+    home: 'Hem'
+  },
+  no: {
+    title: 'Innhold Fjernet',
+    subtitle: 'Siden Ikke Lenger Tilgjengelig',
+    message: 'Denne siden er permanent fjernet og er ikke lenger tilgjengelig. Vi beklager eventuelle ulemper.',
+    browseProperties: 'Bla Gjennom Eiendommer',
+    readBlog: 'Les Bloggen',
+    home: 'Hjem'
+  },
+  da: {
+    title: 'Indhold Fjernet',
+    subtitle: 'Siden Ikke Længere Tilgængelig',
+    message: 'Denne side er blevet permanent fjernet og er ikke længere tilgængelig. Vi beklager eventuelle ulejligheder.',
+    browseProperties: 'Gennemse Ejendomme',
+    readBlog: 'Læs Bloggen',
+    home: 'Hjem'
+  },
+  fi: {
+    title: 'Sisältö Poistettu',
+    subtitle: 'Sivu Ei Enää Saatavilla',
+    message: 'Tämä sivu on poistettu pysyvästi eikä ole enää saatavilla. Pahoittelemme mahdollisia haittoja.',
+    browseProperties: 'Selaa Kiinteistöjä',
+    readBlog: 'Lue Blogia',
+    home: 'Etusivu'
+  },
+  pl: {
+    title: 'Treść Usunięta',
+    subtitle: 'Strona Niedostępna',
+    message: 'Ta strona została trwale usunięta i nie jest już dostępna. Przepraszamy za wszelkie niedogodności.',
+    browseProperties: 'Przeglądaj Nieruchomości',
+    readBlog: 'Czytaj Blog',
+    home: 'Strona Główna'
+  },
+  hu: {
+    title: 'Tartalom Eltávolítva',
+    subtitle: 'Az Oldal Már Nem Elérhető',
+    message: 'Ez az oldal véglegesen eltávolításra került és már nem érhető el. Elnézést kérünk a kellemetlenségért.',
+    browseProperties: 'Ingatlanok Böngészése',
+    readBlog: 'Blog Olvasása',
+    home: 'Főoldal'
+  }
+}
+
 /**
  * Generate 410 Gone HTML for deleted/ghost content
+ * Enhanced with branding, navigation, and localized messaging
  */
 function generate410GoneHtml(lang: string = 'en'): string {
+  const messages = GONE_PAGE_MESSAGES[lang] || GONE_PAGE_MESSAGES.en
+  const langPrefix = `/${lang}`
+  
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -1138,18 +1226,150 @@ function generate410GoneHtml(lang: string = 'en'): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="googlebot" content="noindex, nofollow">
-  <title>410 Gone</title>
+  <title>410 - ${messages.title} | Del Sol Prime Homes</title>
+  <link rel="icon" type="image/png" href="${BASE_URL}/favicon.png">
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f9fafb; color: #374151; }
-    .container { text-align: center; padding: 2rem; max-width: 400px; }
-    h1 { font-size: 3rem; margin: 0 0 0.5rem 0; color: #1f2937; }
-    p { font-size: 1.125rem; color: #6b7280; margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      display: flex; 
+      flex-direction: column;
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      color: #374151;
+      padding: 1rem;
+    }
+    .logo-container {
+      margin-bottom: 2rem;
+    }
+    .logo {
+      height: 60px;
+      width: auto;
+    }
+    .container { 
+      text-align: center; 
+      padding: 2.5rem; 
+      max-width: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    }
+    .status-code {
+      font-size: 5rem;
+      font-weight: 800;
+      color: #c9a227;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+    h1 { 
+      font-size: 1.75rem; 
+      font-weight: 700;
+      margin-bottom: 0.5rem; 
+      color: #1f2937; 
+    }
+    .subtitle {
+      font-size: 1rem;
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+    }
+    p { 
+      font-size: 1rem; 
+      color: #4b5563; 
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .nav-link.primary {
+      background: linear-gradient(135deg, #c9a227 0%, #b8941f 100%);
+      color: white;
+    }
+    .nav-link.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(201, 162, 39, 0.35);
+    }
+    .nav-link.secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+    .nav-link.secondary:hover {
+      background: #e5e7eb;
+    }
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    .footer a {
+      color: #c9a227;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 480px) {
+      .status-code { font-size: 4rem; }
+      h1 { font-size: 1.5rem; }
+      .nav-links { flex-direction: column; }
+      .nav-link { width: 100%; justify-content: center; }
+    }
   </style>
 </head>
 <body>
+  <div class="logo-container">
+    <a href="${langPrefix}/">
+      <img src="${BASE_URL}/assets/logo-new.png" alt="Del Sol Prime Homes" class="logo">
+    </a>
+  </div>
   <div class="container">
-    <h1>410 Gone</h1>
-    <p>This content has been permanently removed.</p>
+    <div class="status-code">410</div>
+    <h1>${messages.title}</h1>
+    <p class="subtitle">${messages.subtitle}</p>
+    <p>${messages.message}</p>
+    <div class="nav-links">
+      <a href="${langPrefix}/properties" class="nav-link primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        ${messages.browseProperties}
+      </a>
+      <a href="${langPrefix}/blog" class="nav-link secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+        ${messages.readBlog}
+      </a>
+      <a href="${langPrefix}/" class="nav-link secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        ${messages.home}
+      </a>
+    </div>
+  </div>
+  <div class="footer">
+    © ${new Date().getFullYear()} <a href="${BASE_URL}">Del Sol Prime Homes</a> • Costa del Sol, Spain
   </div>
 </body>
 </html>`
