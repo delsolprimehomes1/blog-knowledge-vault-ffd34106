@@ -13,6 +13,17 @@ const LANGUAGE_MAP: Record<string, number> = {
 const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
 const RESA_P1 = Deno.env.get('RESA_P1') || '';
 const RESA_P2 = Deno.env.get('RESA_P2') || '';
+// Some environments store the API key under this name
+const RESALES_ONLINE_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
+
+function getP1Candidates(): Array<{ label: string; value: string }> {
+  const candidates: Array<{ label: string; value: string }> = [];
+  if (RESA_P1) candidates.push({ label: 'RESA_P1', value: RESA_P1 });
+  if (RESALES_ONLINE_API_KEY && RESALES_ONLINE_API_KEY !== RESA_P1) {
+    candidates.push({ label: 'RESALES_ONLINE_API_KEY', value: RESALES_ONLINE_API_KEY });
+  }
+  return candidates;
+}
 
 // Normalize property data from proxy PascalCase to frontend camelCase
 function normalizeProperty(raw: any) {
@@ -107,47 +118,77 @@ function isResidentialProperty(property: any): boolean {
 
 // Call Resales Online API directly
 async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
-  const apiParams: Record<string, any> = {
-    p1: RESA_P1,
+  if (!RESA_P2) {
+    throw new Error('Missing Resales credential: RESA_P2');
+  }
+
+  const p1Candidates = getP1Candidates();
+  if (p1Candidates.length === 0) {
+    throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
+  }
+
+  const baseParams: Record<string, any> = {
     p2: RESA_P2,
     P_Lang: langNum,
-    P_sandbox: 'false',
     P_PageSize: limit,
     P_PageNo: page,
   };
   
   // Map filters to Resales Online API format
-  if (filters.location) apiParams.P_Location = filters.location;
-  if (filters.sublocation) apiParams.P_SubArea = filters.sublocation;
-  if (filters.priceMin) apiParams.P_PriceMin = filters.priceMin;
-  if (filters.priceMax) apiParams.P_PriceMax = filters.priceMax;
-  if (filters.propertyType) apiParams.P_PropertyTypes = filters.propertyType;
-  if (filters.bedrooms) apiParams.P_Bedrooms = filters.bedrooms;
-  if (filters.bathrooms) apiParams.P_Bathrooms = filters.bathrooms;
-  if (filters.reference) apiParams.P_RefId = filters.reference;
-  
-  console.log('🔄 Calling Resales Online API directly');
-  console.log('📤 API params:', JSON.stringify(apiParams));
-  
-  const response = await fetch(RESALES_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(apiParams),
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ API error:', response.status, errorText);
-    throw new Error(`Resales API error: ${response.status}`);
+  if (filters.location) baseParams.P_Location = filters.location;
+  if (filters.sublocation) baseParams.P_SubArea = filters.sublocation;
+  if (filters.priceMin) baseParams.P_PriceMin = filters.priceMin;
+  if (filters.priceMax) baseParams.P_PriceMax = filters.priceMax;
+  if (filters.propertyType) baseParams.P_PropertyTypes = filters.propertyType;
+  if (filters.bedrooms) baseParams.P_Bedrooms = filters.bedrooms;
+  if (filters.bathrooms) baseParams.P_Bathrooms = filters.bathrooms;
+  if (filters.reference) baseParams.P_RefId = filters.reference;
+
+  // Resales API is strict; some accounts require sandbox flag true in certain environments.
+  // We'll retry a small matrix of (p1 key source) × (sandbox flag) to eliminate 400s.
+  const sandboxValues: Array<'false' | 'true'> = ['false', 'true'];
+
+  let lastAttemptSummary = '';
+
+  for (const p1Candidate of p1Candidates) {
+    for (const sandbox of sandboxValues) {
+      const apiParams: Record<string, any> = {
+        ...baseParams,
+        p1: p1Candidate.value,
+        P_sandbox: sandbox,
+      };
+
+      console.log('🔄 Calling Resales Online API directly');
+      console.log(`🔑 Using key source: ${p1Candidate.label}, sandbox=${sandbox}`);
+      console.log('📤 API params:', JSON.stringify({ ...apiParams, p1: `[${p1Candidate.label}]`, p2: '[REDACTED]' }));
+
+      const response = await fetch(RESALES_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiParams),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ API response received, properties:', data.Property?.length || 0);
+        return {
+          properties: data.Property || [],
+          total: data.QueryInfo?.PropertyCount || 0,
+        };
+      }
+
+      const errorText = await response.text();
+      console.error(`❌ API error (${p1Candidate.label}, sandbox=${sandbox}):`, response.status, errorText);
+      lastAttemptSummary = `${p1Candidate.label} sandbox=${sandbox} status=${response.status} body=${errorText || '(empty)'}`;
+
+      // If it's NOT a 400, don't keep retrying - bubble up immediately.
+      if (response.status !== 400) {
+        throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
+      }
+    }
   }
-  
-  const data = await response.json();
-  console.log('✅ API response received, properties:', data.Property?.length || 0);
-  
-  return {
-    properties: data.Property || [],
-    total: data.QueryInfo?.PropertyCount || 0,
-  };
+
+  throw new Error(`Resales API error: 400 (${lastAttemptSummary})`);
 }
 
 serve(async (req) => {
