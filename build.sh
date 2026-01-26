@@ -40,6 +40,10 @@ npx tsx scripts/generateStaticLocationHub.ts dist
 echo "👤 Generating static about page..."
 npx tsx scripts/generateStaticAboutPage.ts
 
+# Generate static buyers guide pages
+echo "📖 Generating static buyers guide pages..."
+npx tsx scripts/generateStaticBuyersGuide.ts dist
+
 # Generate sitemap with all pages - OUTPUT TO dist/ for Cloudflare
 echo "🗺️ Generating sitemap..."
 npx tsx scripts/generateSitemap.ts dist

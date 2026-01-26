@@ -69,6 +69,9 @@
 /fi   /fi/index.html  200
 /no   /no/index.html  200
 
+# Buyers Guide - serve SSG HTML
+/:lang/buyers-guide  /:lang/buyers-guide/index.html  200
+
 # CRM routes - explicit SPA routing (prevents 404 on direct access)
 /crm/*  /index.html  200
 
