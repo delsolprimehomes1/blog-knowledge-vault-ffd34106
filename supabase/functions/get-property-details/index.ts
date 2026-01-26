@@ -25,7 +25,7 @@ function getP1Candidates(): Array<{ label: string; value: string }> {
   return candidates;
 }
 
-// Call Resales Online API directly to get property by reference
+// Call Resales Online API directly to get property by reference using GET
 async function callResalesAPI(reference: string, langNum: number): Promise<any> {
   if (!RESA_P2) {
     throw new Error('Missing Resales credential: RESA_P2');
@@ -41,21 +41,24 @@ async function callResalesAPI(reference: string, langNum: number): Promise<any> 
 
   for (const p1Candidate of p1Candidates) {
     for (const sandbox of sandboxValues) {
-      const apiParams = {
+      // Build query parameters - API requires GET with URL params
+      const apiParams: Record<string, string> = {
         p1: p1Candidate.value,
         p2: RESA_P2,
-        P_Lang: langNum,
+        P_Agency_FilterId: '1', // Required - default Sale filter
+        P_Lang: String(langNum),
         P_sandbox: sandbox,
         P_RefId: reference,
       };
 
-      console.log('🔄 Calling Resales Online API for reference:', reference);
+      const queryString = new URLSearchParams(apiParams).toString();
+      const requestUrl = `${RESALES_API_URL}?${queryString}`;
+
+      console.log('🔄 Calling Resales Online API (GET) for reference:', reference);
       console.log(`🔑 Using key source: ${p1Candidate.label}, sandbox=${sandbox}`);
 
-      const response = await fetch(RESALES_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiParams),
+      const response = await fetch(requestUrl, {
+        method: 'GET',
       });
 
       if (response.ok) {

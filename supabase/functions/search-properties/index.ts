@@ -116,7 +116,7 @@ function isResidentialProperty(property: any): boolean {
   return isResidentialType && !hasExcludedKeyword;
 }
 
-// Call Resales Online API directly
+// Call Resales Online API directly using GET with query parameters
 async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
   if (!RESA_P2) {
     throw new Error('Missing Resales credential: RESA_P2');
@@ -127,23 +127,6 @@ async function callResalesAPI(filters: any, langNum: number, limit: number, page
     throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
   }
 
-  const baseParams: Record<string, any> = {
-    p2: RESA_P2,
-    P_Lang: langNum,
-    P_PageSize: limit,
-    P_PageNo: page,
-  };
-  
-  // Map filters to Resales Online API format
-  if (filters.location) baseParams.P_Location = filters.location;
-  if (filters.sublocation) baseParams.P_SubArea = filters.sublocation;
-  if (filters.priceMin) baseParams.P_PriceMin = filters.priceMin;
-  if (filters.priceMax) baseParams.P_PriceMax = filters.priceMax;
-  if (filters.propertyType) baseParams.P_PropertyTypes = filters.propertyType;
-  if (filters.bedrooms) baseParams.P_Bedrooms = filters.bedrooms;
-  if (filters.bathrooms) baseParams.P_Bathrooms = filters.bathrooms;
-  if (filters.reference) baseParams.P_RefId = filters.reference;
-
   // Resales API is strict; some accounts require sandbox flag true in certain environments.
   // We'll retry a small matrix of (p1 key source) × (sandbox flag) to eliminate 400s.
   const sandboxValues: Array<'false' | 'true'> = ['false', 'true'];
@@ -152,20 +135,36 @@ async function callResalesAPI(filters: any, langNum: number, limit: number, page
 
   for (const p1Candidate of p1Candidates) {
     for (const sandbox of sandboxValues) {
-      const apiParams: Record<string, any> = {
-        ...baseParams,
+      // Build query parameters - API requires GET with URL params
+      const apiParams: Record<string, string> = {
         p1: p1Candidate.value,
+        p2: RESA_P2,
+        P_Agency_FilterId: '1', // Required - default Sale filter
+        P_Lang: String(langNum),
+        P_PageSize: String(limit),
+        P_PageNo: String(page),
         P_sandbox: sandbox,
       };
+      
+      // Map filters to Resales Online API format
+      if (filters.location) apiParams.P_Location = filters.location;
+      if (filters.sublocation) apiParams.P_SubArea = filters.sublocation;
+      if (filters.priceMin) apiParams.P_PriceMin = String(filters.priceMin);
+      if (filters.priceMax) apiParams.P_PriceMax = String(filters.priceMax);
+      if (filters.propertyType) apiParams.P_PropertyTypes = filters.propertyType;
+      if (filters.bedrooms) apiParams.P_Bedrooms = String(filters.bedrooms);
+      if (filters.bathrooms) apiParams.P_Bathrooms = String(filters.bathrooms);
+      if (filters.reference) apiParams.P_RefId = filters.reference;
 
-      console.log('🔄 Calling Resales Online API directly');
+      const queryString = new URLSearchParams(apiParams).toString();
+      const requestUrl = `${RESALES_API_URL}?${queryString}`;
+
+      console.log('🔄 Calling Resales Online API (GET)');
       console.log(`🔑 Using key source: ${p1Candidate.label}, sandbox=${sandbox}`);
-      console.log('📤 API params:', JSON.stringify({ ...apiParams, p1: `[${p1Candidate.label}]`, p2: '[REDACTED]' }));
+      console.log('📤 Request URL:', requestUrl.replace(p1Candidate.value, `[${p1Candidate.label}]`).replace(RESA_P2, '[REDACTED]'));
 
-      const response = await fetch(RESALES_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiParams),
+      const response = await fetch(requestUrl, {
+        method: 'GET',
       });
 
       if (response.ok) {
