@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const LANGUAGE_MAP: Record<string, number> = {
-  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13
+  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
 // Normalize property data from proxy PascalCase to frontend camelCase
