@@ -9,6 +9,47 @@ const LANGUAGE_MAP: Record<string, number> = {
   en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
+// Proxy URL (primary)
+const PROXY_BASE_URL = 'http://188.34.164.137:3000';
+
+// Direct Resales Online API (fallback)
+const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
+const RESALES_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
+const RESA_P1 = Deno.env.get('RESA_P1') || '';
+const RESA_P2 = Deno.env.get('RESA_P2') || '';
+
+// Call Resales Online API directly to get property by reference
+async function callResalesAPIByReference(reference: string, langNum: number): Promise<any> {
+  if (!RESALES_API_KEY) {
+    throw new Error('RESALES_ONLINE_API_KEY not configured');
+  }
+  
+  const apiParams = {
+    p1: RESA_P1,
+    p2: RESA_P2,
+    P_Lang: langNum,
+    P_sandbox: 'false',
+    P_RefId: reference,
+  };
+  
+  console.log('🔄 Fallback: Calling Resales Online API directly for reference:', reference);
+  
+  const response = await fetch(RESALES_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(apiParams),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Resales API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.Property?.[0] || null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,14 +65,14 @@ serve(async (req) => {
     const langNum = LANGUAGE_MAP[lang] || 1;
     console.log(`🏠 Fetching PropertyDetails for: ${reference} (lang: ${lang}/${langNum})`);
 
-    // Try the property details endpoint first (GET /property/:reference)
-    const propertyUrl = `http://188.34.164.137:3000/property/${reference}?lang=${langNum}`;
-    console.log(`📡 Calling property endpoint: ${propertyUrl}`);
-
-    let propertyData = null;
+    let rawProp = null;
     let usedEndpoint = '';
 
+    // Try the property details endpoint first (GET /property/:reference)
     try {
+      const propertyUrl = `${PROXY_BASE_URL}/property/${reference}?lang=${langNum}`;
+      console.log(`📡 Calling property endpoint: ${propertyUrl}`);
+
       const response = await fetch(propertyUrl, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
@@ -44,46 +85,56 @@ serve(async (req) => {
         console.log(`📥 Response keys:`, Object.keys(data));
         
         if (data && (data.Property || data.property || data.data)) {
-          propertyData = data;
+          rawProp = data.Property?.[0] || data.property || data.data?.[0] || null;
           usedEndpoint = propertyUrl;
           console.log(`✅ Found property data from property endpoint`);
         }
       }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-      console.log(`❌ Property endpoint failed:`, errorMessage);
+      console.log(`⚠️ Property endpoint failed:`, errorMessage);
     }
 
-    // Fallback to search if property endpoint doesn't work
-    if (!propertyData) {
-      console.log('⚠️ Property endpoint failed, falling back to search (POST)');
-      const searchUrl = `http://188.34.164.137:3000/search`;
-      console.log(`📡 Fallback search URL: ${searchUrl}`);
-      
-      const searchResponse = await fetch(searchUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference, lang: langNum })
-      });
-      
-      if (!searchResponse.ok) {
-        throw new Error(`Search fallback failed: ${searchResponse.status}`);
+    // Fallback to search endpoint via proxy
+    if (!rawProp) {
+      try {
+        console.log('⚠️ Property endpoint failed, falling back to search (POST)');
+        const searchUrl = `${PROXY_BASE_URL}/search`;
+        console.log(`📡 Fallback search URL: ${searchUrl}`);
+        
+        const searchResponse = await fetch(searchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference, lang: langNum })
+        });
+        
+        if (searchResponse.ok) {
+          const propertyData = await searchResponse.json();
+          rawProp = propertyData?.properties?.[0] || null;
+          usedEndpoint = 'search-fallback';
+        }
+      } catch (e) {
+        console.log('⚠️ Proxy search fallback also failed');
       }
-      
-      propertyData = await searchResponse.json();
-      usedEndpoint = 'search-fallback';
     }
 
-    // Extract the property from response
-    const rawProp = propertyData?.data?.Property?.[0] || 
-                    propertyData?.Property?.[0] || 
-                    propertyData?.properties?.[0] ||  // Handle proxy format
-                    propertyData?.property ||
-                    propertyData?.data?.[0] ||
-                    null;
+    // Final fallback: Direct Resales Online API
+    if (!rawProp) {
+      try {
+        console.log('🔄 Both proxy endpoints failed, trying direct API...');
+        rawProp = await callResalesAPIByReference(reference, langNum);
+        usedEndpoint = 'direct-api';
+        if (rawProp) {
+          console.log('✅ Found property via direct API');
+        }
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+        console.log('❌ Direct API fallback failed:', errorMessage);
+      }
+    }
 
     if (!rawProp) {
-      console.log('❌ Property not found in response:', JSON.stringify(propertyData).slice(0, 500));
+      console.log('❌ Property not found in any source');
       return new Response(
         JSON.stringify({ property: null, error: 'Property not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -102,7 +153,7 @@ serve(async (req) => {
     // Normalize the property data
     const property = normalizeProperty(rawProp);
 
-    console.log(`✅ Property ${reference} normalized successfully`);
+    console.log(`✅ Property ${reference} normalized successfully (source: ${usedEndpoint})`);
 
     return new Response(
       JSON.stringify({ 
