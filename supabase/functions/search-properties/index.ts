@@ -115,7 +115,7 @@ async function callResalesAPIDirect(filters: any, langNum: number, limit: number
     throw new Error('RESALES_ONLINE_API_KEY not configured');
   }
   
-  // Build API parameters
+// Build API parameters - use standard Resales Online V6 parameters only
   const apiParams: Record<string, any> = {
     p1: RESA_P1,
     p2: RESA_P2,
@@ -135,10 +135,9 @@ async function callResalesAPIDirect(filters: any, langNum: number, limit: number
   if (filters.bathrooms) apiParams.P_Bathrooms = filters.bathrooms;
   if (filters.reference) apiParams.P_RefId = filters.reference;
   
-  // New Developments filter
-  if (filters.newDevs === 'only') {
-    apiParams.P_New_Devs = '1';
-  }
+  // Note: New Developments filtering is done client-side after fetching
+  // The Resales Online API uses account-configured filters (FilterId/FilterAlias)
+  // rather than a direct P_New_Devs parameter
   
   console.log('🔄 Fallback: Calling Resales Online API directly');
   console.log('📤 API params:', JSON.stringify(apiParams));
