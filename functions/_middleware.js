@@ -20,8 +20,7 @@ const LANG_PATTERN = LANGUAGES.join('|');
 const SEO_ROUTE_PATTERNS = [
   // Location Hub (must be BEFORE location pages pattern) - e.g., /en/locations
   new RegExp(`^/(${LANG_PATTERN})/locations/?$`),
-  // Buyers Guide (all languages) - e.g., /en/buyers-guide, /nl/buyers-guide
-  new RegExp(`^/(${LANG_PATTERN})/buyers-guide/?$`),
+  // Buyers Guide removed — now handled by React SPA routing (client-side Helmet tags)
   // Blog articles
   new RegExp(`^/(${LANG_PATTERN})/blog/[^/]+$`),
   // Q&A pages
