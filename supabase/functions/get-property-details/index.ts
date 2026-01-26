@@ -9,21 +9,13 @@ const LANGUAGE_MAP: Record<string, number> = {
   en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
-// Proxy URL (primary)
-const PROXY_BASE_URL = 'http://188.34.164.137:3000';
-
-// Direct Resales Online API (fallback)
+// Direct Resales Online API
 const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
-const RESALES_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
 const RESA_P1 = Deno.env.get('RESA_P1') || '';
 const RESA_P2 = Deno.env.get('RESA_P2') || '';
 
 // Call Resales Online API directly to get property by reference
-async function callResalesAPIByReference(reference: string, langNum: number): Promise<any> {
-  if (!RESALES_API_KEY) {
-    throw new Error('RESALES_ONLINE_API_KEY not configured');
-  }
-  
+async function callResalesAPI(reference: string, langNum: number): Promise<any> {
   const apiParams = {
     p1: RESA_P1,
     p2: RESA_P2,
@@ -32,21 +24,22 @@ async function callResalesAPIByReference(reference: string, langNum: number): Pr
     P_RefId: reference,
   };
   
-  console.log('🔄 Fallback: Calling Resales Online API directly for reference:', reference);
+  console.log('🔄 Calling Resales Online API for reference:', reference);
   
   const response = await fetch(RESALES_API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(apiParams),
   });
   
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ API error:', response.status, errorText);
     throw new Error(`Resales API error: ${response.status}`);
   }
   
   const data = await response.json();
+  console.log('✅ API response received');
   return data.Property?.[0] || null;
 }
 
@@ -65,102 +58,24 @@ serve(async (req) => {
     const langNum = LANGUAGE_MAP[lang] || 1;
     console.log(`🏠 Fetching PropertyDetails for: ${reference} (lang: ${lang}/${langNum})`);
 
-    let rawProp = null;
-    let usedEndpoint = '';
-
-    // Try the property details endpoint first (GET /property/:reference)
-    try {
-      const propertyUrl = `${PROXY_BASE_URL}/property/${reference}?lang=${langNum}`;
-      console.log(`📡 Calling property endpoint: ${propertyUrl}`);
-
-      const response = await fetch(propertyUrl, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      });
-
-      console.log(`📥 Response status: ${response.status}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`📥 Response keys:`, Object.keys(data));
-        
-        if (data && (data.Property || data.property || data.data)) {
-          rawProp = data.Property?.[0] || data.property || data.data?.[0] || null;
-          usedEndpoint = propertyUrl;
-          console.log(`✅ Found property data from property endpoint`);
-        }
-      }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-      console.log(`⚠️ Property endpoint failed:`, errorMessage);
-    }
-
-    // Fallback to search endpoint via proxy
-    if (!rawProp) {
-      try {
-        console.log('⚠️ Property endpoint failed, falling back to search (POST)');
-        const searchUrl = `${PROXY_BASE_URL}/search`;
-        console.log(`📡 Fallback search URL: ${searchUrl}`);
-        
-        const searchResponse = await fetch(searchUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reference, lang: langNum })
-        });
-        
-        if (searchResponse.ok) {
-          const propertyData = await searchResponse.json();
-          rawProp = propertyData?.properties?.[0] || null;
-          usedEndpoint = 'search-fallback';
-        }
-      } catch (e) {
-        console.log('⚠️ Proxy search fallback also failed');
-      }
-    }
-
-    // Final fallback: Direct Resales Online API
-    if (!rawProp) {
-      try {
-        console.log('🔄 Both proxy endpoints failed, trying direct API...');
-        rawProp = await callResalesAPIByReference(reference, langNum);
-        usedEndpoint = 'direct-api';
-        if (rawProp) {
-          console.log('✅ Found property via direct API');
-        }
-      } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-        console.log('❌ Direct API fallback failed:', errorMessage);
-      }
-    }
+    // Call Resales Online API directly
+    const rawProp = await callResalesAPI(reference, langNum);
 
     if (!rawProp) {
-      console.log('❌ Property not found in any source');
+      console.log('❌ Property not found');
       return new Response(
         JSON.stringify({ property: null, error: 'Property not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Log image resolution for verification
-    const firstImage = rawProp.MainImage || rawProp.Pictures?.Picture?.[0]?.PictureURL;
-    if (firstImage) {
-      console.log('📸 Image URL:', firstImage);
-      console.log('  Contains /w400/:', firstImage.includes('/w400/'));
-      console.log('  Contains /w800/:', firstImage.includes('/w800/'));
-      console.log('  Contains /w1200/:', firstImage.includes('/w1200/'));
-    }
-
     // Normalize the property data
     const property = normalizeProperty(rawProp);
 
-    console.log(`✅ Property ${reference} normalized successfully (source: ${usedEndpoint})`);
+    console.log(`✅ Property ${reference} normalized successfully`);
 
     return new Response(
-      JSON.stringify({ 
-        property, 
-        source: usedEndpoint,
-        imageResolution: firstImage?.includes('/w1200/') ? 'high' : 'standard'
-      }),
+      JSON.stringify({ property }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -9,12 +9,8 @@ const LANGUAGE_MAP: Record<string, number> = {
   en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
-// Proxy URL (primary)
-const PROXY_BASE_URL = 'http://188.34.164.137:3000';
-
-// Direct Resales Online API (fallback)
+// Direct Resales Online API
 const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
-const RESALES_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
 const RESA_P1 = Deno.env.get('RESA_P1') || '';
 const RESA_P2 = Deno.env.get('RESA_P2') || '';
 
@@ -109,13 +105,8 @@ function isResidentialProperty(property: any): boolean {
   return isResidentialType && !hasExcludedKeyword;
 }
 
-// Call Resales Online API directly (fallback)
-async function callResalesAPIDirect(filters: any, langNum: number, limit: number, page: number): Promise<any> {
-  if (!RESALES_API_KEY) {
-    throw new Error('RESALES_ONLINE_API_KEY not configured');
-  }
-  
-// Build API parameters - use standard Resales Online V6 parameters only
+// Call Resales Online API directly
+async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
   const apiParams: Record<string, any> = {
     p1: RESA_P1,
     p2: RESA_P2,
@@ -135,29 +126,23 @@ async function callResalesAPIDirect(filters: any, langNum: number, limit: number
   if (filters.bathrooms) apiParams.P_Bathrooms = filters.bathrooms;
   if (filters.reference) apiParams.P_RefId = filters.reference;
   
-  // Note: New Developments filtering is done client-side after fetching
-  // The Resales Online API uses account-configured filters (FilterId/FilterAlias)
-  // rather than a direct P_New_Devs parameter
-  
-  console.log('🔄 Fallback: Calling Resales Online API directly');
+  console.log('🔄 Calling Resales Online API directly');
   console.log('📤 API params:', JSON.stringify(apiParams));
   
   const response = await fetch(RESALES_API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(apiParams),
   });
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Direct API error:', response.status, errorText);
+    console.error('❌ API error:', response.status, errorText);
     throw new Error(`Resales API error: ${response.status}`);
   }
   
   const data = await response.json();
-  console.log('✅ Direct API response received, properties:', data.Property?.length || 0);
+  console.log('✅ API response received, properties:', data.Property?.length || 0);
   
   return {
     properties: data.Property || [],
@@ -193,48 +178,17 @@ serve(async (req) => {
 
     let rawProperties: any[] = [];
     let total = 0;
-    let source = 'proxy';
 
-    // Try proxy first
-    try {
-      const proxyUrl = `${PROXY_BASE_URL}/search`;
-      console.log('🌐 POST to proxy:', proxyUrl, JSON.stringify(postBody));
-      
-      const response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(postBody),
-      });
-
-      if (!response.ok) {
-        console.warn(`⚠️ Proxy returned ${response.status}, trying direct API fallback...`);
-        throw new Error(`Proxy error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      rawProperties = data.properties || [];
-      total = data.total || rawProperties.length;
-      console.log(`✅ Proxy returned ${rawProperties.length} properties`);
-    } catch (proxyError) {
-      // Fallback to direct Resales Online API
-      console.log('🔄 Proxy failed, using direct API fallback');
-      source = 'direct-api';
-      
-      try {
-        const directResult = await callResalesAPIDirect(effectiveFilters, langNum, limit, page);
-        rawProperties = directResult.properties;
-        total = directResult.total;
-      } catch (directError: any) {
-        console.error('❌ Direct API fallback also failed:', directError?.message);
-        throw new Error(`Both proxy and direct API failed: ${directError?.message || 'Unknown error'}`);
-      }
-    }
+    // Call Resales Online API directly
+    const result = await callResalesAPI(effectiveFilters, langNum, limit, page);
+    rawProperties = result.properties;
+    total = result.total;
     
     // Filter to residential only and normalize
     const residentialProperties = rawProperties.filter(isResidentialProperty);
     const properties = residentialProperties.map(normalizeProperty);
     
-    console.log(`✅ Filtered ${rawProperties.length} → ${properties.length} residential properties (source: ${source})`);
+    console.log(`✅ Filtered ${rawProperties.length} → ${properties.length} residential properties`);
     
     return new Response(
       JSON.stringify({
@@ -242,7 +196,6 @@ serve(async (req) => {
         total: properties.length,
         page,
         pageSize: limit,
-        source,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
