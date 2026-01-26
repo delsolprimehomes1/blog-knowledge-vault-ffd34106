@@ -1,97 +1,110 @@
 
-# Fix Resales Online API Integration
 
-## Problem Analysis
+# Fix Resales Online V6 API Integration
 
-The Edge Functions are failing with 400 errors because of **three critical issues**:
+## Root Cause
 
-1. **Wrong HTTP Method**: Currently using `POST` with JSON body, but the API requires `GET` with URL query parameters
-2. **Missing Required Parameter**: `P_Agency_FilterId` (or `P_ApiId`) is mandatory but not included
-3. **Credentials Need Update**: Your new API key needs to be set
+The Edge Functions are sending **legacy V5 parameters** that cause V6 to reject requests with 400 errors:
 
-## Solution
+| Parameter | Status | Action |
+|-----------|--------|--------|
+| `p2` | Not used in V6 | Remove completely |
+| `P_sandbox` | Not used in V6 | Remove completely |
+| RESA_P2 validation | Incorrect | Remove check |
 
-### Step 1: Update API Credentials
+## V6 Authentication Model
 
-Update the following secrets with your new credentials:
-- `RESA_P1` → `d123f6c72f05081edf221e871329704ef16275db`
-- `RESALES_ONLINE_API_KEY` → `d123f6c72f05081edf221e871329704ef16275db` (to match)
-- Verify `RESA_P2` contains your API password
+Authentication in V6 works via:
+- `p1` = API Key (the hash you have)
+- IP whitelist (configured in Resales dashboard)
+- Valid parameters only
 
-### Step 2: Fix API Request Format
+**No password, no sandbox mode.**
 
-Modify `supabase/functions/search-properties/index.ts`:
+## Changes Required
 
-**Change from:**
-```javascript
-const response = await fetch(RESALES_API_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(apiParams),
-});
+### File 1: `supabase/functions/search-properties/index.ts`
+
+**Remove RESA_P2 references:**
+```diff
+- const RESA_P2 = Deno.env.get('RESA_P2') || '';
 ```
 
-**Change to:**
-```javascript
-const queryString = new URLSearchParams(apiParams).toString();
-const response = await fetch(`${RESALES_API_URL}?${queryString}`, {
-  method: 'GET',
-});
+**Remove RESA_P2 validation (lines 121-123):**
+```diff
+async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
+-   if (!RESA_P2) {
+-     throw new Error('Missing Resales credential: RESA_P2');
+-   }
 ```
 
-### Step 3: Add Required Filter Parameter
+**Remove sandbox retry loop (lines 131-132, 137):**
+```diff
+-   const sandboxValues: Array<'false' | 'true'> = ['false', 'true'];
+    // Single pass per p1 candidate, no sandbox variations
+-   for (const sandbox of sandboxValues) {
+```
 
-Add `P_Agency_FilterId=1` to all requests (uses the default "Sale" filter):
+**Clean API params (lines 139-147):**
+```diff
+  const apiParams: Record<string, string> = {
+    p1: p1Candidate.value,
+-   p2: RESA_P2,
+    P_Agency_FilterId: '1',
+    P_Lang: String(langNum),
+    P_PageSize: String(limit),
+    P_PageNo: String(page),
+-   P_sandbox: sandbox,
+  };
+```
+
+### File 2: `supabase/functions/get-property-details/index.ts`
+
+**Same changes:**
+1. Remove `RESA_P2` constant
+2. Remove RESA_P2 validation check (lines 30-32)
+3. Remove `sandboxValues` array and nested loop (lines 39, 43)
+4. Remove `p2` and `P_sandbox` from `apiParams` (lines 47, 50)
+
+## Final V6-Compliant Request Format
+
 ```javascript
-const baseParams = {
+const apiParams: Record<string, string> = {
   p1: p1Candidate.value,
-  p2: RESA_P2,
-  P_Agency_FilterId: 1,  // Required - uses default Sale filter
-  P_Lang: langNum,
-  P_PageSize: limit,
-  P_PageNo: page,
-  P_sandbox: 'true',
+  P_Agency_FilterId: '1',
+  P_Lang: String(langNum),
+  P_PageSize: String(limit),
+  P_PageNo: String(page),
 };
+
+// Add optional filters only if present
+if (filters.location) apiParams.P_Location = filters.location;
+if (filters.priceMin) apiParams.P_PriceMin = String(filters.priceMin);
+// ... etc
 ```
 
-### Step 4: Apply Same Fix to get-property-details
+## Expected Successful Response
 
-Update `supabase/functions/get-property-details/index.ts` with the same GET request format and `P_Agency_FilterId` parameter.
-
----
-
-## Technical Details
-
-### API Documentation Reference
-
-From the docs you provided:
-```text
-Base URL: https://webapi.resales-online.com/{Version}/{Function}
-The additional Parameters must be sent by GET.
-
-Required Parameters:
-- p1: Agent's unique identifier (API Key)
-- p2: Agent's unique password  
-- P_Agency_FilterId: Filter ID (1=Sale, 2=Long Term Rent, etc.)
+After fix, API should return:
+```json
+{
+  "transaction": {
+    "status": "success",
+    "version": "6.0",
+    "service": "Search Properties"
+  },
+  "QueryInfo": {
+    "PropertyCount": 42,
+    "CurrentPage": 1
+  },
+  "Property": [...]
+}
 ```
 
-### Expected Working Request
+## Verification Steps
 
-```bash
-curl --location 'https://webapi.resales-online.com/V6/SearchProperties?p_agency_filterid=1&p1=d123f6c72f05081edf221e871329704ef16275db&p2=YOUR_PASSWORD&P_sandbox=true'
-```
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/search-properties/index.ts` | Switch to GET + add P_Agency_FilterId |
-| `supabase/functions/get-property-details/index.ts` | Switch to GET + add P_Agency_FilterId |
-
-### Verification
-
-After implementation:
-1. Deploy Edge Functions
+1. Deploy updated Edge Functions
 2. Test search on `/en/properties`
-3. Check logs for successful API responses
-4. Verify properties display correctly
+3. Check logs for `status: success` in transaction
+4. Verify properties display in UI
+
