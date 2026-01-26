@@ -12,7 +12,6 @@ const LANGUAGE_MAP: Record<string, number> = {
 // Direct Resales Online API
 const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
 const RESA_P1 = Deno.env.get('RESA_P1') || '';
-const RESA_P2 = Deno.env.get('RESA_P2') || '';
 // Some environments store the API key under this name
 const RESALES_ONLINE_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
 
@@ -27,53 +26,44 @@ function getP1Candidates(): Array<{ label: string; value: string }> {
 
 // Call Resales Online API directly to get property by reference using GET
 async function callResalesAPI(reference: string, langNum: number): Promise<any> {
-  if (!RESA_P2) {
-    throw new Error('Missing Resales credential: RESA_P2');
-  }
-
   const p1Candidates = getP1Candidates();
   if (p1Candidates.length === 0) {
     throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
   }
 
-  const sandboxValues: Array<'false' | 'true'> = ['false', 'true'];
   let lastAttemptSummary = '';
 
   for (const p1Candidate of p1Candidates) {
-    for (const sandbox of sandboxValues) {
-      // Build query parameters - API requires GET with URL params
-      const apiParams: Record<string, string> = {
-        p1: p1Candidate.value,
-        p2: RESA_P2,
-        P_Agency_FilterId: '1', // Required - default Sale filter
-        P_Lang: String(langNum),
-        P_sandbox: sandbox,
-        P_RefId: reference,
-      };
+    // Build query parameters - API requires GET with URL params (V6 - no p2 or sandbox)
+    const apiParams: Record<string, string> = {
+      p1: p1Candidate.value,
+      P_Agency_FilterId: '1', // Required - default Sale filter
+      P_Lang: String(langNum),
+      P_RefId: reference,
+    };
 
-      const queryString = new URLSearchParams(apiParams).toString();
-      const requestUrl = `${RESALES_API_URL}?${queryString}`;
+    const queryString = new URLSearchParams(apiParams).toString();
+    const requestUrl = `${RESALES_API_URL}?${queryString}`;
 
-      console.log('🔄 Calling Resales Online API (GET) for reference:', reference);
-      console.log(`🔑 Using key source: ${p1Candidate.label}, sandbox=${sandbox}`);
+    console.log('🔄 Calling Resales Online API (GET) V6 for reference:', reference);
+    console.log(`🔑 Using key source: ${p1Candidate.label}`);
 
-      const response = await fetch(requestUrl, {
-        method: 'GET',
-      });
+    const response = await fetch(requestUrl, {
+      method: 'GET',
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ API response received');
-        return data.Property?.[0] || null;
-      }
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ API response received');
+      return data.Property?.[0] || null;
+    }
 
-      const errorText = await response.text();
-      console.error(`❌ API error (${p1Candidate.label}, sandbox=${sandbox}):`, response.status, errorText);
-      lastAttemptSummary = `${p1Candidate.label} sandbox=${sandbox} status=${response.status} body=${errorText || '(empty)'}`;
+    const errorText = await response.text();
+    console.error(`❌ API error (${p1Candidate.label}):`, response.status, errorText);
+    lastAttemptSummary = `${p1Candidate.label} status=${response.status} body=${errorText || '(empty)'}`;
 
-      if (response.status !== 400) {
-        throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
-      }
+    if (response.status !== 400) {
+      throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
     }
   }
 

@@ -12,7 +12,6 @@ const LANGUAGE_MAP: Record<string, number> = {
 // Direct Resales Online API
 const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
 const RESA_P1 = Deno.env.get('RESA_P1') || '';
-const RESA_P2 = Deno.env.get('RESA_P2') || '';
 // Some environments store the API key under this name
 const RESALES_ONLINE_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
 
@@ -118,72 +117,60 @@ function isResidentialProperty(property: any): boolean {
 
 // Call Resales Online API directly using GET with query parameters
 async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
-  if (!RESA_P2) {
-    throw new Error('Missing Resales credential: RESA_P2');
-  }
-
   const p1Candidates = getP1Candidates();
   if (p1Candidates.length === 0) {
     throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
   }
 
-  // Resales API is strict; some accounts require sandbox flag true in certain environments.
-  // We'll retry a small matrix of (p1 key source) × (sandbox flag) to eliminate 400s.
-  const sandboxValues: Array<'false' | 'true'> = ['false', 'true'];
-
   let lastAttemptSummary = '';
 
   for (const p1Candidate of p1Candidates) {
-    for (const sandbox of sandboxValues) {
-      // Build query parameters - API requires GET with URL params
-      const apiParams: Record<string, string> = {
-        p1: p1Candidate.value,
-        p2: RESA_P2,
-        P_Agency_FilterId: '1', // Required - default Sale filter
-        P_Lang: String(langNum),
-        P_PageSize: String(limit),
-        P_PageNo: String(page),
-        P_sandbox: sandbox,
+    // Build query parameters - API requires GET with URL params (V6 - no p2 or sandbox)
+    const apiParams: Record<string, string> = {
+      p1: p1Candidate.value,
+      P_Agency_FilterId: '1', // Required - default Sale filter
+      P_Lang: String(langNum),
+      P_PageSize: String(limit),
+      P_PageNo: String(page),
+    };
+    
+    // Map filters to Resales Online API format
+    if (filters.location) apiParams.P_Location = filters.location;
+    if (filters.sublocation) apiParams.P_SubArea = filters.sublocation;
+    if (filters.priceMin) apiParams.P_PriceMin = String(filters.priceMin);
+    if (filters.priceMax) apiParams.P_PriceMax = String(filters.priceMax);
+    if (filters.propertyType) apiParams.P_PropertyTypes = filters.propertyType;
+    if (filters.bedrooms) apiParams.P_Bedrooms = String(filters.bedrooms);
+    if (filters.bathrooms) apiParams.P_Bathrooms = String(filters.bathrooms);
+    if (filters.reference) apiParams.P_RefId = filters.reference;
+
+    const queryString = new URLSearchParams(apiParams).toString();
+    const requestUrl = `${RESALES_API_URL}?${queryString}`;
+
+    console.log('🔄 Calling Resales Online API (GET) - V6');
+    console.log(`🔑 Using key source: ${p1Candidate.label}`);
+    console.log('📤 Request URL:', requestUrl.replace(p1Candidate.value, `[${p1Candidate.label}]`));
+
+    const response = await fetch(requestUrl, {
+      method: 'GET',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ API response received, properties:', data.Property?.length || 0);
+      return {
+        properties: data.Property || [],
+        total: data.QueryInfo?.PropertyCount || 0,
       };
-      
-      // Map filters to Resales Online API format
-      if (filters.location) apiParams.P_Location = filters.location;
-      if (filters.sublocation) apiParams.P_SubArea = filters.sublocation;
-      if (filters.priceMin) apiParams.P_PriceMin = String(filters.priceMin);
-      if (filters.priceMax) apiParams.P_PriceMax = String(filters.priceMax);
-      if (filters.propertyType) apiParams.P_PropertyTypes = filters.propertyType;
-      if (filters.bedrooms) apiParams.P_Bedrooms = String(filters.bedrooms);
-      if (filters.bathrooms) apiParams.P_Bathrooms = String(filters.bathrooms);
-      if (filters.reference) apiParams.P_RefId = filters.reference;
+    }
 
-      const queryString = new URLSearchParams(apiParams).toString();
-      const requestUrl = `${RESALES_API_URL}?${queryString}`;
+    const errorText = await response.text();
+    console.error(`❌ API error (${p1Candidate.label}):`, response.status, errorText);
+    lastAttemptSummary = `${p1Candidate.label} status=${response.status} body=${errorText || '(empty)'}`;
 
-      console.log('🔄 Calling Resales Online API (GET)');
-      console.log(`🔑 Using key source: ${p1Candidate.label}, sandbox=${sandbox}`);
-      console.log('📤 Request URL:', requestUrl.replace(p1Candidate.value, `[${p1Candidate.label}]`).replace(RESA_P2, '[REDACTED]'));
-
-      const response = await fetch(requestUrl, {
-        method: 'GET',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ API response received, properties:', data.Property?.length || 0);
-        return {
-          properties: data.Property || [],
-          total: data.QueryInfo?.PropertyCount || 0,
-        };
-      }
-
-      const errorText = await response.text();
-      console.error(`❌ API error (${p1Candidate.label}, sandbox=${sandbox}):`, response.status, errorText);
-      lastAttemptSummary = `${p1Candidate.label} sandbox=${sandbox} status=${response.status} body=${errorText || '(empty)'}`;
-
-      // If it's NOT a 400, don't keep retrying - bubble up immediately.
-      if (response.status !== 400) {
-        throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
-      }
+    // If it's NOT a 400, don't keep retrying - bubble up immediately.
+    if (response.status !== 400) {
+      throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
     }
   }
 
