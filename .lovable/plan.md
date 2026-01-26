@@ -1,69 +1,183 @@
 
-# Complete Buyers Guide Translations - Missing Sections
 
-## Problem
-The Buyers Guide components are correctly wired to the translation hook, but the translation files for all 9 non-English languages are incomplete. They only contain translations for `hero`, `meta`, `faq`, `cta`, and `speakable` sections, while the following sections fall back to English:
+# Fix Missing SEO Tags on Buyers Guide Pages
 
-- `legal` (Legal Checklist section - what you see in the screenshot)
-- `process` (Process Timeline section)
-- `costs` (Cost Breakdown section)
-- `locations` (Location Showcase section)
-- `digitalNomad` (Digital Nomad Visa section)
+## Problem Summary
 
-## Solution
-Add complete translations for all 5 missing sections to each of the 9 non-English language files.
+The Buyers Guide page (`/:lang/buyers-guide`) has complete multilingual translations working client-side, but **search engines see the raw `index.html`** which has:
+- `<html lang="en">` (always English, regardless of URL)
+- Generic title: "Costa del Sol Real Estate | DelSolPrimeHomes"
+- No meta description, canonical, hreflang, or OG tags
 
-## Files to Update
+## Root Cause
 
-| File | Status |
-|------|--------|
-| `src/i18n/translations/buyersGuide/nl.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/de.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/fr.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/sv.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/no.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/da.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/fi.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/pl.ts` | Add legal, process, costs, locations, digitalNomad |
-| `src/i18n/translations/buyersGuide/hu.ts` | Add legal, process, costs, locations, digitalNomad |
+The page is **not included** in either of the two SEO delivery mechanisms:
 
-## Content to Translate Per Section
+1. **Middleware** (`functions/_middleware.js`): Lines 20-31 define `SEO_ROUTE_PATTERNS` but `buyers-guide` is NOT included
+2. **SSG Scripts**: No `generateStaticBuyersGuidePage.ts` exists to pre-render static HTML
 
-### Legal Section (~25 strings)
-- badge, headline, subheadline
-- essential, optional, timeline, proTips labels
-- 5 items (title, description, status, timeline, tips[])
-- dueDiligence: title, description, 10 checks[], helpText, ctaText
+## Solution: Two-Part Fix
 
-### Process Section (~35 strings)
-- badge, headline, subheadline, requiredDocuments
-- 8 steps (title, description, documents[])
+### Part 1: Add Buyers Guide to Middleware SEO Patterns
 
-### Costs Section (~30 strings)
-- badge, headline, subheadline
-- calculator labels (7 strings)
-- understanding label
-- 8 cost items (name, percentage/amount, description)
-- breakdownLabels (7 strings)
+Update `functions/_middleware.js` to route Buyers Guide URLs to the edge function:
 
-### Locations Section (~15 strings)
-- badge, headline, viewAll
-- 6 areas (name, description)
+```javascript
+const SEO_ROUTE_PATTERNS = [
+  // Location Hub
+  new RegExp(`^/(${LANG_PATTERN})/locations/?$`),
+  // Blog articles
+  new RegExp(`^/(${LANG_PATTERN})/blog/[^/]+$`),
+  // Q&A pages
+  new RegExp(`^/(${LANG_PATTERN})/qa/[^/]+$`),
+  // Comparison pages
+  new RegExp(`^/(${LANG_PATTERN})/compare/[^/]+$`),
+  // Location pages
+  new RegExp(`^/(${LANG_PATTERN})/locations/[^/]+(/[^/]+)?$`),
+  // ✅ ADD: Buyers Guide (all languages)
+  new RegExp(`^/(${LANG_PATTERN})/buyers-guide/?$`),
+];
+```
 
-### Digital Nomad Section (~40 strings)
-- badge, headline, subheadline
-- lifestyle labels
-- benefits (4 items with title + description)
-- income labels
-- requirements (6 items)
-- timeline (4 items)
-- learnMore
+### Part 2: Add Buyers Guide Handler to Edge Function
 
-## Implementation Approach
-Each language file will be updated to include professional, culturally-appropriate translations for all sections. The structure will match the English file exactly to ensure type safety.
+Update `supabase/functions/serve-seo-page/index.ts` to handle Buyers Guide routes:
 
-## Expected Outcome
-After implementation:
-- Switching to Danish will show "Din Juridiske Tjekliste" instead of "Your Legal Checklist"
-- All 10 languages will have 100% translated Buyers Guide content
-- No English text will appear when viewing non-English versions
+1. Add path detection for `/buyers-guide`:
+```typescript
+// In the path parsing logic
+if (contentPath === 'buyers-guide') {
+  contentType = 'buyers-guide';
+  slug = 'buyers-guide';
+}
+```
+
+2. Add a new function to generate Buyers Guide HTML:
+```typescript
+function generateBuyersGuidePage(lang: string): Response {
+  // Use the hardcoded translations from the codebase
+  const translations = getBuyersGuideTranslations(lang);
+  const locale = LOCALE_MAP[lang] || 'en_GB';
+  
+  // Generate hreflang tags for all 10 languages
+  const hreflangTags = SUPPORTED_LANGUAGES.map(l => 
+    `<link rel="alternate" hreflang="${l}" href="${BASE_URL}/${l}/buyers-guide" />`
+  ).join('\n    ');
+  
+  const html = `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${translations.meta.title}</title>
+  <meta name="description" content="${translations.meta.description}">
+  <link rel="canonical" href="${BASE_URL}/${lang}/buyers-guide">
+  
+  ${hreflangTags}
+  <link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/buyers-guide">
+  
+  <meta property="og:locale" content="${locale}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${translations.meta.title}">
+  <meta property="og:description" content="${translations.meta.description}">
+  <meta property="og:url" content="${BASE_URL}/${lang}/buyers-guide">
+  <meta property="og:site_name" content="Del Sol Prime Homes">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${translations.meta.title}">
+  <meta name="twitter:description" content="${translations.meta.description}">
+  
+  <!-- Fonts and redirect to React -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&display=swap">
+  <script>
+    // Allow search engines to see static HTML, then hydrate with React
+    if (!navigator.userAgent.includes('bot')) {
+      // Immediate navigation for real users
+    }
+  </script>
+</head>
+<body>
+  <div id="root">
+    <!-- Static content for SEO -->
+    <h1>${translations.hero.headline} ${translations.hero.headlineHighlight}</h1>
+    <p>${translations.hero.subheadline}</p>
+  </div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    }
+  });
+}
+```
+
+3. Embed the translations directly in the edge function (since we can't import from `src/`):
+
+```typescript
+const BUYERS_GUIDE_META: Record<string, { title: string; description: string }> = {
+  en: {
+    title: "Complete Buyers Guide to Costa del Sol Property | Del Sol Prime Homes",
+    description: "Your comprehensive guide to buying property on the Costa del Sol. Step-by-step process, costs, legal requirements, and expert advice."
+  },
+  nl: {
+    title: "Complete Gids voor het Kopen van Vastgoed aan de Costa del Sol | Del Sol Prime Homes",
+    description: "Uw uitgebreide gids voor het kopen van onroerend goed aan de Costa del Sol. Stap-voor-stap proces, kosten, juridische vereisten en deskundig advies."
+  },
+  de: {
+    title: "Vollständiger Käuferleitfaden für Immobilien an der Costa del Sol | Del Sol Prime Homes",
+    description: "Ihr umfassender Leitfaden zum Immobilienkauf an der Costa del Sol. Schritt-für-Schritt-Prozess, Kosten, rechtliche Anforderungen und Expertenberatung."
+  },
+  // ... continue for all 10 languages
+};
+```
+
+## Implementation Steps
+
+| Step | File | Change |
+|------|------|--------|
+| 1 | `functions/_middleware.js` | Add `buyers-guide` regex to `SEO_ROUTE_PATTERNS` |
+| 2 | `supabase/functions/serve-seo-page/index.ts` | Add path detection for `buyers-guide` |
+| 3 | `supabase/functions/serve-seo-page/index.ts` | Add `BUYERS_GUIDE_META` translations object |
+| 4 | `supabase/functions/serve-seo-page/index.ts` | Add `generateBuyersGuidePage()` function |
+| 5 | `supabase/functions/serve-seo-page/index.ts` | Route `buyers-guide` requests to new handler |
+
+## Expected HTML Output
+
+For `/nl/buyers-guide`:
+```html
+<html lang="nl">
+<head>
+  <title>Complete Gids voor het Kopen van Vastgoed aan de Costa del Sol | Del Sol Prime Homes</title>
+  <meta name="description" content="Uw uitgebreide gids voor het kopen van onroerend goed aan de Costa del Sol...">
+  <link rel="canonical" href="https://www.delsolprimehomes.com/nl/buyers-guide">
+  <link rel="alternate" hreflang="en" href="https://www.delsolprimehomes.com/en/buyers-guide">
+  <link rel="alternate" hreflang="nl" href="https://www.delsolprimehomes.com/nl/buyers-guide">
+  <!-- ... 8 more hreflang tags -->
+  <link rel="alternate" hreflang="x-default" href="https://www.delsolprimehomes.com/en/buyers-guide">
+  <meta property="og:locale" content="nl_NL">
+  <!-- ... all OG and Twitter tags -->
+</head>
+```
+
+## Validation After Implementation
+
+1. **curl test**: `curl -s https://www.delsolprimehomes.com/nl/buyers-guide | head -50`
+2. **View source**: Check `<html lang="nl">` and Dutch title
+3. **Hreflang check**: Verify all 11 hreflang tags present
+4. **Google Search Console**: Submit URLs for re-indexing
+
+## Alternative Approach: SSG Pre-rendering
+
+If you prefer static files over edge function, create `scripts/generateStaticBuyersGuide.ts` to generate:
+- `dist/en/buyers-guide/index.html`
+- `dist/nl/buyers-guide/index.html`
+- ... (10 files total)
+
+This matches the existing pattern for homepages and location hubs.
+
