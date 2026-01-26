@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Grid3x3, List, MapPin, ChevronLeft, ChevronRight, Building2, TrendingUp, Shield, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePropertyFinderTranslation } from "@/hooks/usePropertyFinderTranslation";
 import type { Property, PropertySearchParams } from "@/types/property";
 import { Language, AVAILABLE_LANGUAGES } from "@/types/home";
 
@@ -18,6 +19,7 @@ const PropertyFinder = () => {
   const { lang } = useParams<{ lang?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t, currentLanguage } = usePropertyFinderTranslation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -26,7 +28,7 @@ const PropertyFinder = () => {
   const [sortBy, setSortBy] = useState("newest");
 
   const validLangCodes = AVAILABLE_LANGUAGES.map(l => l.code as string);
-  const currentLanguage = (lang && validLangCodes.includes(lang) ? lang : Language.EN) as Language;
+  const validCurrentLanguage = (lang && validLangCodes.includes(lang) ? lang : Language.EN) as Language;
 
   const getInitialParams = (): PropertySearchParams => ({
     reference: searchParams.get("reference") || undefined,
@@ -57,7 +59,7 @@ const PropertyFinder = () => {
           bathrooms: params.bathrooms,
           newDevs: params.newDevs,
           page: pageNum,
-          lang: currentLanguage,
+          lang: validCurrentLanguage,
         },
       });
 
@@ -117,18 +119,18 @@ const PropertyFinder = () => {
 
   const locationName = searchParams.get("location");
 
-  // Stats data
+  // Stats data with translations
   const stats = [
-    { icon: Building2, value: "7,000+", label: "Properties" },
-    { icon: MapPin, value: "50+", label: "Locations" },
-    { icon: TrendingUp, value: "15+", label: "Years Experience" },
-    { icon: Shield, value: "100%", label: "Trusted" },
+    { icon: Building2, value: "7,000+", label: t.stats.properties },
+    { icon: MapPin, value: "50+", label: t.stats.locations },
+    { icon: TrendingUp, value: "15+", label: t.stats.experience },
+    { icon: Shield, value: "100%", label: t.stats.trusted },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <PropertyFinderHreflangTags 
-        currentLanguage={currentLanguage} 
+        currentLanguage={validCurrentLanguage} 
         searchParams={searchParams.toString()} 
       />
       <Header variant="solid" />
@@ -148,9 +150,9 @@ const PropertyFinder = () => {
             transition={{ duration: 0.4 }}
             className="flex items-center gap-2 text-sm text-muted-foreground mb-6"
           >
-            <span className="hover:text-primary transition-colors cursor-pointer">Home</span>
+            <span className="hover:text-primary transition-colors cursor-pointer">{t.hero.breadcrumbHome}</span>
             <span className="text-border">/</span>
-            <span className="hover:text-primary transition-colors cursor-pointer">Properties</span>
+            <span className="hover:text-primary transition-colors cursor-pointer">{t.hero.breadcrumbProperties}</span>
             {locationName && (
               <>
                 <span className="text-border">/</span>
@@ -169,16 +171,16 @@ const PropertyFinder = () => {
             >
               {locationName ? (
                 <>
-                  <span className="text-foreground">Properties in </span>
+                  <span className="text-foreground">{t.hero.titleLocationPrefix} </span>
                   <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer">
                     {locationName}
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-foreground">Find Your </span>
+                  <span className="text-foreground">{t.hero.titlePrefix} </span>
                   <span className="bg-gradient-to-r from-primary via-amber-600 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-text-shimmer">
-                    Dream Property
+                    {t.hero.titleHighlight}
                   </span>
                 </>
               )}
@@ -190,8 +192,8 @@ const PropertyFinder = () => {
               className="text-lg md:text-xl text-muted-foreground max-w-2xl"
             >
               {locationName
-                ? `Discover exclusive real estate opportunities in ${locationName}, Costa del Sol`
-                : "Browse our curated collection of luxury properties on the stunning Costa del Sol"}
+                ? t.hero.subtitleLocation.replace("{location}", locationName)
+                : t.hero.subtitle}
             </motion.p>
           </div>
 
@@ -250,14 +252,14 @@ const PropertyFinder = () => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                    Searching...
+                    {t.results.searching}
                   </span>
                 ) : (
-                  <span>{total.toLocaleString()} properties</span>
+                  <span>{total.toLocaleString()} {t.results.properties}</span>
                 )}
               </p>
               <p className="text-sm text-muted-foreground">
-                {locationName ? `in ${locationName}` : "available in Costa del Sol"}
+                {locationName ? t.results.inLocation.replace("{location}", locationName) : t.results.availableIn}
               </p>
             </div>
           </div>
@@ -265,15 +267,15 @@ const PropertyFinder = () => {
           <div className="flex items-center gap-3">
             {/* Sort Dropdown */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px] h-10 bg-white border-border/50 rounded-xl">
+              <SelectTrigger className="w-[180px] h-10 bg-white border-border/50 rounded-xl">
                 <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={t.results.sortBy} />
               </SelectTrigger>
               <SelectContent className="bg-white/95 backdrop-blur-xl border-border/50 rounded-xl shadow-xl">
-                <SelectItem value="newest" className="rounded-lg">Newest First</SelectItem>
-                <SelectItem value="price-asc" className="rounded-lg">Price: Low to High</SelectItem>
-                <SelectItem value="price-desc" className="rounded-lg">Price: High to Low</SelectItem>
-                <SelectItem value="beds" className="rounded-lg">Most Bedrooms</SelectItem>
+                <SelectItem value="newest" className="rounded-lg">{t.results.newestFirst}</SelectItem>
+                <SelectItem value="price-asc" className="rounded-lg">{t.results.priceLowHigh}</SelectItem>
+                <SelectItem value="price-desc" className="rounded-lg">{t.results.priceHighLow}</SelectItem>
+                <SelectItem value="beds" className="rounded-lg">{t.results.mostBedrooms}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -357,16 +359,16 @@ const PropertyFinder = () => {
               <MapPin className="w-12 h-12 text-primary" />
             </div>
             <h3 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-3">
-              No properties found
+              {t.emptyState.title}
             </h3>
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              We couldn't find any properties matching your criteria. Try adjusting your filters or explore a different location.
+              {t.emptyState.description}
             </p>
             <Button 
               onClick={() => handleFilterSearch({ transactionType: 'sale' })}
               className="rounded-xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
             >
-              Clear All Filters
+              {t.emptyState.clearFilters}
             </Button>
           </motion.div>
         )}
@@ -388,7 +390,7 @@ const PropertyFinder = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05, duration: 0.4 }}
                 >
-                  <PropertyCard property={property} lang={currentLanguage} />
+                  <PropertyCard property={property} lang={validCurrentLanguage} />
                 </motion.div>
               ))}
             </div>
@@ -402,7 +404,7 @@ const PropertyFinder = () => {
                 className="flex flex-col items-center gap-4 mt-12"
               >
                 <p className="text-sm text-muted-foreground">
-                  Showing {(page - 1) * 20 + 1} - {Math.min(page * 20, total)} of {total.toLocaleString()} properties
+                  {t.results.showing} {(page - 1) * 20 + 1} - {Math.min(page * 20, total)} {t.results.of} {total.toLocaleString()} {t.results.properties}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -412,7 +414,7 @@ const PropertyFinder = () => {
                     className="rounded-xl px-5 py-2 border-border/50 hover:border-primary hover:bg-primary/5 transition-all duration-300 disabled:opacity-50"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
+                    {t.pagination.previous}
                   </Button>
                   
                   <div className="flex items-center gap-1 px-2">
@@ -451,7 +453,7 @@ const PropertyFinder = () => {
                     disabled={page >= Math.ceil(total / 20)}
                     className="rounded-xl px-5 py-2 border-border/50 hover:border-primary hover:bg-primary/5 transition-all duration-300 disabled:opacity-50"
                   >
-                    Next
+                    {t.pagination.next}
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
