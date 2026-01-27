@@ -395,12 +395,44 @@ function normalizeProperty(prop: any) {
     completionDate: prop.CompletionDate || prop.Completion || '',
     buildingLicense: prop.BuildingLicense || '',
     
-    // Energy certificates - handle nested EnergyCertificate object
-    energyRating: prop.EnergyRating || 
-                  (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.EnergyRated : prop.EnergyCertificate) || '',
-    co2Rating: prop.CO2Rating || 
-               (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.CO2Rated : null) ||
-               prop.CO2Emissions || '',
+    // Energy certificates - robustly extract string values
+    // Handle BOTH EnergyRating and EnergyCertificate potentially being objects
+    energyRating: (() => {
+      // Check EnergyRating first
+      if (typeof prop.EnergyRating === 'string' && prop.EnergyRating) {
+        return prop.EnergyRating;
+      }
+      if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.EnergyRated) {
+        return prop.EnergyRating.EnergyRated;
+      }
+      // Fallback to EnergyCertificate
+      if (typeof prop.EnergyCertificate === 'string' && prop.EnergyCertificate) {
+        return prop.EnergyCertificate;
+      }
+      if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.EnergyRated) {
+        return prop.EnergyCertificate.EnergyRated;
+      }
+      return '';
+    })(),
+    co2Rating: (() => {
+      // Check CO2Rating first
+      if (typeof prop.CO2Rating === 'string' && prop.CO2Rating) {
+        return prop.CO2Rating;
+      }
+      // Check EnergyRating object
+      if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.CO2Rated) {
+        return prop.EnergyRating.CO2Rated;
+      }
+      // Check EnergyCertificate object
+      if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.CO2Rated) {
+        return prop.EnergyCertificate.CO2Rated;
+      }
+      // Fallback to CO2Emissions
+      if (prop.CO2Emissions) {
+        return String(prop.CO2Emissions);
+      }
+      return '';
+    })(),
     
     // Associated costs
     communityFees: parseNumeric(prop.CommunityFees || prop.Community_Fees_Year),
