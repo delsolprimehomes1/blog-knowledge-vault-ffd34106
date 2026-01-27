@@ -70,6 +70,13 @@ export const RetargetingTestimonials = () => {
                   src={testimonial.flag}
                   alt={testimonial.country}
                   className="w-8 h-5 object-cover rounded shadow-sm"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'w-8 h-5 bg-gray-200 rounded';
+                    target.parentNode?.insertBefore(fallback, target);
+                  }}
                 />
                 <div>
                   <p className="font-medium text-landing-navy text-sm">

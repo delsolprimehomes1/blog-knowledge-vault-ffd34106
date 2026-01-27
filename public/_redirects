@@ -15,6 +15,7 @@
 
 # Pass-through for assets (prevents infinite loop - MUST come before wildcards)
 /assets/*  /assets/:splat  200
+/flags/*  /flags/:splat  200
 
 # Note: WWW redirect handled by middleware (functions/_middleware.js)
 
