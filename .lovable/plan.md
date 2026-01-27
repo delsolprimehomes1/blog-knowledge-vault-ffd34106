@@ -1,90 +1,120 @@
 
+# Enable High-Resolution Image Transformer
 
-# Fix Resales Online API - IP Whitelisting Required
+## Overview
 
-## Current Status: Code is Correct ✅
+Update the `getHighResImageUrl` function to transform w400 CDN URLs to appropriate resolutions based on display context. This will improve image quality on property detail pages, galleries, and lightbox views without requiring any proxy server changes.
 
-Both Edge Functions (`search-properties` and `get-property-details`) are **already correctly configured**:
-- Using direct Resales Online V6 API: `https://webapi.resales-online.com/V6/SearchProperties`
-- Using `RESA_P1` environment variable for authentication
-- Using `P_Agency_FilterId: '1'` (required)
-- Using GET method with query parameters (V6 compliant)
-- No proxy server references exist
+## Current State
 
-## Root Cause: IP Whitelisting ❌
+The function in `src/lib/imageUrlTransformer.ts` is a pass-through that returns URLs unchanged:
 
-The API is returning:
-```json
-{
-  "errordescription": {
-    "001": "the IP does not match with your API key"
-  }
+```typescript
+export function getHighResImageUrl(url, size = 'hero'): string {
+  if (!url) return '/placeholder.svg';
+  return url; // Always returns w400
 }
 ```
 
-The Supabase Edge Functions run from AWS infrastructure with dynamic IPs:
-- `63.180.200.112`
-- `18.192.206.34`
-- `63.180.199.30`
-- (and others)
+## Resolution Mapping
 
-These IPs are NOT whitelisted in your Resales Online API key configuration.
+| Size | Resolution | Width | Use Case |
+|------|-----------|-------|----------|
+| `thumbnail` | w400 | 400px | Navigation previews, small thumbnails |
+| `card` | w800 | 800px | Property cards on listings page |
+| `hero` | w1200 | 1200px | Hero images, main gallery display |
+| `lightbox` | w1200 | 1200px | Full-screen gallery modal |
 
-## Solution Options
+## Implementation
 
-### Option A: Whitelist Supabase IPs (Recommended)
+### File: `src/lib/imageUrlTransformer.ts`
 
-In your Resales Online dashboard, add these IP ranges to your API key:
-- Go to API Keys section
-- Edit your API key
-- Add the Supabase/AWS EU (Frankfurt) IP ranges
+Replace the current pass-through with URL transformation logic:
 
-Unfortunately, Supabase Edge Functions don't have static IPs. You would need to:
-1. Contact Supabase support about static egress IPs (Enterprise feature)
-2. Or whitelist the entire AWS EU-Central-1 IP range (not recommended for security)
+```typescript
+/**
+ * Image URL utility for Resales Online CDN
+ * 
+ * Transforms w400 URLs to higher resolutions based on display context.
+ * CDN supports: w400, w800, w1200
+ */
+export function getHighResImageUrl(
+  url: string | undefined | null, 
+  size: 'thumbnail' | 'card' | 'hero' | 'lightbox' = 'hero'
+): string {
+  if (!url) return '/placeholder.svg';
+  
+  // Define resolution mapping
+  const resolutionMap: Record<typeof size, string> = {
+    thumbnail: 'w400',
+    card: 'w800',
+    hero: 'w1200',
+    lightbox: 'w1200',
+  };
+  
+  const targetResolution = resolutionMap[size];
+  
+  // Transform w400 to target resolution in URL path
+  // Pattern: .../w400/... → .../w800/... or .../w1200/...
+  if (url.includes('/w400/')) {
+    return url.replace('/w400/', `/${targetResolution}/`);
+  }
+  
+  // Also handle w800 if upgrading to w1200
+  if (url.includes('/w800/') && (size === 'hero' || size === 'lightbox')) {
+    return url.replace('/w800/', '/w1200/');
+  }
+  
+  // Return original URL if no transformation needed
+  return url;
+}
+```
 
-### Option B: Use a Proxy with Static IP
+## Affected Components (No Changes Needed)
 
-Since the original proxy (`188.34.164.137`) had a whitelisted IP but is now broken, you could:
-1. Deploy a new proxy server with a static IP that you control
-2. Whitelist that static IP in Resales Online
-3. Update Edge Functions to call your new proxy
+These components already pass the correct size parameter:
 
-### Option C: Request IP Range from Resales Online
+| Component | Size Used | Result |
+|-----------|-----------|--------|
+| `PropertyCard.tsx` | `card` | → w800 |
+| `PropertyGalleryGrid.tsx` main | `hero` | → w1200 |
+| `PropertyGalleryGrid.tsx` grid | `card` | → w800 |
+| `PropertyGalleryGrid.tsx` lightbox | `lightbox` | → w1200 |
+| `PropertyGalleryGrid.tsx` thumbnails | `thumbnail` | → w400 |
+| `PropertyHero.tsx` main | `hero` | → w1200 |
+| `PropertyHero.tsx` carousel | `thumbnail` | → w400 |
+| `PropertyHero.tsx` lightbox | `lightbox` | → w1200 |
+| `PropertyGallery.tsx` main | `hero` | → w1200 |
+| `PropertyGallery.tsx` lightbox | `lightbox` | → w1200 |
+| `PropertyImageCarousel.tsx` | `card` | → w800 |
+| `BrochureGallery.tsx` | imported | depends on usage |
 
-Contact Resales Online support and ask if they can:
-1. Whitelist the AWS EU-Central-1 IP ranges for your API key
-2. Or provide an alternative authentication method
+## Example Transformations
 
-## Immediate Action Required (User Side)
+**Input (from proxy):**
+```
+https://cdn.resales-online.com/images/property/12345/w400/1-living-room.jpg
+```
 
-You need to whitelist the Supabase IPs in your Resales Online dashboard:
+**Output by size:**
+```
+thumbnail: https://cdn.resales-online.com/images/property/12345/w400/1-living-room.jpg
+card:      https://cdn.resales-online.com/images/property/12345/w800/1-living-room.jpg
+hero:      https://cdn.resales-online.com/images/property/12345/w1200/1-living-room.jpg
+lightbox:  https://cdn.resales-online.com/images/property/12345/w1200/1-living-room.jpg
+```
 
-1. Log into Resales Online
-2. Go to **API Settings** → **API Keys**
-3. Edit your API key (`d123f6c72f05081edf221e871329704ef16275db`)
-4. Add these IPs to the whitelist:
-   - `63.180.200.112`
-   - `18.192.206.34`
-   - `63.180.199.30`
-   - `35.159.41.208`
-   - `3.73.79.51`
+## Technical Notes
 
-Note: Supabase uses multiple AWS IPs, so you may need to add more as they appear in logs.
+- The transformation is client-side only, no backend changes needed
+- Falls back to original URL if pattern not matched
+- Handles edge cases (null, undefined, non-CDN URLs)
+- CDN must support w800 and w1200 paths (confirmed by project memory)
 
-## Code Changes: None Required
+## Testing
 
-The Edge Functions are already correctly implemented. No code changes are needed.
-
-| File | Status |
-|------|--------|
-| `supabase/functions/search-properties/index.ts` | ✅ Correct - Direct V6 API |
-| `supabase/functions/get-property-details/index.ts` | ✅ Correct - Direct V6 API |
-
-## Verification After IP Whitelisting
-
-Once you've whitelisted the IPs:
-1. Refresh the Property Finder page (`/en/properties`)
-2. Check Edge Function logs for `transaction.status: "success"`
-3. Properties should display correctly
-
+After implementation:
+1. Visit `/en/properties` - cards should load w800 images
+2. Click a property - hero section should load w1200
+3. Open lightbox - full-screen view should be w1200
+4. Check browser Network tab to verify correct URLs being requested
