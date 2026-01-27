@@ -1,122 +1,98 @@
 
-# Fix: Property Detail Page Crash - Handle EnergyCertificate Object
+# Change "Book a Call" CTAs to "Chat with Emma" Across the Site
 
-## Problem
+## Overview
 
-The property detail page crashes with "Objects are not valid as a React child" because the API returns `energyRating` as a nested object instead of a string:
+This update replaces all "Book a Call" and similar call-scheduling CTAs with "Chat with Emma" across the entire site, aligning the user experience with the Emma AI chatbot flow.
 
-```json
-"energyRating": {
-  "CO2Rated": "",
-  "EnergyRated": "",
-  "CO2Value": "",
-  "EnergyValue": "",
-  "Image": ""
-}
-```
+## Files to Update
 
-The current edge function fix checks `prop.EnergyCertificate`, but the API appears to also return `prop.EnergyRating` as an object, which bypasses the fix.
+### 1. Main Translation Files (14 files)
 
-## Root Cause
+Each of these files has **3 locations** with call-related CTAs:
 
-In `supabase/functions/get-property-details/index.ts`, line 399-403:
+| File | Line | Current Key/Text | New Text |
+|------|------|-----------------|----------|
+| `src/i18n/translations/en.ts` | 5 | `bookCall: "Book a Call"` | `chatWithEmma: "Chat with Emma"` |
+| `src/i18n/translations/en.ts` | 55 | `ctaSecondary: "Book a Call With an Advisor"` | `ctaSecondary: "Chat with Emma"` |
+| `src/i18n/translations/en.ts` | 196 | `ctaPrimary: "Book a 1:1 Call"` | `ctaPrimary: "Chat with Emma"` |
 
-```typescript
-energyRating: prop.EnergyRating ||   // ← If THIS is an object, it passes through
-              (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.EnergyRated : prop.EnergyCertificate) || '',
-```
+Similar changes for all other languages:
+- `de.ts` - German
+- `nl.ts` - Dutch
+- `fr.ts` - French
+- `sv.ts` - Swedish
+- `no.ts` - Norwegian
+- `da.ts` - Danish
+- `fi.ts` - Finnish
+- `pl.ts` - Polish
+- `hu.ts` - Hungarian
+- `es.ts` - Spanish
+- `it.ts` - Italian
+- `ru.ts` - Russian
+- `tr.ts` - Turkish
 
-The fix only handles `EnergyCertificate` as an object, but `EnergyRating` can ALSO be an object.
+### 2. Buyers Guide Translations (11 files)
 
-## Solution
+Update the form section's schedule and title text:
 
-Update the edge function to robustly extract string values from both `EnergyRating` and `EnergyCertificate`, regardless of which one is an object.
+| File | Current | New |
+|------|---------|-----|
+| `src/i18n/translations/buyersGuide/en.ts` | `title: "Book Your Free Consultation"`, `schedule: "Schedule a Call"` | `title: "Chat with Emma"`, `schedule: "Chat with Emma"` |
 
-### File to Change
+And all other language versions in `buyersGuide/`:
+- `de.ts`, `nl.ts`, `fr.ts`, `sv.ts`, `no.ts`, `da.ts`, `fi.ts`, `pl.ts`, `hu.ts`
 
-**`supabase/functions/get-property-details/index.ts`**
+### 3. React Component with Hardcoded Text
 
-Replace lines 398-403:
+| File | Line | Current | New |
+|------|------|---------|-----|
+| `src/components/about/AboutCTA.tsx` | 47 | `Schedule a Call` | `Chat with Emma` |
 
-```typescript
-// Energy certificates - handle nested EnergyCertificate object
-energyRating: prop.EnergyRating || 
-              (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.EnergyRated : prop.EnergyCertificate) || '',
-co2Rating: prop.CO2Rating || 
-           (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.CO2Rated : null) ||
-           prop.CO2Emissions || '',
-```
+## Localized "Chat with Emma" Translations
 
-With:
+For consistency across languages:
 
-```typescript
-// Energy certificates - robustly extract string values
-// Handle BOTH EnergyRating and EnergyCertificate potentially being objects
-energyRating: (() => {
-  // Check EnergyRating first
-  if (typeof prop.EnergyRating === 'string' && prop.EnergyRating) {
-    return prop.EnergyRating;
-  }
-  if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.EnergyRated) {
-    return prop.EnergyRating.EnergyRated;
-  }
-  // Fallback to EnergyCertificate
-  if (typeof prop.EnergyCertificate === 'string' && prop.EnergyCertificate) {
-    return prop.EnergyCertificate;
-  }
-  if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.EnergyRated) {
-    return prop.EnergyCertificate.EnergyRated;
-  }
-  return '';
-})(),
-co2Rating: (() => {
-  // Check CO2Rating first
-  if (typeof prop.CO2Rating === 'string' && prop.CO2Rating) {
-    return prop.CO2Rating;
-  }
-  // Check EnergyRating object
-  if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.CO2Rated) {
-    return prop.EnergyRating.CO2Rated;
-  }
-  // Check EnergyCertificate object
-  if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.CO2Rated) {
-    return prop.EnergyCertificate.CO2Rated;
-  }
-  // Fallback to CO2Emissions
-  if (prop.CO2Emissions) {
-    return String(prop.CO2Emissions);
-  }
-  return '';
-})(),
-```
+| Language | Translation |
+|----------|-------------|
+| English | Chat with Emma |
+| German | Mit Emma chatten |
+| Dutch | Chat met Emma |
+| French | Discuter avec Emma |
+| Swedish | Chatta med Emma |
+| Norwegian | Chat med Emma |
+| Danish | Chat med Emma |
+| Finnish | Keskustele Emman kanssa |
+| Polish | Czatuj z Emmą |
+| Hungarian | Csevegj Emmával |
+| Spanish | Chatea con Emma |
+| Italian | Chatta con Emma |
+| Russian | Чат с Эммой |
+| Turkish | Emma ile Sohbet Et |
 
-## Why This Works
+## Summary of Changes
 
-| Before | After |
-|--------|-------|
-| Only checks if `EnergyCertificate` is object | Checks if BOTH `EnergyRating` and `EnergyCertificate` are objects |
-| `prop.EnergyRating` object passes through unchanged | Extracts `.EnergyRated` from object if present |
-| Truthy check allows objects | Type check ensures only strings are returned |
+| Category | Files | Changes per File |
+|----------|-------|------------------|
+| Main translations | 14 files | 3 strings each |
+| Buyers Guide translations | 11 files | 2 strings each |
+| React components | 1 file | 1 hardcoded string |
+| **Total** | **26 files** | **~65 string changes** |
 
-## Files Affected
+## Technical Details
 
-| File | Change |
-|------|--------|
-| `supabase/functions/get-property-details/index.ts` | Robust energy rating extraction |
+### Key Rename
+The `bookCall` key will be renamed to `chatWithEmma` in the `common` object across all translation files. This is a semantic change that better represents the action.
 
-## Verification
+### Component Updates
+The Header component (`src/components/home/Header.tsx`) uses `t.common.bookCall` at lines 226 and 332. After renaming the key, this needs to be updated to `t.common.chatWithEmma`.
 
-After deployment:
-1. Navigate to `/en/property/R5074729`
-2. Confirm page loads without crash
-3. Check that "Costs & Details" section displays correctly (or is hidden if energy ratings are empty strings)
+### No Navigation Changes Needed
+The button functionality doesn't need to change - it already links to Emma's chat interface.
 
-## Rollback
+## Implementation Order
 
-If issues occur, revert to returning empty strings:
-```typescript
-energyRating: '',
-co2Rating: '',
-```
-
-This will simply hide the Energy Certificates section rather than crash.
+1. Update all 14 main translation files (`src/i18n/translations/*.ts`)
+2. Update all 11 buyers guide translation files (`src/i18n/translations/buyersGuide/*.ts`)
+3. Update AboutCTA.tsx hardcoded string
+4. Update Header.tsx to use new key name
