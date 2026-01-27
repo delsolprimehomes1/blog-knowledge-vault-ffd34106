@@ -145,6 +145,7 @@ const LandingHu = lazy(() => import("./pages/landing/hu"));
 const LandingSv = lazy(() => import("./pages/landing/sv"));
 const LandingNo = lazy(() => import("./pages/landing/no"));
 const OptIn = lazy(() => import("./pages/OptIn"));
+const RetargetingLanding = lazy(() => import("./pages/RetargetingLanding"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -293,6 +294,10 @@ const App = () => (
               <Route path="/hu/landing" element={<LandingHu />} />
               <Route path="/sv/landing" element={<LandingSv />} />
               <Route path="/no/landing" element={<LandingNo />} />
+              
+              {/* Retargeting Landing Page (English) */}
+              <Route path="/en/welcome-back" element={<RetargetingLanding />} />
+              
               <Route path="/optin" element={<OptIn />} />
               <Route path="/:lang/optin" element={<OptIn />} />
 
