@@ -1,49 +1,90 @@
 
+# Fix Image Transformer for High-Resolution Images
 
-# Revert Image Transformer to Original State
+## Overview
 
-## Problem
+Update `src/lib/imageUrlTransformer.ts` to transform Resales Online CDN URLs from `/w400/` to higher resolutions based on display context. This will make property images crisp on detail pages and galleries.
 
-The high-resolution image transformation broke all property images. The transformation logic assumes URLs contain `/w400/` path segments, but the actual URLs from the proxy may have a different format.
+## URL Structure (Confirmed)
 
-## Solution
+The API returns URLs in this format:
+```
+https://cdn.resales-online.com/public/{hash}/properties/{id}/w400/{filename}.jpg
+```
 
-Revert `src/lib/imageUrlTransformer.ts` to its original pass-through implementation that returns URLs unchanged.
+## Resolution Mapping
 
-## File Change
+| Size Parameter | Target Resolution | Use Case |
+|----------------|-------------------|----------|
+| `thumbnail` | `/w400/` | Small navigation thumbnails (keep as-is) |
+| `card` | `/w800/` | Property cards on listings page |
+| `hero` | `/w1200/` | Hero images on property detail |
+| `lightbox` | `/w1200/` | Full-screen gallery modal |
 
-### `src/lib/imageUrlTransformer.ts`
+## Implementation
+
+Replace the current pass-through function with URL transformation logic:
 
 ```typescript
 /**
  * Image URL utility for Resales Online CDN
  * 
- * Note: Currently passes through URLs unchanged while we investigate
- * the proper CDN URL structure for resolution upgrades.
+ * Transforms w400 URLs to higher resolutions based on display context.
+ * URL pattern: .../w400/filename.jpg → .../w1200/filename.jpg
  */
 export function getHighResImageUrl(
   url: string | undefined | null, 
   size: 'thumbnail' | 'card' | 'hero' | 'lightbox' = 'hero'
 ): string {
   if (!url) return '/placeholder.svg';
-  return url;  // Return original URL unchanged
+  
+  // Define resolution mapping
+  const resolutionMap: Record<typeof size, string> = {
+    thumbnail: 'w400',   // 400px - small thumbnails
+    card: 'w800',        // 800px - property cards
+    hero: 'w1200',       // 1200px - hero images
+    lightbox: 'w1200',   // 1200px - full-screen gallery
+  };
+  
+  const targetResolution = resolutionMap[size];
+  
+  // Transform /w400/ to target resolution
+  if (url.includes('/w400/')) {
+    return url.replace('/w400/', `/${targetResolution}/`);
+  }
+  
+  // Return original URL if pattern not found
+  return url;
 }
 ```
 
-## Next Steps After Revert
+## Example Transformations
 
-To properly implement high-resolution images, we need to:
+**Property Card (size='card'):**
+```
+Input:  https://cdn.resales-online.com/public/abc123/properties/12345/w400/living-room.jpg
+Output: https://cdn.resales-online.com/public/abc123/properties/12345/w800/living-room.jpg
+```
 
-1. Check the actual image URLs being returned from the proxy server
-2. Identify the correct URL pattern (the `/w400/` assumption may be wrong)
-3. Verify what resolutions the CDN actually supports
+**Hero/Lightbox (size='hero' or 'lightbox'):**
+```
+Input:  https://cdn.resales-online.com/public/abc123/properties/12345/w400/living-room.jpg
+Output: https://cdn.resales-online.com/public/abc123/properties/12345/w1200/living-room.jpg
+```
 
-## Investigation Plan
+## Components Using This Function
 
-After reverting, I can:
-- Check the `search-properties` Edge Function logs to see actual API responses
-- Look at browser Network tab for actual image URLs being loaded
-- Examine the proxy server's response format for the `images` array
+These components already pass the correct `size` parameter and will automatically benefit:
 
-This will help us understand the exact URL structure before implementing the transformation correctly.
+- `PropertyCard.tsx` → `card` → w800
+- `PropertyGalleryGrid.tsx` → `hero`/`lightbox`/`card`/`thumbnail` → appropriate resolution
+- `PropertyHero.tsx` → `hero`/`lightbox` → w1200
+- `PropertyGallery.tsx` → `hero`/`lightbox` → w1200
+- `PropertyImageCarousel.tsx` → `card` → w800
 
+## Technical Notes
+
+- Simple string replacement - no regex needed
+- Falls back to original URL if `/w400/` pattern not found
+- Handles null/undefined URLs with placeholder fallback
+- Client-side only - no backend changes required
