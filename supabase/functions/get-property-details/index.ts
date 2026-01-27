@@ -60,6 +60,14 @@ async function callProxyPropertyDetails(reference: string, langNum: number): Pro
     console.log('📦 Property Reference:', rawProp.Reference);
     console.log('📦 Property keys:', Object.keys(rawProp).slice(0, 15));
     console.log('📦 Pictures structure:', typeof rawProp.Pictures, rawProp.Pictures ? Object.keys(rawProp.Pictures) : 'none');
+    // Log raw values for range debugging
+    console.log('🔍 RAW Bedrooms:', JSON.stringify(rawProp.Bedrooms), 'Type:', typeof rawProp.Bedrooms);
+    console.log('🔍 RAW BedroomsTo:', JSON.stringify(rawProp.BedroomsTo), 'Type:', typeof rawProp.BedroomsTo);
+    console.log('🔍 RAW Built:', JSON.stringify(rawProp.Built), 'Type:', typeof rawProp.Built);
+    console.log('🔍 RAW BuiltTo:', JSON.stringify(rawProp.BuiltTo), 'Type:', typeof rawProp.BuiltTo);
+    console.log('🔍 RAW Price:', JSON.stringify(rawProp.Price), 'Type:', typeof rawProp.Price);
+    console.log('🔍 RAW PriceTo:', JSON.stringify(rawProp.PriceTo), 'Type:', typeof rawProp.PriceTo);
+    console.log('🔍 RAW BuiltTitle:', JSON.stringify(rawProp.BuiltTitle));
   } else {
     console.log('❌ Could not extract property from response');
   }
@@ -203,12 +211,64 @@ function extractFeatureCategories(propertyFeatures: any): Record<string, string[
  * Normalizes property data to a consistent format with all fields
  */
 function normalizeProperty(prop: any) {
-  // Parse numeric values
+  // Log raw API values for debugging
+  console.log('📊 Raw API values for ranges:');
+  console.log('   Bedrooms:', prop.Bedrooms, 'BedroomsTo:', prop.BedroomsTo);
+  console.log('   Bathrooms:', prop.Bathrooms, 'BathroomsTo:', prop.BathroomsTo);
+  console.log('   Built:', prop.Built, 'BuiltTo:', prop.BuiltTo);
+  console.log('   Price:', prop.Price, 'PriceTo:', prop.PriceTo);
+  console.log('   PropertyType:', JSON.stringify(prop.PropertyType));
+  console.log('   DevelopmentName:', prop.DevelopmentName, 'BuiltTitle:', prop.BuiltTitle);
+
+  /**
+   * Parse a range value that may be in format:
+   * - "1 - 3" (string range) -> returns { min: 1, max: 3 }
+   * - "65" (single value) -> returns { min: 65, max: 0 }
+   * - 65 (number) -> returns { min: 65, max: 0 }
+   */
+  const parseRange = (value: any): { min: number; max: number } => {
+    if (value === null || value === undefined) return { min: 0, max: 0 };
+    
+    // Handle string ranges like "1 - 3" or "65 - 138"
+    if (typeof value === 'string' && value.includes(' - ')) {
+      const parts = value.split(' - ');
+      return {
+        min: parseInt(parts[0].replace(/[^0-9]/g, '')) || 0,
+        max: parseInt(parts[1].replace(/[^0-9]/g, '')) || 0
+      };
+    }
+    
+    // Handle single values
+    const numVal = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, ''));
+    return { min: isNaN(numVal) ? 0 : numVal, max: 0 };
+  };
+
+  // Parse numeric values (simple - no ranges)
   const parseNumeric = (value: any): number => {
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
+      // If it's a range string, take just the first number
+      if (value.includes(' - ')) {
+        const parsed = parseFloat(value.split(' - ')[0].replace(/[^0-9.]/g, ''));
+        return isNaN(parsed) ? 0 : parsed;
+      }
       const parsed = parseFloat(value.replace(/[^0-9.]/g, ''));
       return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  // Parse max values from separate fields or range strings
+  const parseMax = (minValue: any, maxField: any): number => {
+    // If maxField is provided explicitly, use it
+    if (maxField !== undefined && maxField !== null && maxField !== '') {
+      const maxVal = parseNumeric(maxField);
+      if (maxVal > 0) return maxVal;
+    }
+    // If minValue is a range string, extract the max
+    if (typeof minValue === 'string' && minValue.includes(' - ')) {
+      const parts = minValue.split(' - ');
+      return parseNumeric(parts[1]);
     }
     return 0;
   };
@@ -232,37 +292,78 @@ function normalizeProperty(prop: any) {
   const featureCategories = extractFeatureCategories(prop.PropertyFeatures);
   console.log('📦 Feature categories:', Object.keys(featureCategories));
 
+  // Detect if this is a new development from multiple sources
+  const isNewDevelopment = 
+    prop.NewDevelopment === 'Yes' || 
+    prop.OffPlan === 'Yes' ||
+    (featureCategories.Category && Array.isArray(featureCategories.Category) && 
+      featureCategories.Category.some((c: string) => c.toLowerCase().includes('new development'))) ||
+    (featureCategories.Condition && Array.isArray(featureCategories.Condition) &&
+      featureCategories.Condition.some((c: string) => c.toLowerCase().includes('new construction')));
+  
+  console.log('🏗️ Is New Development:', isNewDevelopment, 'Category:', featureCategories.Category);
+
+  // Get development name - try multiple fields, or extract from description
+  let developmentName = prop.BuiltTitle || prop.DevelopmentName || prop.Development || prop.ResortName || '';
+  
+  // If no development name but it's a new development, try to extract from description
+  // Format is typically: "New Development: Prices from €X to €Y. [Bedrooms: X - Y]..."
+  // But sometimes the name is in the title or area
+  if (!developmentName && isNewDevelopment && prop.Description) {
+    // Check if description starts with a potential development name pattern
+    const descStart = String(prop.Description).substring(0, 200);
+    // Look for patterns like property type name that might indicate development
+    if (prop.Area && !prop.Area.includes('Costa')) {
+      developmentName = prop.SubLocation || '';
+    }
+  }
+  
+  // Parse ranges for bedrooms, bathrooms, built area, price
+  const bedroomMin = parseNumeric(prop.Bedrooms || prop.BedroomsFrom);
+  const bedroomMax = parseMax(prop.Bedrooms, prop.BedroomsTo);
+  
+  const bathroomMin = parseNumeric(prop.Bathrooms || prop.BathroomsFrom);
+  const bathroomMax = parseMax(prop.Bathrooms, prop.BathroomsTo);
+  
+  const builtMin = parseNumeric(prop.Built || prop.BuiltArea || prop.BuiltM2);
+  const builtMax = parseMax(prop.Built, prop.BuiltTo);
+  
+  const priceMin = parseNumeric(prop.Price || prop.CurrentPrice);
+  const priceMax = parseMax(prop.Price, prop.PriceTo);
+  
+  console.log(`📊 Parsed ranges: Beds=${bedroomMin}-${bedroomMax}, Baths=${bathroomMin}-${bathroomMax}, Built=${builtMin}-${builtMax}, Price=${priceMin}-${priceMax}`);
+
   return {
     // Basic info
     reference: prop.Reference || prop.reference || '',
-    propertyType: prop.PropertyType?.Type || prop.Type || prop.PropertyType || 'Property',
+    propertyType: prop.PropertyType?.Type || (typeof prop.PropertyType === 'string' ? prop.PropertyType : null) || prop.Type || 'Property',
     location,
     province,
     
-    // Price
-    price: parseNumeric(prop.Price || prop.CurrentPrice || 0),
-    priceMax: parseNumeric(prop.PriceMax || prop.PriceTo || 0),
+    // Price (with range support)
+    price: priceMin,
+    priceMax: priceMax,
     currency: prop.Currency || 'EUR',
     
     // Bedrooms/Bathrooms (with ranges for new developments)
-    bedrooms: parseNumeric(prop.Bedrooms || prop.BedroomsFrom || 0),
-    bedroomsMax: parseNumeric(prop.BedroomsMax || prop.BedroomsTo || 0),
-    bathrooms: parseNumeric(prop.Bathrooms || prop.BathroomsFrom || 0),
-    bathroomsMax: parseNumeric(prop.BathroomsMax || prop.BathroomsTo || 0),
+    bedrooms: bedroomMin,
+    bedroomsMax: bedroomMax,
+    bathrooms: bathroomMin,
+    bathroomsMax: bathroomMax,
     
     // Built/Plot area (with ranges)
-    builtArea: parseNumeric(prop.Built || prop.BuiltArea || prop.BuiltM2 || 0),
-    builtAreaMax: parseNumeric(prop.BuiltMax || prop.BuiltTo || 0),
-    plotArea: parseNumeric(prop.Plot || prop.PlotArea || prop.PlotM2 || 0),
-    plotAreaMax: parseNumeric(prop.PlotMax || prop.PlotTo || 0),
+    builtArea: builtMin,
+    builtAreaMax: builtMax,
+    plotArea: parseNumeric(prop.Plot || prop.PlotArea || prop.PlotM2),
+    plotAreaMax: parseMax(prop.Plot, prop.PlotTo),
     
     // Additional size measurements
-    interiorSize: parseNumeric(prop.InteriorFloorSpace || prop.Interior || 0),
-    interiorSizeMax: parseNumeric(prop.InteriorMax || 0),
-    terraceSize: parseNumeric(prop.TerraceArea || prop.Terrace || 0),
-    terraceSizeMax: parseNumeric(prop.TerraceMax || 0),
-    totalSize: parseNumeric(prop.TotalBuiltArea || 0),
-    totalSizeMax: parseNumeric(prop.TotalBuiltAreaMax || 0),
+    interiorSize: parseNumeric(prop.InteriorFloorSpace || prop.Interior),
+    interiorSizeMax: parseMax(prop.InteriorFloorSpace, prop.InteriorTo),
+    terraceSize: parseNumeric(prop.TerraceArea || prop.Terrace),
+    terraceSizeMax: parseMax(prop.TerraceArea, prop.TerraceTo),
+    totalSize: parseNumeric(prop.TotalBuiltArea),
+    totalSizeMax: parseMax(prop.TotalBuiltArea, prop.TotalBuiltAreaTo),
     
     // Images
     mainImage,
@@ -286,8 +387,8 @@ function normalizeProperty(prop: any) {
     views: prop.Views || '',
     
     // Development info
-    developmentName: prop.DevelopmentName || prop.Development || prop.ResortName || '',
-    newDevelopment: prop.NewDevelopment === 'Yes' || prop.OffPlan === 'Yes',
+    developmentName,
+    newDevelopment: isNewDevelopment,
     status: prop.Status || 'Available',
     
     // Construction details
@@ -299,13 +400,13 @@ function normalizeProperty(prop: any) {
     co2Rating: prop.CO2Rating || prop.CO2Emissions || '',
     
     // Associated costs
-    communityFees: parseNumeric(prop.CommunityFees || 0),
-    ibi: parseNumeric(prop.IBI || prop.IBIFees || 0),
-    garbageTax: parseNumeric(prop.GarbageTax || 0),
+    communityFees: parseNumeric(prop.CommunityFees || prop.Community_Fees_Year),
+    ibi: parseNumeric(prop.IBI || prop.IBIFees),
+    garbageTax: parseNumeric(prop.GarbageTax),
     
     // Payment terms
-    reservationAmount: parseNumeric(prop.ReservationAmount || 0),
-    vatPercentage: parseNumeric(prop.VAT || prop.IVA || 10),
+    reservationAmount: parseNumeric(prop.ReservationAmount),
+    vatPercentage: parseNumeric(prop.VAT || prop.IVA) || 10,
   };
 }
 
