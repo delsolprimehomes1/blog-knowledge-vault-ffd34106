@@ -1,304 +1,68 @@
 
-# Complete Property Detail Page Implementation
 
-## Overview
+# Urgent Fix: Revert Image Transformer to Restore Images
 
-This is a comprehensive update to make property detail pages match the Resales Online format exactly, fix the "Property Not Found" bug, implement proper multi-language support, add high-resolution images, and display all property data correctly.
+## Problem
 
-## Root Cause Analysis
+Property card images are showing placeholder icons instead of actual property photos. The current `imageUrlTransformer.ts` is replacing `/w400/` with `/w800/` and `/w1200/` in CDN URLs, but these higher resolution paths may not exist on the Resales Online CDN, causing 404 errors that trigger the `onError` fallback to `/placeholder.svg`.
 
-The edge function logs show:
-```
-📦 Raw response keys: [ "transaction", "QueryInfo", "Property" ]
-📦 Property array?: undefined
-```
+## Root Cause
 
-The API returns `data.Property` as a **direct object**, but the code tries `data.Property?.[0]` expecting an array. This fails silently and returns `null`.
+The CDN URL pattern `https://cdn.resales-online.com/public/{hash}/properties/{id}/w400/{filename}.jpg` works with `/w400/`, but the transformed paths (`/w800/`, `/w1200/`) may not be available for all properties.
 
----
+## Solution
 
-## Implementation Plan
+Revert the image transformer to a simple pass-through function that returns the original URL unchanged. This will restore visibility of all property images at their original w400 resolution.
 
-### Phase 1: Fix the Critical Bug (Edge Function)
+## Implementation
 
-**File: `supabase/functions/get-property-details/index.ts`**
-
-Fix the property extraction logic to handle both object and array responses:
-
-```typescript
-// Current (broken):
-const rawProp = data.Property?.[0] || data.property?.[0] || data.property || (data.Reference ? data : null);
-
-// Fixed:
-const rawProp = Array.isArray(data.Property) 
-  ? data.Property[0] 
-  : data.Property || data.property || (data.Reference ? data : null);
-```
-
-Also add comprehensive logging to debug the actual response structure.
-
----
-
-### Phase 2: Expand Property Type to Include All API Fields
-
-**File: `src/types/property.ts`**
-
-Add all the fields from the Resales Online API that we need to display:
-
-| New Field | Type | Description |
-|-----------|------|-------------|
-| `developmentName` | `string` | "Etherna Homes II" |
-| `newDevelopment` | `boolean` | Is new development |
-| `status` | `string` | Property status |
-| `interiorSize` | `number` | Interior floor space |
-| `interiorSizeMax` | `number` | Interior floor space max |
-| `terraceSize` | `number` | Terrace size |
-| `terraceSizeMax` | `number` | Terrace size max |
-| `totalSize` | `number` | Total combined size |
-| `totalSizeMax` | `number` | Total combined size max |
-| `completionDate` | `string` | Expected completion |
-| `buildingLicense` | `string` | License status |
-| `energyRating` | `string` | Energy certificate |
-| `co2Rating` | `string` | CO2 emissions rating |
-| `communityFees` | `number` | Monthly community fees |
-| `ibi` | `number` | Annual IBI tax |
-| `garbageTax` | `number` | Annual garbage tax |
-| `reservationAmount` | `number` | Reservation deposit |
-| `vatPercentage` | `number` | IVA/VAT percentage |
-| `featureCategories` | `object` | Grouped features by category |
-
----
-
-### Phase 3: Update Edge Function to Return Complete Data
-
-**File: `supabase/functions/get-property-details/index.ts`**
-
-Enhance `normalizeProperty()` to extract all available API data:
-
-```typescript
-function normalizeProperty(prop: any) {
-  return {
-    // ... existing fields ...
-    
-    // Development info
-    developmentName: prop.DevelopmentName || prop.Development || '',
-    newDevelopment: prop.NewDevelopment === 'Yes' || prop.OffPlan === 'Yes',
-    
-    // Size ranges (for New Developments)
-    interiorSize: parseNumeric(prop.InteriorFloorSpace || prop.Interior || 0),
-    interiorSizeMax: parseNumeric(prop.InteriorMax || 0),
-    terraceSize: parseNumeric(prop.Terrace || prop.TerraceArea || 0),
-    terraceSizeMax: parseNumeric(prop.TerraceMax || 0),
-    totalSize: parseNumeric(prop.TotalBuiltArea || 0),
-    totalSizeMax: parseNumeric(prop.TotalBuiltAreaMax || 0),
-    
-    // Construction details
-    completionDate: prop.CompletionDate || prop.Completion || '',
-    buildingLicense: prop.BuildingLicense || '',
-    
-    // Certificates
-    energyRating: prop.EnergyRating || prop.EnergyCertificate || '',
-    co2Rating: prop.CO2Rating || prop.CO2Emissions || '',
-    
-    // Costs
-    communityFees: parseNumeric(prop.CommunityFees || 0),
-    ibi: parseNumeric(prop.IBI || prop.IBIFees || 0),
-    garbageTax: parseNumeric(prop.GarbageTax || 0),
-    
-    // Payment terms
-    reservationAmount: parseNumeric(prop.ReservationAmount || 0),
-    vatPercentage: parseNumeric(prop.VAT || prop.IVA || 10),
-    
-    // Grouped features (as returned by API)
-    featureCategories: extractFeatureCategories(prop.PropertyFeatures),
-  };
-}
-```
-
-Add a new function to extract grouped features:
-
-```typescript
-function extractFeatureCategories(propertyFeatures: any): Record<string, string[]> {
-  if (!propertyFeatures?.Category) return {};
-  
-  const categories: Record<string, string[]> = {};
-  for (const cat of propertyFeatures.Category) {
-    if (cat.Type && cat.Value && Array.isArray(cat.Value)) {
-      categories[cat.Type] = cat.Value;
-    }
-  }
-  return categories;
-}
-```
-
----
-
-### Phase 4: Fix Image Transformer for High Resolution
+### Single File Change
 
 **File: `src/lib/imageUrlTransformer.ts`**
 
-Implement the resolution upgrade with proper error handling:
+Replace the current implementation with:
 
 ```typescript
+/**
+ * Image URL utility for Resales Online CDN
+ * 
+ * Currently returns URLs unchanged. High-resolution upgrade 
+ * should only be re-enabled after verifying CDN support.
+ */
 export function getHighResImageUrl(
   url: string | undefined | null, 
   size: 'thumbnail' | 'card' | 'hero' | 'lightbox' = 'hero'
 ): string {
   if (!url) return '/placeholder.svg';
-  
-  // Only transform if URL contains /w400/ pattern
-  if (!url.includes('/w400/')) {
-    return url;
-  }
-  
-  // Map size to resolution
-  const resolutionMap: Record<typeof size, string> = {
-    thumbnail: 'w400',   // Keep thumbnails small
-    card: 'w800',        // Property cards
-    hero: 'w1200',       // Hero images
-    lightbox: 'w1200',   // Full-screen gallery
-  };
-  
-  const targetResolution = resolutionMap[size];
-  return url.replace('/w400/', `/${targetResolution}/`);
+  return url; // Return original URL unchanged
 }
 ```
 
----
+## Why This Works
 
-### Phase 5: Create New PropertyCosts Component
+1. The original `/w400/` URLs from the API are known to work (verified in network requests showing successful property data with w400 image URLs)
+2. The function signature remains the same, so all 8 files that import it will continue to work without modification
+3. Images will display at 400px resolution (may appear blurry on larger displays, but visible)
 
-**File: `src/components/property/PropertyCosts.tsx`** (New)
+## Files Affected
 
-Display payment terms and associated costs in a professional layout:
+| File | Change |
+|------|--------|
+| `src/lib/imageUrlTransformer.ts` | Revert to pass-through mode |
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  💰 Payment Terms & Costs                              │
-├─────────────────────────────────────────────────────────┤
-│  Payment Terms              │  Associated Costs         │
-│  • Reservation: €3,000      │  • Community Fees: €125/mo│
-│  • IVA: 10%                 │  • IBI: €400/year         │
-│                             │  • Garbage Tax: €60/year  │
-├─────────────────────────────────────────────────────────┤
-│  Construction Details       │  Energy Certificates      │
-│  • Completion: Q4 2026      │  • Energy Rating: B       │
-│  • License: Approved        │  • CO2 Rating: C          │
-└─────────────────────────────────────────────────────────┘
-```
+## Verification Steps
 
----
+After deployment:
 
-### Phase 6: Update PropertyFeatures Component
+1. Navigate to `/en/properties?transactionType=sale&newDevs=only`
+2. Confirm property cards show actual property photos (not placeholder icons)
+3. Click on a property to verify detail page images also work
 
-**File: `src/components/property/PropertyFeatures.tsx`**
+## Next Steps (After Images Are Restored)
 
-Display features grouped by category exactly as the API returns them:
+Once images are confirmed working:
 
-```text
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ 📍 Setting       │  │ 🏊 Pool          │  │ ❄️ Climate Control│
-│ ✓ Close To Shops │  │ ✓ Communal       │  │ ✓ Hot A/C        │
-│ ✓ Close To Sea   │  │                  │  │ ✓ Cold A/C       │
-│ ✓ Close To Town  │  │                  │  │                  │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
+1. Use browser Network tab to test if `/w800/` or `/w1200/` paths exist for a sample property
+2. If high-res paths work, re-implement with proper error handling
+3. Consider adding `onError` fallback to original URL before showing placeholder
 
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│ 👁️ Views         │  │ 🏠 Features      │  │ 🍳 Kitchen       │
-│ ✓ Sea            │  │ ✓ Lift           │  │ ✓ Fully Fitted   │
-│ ✓ Pool           │  │ ✓ Fitted Wardrobe│  │ ✓ Kitchen-Lounge │
-│ ✓ Panoramic      │  │ ✓ Gym            │  │                  │
-│ ✓ Garden         │  │ ✓ Storage Room   │  │                  │
-│                  │  │ ✓ Private Terrace│  │                  │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-```
-
----
-
-### Phase 7: Update PropertyStats for Exact Formatting
-
-**File: `src/components/property/PropertyStats.tsx`**
-
-Format ranges exactly as Resales Online displays them:
-- Bedrooms: `1 - 3` (not "1-3 bedrooms")
-- Bathrooms: `1 - 2`
-- Built Size: `65 m² - 138 m²`
-- Terrace: `16 m² - 73 m²`
-- Total Size: `81 m² - 211 m²`
-
----
-
-### Phase 8: Update PropertyHeader for Price Range Display
-
-**File: `src/components/property/PropertyHeader.tsx`**
-
-Display price as range for new developments:
-```
-€ 215,000 - € 558,000
-```
-
-Include development name prominently when available.
-
----
-
-### Phase 9: Add Terrace and Total Size Stats
-
-**File: `src/components/property/PropertyStats.tsx`**
-
-Add additional stat items for:
-- Interior Floor Space (with range for new devs)
-- Terrace Size (with range)
-- Total Size (with range)
-
----
-
-### Phase 10: Update PropertyDetail Page Integration
-
-**File: `src/pages/PropertyDetail.tsx`**
-
-1. Pass new props to components
-2. Add the new `PropertyCosts` component
-3. Update price formatting for range display
-4. Show development name in title for new developments
-
----
-
-## File Changes Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/get-property-details/index.ts` | Modify | Fix property extraction bug, add complete data normalization |
-| `src/types/property.ts` | Modify | Add new property fields |
-| `src/lib/imageUrlTransformer.ts` | Modify | Implement resolution upgrade |
-| `src/components/property/PropertyStats.tsx` | Modify | Add range formatting, new size stats |
-| `src/components/property/PropertyFeatures.tsx` | Modify | Display grouped features by category |
-| `src/components/property/PropertyHeader.tsx` | Modify | Support development name, price ranges |
-| `src/components/property/PropertyCosts.tsx` | Create | New component for costs/payment terms |
-| `src/pages/PropertyDetail.tsx` | Modify | Integrate new components and data |
-
----
-
-## Technical Notes
-
-### Language Mapping
-The edge function already has the correct language mapping:
-```typescript
-const LANGUAGE_MAP = {
-  en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
-};
-```
-
-The 10 supported languages map to: EN=1, NL=5, FR=4, DE=3, FI=13, PL=7, DA=12, HU=14, SV=10, NO=11
-
-### Image Resolution Pattern
-The CDN URL pattern is:
-```
-https://cdn.resales-online.com/public/{hash}/properties/{id}/w400/{filename}.jpg
-```
-Transform to `/w800/` for cards and `/w1200/` for hero/lightbox.
-
-### Testing
-After implementation, test with these properties:
-- R5074729 (Etherna Homes II - New Development)
-- R5166472 (Luminal Homes - New Development)
-- R4922596 (Celestia Homes - New Development)
