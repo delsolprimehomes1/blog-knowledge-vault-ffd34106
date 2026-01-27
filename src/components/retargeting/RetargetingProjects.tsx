@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Bed, Bath, Square, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyImageCarousel } from "@/components/landing/PropertyImageCarousel";
+import { RetargetingPropertyModal } from "./RetargetingPropertyModal";
 
 interface Property {
   id: string;
@@ -41,6 +42,18 @@ const formatPrice = (price: number | null): string => {
 export const RetargetingProjects = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleViewDetails = (property: Property) => {
+    setSelectedProperty(property);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedProperty(null);
+  };
 
   useEffect(() => {
     const fetchProperties = async () => {
@@ -163,13 +176,13 @@ export const RetargetingProjects = () => {
                   </div>
 
                   {/* Subtle link */}
-                  <a
-                    href={`/en/property/${property.id}`}
+                  <button
+                    onClick={() => handleViewDetails(property)}
                     className="inline-flex items-center text-sm text-landing-navy/70 hover:text-landing-gold transition-colors group/link"
                   >
                     View details
                     <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover/link:translate-x-0.5 transition-transform" />
-                  </a>
+                  </button>
                 </div>
               </motion.div>
             ))}
@@ -180,6 +193,13 @@ export const RetargetingProjects = () => {
           </div>
         )}
       </div>
+
+      {/* Property Inquiry Modal */}
+      <RetargetingPropertyModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        property={selectedProperty}
+      />
     </section>
   );
 };
