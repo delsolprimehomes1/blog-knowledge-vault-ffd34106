@@ -9,65 +9,32 @@ const LANGUAGE_MAP: Record<string, number> = {
   en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
-// Direct Resales Online API
-const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
-const RESA_P1 = Deno.env.get('RESA_P1') || '';
-// Some environments store the API key under this name
-const RESALES_ONLINE_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
+// Proxy server URL
+const PROXY_BASE_URL = 'http://188.34.164.137:3000';
 
-function getP1Candidates(): Array<{ label: string; value: string }> {
-  const candidates: Array<{ label: string; value: string }> = [];
-  if (RESA_P1) candidates.push({ label: 'RESA_P1', value: RESA_P1 });
-  if (RESALES_ONLINE_API_KEY && RESALES_ONLINE_API_KEY !== RESA_P1) {
-    candidates.push({ label: 'RESALES_ONLINE_API_KEY', value: RESALES_ONLINE_API_KEY });
-  }
-  return candidates;
-}
+// Call proxy server to get property by reference
+async function callProxyPropertyDetails(reference: string, langNum: number): Promise<any> {
+  const requestUrl = `${PROXY_BASE_URL}/property/${encodeURIComponent(reference)}?lang=${langNum}`;
 
-// Call Resales Online API directly to get property by reference using GET
-async function callResalesAPI(reference: string, langNum: number): Promise<any> {
-  const p1Candidates = getP1Candidates();
-  if (p1Candidates.length === 0) {
-    throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
-  }
+  console.log('🔄 Calling Proxy Server (GET) - /property/:reference');
+  console.log('📤 Request URL:', requestUrl);
 
-  let lastAttemptSummary = '';
+  const response = await fetch(requestUrl, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-  for (const p1Candidate of p1Candidates) {
-    // Build query parameters - API requires GET with URL params (V6 - no p2 or sandbox)
-    const apiParams: Record<string, string> = {
-      p1: p1Candidate.value,
-      P_Agency_FilterId: '1', // Required - default Sale filter
-      P_Lang: String(langNum),
-      P_RefId: reference,
-    };
-
-    const queryString = new URLSearchParams(apiParams).toString();
-    const requestUrl = `${RESALES_API_URL}?${queryString}`;
-
-    console.log('🔄 Calling Resales Online API (GET) V6 for reference:', reference);
-    console.log(`🔑 Using key source: ${p1Candidate.label}`);
-
-    const response = await fetch(requestUrl, {
-      method: 'GET',
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ API response received');
-      return data.Property?.[0] || null;
-    }
-
+  if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ API error (${p1Candidate.label}):`, response.status, errorText);
-    lastAttemptSummary = `${p1Candidate.label} status=${response.status} body=${errorText || '(empty)'}`;
-
-    if (response.status !== 400) {
-      throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
-    }
+    console.error('❌ Proxy error:', response.status, errorText);
+    throw new Error(`Proxy error: ${response.status} ${errorText}`.trim());
   }
 
-  throw new Error(`Resales API error: 400 (${lastAttemptSummary})`);
+  const data = await response.json();
+  console.log('✅ Proxy response received');
+  
+  // Handle both proxy response formats
+  return data.Property?.[0] || data.property || data || null;
 }
 
 serve(async (req) => {
@@ -85,8 +52,8 @@ serve(async (req) => {
     const langNum = LANGUAGE_MAP[lang] || 1;
     console.log(`🏠 Fetching PropertyDetails for: ${reference} (lang: ${lang}/${langNum})`);
 
-    // Call Resales Online API directly
-    const rawProp = await callResalesAPI(reference, langNum);
+    // Call proxy server
+    const rawProp = await callProxyPropertyDetails(reference, langNum);
 
     if (!rawProp) {
       console.log('❌ Property not found');

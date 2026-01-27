@@ -9,20 +9,8 @@ const LANGUAGE_MAP: Record<string, number> = {
   en: 1, es: 2, de: 3, fr: 4, nl: 5, ru: 6, pl: 7, it: 8, pt: 9, sv: 10, no: 11, da: 12, fi: 13, hu: 14
 };
 
-// Direct Resales Online API
-const RESALES_API_URL = 'https://webapi.resales-online.com/V6/SearchProperties';
-const RESA_P1 = Deno.env.get('RESA_P1') || '';
-// Some environments store the API key under this name
-const RESALES_ONLINE_API_KEY = Deno.env.get('RESALES_ONLINE_API_KEY') || '';
-
-function getP1Candidates(): Array<{ label: string; value: string }> {
-  const candidates: Array<{ label: string; value: string }> = [];
-  if (RESA_P1) candidates.push({ label: 'RESA_P1', value: RESA_P1 });
-  if (RESALES_ONLINE_API_KEY && RESALES_ONLINE_API_KEY !== RESA_P1) {
-    candidates.push({ label: 'RESALES_ONLINE_API_KEY', value: RESALES_ONLINE_API_KEY });
-  }
-  return candidates;
-}
+// Proxy server URL
+const PROXY_BASE_URL = 'http://188.34.164.137:3000';
 
 // Normalize property data from proxy PascalCase to frontend camelCase
 function normalizeProperty(raw: any) {
@@ -115,66 +103,51 @@ function isResidentialProperty(property: any): boolean {
   return isResidentialType && !hasExcludedKeyword;
 }
 
-// Call Resales Online API directly using GET with query parameters
-async function callResalesAPI(filters: any, langNum: number, limit: number, page: number): Promise<any> {
-  const p1Candidates = getP1Candidates();
-  if (p1Candidates.length === 0) {
-    throw new Error('Missing Resales credential: RESA_P1 (or RESALES_ONLINE_API_KEY)');
-  }
+// Call proxy server for property search
+async function callProxySearch(filters: any, langNum: number, limit: number, page: number): Promise<any> {
+  // Build query parameters for proxy
+  const proxyParams: Record<string, string> = {
+    lang: String(langNum),
+    pageSize: String(limit),
+    pageNo: String(page),
+  };
+  
+  // Map filters to proxy format
+  if (filters.location) proxyParams.location = filters.location;
+  if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
+  if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
+  if (filters.priceMax) proxyParams.maxPrice = String(filters.priceMax);
+  if (filters.propertyType) proxyParams.propertyTypes = filters.propertyType;
+  if (filters.bedrooms) proxyParams.beds = String(filters.bedrooms);
+  if (filters.bathrooms) proxyParams.baths = String(filters.bathrooms);
+  if (filters.reference) proxyParams.reference = filters.reference;
+  if (filters.newDevs === 'only') proxyParams.newDevelopment = 'true';
 
-  let lastAttemptSummary = '';
+  const queryString = new URLSearchParams(proxyParams).toString();
+  const requestUrl = `${PROXY_BASE_URL}/search?${queryString}`;
 
-  for (const p1Candidate of p1Candidates) {
-    // Build query parameters - API requires GET with URL params (V6 - no p2 or sandbox)
-    const apiParams: Record<string, string> = {
-      p1: p1Candidate.value,
-      P_Agency_FilterId: '1', // Required - default Sale filter
-      P_Lang: String(langNum),
-      P_PageSize: String(limit),
-      P_PageNo: String(page),
-    };
-    
-    // Map filters to Resales Online API format
-    if (filters.location) apiParams.P_Location = filters.location;
-    if (filters.sublocation) apiParams.P_SubArea = filters.sublocation;
-    if (filters.priceMin) apiParams.P_PriceMin = String(filters.priceMin);
-    if (filters.priceMax) apiParams.P_PriceMax = String(filters.priceMax);
-    if (filters.propertyType) apiParams.P_PropertyTypes = filters.propertyType;
-    if (filters.bedrooms) apiParams.P_Bedrooms = String(filters.bedrooms);
-    if (filters.bathrooms) apiParams.P_Bathrooms = String(filters.bathrooms);
-    if (filters.reference) apiParams.P_RefId = filters.reference;
+  console.log('🔄 Calling Proxy Server (GET) - /search');
+  console.log('📤 Request URL:', requestUrl);
 
-    const queryString = new URLSearchParams(apiParams).toString();
-    const requestUrl = `${RESALES_API_URL}?${queryString}`;
+  const response = await fetch(requestUrl, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-    console.log('🔄 Calling Resales Online API (GET) - V6');
-    console.log(`🔑 Using key source: ${p1Candidate.label}`);
-    console.log('📤 Request URL:', requestUrl.replace(p1Candidate.value, `[${p1Candidate.label}]`));
-
-    const response = await fetch(requestUrl, {
-      method: 'GET',
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ API response received, properties:', data.Property?.length || 0);
-      return {
-        properties: data.Property || [],
-        total: data.QueryInfo?.PropertyCount || 0,
-      };
-    }
-
+  if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ API error (${p1Candidate.label}):`, response.status, errorText);
-    lastAttemptSummary = `${p1Candidate.label} status=${response.status} body=${errorText || '(empty)'}`;
-
-    // If it's NOT a 400, don't keep retrying - bubble up immediately.
-    if (response.status !== 400) {
-      throw new Error(`Resales API error: ${response.status} ${errorText}`.trim());
-    }
+    console.error('❌ Proxy error:', response.status, errorText);
+    throw new Error(`Proxy error: ${response.status} ${errorText}`.trim());
   }
 
-  throw new Error(`Resales API error: 400 (${lastAttemptSummary})`);
+  const data = await response.json();
+  console.log('✅ Proxy response received, properties:', data.Property?.length || data.properties?.length || 0);
+  
+  // Handle both proxy response formats
+  return {
+    properties: data.Property || data.properties || [],
+    total: data.QueryInfo?.PropertyCount || data.total || 0,
+  };
 }
 
 serve(async (req) => {
@@ -206,8 +179,8 @@ serve(async (req) => {
     let rawProperties: any[] = [];
     let total = 0;
 
-    // Call Resales Online API directly
-    const result = await callResalesAPI(effectiveFilters, langNum, limit, page);
+    // Call proxy server
+    const result = await callProxySearch(effectiveFilters, langNum, limit, page);
     rawProperties = result.properties;
     total = result.total;
     
