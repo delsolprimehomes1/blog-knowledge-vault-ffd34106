@@ -1,90 +1,118 @@
 
-# Fix Image Transformer for High-Resolution Images
 
-## Overview
+# Fix Property Detail Page Images
 
-Update `src/lib/imageUrlTransformer.ts` to transform Resales Online CDN URLs from `/w400/` to higher resolutions based on display context. This will make property images crisp on detail pages and galleries.
+## Problem Summary
 
-## URL Structure (Confirmed)
+The property detail page at `/property/[reference]` shows no images because the `get-property-details` edge function is returning empty image data. The proxy server returns data correctly, but the edge function fails to extract and normalize it properly.
 
-The API returns URLs in this format:
-```
-https://cdn.resales-online.com/public/{hash}/properties/{id}/w400/{filename}.jpg
-```
+## Root Cause
 
-## Resolution Mapping
+The `get-property-details` edge function has two issues:
 
-| Size Parameter | Target Resolution | Use Case |
-|----------------|-------------------|----------|
-| `thumbnail` | `/w400/` | Small navigation thumbnails (keep as-is) |
-| `card` | `/w800/` | Property cards on listings page |
-| `hero` | `/w1200/` | Hero images on property detail |
-| `lightbox` | `/w1200/` | Full-screen gallery modal |
+1. **Response extraction mismatch** (line 37): The code tries `data.Property?.[0] || data.property || data` but the proxy may return a different structure
+2. **Different normalization logic** than `search-properties` which works correctly
+
+## Solution
+
+Update `supabase/functions/get-property-details/index.ts` to:
+
+1. Add detailed logging of the raw proxy response to understand the actual data structure
+2. Align the response extraction logic with how `search-properties` handles it
+3. Use the same proven image extraction logic from `search-properties`
 
 ## Implementation
 
-Replace the current pass-through function with URL transformation logic:
+### Step 1: Add Debug Logging
+
+Add console logging of the raw proxy response to understand the actual data structure:
 
 ```typescript
-/**
- * Image URL utility for Resales Online CDN
- * 
- * Transforms w400 URLs to higher resolutions based on display context.
- * URL pattern: .../w400/filename.jpg → .../w1200/filename.jpg
- */
-export function getHighResImageUrl(
-  url: string | undefined | null, 
-  size: 'thumbnail' | 'card' | 'hero' | 'lightbox' = 'hero'
-): string {
-  if (!url) return '/placeholder.svg';
-  
-  // Define resolution mapping
-  const resolutionMap: Record<typeof size, string> = {
-    thumbnail: 'w400',   // 400px - small thumbnails
-    card: 'w800',        // 800px - property cards
-    hero: 'w1200',       // 1200px - hero images
-    lightbox: 'w1200',   // 1200px - full-screen gallery
-  };
-  
-  const targetResolution = resolutionMap[size];
-  
-  // Transform /w400/ to target resolution
-  if (url.includes('/w400/')) {
-    return url.replace('/w400/', `/${targetResolution}/`);
+const data = await response.json();
+console.log('✅ Proxy response received');
+console.log('📦 Raw response keys:', Object.keys(data));
+console.log('📦 Property array?:', data.Property?.length);
+console.log('📦 Has property?:', !!data.property);
+```
+
+### Step 2: Fix Response Extraction
+
+Update the response extraction to handle all possible proxy response formats:
+
+```typescript
+// Handle proxy response formats - check all possible structures
+const rawProp = data.Property?.[0] || 
+                data.property?.[0] ||
+                data.property || 
+                (data.Reference ? data : null);
+```
+
+### Step 3: Align Image Extraction with Working Code
+
+Replace the complex `extractMainImage` and `extractImages` functions with the simpler, proven logic from `search-properties`:
+
+```typescript
+function extractMainImage(raw: any): string {
+  return raw.Pictures?.Picture?.[0]?.PictureURL ||
+         raw.MainImage ||
+         raw.Pictures?.[0]?.PictureURL ||
+         raw.Pictures?.[0] ||
+         '';
+}
+
+function extractImages(raw: any): string[] {
+  let images: string[] = [];
+  if (raw.Pictures?.Picture && Array.isArray(raw.Pictures.Picture)) {
+    images = raw.Pictures.Picture.map((p: any) => p.PictureURL || p).filter(Boolean);
+  } else if (Array.isArray(raw.Pictures)) {
+    images = raw.Pictures.map((p: any) => typeof p === 'string' ? p : p.PictureURL || p).filter(Boolean);
   }
-  
-  // Return original URL if pattern not found
-  return url;
+  return images;
 }
 ```
 
-## Example Transformations
+### Step 4: Add Fallback Logging
 
-**Property Card (size='card'):**
+Add logging when image extraction returns empty to help debug future issues:
+
+```typescript
+const mainImage = extractMainImage(rawProp);
+const images = extractImages(rawProp);
+
+if (!mainImage && images.length === 0) {
+  console.warn('⚠️ No images extracted. Raw Pictures data:', JSON.stringify(rawProp.Pictures || rawProp.pictures || 'none'));
+}
 ```
-Input:  https://cdn.resales-online.com/public/abc123/properties/12345/w400/living-room.jpg
-Output: https://cdn.resales-online.com/public/abc123/properties/12345/w800/living-room.jpg
-```
 
-**Hero/Lightbox (size='hero' or 'lightbox'):**
-```
-Input:  https://cdn.resales-online.com/public/abc123/properties/12345/w400/living-room.jpg
-Output: https://cdn.resales-online.com/public/abc123/properties/12345/w1200/living-room.jpg
-```
+## Files to Modify
 
-## Components Using This Function
+| File | Changes |
+|------|---------|
+| `supabase/functions/get-property-details/index.ts` | Fix response extraction, align image extraction logic, add debug logging |
 
-These components already pass the correct `size` parameter and will automatically benefit:
+## Technical Details
 
-- `PropertyCard.tsx` → `card` → w800
-- `PropertyGalleryGrid.tsx` → `hero`/`lightbox`/`card`/`thumbnail` → appropriate resolution
-- `PropertyHero.tsx` → `hero`/`lightbox` → w1200
-- `PropertyGallery.tsx` → `hero`/`lightbox` → w1200
-- `PropertyImageCarousel.tsx` → `card` → w800
+The edge function needs these specific updates:
 
-## Technical Notes
+1. Lines 33-37: Fix response extraction to handle all proxy formats
+2. Lines 89-102: Replace `extractMainImage` with simpler working logic
+3. Lines 107-121: Replace `extractImages` with simpler working logic
+4. Add console logging for debugging
 
-- Simple string replacement - no regex needed
-- Falls back to original URL if `/w400/` pattern not found
-- Handles null/undefined URLs with placeholder fallback
-- Client-side only - no backend changes required
+## Testing
+
+After implementation:
+1. Deploy the edge function
+2. Check edge function logs for the raw response structure
+3. Navigate to a property detail page (e.g., `/en/property/R5212369`)
+4. Verify images now load correctly
+5. Confirm the image transformer still works (images should display at w400 resolution with pass-through mode)
+
+## Expected Outcome
+
+Property detail pages will display:
+- Main hero image in the gallery
+- All property images in the gallery grid
+- Thumbnail navigation in lightbox
+- Images loading at w400 resolution (current pass-through mode)
+
