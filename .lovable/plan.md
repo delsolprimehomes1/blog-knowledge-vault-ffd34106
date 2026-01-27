@@ -1,57 +1,122 @@
 
-## Goal
-Restore property images immediately by reverting `src/lib/imageUrlTransformer.ts` to the safe pass-through implementation (no URL rewriting). After images are confirmed working again, we will attempt a **separate** change to test `w1200` for cards (instead of `w800`).
+# Fix: Property Detail Page Crash - Handle EnergyCertificate Object
 
-## What’s happening (why images broke again)
-- Property card components call `getHighResImageUrl(..., 'card')`.
-- Those `<img>` tags have `onError` handlers that replace the image with `'/placeholder.svg'`.
-- When the transformer rewrites `/w400/` → `/w800/`, the CDN returns errors for many images, triggering `onError` and causing placeholders.
+## Problem
 
-## Phase 1 (Immediate): Revert transformer to working state (ONE change only)
-### File to change
-- `src/lib/imageUrlTransformer.ts`
+The property detail page crashes with "Objects are not valid as a React child" because the API returns `energyRating` as a nested object instead of a string:
 
-### Exact code to apply (as requested)
-```ts
-export function getHighResImageUrl(
-  url: string | undefined | null, 
-  size: 'thumbnail' | 'card' | 'hero' | 'lightbox' = 'hero'
-): string {
-  if (!url) return '/placeholder.svg';
-  return url; // Back to working state
+```json
+"energyRating": {
+  "CO2Rated": "",
+  "EnergyRated": "",
+  "CO2Value": "",
+  "EnergyValue": "",
+  "Image": ""
 }
 ```
 
-### Scope
-- Only this one file.
-- No other logic, no other components, no additional fallbacks.
+The current edge function fix checks `prop.EnergyCertificate`, but the API appears to also return `prop.EnergyRating` as an object, which bypasses the fix.
 
-## Phase 1 Verification (must pass before any next step)
-On the route you’re currently on:
-- `/en/properties?transactionType=sale&newDevs=only`
+## Root Cause
 
-Check:
-1. Property cards show real photos (not placeholders).
-2. In DevTools → Network → Img (or filter “jpg”), confirm image requests are hitting URLs with `/w400/` (not `/w800/`).
-3. No widespread 404s for image files.
+In `supabase/functions/get-property-details/index.ts`, line 399-403:
 
-If you still see placeholders after the revert:
-- Do a hard refresh (to avoid cached broken `/w800/` URLs).
-- If still broken, we’ll inspect the failing image URLs in the Network tab to confirm whether the API is returning missing/empty URLs vs. CDN failures.
+```typescript
+energyRating: prop.EnergyRating ||   // ← If THIS is an object, it passes through
+              (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.EnergyRated : prop.EnergyCertificate) || '',
+```
 
-## Phase 2 (Separate follow-up, after Phase 1 passes): Try `w1200` for cards instead of `w800`
-This will be a **new** approved change after you confirm images are back.
+The fix only handles `EnergyCertificate` as an object, but `EnergyRating` can ALSO be an object.
 
-### Why we won’t do it in the same change
-- You requested an immediate revert first and to avoid bundling changes.
-- `w1200` may or may not exist for the specific “card” filenames returned by the listings API (they can differ from detail-page filenames).
+## Solution
 
-### Proposed approach for the follow-up
-Option A (minimal but risky): transform `card` from `/w400/` → `/w1200/` in the transformer (same pattern as before).
-Option B (recommended and safest): attempt `/w1200/` for cards but add an automatic fallback back to `/w400/` before showing the placeholder (requires a tiny change in the card `<img onError>` handlers).
+Update the edge function to robustly extract string values from both `EnergyRating` and `EnergyCertificate`, regardless of which one is an object.
 
-We’ll decide between A vs B after we confirm Phase 1 stability and after we spot-check a few `w1200` URLs in the browser Network tab.
+### File to Change
 
-## Rollback / Emergency path
-If any change re-breaks images:
-- Immediately revert the transformer back to `return url;` (pass-through), or use the project History restore to jump back to the last known-good state.
+**`supabase/functions/get-property-details/index.ts`**
+
+Replace lines 398-403:
+
+```typescript
+// Energy certificates - handle nested EnergyCertificate object
+energyRating: prop.EnergyRating || 
+              (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.EnergyRated : prop.EnergyCertificate) || '',
+co2Rating: prop.CO2Rating || 
+           (typeof prop.EnergyCertificate === 'object' ? prop.EnergyCertificate?.CO2Rated : null) ||
+           prop.CO2Emissions || '',
+```
+
+With:
+
+```typescript
+// Energy certificates - robustly extract string values
+// Handle BOTH EnergyRating and EnergyCertificate potentially being objects
+energyRating: (() => {
+  // Check EnergyRating first
+  if (typeof prop.EnergyRating === 'string' && prop.EnergyRating) {
+    return prop.EnergyRating;
+  }
+  if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.EnergyRated) {
+    return prop.EnergyRating.EnergyRated;
+  }
+  // Fallback to EnergyCertificate
+  if (typeof prop.EnergyCertificate === 'string' && prop.EnergyCertificate) {
+    return prop.EnergyCertificate;
+  }
+  if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.EnergyRated) {
+    return prop.EnergyCertificate.EnergyRated;
+  }
+  return '';
+})(),
+co2Rating: (() => {
+  // Check CO2Rating first
+  if (typeof prop.CO2Rating === 'string' && prop.CO2Rating) {
+    return prop.CO2Rating;
+  }
+  // Check EnergyRating object
+  if (typeof prop.EnergyRating === 'object' && prop.EnergyRating?.CO2Rated) {
+    return prop.EnergyRating.CO2Rated;
+  }
+  // Check EnergyCertificate object
+  if (typeof prop.EnergyCertificate === 'object' && prop.EnergyCertificate?.CO2Rated) {
+    return prop.EnergyCertificate.CO2Rated;
+  }
+  // Fallback to CO2Emissions
+  if (prop.CO2Emissions) {
+    return String(prop.CO2Emissions);
+  }
+  return '';
+})(),
+```
+
+## Why This Works
+
+| Before | After |
+|--------|-------|
+| Only checks if `EnergyCertificate` is object | Checks if BOTH `EnergyRating` and `EnergyCertificate` are objects |
+| `prop.EnergyRating` object passes through unchanged | Extracts `.EnergyRated` from object if present |
+| Truthy check allows objects | Type check ensures only strings are returned |
+
+## Files Affected
+
+| File | Change |
+|------|--------|
+| `supabase/functions/get-property-details/index.ts` | Robust energy rating extraction |
+
+## Verification
+
+After deployment:
+1. Navigate to `/en/property/R5074729`
+2. Confirm page loads without crash
+3. Check that "Costs & Details" section displays correctly (or is hidden if energy ratings are empty strings)
+
+## Rollback
+
+If issues occur, revert to returning empty strings:
+```typescript
+energyRating: '',
+co2Rating: '',
+```
+
+This will simply hide the Energy Certificates section rather than crash.
