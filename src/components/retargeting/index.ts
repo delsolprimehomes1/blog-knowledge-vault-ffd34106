@@ -4,5 +4,6 @@ export { RetargetingVisualContext } from "./RetargetingVisualContext";
 export { RetargetingTestimonials } from "./RetargetingTestimonials";
 export { RetargetingPositioning } from "./RetargetingPositioning";
 export { RetargetingProjects } from "./RetargetingProjects";
+export { RetargetingPropertyModal } from "./RetargetingPropertyModal";
 export { RetargetingForm } from "./RetargetingForm";
 export { RetargetingFooter } from "./RetargetingFooter";
