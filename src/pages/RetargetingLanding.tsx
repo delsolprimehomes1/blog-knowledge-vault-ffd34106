@@ -75,18 +75,26 @@ const RetargetingLanding = () => {
               >
                 {t.headerApartments}
               </a>
-              <Link
-                to={`/${language}/property-finder?type=penthouse`}
-                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              <a
+                href="#properties"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors cursor-pointer"
               >
                 {t.headerPenthouses}
-              </Link>
-              <Link
-                to={`/${language}/property-finder?type=townhouse`}
-                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              </a>
+              <a
+                href="#properties"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors cursor-pointer"
               >
                 {t.headerTownhouses}
-              </Link>
+              </a>
               <a
                 href="#properties"
                 onClick={(e) => {
