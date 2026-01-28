@@ -44,6 +44,16 @@ const formatPrice = (price: number | null, priceOnRequest: string): string => {
   }
 };
 
+// Helper to get localized description with fallback
+const getLocalizedDescription = (
+  descriptions: unknown,
+  language: string
+): string => {
+  if (!descriptions || typeof descriptions !== 'object') return "";
+  const desc = descriptions as Record<string, string>;
+  return desc[language] || desc["en"] || "";
+};
+
 export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProps) => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,8 +77,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
         .from("properties")
         .select("id, internal_name, location, beds_min, beds_max, baths, size_sqm, price_eur, images, descriptions")
         .eq("is_active", true)
-        .order("display_order", { ascending: true })
-        .limit(4);
+        .order("display_order", { ascending: true });
 
       if (error) {
         console.error("Error fetching properties:", error);
@@ -106,8 +115,8 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
 
         {/* Property Cards */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="bg-white/60 backdrop-blur-sm rounded-2xl overflow-hidden animate-pulse">
                 <div className="aspect-[4/3] bg-gray-200" />
                 <div className="p-5">
@@ -119,7 +128,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
             ))}
           </div>
         ) : properties.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {properties.map((property, index) => (
               <motion.div
                 key={property.id}
@@ -156,7 +165,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
                   </div>
 
                   {/* Property Stats */}
-                  <div className="flex items-center gap-4 text-landing-navy/70 text-sm mb-4">
+                  <div className="flex items-center gap-4 text-landing-navy/70 text-sm mb-3">
                     {property.beds_min && (
                       <div className="flex items-center gap-1">
                         <Bed size={14} />
@@ -180,6 +189,13 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
                       </div>
                     )}
                   </div>
+
+                  {/* Localized Description */}
+                  {getLocalizedDescription(property.descriptions, language) && (
+                    <p className="text-sm text-landing-navy/60 mb-4 line-clamp-2">
+                      {getLocalizedDescription(property.descriptions, language)}
+                    </p>
+                  )}
 
                   {/* Subtle link */}
                   <button
