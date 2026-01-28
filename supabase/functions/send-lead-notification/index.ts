@@ -219,7 +219,11 @@ serve(async (req) => {
     
     for (const agent of agents) {
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
-      const leadDetailUrl = `${appUrl}/crm/agent/leads/${lead.id}`;
+      // Admin-targeted notifications should use admin routes
+      const isAdminTargetedNotification = isNightHoldAlertNotification || isAdminUnclaimedNotification || isSlaWarningNotification;
+      const leadDetailUrl = isAdminTargetedNotification
+        ? `${appUrl}/crm/admin/leads/${lead.id}`
+        : `${appUrl}/crm/agent/leads/${lead.id}`;
       let emailSuccess = false;
       let resendMessageId: string | undefined;
       let errorMessage: string | undefined;
