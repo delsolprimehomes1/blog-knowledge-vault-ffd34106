@@ -5,5 +5,6 @@ export { RetargetingTestimonials } from "./RetargetingTestimonials";
 export { RetargetingPositioning } from "./RetargetingPositioning";
 export { RetargetingProjects } from "./RetargetingProjects";
 export { RetargetingPropertyModal } from "./RetargetingPropertyModal";
+export { RetargetingVideoModal } from "./RetargetingVideoModal";
 export { RetargetingForm } from "./RetargetingForm";
 export { RetargetingFooter } from "./RetargetingFooter";

@@ -3,21 +3,22 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
+import { useRetargetingForm } from "@/hooks/useRetargetingForm";
 
 export const RetargetingForm = () => {
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     email: "",
     question: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { isSubmitting, isSuccess, error, submitForm } = useRetargetingForm("en");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Phase 2 will connect to Supabase
-    console.log("Form submitted:", formData);
-    setIsSubmitted(true);
+    if (!formData.email) return;
+    await submitForm(formData);
   };
 
   return (
@@ -44,7 +45,7 @@ export const RetargetingForm = () => {
           </div>
 
           {/* Form or Success Message */}
-          {isSubmitted ? (
+          {isSuccess ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -130,13 +131,22 @@ export const RetargetingForm = () => {
                   />
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 px-4 py-3 rounded-lg">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <div className="text-center pt-2">
                   <Button
                     type="submit"
-                    className="bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-5 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_8px_30px_rgba(196,160,83,0.25)] hover:shadow-[0_12px_40px_rgba(196,160,83,0.35)] hover:scale-[1.02]"
+                    disabled={isSubmitting || !formData.email}
+                    className="bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-5 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_8px_30px_rgba(196,160,83,0.25)] hover:shadow-[0_12px_40px_rgba(196,160,83,0.35)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
-                    Request information
+                    {isSubmitting ? "Sending..." : "Request information"}
                   </Button>
                 </div>
               </form>

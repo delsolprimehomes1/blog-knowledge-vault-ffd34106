@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Play, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RetargetingVideoModal } from "./RetargetingVideoModal";
 import heroDesktop from "@/assets/hero-landing-desktop.jpg";
 import heroMobile from "@/assets/hero-landing-mobile.jpg";
 
 export const RetargetingHero = () => {
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
   };
@@ -83,14 +87,19 @@ export const RetargetingHero = () => {
             variant="default"
             size="lg"
             className="bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-6 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_10px_40px_rgba(196,160,83,0.3)] hover:shadow-[0_15px_50px_rgba(196,160,83,0.4)] hover:scale-[1.02]"
-            onClick={() => {
-              console.log("Video modal - Phase 2");
-            }}
+            onClick={() => setIsVideoOpen(true)}
           >
             <Play className="w-4 h-4 mr-2" />
             Watch the 60-second overview
           </Button>
         </motion.div>
+
+        {/* Video Modal */}
+        <RetargetingVideoModal
+          isOpen={isVideoOpen}
+          onClose={() => setIsVideoOpen(false)}
+          videoUrl="https://www.youtube.com/embed/dQw4w9WgXcQ"
+        />
       </div>
 
       {/* Scroll Indicator */}
