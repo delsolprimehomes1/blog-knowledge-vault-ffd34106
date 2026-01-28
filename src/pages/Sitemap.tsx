@@ -1,10 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { isFeatureEnabled } from "@/lib/featureFlags";
 import { Button } from "@/components/ui/button";
 import { Download, Copy, Check, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import {
+  useSitemapCounts,
+  fetchAllArticles,
+  fetchAllQAPages,
+  fetchAllComparisonPages,
+  fetchAllLocationPages,
+  type ArticleData,
+} from "@/hooks/useSitemapData";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
@@ -16,124 +23,24 @@ const langToHreflang: Record<string, string> = {
   da: 'da-DK', fi: 'fi-FI', no: 'nb-NO',
 };
 
-interface ArticleData {
-  slug: string;
-  language: string;
-  cluster_id: string | null;
-  is_primary: boolean;
-  date_modified: string | null;
-  date_published: string | null;
-}
-
-interface QAPageData {
-  slug: string;
-  language: string;
-  hreflang_group_id: string | null;
-  updated_at: string | null;
-}
-
-interface ComparisonPageData {
-  slug: string;
-  language: string;
-  hreflang_group_id: string | null;
-  updated_at: string | null;
-}
-
-interface LocationPageData {
-  city_slug: string;
-  topic_slug: string;
-  language: string;
-  hreflang_group_id: string | null;
-  updated_at: string | null;
-}
-
 const Sitemap = () => {
   const [hreflangEnabled, setHreflangEnabled] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, phase: '' });
   const { toast } = useToast();
+
+  // Use COUNT queries for accurate stats (bypasses 1000 row limit)
+  const { data: counts, isLoading: countsLoading, refetch: refetchCounts } = useSitemapCounts();
 
   useEffect(() => {
     isFeatureEnabled('enhanced_hreflang').then(setHreflangEnabled);
   }, []);
 
-  // Fetch all content
-  const { data: articles, isLoading: articlesLoading, refetch: refetchArticles } = useQuery({
-    queryKey: ["sitemap-articles"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("blog_articles")
-        .select("slug, date_modified, date_published, language, cluster_id, is_primary")
-        .eq("status", "published")
-        .order("date_modified", { ascending: false });
-      if (error) throw error;
-      return data as ArticleData[];
-    },
-  });
+  const totalUrls = (counts?.articles || 0) + (counts?.qa || 0) + (counts?.comparisons || 0) + (counts?.locations || 0);
 
-  const { data: qaPages, isLoading: qaLoading } = useQuery({
-    queryKey: ["sitemap-qa"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("qa_pages")
-        .select("slug, language, hreflang_group_id, updated_at")
-        .eq("status", "published");
-      if (error) throw error;
-      return data as QAPageData[];
-    },
-  });
-
-  const { data: comparisonPages, isLoading: compLoading } = useQuery({
-    queryKey: ["sitemap-comparisons"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("comparison_pages")
-        .select("slug, language, hreflang_group_id, updated_at")
-        .eq("status", "published");
-      if (error) throw error;
-      return data as ComparisonPageData[];
-    },
-  });
-
-  const { data: locationPages, isLoading: locLoading } = useQuery({
-    queryKey: ["sitemap-locations"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("location_pages")
-        .select("city_slug, topic_slug, language, hreflang_group_id, updated_at")
-        .eq("status", "published");
-      if (error) throw error;
-      return data as LocationPageData[];
-    },
-  });
-
-  const isLoading = articlesLoading || qaLoading || compLoading || locLoading;
-
-  // Group content by language
-  const articlesByLang = useMemo(() => {
-    const map = new Map<string, ArticleData[]>();
-    (articles || []).forEach(article => {
-      const existing = map.get(article.language) || [];
-      existing.push(article);
-      map.set(article.language, existing);
-    });
-    return map;
-  }, [articles]);
-
-  const clusterMap = useMemo(() => {
-    const map = new Map<string, ArticleData[]>();
-    (articles || []).forEach(article => {
-      if (article.cluster_id) {
-        const existing = map.get(article.cluster_id) || [];
-        existing.push(article);
-        map.set(article.cluster_id, existing);
-      }
-    });
-    return map;
-  }, [articles]);
-
-  // Generate sitemap XML for a specific content type and language
-  const generateBlogSitemap = useCallback((langArticles: ArticleData[], lang: string) => {
+  // Generate sitemap XML for blog articles
+  const generateBlogSitemap = useCallback((langArticles: ArticleData[], lang: string, clusterMap: Map<string, ArticleData[]>) => {
     const hreflangCode = langToHreflang[lang] || lang;
     
     const articleUrls = langArticles.map((article) => {
@@ -185,31 +92,23 @@ const Sitemap = () => {
   <!-- Blog Articles in ${lang.toUpperCase()} (${langArticles.length} total) -->
 ${articleUrls}
 </urlset>`;
-  }, [hreflangEnabled, clusterMap]);
+  }, [hreflangEnabled]);
 
-  // Generate master sitemap index
+  // Generate master sitemap index using accurate counts
   const generateMasterIndex = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
     const entries: string[] = [];
 
+    // Blog sitemaps - one per language
     SUPPORTED_LANGUAGES.forEach(lang => {
-      const langArticles = articlesByLang.get(lang) || [];
-      if (langArticles.length > 0) {
-        entries.push(`  <sitemap>
+      entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/${lang}/blog.xml</loc>
     <lastmod>${today}</lastmod>
   </sitemap>`);
-      }
     });
 
     // Q&A sitemaps
-    const qaByLang = new Map<string, QAPageData[]>();
-    (qaPages || []).forEach(qa => {
-      const existing = qaByLang.get(qa.language) || [];
-      existing.push(qa);
-      qaByLang.set(qa.language, existing);
-    });
-    qaByLang.forEach((_, lang) => {
+    SUPPORTED_LANGUAGES.forEach(lang => {
       entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/${lang}/qa.xml</loc>
     <lastmod>${today}</lastmod>
@@ -217,13 +116,7 @@ ${articleUrls}
     });
 
     // Comparison sitemaps
-    const compByLang = new Map<string, ComparisonPageData[]>();
-    (comparisonPages || []).forEach(comp => {
-      const existing = compByLang.get(comp.language) || [];
-      existing.push(comp);
-      compByLang.set(comp.language, existing);
-    });
-    compByLang.forEach((_, lang) => {
+    SUPPORTED_LANGUAGES.forEach(lang => {
       entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/${lang}/comparisons.xml</loc>
     <lastmod>${today}</lastmod>
@@ -231,13 +124,7 @@ ${articleUrls}
     });
 
     // Location sitemaps
-    const locByLang = new Map<string, LocationPageData[]>();
-    (locationPages || []).forEach(loc => {
-      const existing = locByLang.get(loc.language) || [];
-      existing.push(loc);
-      locByLang.set(loc.language, existing);
-    });
-    locByLang.forEach((_, lang) => {
+    SUPPORTED_LANGUAGES.forEach(lang => {
       entries.push(`  <sitemap>
     <loc>${BASE_URL}/sitemaps/${lang}/locations.xml</loc>
     <lastmod>${today}</lastmod>
@@ -257,18 +144,42 @@ ${articleUrls}
     return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Del Sol Prime Homes Sitemap Index -->
-  <!-- Total: ${(articles?.length || 0) + (qaPages?.length || 0) + (comparisonPages?.length || 0) + (locationPages?.length || 0)} published pages -->
+  <!-- Total: ${totalUrls} published pages -->
 ${entries.join('\n')}
 </sitemapindex>`;
-  }, [articles, qaPages, comparisonPages, locationPages, articlesByLang]);
+  }, [totalUrls]);
 
   const handleDownloadAll = async () => {
     setGenerating(true);
+    setProgress({ current: 0, total: totalUrls, phase: 'Fetching blog articles...' });
+
     try {
-      // Create a zip-like download of all sitemaps
-      const masterIndex = generateMasterIndex();
-      
+      // Fetch ALL articles with pagination (no 1000 row limit)
+      const allArticles = await fetchAllArticles((fetched) => {
+        setProgress(prev => ({ ...prev, current: fetched, phase: `Fetching blog articles... (${fetched})` }));
+      });
+
+      // Build cluster map for hreflang
+      const clusterMap = new Map<string, ArticleData[]>();
+      allArticles.forEach(article => {
+        if (article.cluster_id) {
+          const existing = clusterMap.get(article.cluster_id) || [];
+          existing.push(article);
+          clusterMap.set(article.cluster_id, existing);
+        }
+      });
+
+      // Group by language
+      const articlesByLang = new Map<string, ArticleData[]>();
+      allArticles.forEach(article => {
+        const existing = articlesByLang.get(article.language) || [];
+        existing.push(article);
+        articlesByLang.set(article.language, existing);
+      });
+
       // Download master index
+      setProgress(prev => ({ ...prev, phase: 'Generating sitemap index...' }));
+      const masterIndex = generateMasterIndex();
       const blob = new Blob([masterIndex], { type: 'application/xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -280,10 +191,12 @@ ${entries.join('\n')}
       URL.revokeObjectURL(url);
 
       // Download each language's blog sitemap
+      let downloadCount = 0;
       for (const lang of SUPPORTED_LANGUAGES) {
         const langArticles = articlesByLang.get(lang);
         if (langArticles && langArticles.length > 0) {
-          const sitemap = generateBlogSitemap(langArticles, lang);
+          setProgress(prev => ({ ...prev, phase: `Generating ${lang.toUpperCase()} sitemap... (${langArticles.length} articles)` }));
+          const sitemap = generateBlogSitemap(langArticles, lang, clusterMap);
           const blob = new Blob([sitemap], { type: 'application/xml' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -293,15 +206,17 @@ ${entries.join('\n')}
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          await new Promise(r => setTimeout(r, 100)); // Small delay between downloads
+          downloadCount++;
+          await new Promise(r => setTimeout(r, 100));
         }
       }
 
       toast({
         title: "Sitemaps Generated",
-        description: `Downloaded sitemap index and ${articlesByLang.size} language sitemaps`,
+        description: `Downloaded sitemap index and ${downloadCount} language sitemaps (${allArticles.length} total articles)`,
       });
     } catch (error) {
+      console.error('Sitemap generation error:', error);
       toast({
         title: "Error",
         description: "Failed to generate sitemaps",
@@ -309,6 +224,7 @@ ${entries.join('\n')}
       });
     } finally {
       setGenerating(false);
+      setProgress({ current: 0, total: 0, phase: '' });
     }
   };
 
@@ -320,8 +236,6 @@ ${entries.join('\n')}
     toast({ title: "Copied to clipboard" });
   };
 
-  const totalUrls = (articles?.length || 0) + (qaPages?.length || 0) + (comparisonPages?.length || 0) + (locationPages?.length || 0);
-
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <h1 className="text-3xl font-bold mb-2">Sitemap Generator</h1>
@@ -329,33 +243,33 @@ ${entries.join('\n')}
         Generate comprehensive XML sitemaps for all published content
       </p>
       
-      {isLoading ? (
+      {countsLoading ? (
         <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
           <RefreshCw className="h-4 w-4 animate-spin" />
-          <span>Loading content...</span>
+          <span>Loading content counts...</span>
         </div>
       ) : (
         <>
-          {/* Stats */}
+          {/* Stats - Using accurate COUNT queries */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="p-4 bg-muted rounded-lg text-center">
-              <div className="text-2xl font-bold">{articles?.length || 0}</div>
+              <div className="text-2xl font-bold">{counts?.articles?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Blog Articles</div>
             </div>
             <div className="p-4 bg-muted rounded-lg text-center">
-              <div className="text-2xl font-bold">{qaPages?.length || 0}</div>
+              <div className="text-2xl font-bold">{counts?.qa?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Q&A Pages</div>
             </div>
             <div className="p-4 bg-muted rounded-lg text-center">
-              <div className="text-2xl font-bold">{comparisonPages?.length || 0}</div>
+              <div className="text-2xl font-bold">{counts?.comparisons?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Comparisons</div>
             </div>
             <div className="p-4 bg-muted rounded-lg text-center">
-              <div className="text-2xl font-bold">{locationPages?.length || 0}</div>
+              <div className="text-2xl font-bold">{counts?.locations?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Locations</div>
             </div>
             <div className="p-4 bg-primary/10 rounded-lg text-center">
-              <div className="text-2xl font-bold text-primary">{totalUrls}</div>
+              <div className="text-2xl font-bold text-primary">{totalUrls.toLocaleString()}</div>
               <div className="text-sm text-muted-foreground">Total URLs</div>
             </div>
           </div>
@@ -373,21 +287,19 @@ ${entries.join('\n')}
             </p>
           </div>
 
-          {/* Language breakdown */}
-          <div className="mb-6">
-            <h3 className="font-medium mb-2">Content by Language</h3>
-            <div className="grid grid-cols-5 gap-2">
-              {SUPPORTED_LANGUAGES.map(lang => {
-                const count = articlesByLang.get(lang)?.length || 0;
-                return (
-                  <div key={lang} className={`p-2 rounded text-center text-sm ${count > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
-                    <span className="font-medium uppercase">{lang}</span>
-                    <span className="ml-1 text-muted-foreground">({count})</span>
-                  </div>
-                );
-              })}
+          {/* Progress indicator */}
+          {generating && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">{progress.phase}</span>
+              </div>
+              <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" />
+              <p className="text-xs text-blue-600 mt-1">
+                {progress.current.toLocaleString()} / {progress.total.toLocaleString()} items
+              </p>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3">
@@ -399,7 +311,7 @@ ${entries.join('\n')}
               {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
               {copied ? 'Copied!' : 'Copy Index XML'}
             </Button>
-            <Button variant="ghost" onClick={() => refetchArticles()}>
+            <Button variant="ghost" onClick={() => refetchCounts()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
