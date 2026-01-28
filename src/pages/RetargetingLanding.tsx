@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   RetargetingHero,
-  RetargetingIntro,
-  RetargetingVisualContext,
+  RetargetingAutoplayVideo,
   RetargetingTestimonials,
-  RetargetingPositioning,
+  RetargetingEmmaSection,
   RetargetingProjects,
   RetargetingForm,
   RetargetingFooter,
@@ -14,13 +15,17 @@ import { RetargetingMeta } from "@/components/retargeting/RetargetingMeta";
 import { RetargetingHreflang } from "@/components/retargeting/RetargetingHreflang";
 import { RetargetingLanguageSelector } from "@/components/retargeting/RetargetingLanguageSelector";
 import { getLanguageFromPath } from "@/lib/retargetingRoutes";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
+import EmmaChat from "@/components/landing/EmmaChat";
 
 const RetargetingLanding = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
   const location = useLocation();
   
   // Get language from URL path (works for all 11 language URLs)
   const language = getLanguageFromPath(location.pathname);
+  const t = getRetargetingTranslations(language);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,65 +36,103 @@ const RetargetingLanding = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Listen for Emma chat open events
+  useEffect(() => {
+    const handleOpenEmma = () => setIsEmmaOpen(true);
+    window.addEventListener("openEmmaChat", handleOpenEmma);
+    window.addEventListener("openChatbot", handleOpenEmma);
+    return () => {
+      window.removeEventListener("openEmmaChat", handleOpenEmma);
+      window.removeEventListener("openChatbot", handleOpenEmma);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* SEO Meta Tags */}
       <RetargetingMeta language={language} />
       <RetargetingHreflang currentLang={language} />
 
-      {/* Glassmorphism Header - Fixed */}
+      {/* Fixed White Header - Matching Landing Page */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
             ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100/50"
-            : "bg-transparent"
+            : "bg-white/90 backdrop-blur-md"
         }`}
       >
-        <div className="max-w-6xl mx-auto py-4 md:py-5 px-6">
+        <div className="max-w-6xl mx-auto py-4 px-6">
           <div className="flex items-center justify-between">
-            {/* Spacer for centering */}
-            <div className="w-24 hidden md:block" />
+            {/* Property Category Links - Desktop Only */}
+            <div className="hidden lg:flex items-center gap-6 text-sm">
+              <Link
+                to={`/${language}/property-finder?type=apartment`}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              >
+                {t.headerApartments}
+              </Link>
+              <Link
+                to={`/${language}/property-finder?type=penthouse`}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              >
+                {t.headerPenthouses}
+              </Link>
+              <Link
+                to={`/${language}/property-finder?type=townhouse`}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              >
+                {t.headerTownhouses}
+              </Link>
+              <Link
+                to={`/${language}/property-finder?type=villa`}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              >
+                {t.headerVillas}
+              </Link>
+            </div>
             
             {/* Centered Logo */}
-            <Link to={`/${language}`} className="inline-block">
-              <span
-                className={`text-lg md:text-xl tracking-widest font-light transition-colors duration-300 ${
-                  scrolled ? "text-landing-navy" : "text-white"
-                }`}
-                style={
-                  !scrolled
-                    ? { textShadow: "0 2px 10px rgba(0,0,0,0.3)" }
-                    : undefined
-                }
-              >
+            <Link to={`/${language}`} className="inline-block lg:absolute lg:left-1/2 lg:-translate-x-1/2">
+              <span className="text-landing-navy text-lg md:text-xl tracking-widest font-light">
                 DEL
                 <span className="text-landing-gold">SOL</span>
                 PRIMEHOMES
               </span>
             </Link>
 
-            {/* Language Selector */}
-            <div className="hidden md:block">
-              <RetargetingLanguageSelector currentLang={language} scrolled={scrolled} />
-            </div>
-            
-            {/* Mobile Language Selector */}
-            <div className="md:hidden">
-              <RetargetingLanguageSelector currentLang={language} scrolled={scrolled} />
+            {/* Right Side - Emma CTA + Language Selector */}
+            <div className="flex items-center gap-4">
+              {/* Emma CTA - Desktop */}
+              <Button
+                onClick={() => setIsEmmaOpen(true)}
+                className="hidden md:flex bg-landing-navy hover:bg-landing-navy/90 text-white px-4 py-2 text-sm font-medium rounded-lg transition-all"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                {t.headerCta}
+              </Button>
+
+              {/* Language Selector */}
+              <RetargetingLanguageSelector currentLang={language} scrolled={true} />
             </div>
           </div>
         </div>
       </header>
 
-      {/* Page Sections */}
+      {/* Page Sections - Matching Landing Page Order */}
       <RetargetingHero language={language} />
-      <RetargetingIntro language={language} />
-      <RetargetingVisualContext language={language} />
+      <RetargetingAutoplayVideo language={language} />
       <RetargetingTestimonials language={language} />
-      <RetargetingPositioning language={language} />
+      <RetargetingEmmaSection language={language} />
       <RetargetingProjects language={language} />
       <RetargetingForm language={language} />
       <RetargetingFooter language={language} />
+
+      {/* Emma Chat Modal */}
+      <EmmaChat 
+        isOpen={isEmmaOpen} 
+        onClose={() => setIsEmmaOpen(false)}
+        language={language}
+      />
     </div>
   );
 };

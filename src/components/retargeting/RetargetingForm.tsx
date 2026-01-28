@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Check, AlertCircle } from "lucide-react";
 import { useRetargetingForm } from "@/hooks/useRetargetingForm";
 import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface RetargetingFormProps {
   language?: string;
@@ -13,9 +22,10 @@ interface RetargetingFormProps {
 
 export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
   const [formData, setFormData] = useState({
-    firstName: "",
-    email: "",
-    question: "",
+    fullName: "",
+    phone: "",
+    interest: "",
+    consent: false,
   });
 
   const t = getRetargetingTranslations(language);
@@ -23,8 +33,14 @@ export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email) return;
-    await submitForm(formData);
+    if (!formData.fullName || !formData.phone || !formData.consent) return;
+    
+    await submitForm({
+      firstName: formData.fullName,
+      email: "",
+      question: `Interest: ${formData.interest || "Not specified"}`,
+      phone: formData.phone,
+    });
   };
 
   return (
@@ -42,7 +58,7 @@ export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
         >
           {/* Header */}
           <div className="text-center mb-10">
-            <h2 className="text-xl md:text-2xl font-medium text-landing-navy mb-3">
+            <h2 className="text-xl md:text-2xl font-serif text-landing-navy mb-3">
               {t.formTitle}
             </h2>
             <p className="text-landing-navy/60 text-sm md:text-base">
@@ -76,65 +92,89 @@ export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
           ) : (
             <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-white/50">
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* First Name - Optional */}
+                {/* Full Name */}
                 <div>
                   <label
-                    htmlFor="firstName"
+                    htmlFor="fullName"
                     className="block text-sm font-medium text-landing-navy mb-2"
                   >
-                    {t.formFirstName}
+                    {t.formFullName} <span className="text-landing-gold">*</span>
                   </label>
                   <Input
-                    id="firstName"
+                    id="fullName"
                     type="text"
-                    placeholder={t.formFirstNamePlaceholder}
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, firstName: e.target.value })
-                    }
-                    className="bg-white/50 border-gray-200 rounded-xl focus:border-landing-gold focus:ring-landing-gold/20 transition-all"
-                  />
-                </div>
-
-                {/* Email - Required */}
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-landing-navy mb-2"
-                  >
-                    {t.formEmail} <span className="text-landing-gold">*</span>
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
                     required
-                    placeholder={t.formEmailPlaceholder}
-                    value={formData.email}
+                    placeholder={t.formFullNamePlaceholder}
+                    value={formData.fullName}
                     onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
+                      setFormData({ ...formData, fullName: e.target.value })
                     }
                     className="bg-white/50 border-gray-200 rounded-xl focus:border-landing-gold focus:ring-landing-gold/20 transition-all"
                   />
                 </div>
 
-                {/* Question - Optional */}
+                {/* Phone / WhatsApp */}
                 <div>
                   <label
-                    htmlFor="question"
+                    htmlFor="phone"
                     className="block text-sm font-medium text-landing-navy mb-2"
                   >
-                    {t.formQuestion}
+                    {t.formPhone} <span className="text-landing-gold">*</span>
                   </label>
-                  <Textarea
-                    id="question"
-                    placeholder={t.formQuestionPlaceholder}
-                    rows={4}
-                    value={formData.question}
-                    onChange={(e) =>
-                      setFormData({ ...formData, question: e.target.value })
+                  <PhoneInput
+                    international
+                    defaultCountry="GB"
+                    value={formData.phone}
+                    onChange={(value) =>
+                      setFormData({ ...formData, phone: value || "" })
                     }
-                    className="bg-white/50 border-gray-200 rounded-xl focus:border-landing-gold focus:ring-landing-gold/20 resize-none transition-all"
+                    className="bg-white/50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-landing-gold focus-within:ring-1 focus-within:ring-landing-gold/20 transition-all [&_.PhoneInputInput]:border-0 [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:text-landing-navy"
                   />
+                </div>
+
+                {/* Interest Dropdown */}
+                <div>
+                  <label
+                    htmlFor="interest"
+                    className="block text-sm font-medium text-landing-navy mb-2"
+                  >
+                    {t.formInterest}
+                  </label>
+                  <Select
+                    value={formData.interest}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, interest: value })
+                    }
+                  >
+                    <SelectTrigger className="bg-white/50 border-gray-200 rounded-xl focus:border-landing-gold focus:ring-landing-gold/20">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {t.formInterestOptions.map((option, index) => (
+                        <SelectItem key={index} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Consent Checkbox */}
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consent"
+                    checked={formData.consent}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, consent: checked as boolean })
+                    }
+                    className="mt-0.5 data-[state=checked]:bg-landing-gold data-[state=checked]:border-landing-gold"
+                  />
+                  <label
+                    htmlFor="consent"
+                    className="text-sm text-landing-navy/70 cursor-pointer leading-relaxed"
+                  >
+                    {t.formConsent} <span className="text-landing-gold">*</span>
+                  </label>
                 </div>
 
                 {/* Error Message */}
@@ -149,8 +189,8 @@ export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
                 <div className="text-center pt-2">
                   <Button
                     type="submit"
-                    disabled={isSubmitting || !formData.email}
-                    className="bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-5 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_8px_30px_rgba(196,160,83,0.25)] hover:shadow-[0_12px_40px_rgba(196,160,83,0.35)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    disabled={isSubmitting || !formData.fullName || !formData.phone || !formData.consent}
+                    className="w-full bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-5 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_8px_30px_rgba(196,160,83,0.25)] hover:shadow-[0_12px_40px_rgba(196,160,83,0.35)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {isSubmitting ? t.formSubmitting : t.formButton}
                   </Button>

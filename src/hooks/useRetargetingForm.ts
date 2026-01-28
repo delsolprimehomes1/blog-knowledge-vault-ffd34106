@@ -5,6 +5,7 @@ interface FormData {
   firstName: string;
   email: string;
   question: string;
+  phone?: string;
 }
 
 interface UseRetargetingFormReturn {
@@ -44,8 +45,9 @@ export const useRetargetingForm = (language: string = "en"): UseRetargetingFormR
         .from("retargeting_leads")
         .insert({
           first_name: data.firstName || null,
-          email: data.email,
+          email: data.email || null,
           question: data.question || null,
+          phone: data.phone || null,
           language: language,
           source_url: typeof window !== "undefined" ? window.location.href : null,
           ...utmParams,

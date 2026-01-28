@@ -11,3 +11,5 @@ export { RetargetingFooter } from "./RetargetingFooter";
 export { RetargetingMeta } from "./RetargetingMeta";
 export { RetargetingHreflang } from "./RetargetingHreflang";
 export { RetargetingLanguageSelector } from "./RetargetingLanguageSelector";
+export { RetargetingAutoplayVideo } from "./RetargetingAutoplayVideo";
+export { RetargetingEmmaSection } from "./RetargetingEmmaSection";

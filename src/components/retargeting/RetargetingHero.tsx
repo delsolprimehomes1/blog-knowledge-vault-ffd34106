@@ -88,6 +88,7 @@ export const RetargetingHero = ({ language = "en" }: RetargetingHeroProps) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+          className="flex flex-col items-center gap-4"
         >
           <Button
             variant="default"
@@ -98,6 +99,23 @@ export const RetargetingHero = ({ language = "en" }: RetargetingHeroProps) => {
             <Play className="w-4 h-4 mr-2" />
             {t.heroButton}
           </Button>
+          
+          {/* Secondary CTA */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("openEmmaChat"))}
+            className="text-white/80 hover:text-white text-sm underline underline-offset-4 transition-colors cursor-pointer"
+            style={{ textShadow: "0 2px 10px rgb(0 0 0 / 50%)" }}
+          >
+            {t.heroSecondaryCta}
+          </button>
+          
+          {/* Microcopy */}
+          <p 
+            className="text-white/60 text-xs mt-2"
+            style={{ textShadow: "0 2px 8px rgb(0 0 0 / 40%)" }}
+          >
+            {t.heroMicrocopy}
+          </p>
         </motion.div>
 
         {/* Video Modal */}
