@@ -1,103 +1,128 @@
 
-# Fix: Update Sitemap Page to Show Accurate Published Counts
+# Fix: Update Admin Dashboard to Show Accurate Article Counts
 
 ## Problem
-The Sitemap Generator page (`/admin/sitemap`) shows incorrect counts because Supabase's default query limit is 1000 rows. With 3,271 blog articles and 9,600 Q&A pages, the current implementation is only fetching a fraction of the actual data.
+The Admin Dashboard currently shows "Published Articles: 1000" because the query fetches all articles using `.select("*")`, which is capped at 1000 rows by Supabase's default limit. The actual count is 3,271+ published articles.
 
 ## Solution
-Update the Sitemap page to either:
-1. Use COUNT queries for accurate stats display (faster, more efficient)
-2. Implement paginated fetching for the full dataset (needed for XML generation)
+Replace the current approach of fetching all articles and counting client-side with efficient COUNT queries using Supabase's `{ count: "exact", head: true }` feature.
 
-## Implementation Details
+---
 
-### Option A: Hybrid Approach (Recommended)
-Use COUNT queries for the stats cards, and paginated fetching only when downloading sitemaps.
+## Implementation
 
-### Changes to `src/pages/Sitemap.tsx`
+### Changes to `src/pages/admin/Dashboard.tsx`
 
-**1. Add a separate COUNT query for accurate stats:**
+**1. Add new COUNT query for accurate stats:**
+
+Replace the current query that fetches all articles:
 ```typescript
-const { data: counts } = useQuery({
-  queryKey: ["sitemap-counts"],
+// BEFORE (capped at 1000)
+const { data: articles } = useQuery({
+  queryKey: ["articles-stats"],
   queryFn: async () => {
-    // Use Supabase's count feature for accurate totals
-    const [blogCount, qaCount, compCount, locCount] = await Promise.all([
+    const { data } = await supabase.from("blog_articles").select("*");
+    return data;
+  },
+});
+const stats = {
+  published: articles?.filter(a => a.status === 'published').length || 0,
+  // ...
+};
+```
+
+With efficient COUNT queries:
+```typescript
+// AFTER (accurate counts)
+const { data: articleStats, isLoading } = useQuery({
+  queryKey: ["dashboard-article-counts"],
+  queryFn: async () => {
+    const [draftCount, publishedCount, archivedCount, tofuCount, mofuCount, bofuCount] = await Promise.all([
+      supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("status", "draft"),
       supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("status", "published"),
-      supabase.from("qa_pages").select("id", { count: "exact", head: true }).eq("status", "published"),
-      supabase.from("comparison_pages").select("id", { count: "exact", head: true }).eq("status", "published"),
-      supabase.from("location_pages").select("id", { count: "exact", head: true }).eq("status", "published"),
+      supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("status", "archived"),
+      supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("funnel_stage", "TOFU"),
+      supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("funnel_stage", "MOFU"),
+      supabase.from("blog_articles").select("id", { count: "exact", head: true }).eq("funnel_stage", "BOFU"),
     ]);
     return {
-      articles: blogCount.count || 0,
-      qa: qaCount.count || 0,
-      comparisons: compCount.count || 0,
-      locations: locCount.count || 0,
+      draft: draftCount.count || 0,
+      published: publishedCount.count || 0,
+      archived: archivedCount.count || 0,
+      tofu: tofuCount.count || 0,
+      mofu: mofuCount.count || 0,
+      bofu: bofuCount.count || 0,
+      total: (draftCount.count || 0) + (publishedCount.count || 0) + (archivedCount.count || 0),
     };
   },
 });
 ```
 
-**2. Update stats display to use count data:**
+**2. Add language distribution query:**
 ```typescript
-// Replace articles?.length with counts?.articles
-<div className="text-2xl font-bold">{counts?.articles || 0}</div>
+const { data: languageStats } = useQuery({
+  queryKey: ["dashboard-language-counts"],
+  queryFn: async () => {
+    const languages = ['en', 'es', 'de', 'nl', 'fr', 'pl', 'sv', 'da', 'hu'];
+    const counts = await Promise.all(
+      languages.map(async (lang) => {
+        const { count } = await supabase
+          .from("blog_articles")
+          .select("id", { count: "exact", head: true })
+          .eq("language", lang);
+        return { lang, count: count || 0 };
+      })
+    );
+    return counts.reduce((acc, { lang, count }) => {
+      acc[lang] = count;
+      return acc;
+    }, {} as Record<string, number>);
+  },
+});
 ```
 
-**3. Implement paginated fetching for XML generation:**
+**3. Update stats display to use new data:**
 ```typescript
-const fetchAllArticles = async () => {
-  const allArticles: ArticleData[] = [];
-  let page = 0;
-  const pageSize = 1000;
-  
-  while (true) {
-    const { data, error } = await supabase
-      .from("blog_articles")
-      .select("slug, date_modified, date_published, language, cluster_id, is_primary")
-      .eq("status", "published")
-      .range(page * pageSize, (page + 1) * pageSize - 1);
-    
-    if (error || !data || data.length === 0) break;
-    allArticles.push(...data);
-    if (data.length < pageSize) break;
-    page++;
-  }
-  
-  return allArticles;
-};
+// Use articleStats instead of calculated stats
+<div className="text-2xl font-bold text-green-600">{articleStats?.published || 0}</div>
 ```
 
-## Expected Results After Fix
+---
 
-| Content Type | Currently Shows | Will Show |
-|--------------|-----------------|-----------|
-| Blog Articles | ~1,000 (capped) | 3,271 |
-| Q&A Pages | ~1,000 (capped) | 9,600 |
-| Comparisons | 47 | 47 |
-| Locations | 198 | 198 |
-| **Total URLs** | ~2,245 | **13,116** |
+## Expected Results
+
+| Stat | Before (Capped) | After (Accurate) |
+|------|-----------------|------------------|
+| Draft Articles | 0 | Actual count |
+| Published Articles | 1,000 | 3,271 |
+| Archived Articles | 0 | Actual count |
+| TOFU/MOFU/BOFU | Capped | Accurate |
+| Language counts | Capped | Accurate |
+
+---
+
+## Technical Benefits
+
+1. **Performance**: COUNT queries with `head: true` don't transfer row data - just the count
+2. **Accuracy**: No more 1000 row limit issues
+3. **Efficiency**: Parallel queries using `Promise.all()` for fast loading
+4. **Consistency**: Matches the approach used in the Sitemap page
+
+---
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Sitemap.tsx` | Add COUNT queries for stats, paginated fetching for XML generation |
+| `src/pages/admin/Dashboard.tsx` | Replace article fetch with COUNT queries; update stats display |
 
-## Additional Considerations
+---
 
-1. **Performance**: COUNT queries are fast and don't transfer data, so stats will load quickly
-2. **Memory**: Paginated fetching prevents memory issues when processing 13,000+ records
-3. **Progress indicator**: For large downloads, consider adding a progress bar
+## Schema Health Consideration
 
-## Verification
+The Schema Health calculation currently validates each article individually. Since we can't efficiently do this with COUNT queries, we have two options:
 
-After deployment:
-1. Navigate to `/admin/sitemap`
-2. Verify stats show:
-   - Blog Articles: 3,271
-   - Q&A Pages: 9,600
-   - Comparisons: 47
-   - Locations: 198
-   - Total URLs: ~13,116
-3. Download sitemap and verify all URLs are included
+1. **Keep approximate**: Sample first 1000 articles for schema health (acceptable for dashboard overview)
+2. **Separate detailed view**: Link to a dedicated schema audit page for full analysis
+
+I recommend Option 1 for the dashboard with a note that it's based on a sample, and keep the detailed validation in the existing schema audit tools.
