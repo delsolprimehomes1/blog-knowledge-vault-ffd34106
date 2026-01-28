@@ -65,12 +65,16 @@ const RetargetingLanding = () => {
           <div className="flex items-center justify-between">
             {/* Property Category Links - Desktop Only */}
             <div className="hidden lg:flex items-center gap-6 text-sm">
-              <Link
-                to={`/${language}/property-finder?type=apartment`}
-                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              <a
+                href="#properties"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors cursor-pointer"
               >
                 {t.headerApartments}
-              </Link>
+              </a>
               <Link
                 to={`/${language}/property-finder?type=penthouse`}
                 className="text-landing-navy/70 hover:text-landing-navy transition-colors"
@@ -83,12 +87,16 @@ const RetargetingLanding = () => {
               >
                 {t.headerTownhouses}
               </Link>
-              <Link
-                to={`/${language}/property-finder?type=villa`}
-                className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+              <a
+                href="#properties"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-landing-navy/70 hover:text-landing-navy transition-colors cursor-pointer"
               >
                 {t.headerVillas}
-              </Link>
+              </a>
             </div>
             
             {/* Centered Logo */}

@@ -107,6 +107,10 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Privacy Policy",
     footerTerms: "Terms of Service",
+    
+    // PROPERTY TYPE LABELS
+    propertyTypeApartment: "Apartment",
+    propertyTypeVilla: "Villa",
   },
   
   nl: {
@@ -194,6 +198,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Privacybeleid",
     footerTerms: "Servicevoorwaarden",
+    propertyTypeApartment: "Appartement",
+    propertyTypeVilla: "Villa",
   },
   
   de: {
@@ -281,6 +287,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Datenschutzrichtlinie",
     footerTerms: "Nutzungsbedingungen",
+    propertyTypeApartment: "Apartment",
+    propertyTypeVilla: "Villa",
   },
   
   fr: {
@@ -368,6 +376,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Politique de confidentialité",
     footerTerms: "Conditions d'utilisation",
+    propertyTypeApartment: "Appartement",
+    propertyTypeVilla: "Villa",
   },
   
   es: {
@@ -455,6 +465,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Política de privacidad",
     footerTerms: "Términos de servicio",
+    propertyTypeApartment: "Apartamento",
+    propertyTypeVilla: "Villa",
   },
   
   pl: {
@@ -542,6 +554,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Polityka prywatności",
     footerTerms: "Warunki korzystania",
+    propertyTypeApartment: "Apartament",
+    propertyTypeVilla: "Willa",
   },
   
   sv: {
@@ -629,6 +643,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Integritetspolicy",
     footerTerms: "Användarvillkor",
+    propertyTypeApartment: "Lägenhet",
+    propertyTypeVilla: "Villa",
   },
   
   da: {
@@ -716,6 +732,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Privatlivspolitik",
     footerTerms: "Servicevilkår",
+    propertyTypeApartment: "Lejlighed",
+    propertyTypeVilla: "Villa",
   },
   
   hu: {
@@ -803,6 +821,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Adatvédelmi irányelvek",
     footerTerms: "Szolgáltatási feltételek",
+    propertyTypeApartment: "Apartman",
+    propertyTypeVilla: "Villa",
   },
   
   fi: {
@@ -890,6 +910,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Tietosuojakäytäntö",
     footerTerms: "Käyttöehdot",
+    propertyTypeApartment: "Huoneisto",
+    propertyTypeVilla: "Huvila",
   },
   
   no: {
@@ -977,6 +999,8 @@ export const retargetingTranslations = {
     footerCopyright: "© 2026 Del Sol Prime Homes",
     footerPrivacy: "Personvernerklæring",
     footerTerms: "Tjenestevilkår",
+    propertyTypeApartment: "Leilighet",
+    propertyTypeVilla: "Villa",
   },
 };
 

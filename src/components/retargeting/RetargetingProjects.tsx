@@ -17,7 +17,16 @@ interface Property {
   price_eur: number | null;
   images: unknown;
   descriptions: unknown;
+  category: string | null;
 }
+
+// Helper to get localized property type label
+const getPropertyTypeLabel = (category: string | null, t: ReturnType<typeof getRetargetingTranslations>): string => {
+  if (!category) return "";
+  if (category === "apartment") return t.propertyTypeApartment;
+  if (category === "villa") return t.propertyTypeVilla;
+  return category;
+};
 
 interface RetargetingProjectsProps {
   language?: string;
@@ -75,7 +84,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
     const fetchProperties = async () => {
       const { data, error } = await supabase
         .from("properties")
-        .select("id, internal_name, location, beds_min, beds_max, baths, size_sqm, price_eur, images, descriptions")
+        .select("id, internal_name, location, beds_min, beds_max, baths, size_sqm, price_eur, images, descriptions, category")
         .eq("is_active", true)
         .order("display_order", { ascending: true });
 
@@ -91,7 +100,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
   }, []);
 
   return (
-    <section className="relative bg-gradient-to-br from-white via-gray-50/50 to-white py-20 md:py-24 lg:py-28 overflow-hidden">
+    <section id="properties" className="relative bg-gradient-to-br from-white via-gray-50/50 to-white py-20 md:py-24 lg:py-28 overflow-hidden">
       {/* Decorative blur circles */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-landing-gold/5 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-landing-navy/5 rounded-full blur-3xl" />
@@ -150,6 +159,19 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
                       {formatPrice(property.price_eur, t.projectsPriceOnRequest)}
                     </span>
                   </div>
+                  
+                  {/* Property Type Badge */}
+                  {property.category && (
+                    <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-lg shadow-lg backdrop-blur-md ${
+                      property.category === 'apartment' 
+                        ? 'bg-blue-500/90 text-white' 
+                        : 'bg-emerald-500/90 text-white'
+                    }`}>
+                      <span className="text-xs font-medium uppercase tracking-wide">
+                        {getPropertyTypeLabel(property.category, t)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
