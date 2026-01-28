@@ -1,123 +1,142 @@
 
-# Replace Placeholder Visual with AI-Generated Image in RetargetingVisualContext
+# Display All Properties with Localized Content on Retargeting Pages
 
 ## Current State
-The `RetargetingVisualContext` component (lines 32-77) currently displays a **placeholder abstract visual** made of CSS elements:
-- 3 fake "document cards" with gray bars simulating text
-- A search icon
-- Decorative blur circles
 
-This looks generic and doesn't convey the premium "Research & Clarity" message effectively.
+The `RetargetingProjects` component currently:
+1. **Limits to 4 properties** via `.limit(4)` in the query
+2. **Displays `internal_name`** instead of localized descriptions
+3. **Shows a 4-column grid** that would be cramped with more properties
 
-## Solution: Pre-Generate AI Image Using Nano Banana Pro
+The `properties` table already has **multilingual content** stored in a `descriptions` JSONB column with keys for all 10 languages: `en`, `nl`, `de`, `fr`, `es`, `pl`, `sv`, `da`, `hu`, `fi`, `no`.
 
-Instead of generating images at runtime (which would add latency and cost per visitor), I'll:
-
-1. **Create an edge function** to generate a high-quality image using Nano Banana Pro (`google/gemini-3-pro-image-preview` via Lovable AI gateway)
-2. **Upload to Supabase Storage** for permanent hosting
-3. **Update the component** to display the AI-generated image with proper alt text
+**Total active properties**: 12
 
 ---
 
-## Implementation Steps
+## Solution
 
-### Step 1: Create Edge Function to Generate Visual Context Image
+### 1. Remove the 4-property limit and fetch all active properties
 
-**New file: `supabase/functions/generate-retargeting-visual/index.ts`**
+Modify the Supabase query to remove `.limit(4)` and select the `descriptions` JSONB field along with other fields.
 
-This function will:
-- Use `LOVABLE_API_KEY` to call Nano Banana Pro via the Lovable AI gateway
-- Generate a professional, educational-themed image that matches the "Research & Clarity" concept
-- Upload the result to `article-images` storage bucket
-- Return the permanent Supabase Storage URL
+### 2. Display localized descriptions
 
-**Prompt concept** (aligned with the retargeting page's "educational intent" from memory):
-```
-Professional, calm educational scene: A person thoughtfully reviewing 
-real estate research documents in a bright, modern home office. 
-Natural light streams through Mediterranean-style windows. 
-Documents, laptop, and a coffee cup on a clean wooden desk. 
-Costa del Sol landscape visible through window. 
-No logos, no text. Peaceful, contemplative mood. 
-4:3 aspect ratio, warm natural lighting, lifestyle photography.
-```
+Extract the property description based on the current page language from the `descriptions` object. For example:
+- On `/en/welcome-back`: Show `property.descriptions.en`
+- On `/nl/welkom-terug`: Show `property.descriptions.nl`
+- On `/fi/tervetuloa-takaisin`: Show `property.descriptions.fi`
 
-### Step 2: Add Image URL to Retargeting Translations
+### 3. Improve grid layout for more properties
 
-**File: `src/lib/retargetingTranslations.ts`**
+Change from a fixed 4-column grid to a responsive layout that accommodates 12+ properties elegantly:
+- Mobile: 1 column
+- Tablet: 2 columns  
+- Desktop: 3 columns
 
-Add a new field for each language:
+This provides more space for each card while keeping all properties visible.
+
+### 4. Add localized description to property cards
+
+Display a 2-line truncated description below the property stats, pulled from the correct language key in the `descriptions` JSONB.
+
+---
+
+## Implementation Details
+
+### File: `src/components/retargeting/RetargetingProjects.tsx`
+
+**Changes:**
+
+1. **Update Property interface** to include the typed descriptions object:
 ```typescript
-visualImageUrl: "https://kazggnufaoicopvmwhdl.supabase.co/storage/v1/object/public/article-images/retargeting-visual-en.png",
-visualImageAlt: "Person reviewing Costa del Sol property research documents in a bright home office"
+interface Property {
+  id: string;
+  internal_name: string;
+  location: string;
+  beds_min: number | null;
+  beds_max: number | null;
+  baths: number | null;
+  size_sqm: number | null;
+  price_eur: number | null;
+  images: unknown;
+  descriptions: Record<string, string> | null;
+}
 ```
 
-### Step 3: Update RetargetingVisualContext Component
+2. **Remove `.limit(4)`** from the Supabase query
 
-**File: `src/components/retargeting/RetargetingVisualContext.tsx`**
+3. **Add helper function to get localized description**:
+```typescript
+const getLocalizedDescription = (
+  descriptions: Record<string, string> | null, 
+  language: string
+): string => {
+  if (!descriptions) return "";
+  return descriptions[language] || descriptions["en"] || "";
+};
+```
 
-Replace the placeholder CSS visual (lines 32-77) with:
+4. **Update grid classes** for better layout:
+```typescript
+// From: "grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+// To:   "grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
+```
+
+5. **Add description display** in each property card:
 ```tsx
-<div className="aspect-[4/3] rounded-xl overflow-hidden">
-  <img 
-    src={t.visualImageUrl}
-    alt={t.visualImageAlt}
-    className="w-full h-full object-cover"
-    loading="lazy"
-  />
-</div>
+{/* Localized Description */}
+<p className="text-sm text-landing-navy/60 mb-4 line-clamp-2">
+  {getLocalizedDescription(property.descriptions as Record<string, string> | null, language)}
+</p>
 ```
 
-Keep the glassmorphism container and floating badge intact.
-
----
-
-## Technical Details
-
-### Edge Function Architecture
-
-```text
-POST /generate-retargeting-visual
-  ↓
-  Call Lovable AI Gateway (google/gemini-3-pro-image-preview)
-  ↓
-  Receive base64 image
-  ↓
-  Upload to Supabase Storage (article-images bucket)
-  ↓
-  Return permanent URL
+6. **Update loading skeleton** to match new 3-column layout:
+```typescript
+// Show 6 skeleton items instead of 4
+{[1, 2, 3, 4, 5, 6].map((i) => (...))}
 ```
 
-### Image Specifications
-- **Aspect ratio**: 4:3 (matches current container)
-- **Quality**: High-end lifestyle/editorial photography
-- **Tone**: Calm, educational, professional (per retargeting design memory)
-- **Model**: `google/gemini-3-pro-image-preview` (Nano Banana Pro via Lovable AI)
+---
+
+## Technical Notes
+
+### Language Mapping
+The `descriptions` JSONB in the database uses these exact keys:
+- `en` - English
+- `nl` - Dutch
+- `de` - German
+- `fr` - French
+- `es` - Spanish (used for context)
+- `pl` - Polish
+- `sv` - Swedish
+- `da` - Danish
+- `hu` - Hungarian
+- `fi` - Finnish
+- `no` - Norwegian
+
+These match the language codes passed to `RetargetingProjects` via the `language` prop.
+
+### Fallback Strategy
+If a description doesn't exist for the current language, fall back to English (`en`), then to an empty string.
 
 ---
 
-## Files to Create/Modify
+## Files to Modify
 
-| File | Action |
-|------|--------|
-| `supabase/functions/generate-retargeting-visual/index.ts` | **Create** - Edge function for AI image generation |
-| `src/lib/retargetingTranslations.ts` | **Modify** - Add `visualImageUrl` and `visualImageAlt` fields for all 10 languages |
-| `src/components/retargeting/RetargetingVisualContext.tsx` | **Modify** - Replace CSS placeholder with `<img>` element |
-| `supabase/config.toml` | **Modify** - Add function configuration |
-
----
-
-## Execution Plan
-
-1. Create the edge function with proper CORS and storage upload logic
-2. Deploy the function
-3. Run the function once to generate and store the image
-4. Update translations with the generated image URL and localized alt text
-5. Update the component to use the real image
-6. Test the result on the `/en/welcome-back` page
+| File | Changes |
+|------|---------|
+| `src/components/retargeting/RetargetingProjects.tsx` | Remove limit, add localized descriptions, update grid layout |
 
 ---
 
 ## Expected Result
 
-The "Research & Clarity" section will display a professional AI-generated image showing a calm, educational scene that reinforces the page's intent: "We start with explanation, not listings." The image will be permanently hosted on Supabase Storage, eliminating runtime generation costs.
+After implementation:
+- **All 12 properties** will display on retargeting pages
+- **Finnish page** (`/fi/tervetuloa-takaisin`) will show Finnish descriptions
+- **Dutch page** (`/nl/welkom-terug`) will show Dutch descriptions
+- **All 10 language pages** will show their respective translations
+- Property cards will be larger and more readable in a 3-column layout
+- Each card will include a 2-line localized description
+
