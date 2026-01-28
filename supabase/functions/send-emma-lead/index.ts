@@ -212,6 +212,8 @@ async function registerInCRM(
     intakeComplete: payload.system_data?.intake_complete || false,
     exitPoint: payload.system_data?.exit_point || 'unknown',
     conversationDuration: payload.page_context?.conversation_duration || '',
+    // Full conversation transcript for agent visibility
+    conversationTranscript: payload.conversation_transcript || null,
     
     // Property criteria
     locationPreference: payload.property_criteria?.location_preference || [],
