@@ -2893,6 +2893,7 @@ export type Database = {
           conversation_duration: string | null
           conversation_id: string
           conversation_status: string | null
+          conversation_transcript: Json | null
           country_prefix: string | null
           created_at: string | null
           declined_selection: boolean | null
@@ -2951,6 +2952,7 @@ export type Database = {
           conversation_duration?: string | null
           conversation_id: string
           conversation_status?: string | null
+          conversation_transcript?: Json | null
           country_prefix?: string | null
           created_at?: string | null
           declined_selection?: boolean | null
@@ -3009,6 +3011,7 @@ export type Database = {
           conversation_duration?: string | null
           conversation_id?: string
           conversation_status?: string | null
+          conversation_transcript?: Json | null
           country_prefix?: string | null
           created_at?: string | null
           declined_selection?: boolean | null
