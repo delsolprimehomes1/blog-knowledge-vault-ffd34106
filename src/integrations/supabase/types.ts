@@ -4103,6 +4103,57 @@ export type Database = {
           },
         ]
       }
+      retargeting_leads: {
+        Row: {
+          created_at: string | null
+          email: string
+          first_name: string | null
+          id: string
+          language: string
+          notes: string | null
+          question: string | null
+          source_url: string | null
+          status: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          first_name?: string | null
+          id?: string
+          language?: string
+          notes?: string | null
+          question?: string | null
+          source_url?: string | null
+          status?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          language?: string
+          notes?: string | null
+          question?: string | null
+          source_url?: string | null
+          status?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: []
+      }
       server_errors: {
         Row: {
           created_at: string | null
