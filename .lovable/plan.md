@@ -1,172 +1,175 @@
 
-# Replicate Landing Page Framework to Retargeting Pages
+# Property Type Labels and Navigation Enhancement
 
-## Current State Analysis
+## Current State
 
-### Landing Page (`/en/landing`) Structure:
-1. **Fixed Header** - White background with property category links, centered logo, language selector, "Speak with Emma" CTA button
-2. **Hero** - Full-screen with background image, dark overlay, headline, subheadline, dual CTAs (Watch Video + Start with Emma)
-3. **AutoplayVideo** - Video section with headline, embedded video player, bullet points, golden CTA button
-4. **TestimonialsSection** - 3 testimonial cards with flags, Swiper carousel on mobile, grid on desktop
-5. **EmmaSection** - Premium card with icon, headline, explanation, navy CTA button
-6. **PropertiesShowcase** - Categorized into Apartments and Villas, 3-column grid, image carousels
-7. **ClassicOptin** - Form with Full Name, Phone, Interest dropdown, checkbox consent
-8. **Footer** - Minimal with logo, copyright, links, language selector
-9. **EmmaChat** - Floating chat modal
-10. **LeadCaptureForm** - Property inquiry modal
+The retargeting page header has navigation links for "Apartments", "Penthouses", "Townhouses", and "Villas" that currently redirect to the external Property Finder page (`/{lang}/property-finder?type=X`).
 
-### Retargeting Page (`/en/welcome-back`) Structure:
-1. **Transparent Header** - Scroll-aware, simpler layout, no property links
-2. **RetargetingHero** - Similar structure but different styling
-3. **RetargetingIntro** - Simple text section
-4. **RetargetingVisualContext** - Image + quote layout
-5. **RetargetingTestimonials** - 3-column cards
-6. **RetargetingPositioning** - Dark navy background quote
-7. **RetargetingProjects** - 3-column property grid (all properties)
-8. **RetargetingForm** - Simpler form (First Name, Email, Question)
-9. **RetargetingFooter** - Dark navy footer
+The properties displayed on the retargeting page:
+- Come from the Supabase `properties` table
+- Have a `category` column with values: `apartment` or `villa`
+- Do NOT display any property type badge/label on the cards
 
----
-
-## Key Differences to Align
-
-| Feature | Landing Page | Retargeting Page (Current) |
-|---------|--------------|----------------------------|
-| Header | Fixed white, property links, Emma CTA | Transparent → white on scroll, no links |
-| Video Section | AutoplayVideo with embedded player | Video modal only (no inline video) |
-| Emma Section | Premium card with CTA | Missing entirely |
-| Properties | Categorized (Apartments/Villas) | Single grid, all properties |
-| Form | Phone-focused (WhatsApp/SMS) | Email-focused |
-| Footer | Light minimal | Dark navy |
-| EmmaChat | Yes | Missing |
+**Active Properties in Database:**
+| Property Name | Category |
+|---------------|----------|
+| MORASOL | apartment |
+| 360 | apartment |
+| ALURA LIVING | apartment |
+| EVOQUE | apartment |
+| ONE ESTEPONA | apartment |
+| Casatalaya Residences | apartment |
+| SAVIA | villa |
+| BENJAMINS DERAM | villa |
+| TERRA NOVA HILLS | villa |
+| THE KOS | villa |
+| VILLAS AZAHAR SOLEA | villa |
+| Villa Serenity | villa |
 
 ---
 
-## Implementation Plan
+## Solution
 
-### Phase 1: Update RetargetingLanding.tsx (Main Page)
-**Goal:** Match the section order and structure of LandingLayout.tsx
+### 1. Add Property Type Badges to Cards
 
-```text
-Current Retargeting Order:
-Hero → Intro → VisualContext → Testimonials → Positioning → Projects → Form → Footer
+Display a colored badge on each property card showing its category (Apartment or Villa). The badge will use the `category` field from the database.
 
-Target Landing Order:
-Hero → Video → Testimonials → Emma → Properties → ClassicOptin → Footer
+**Visual Design:**
+- Position: Top-right corner of the image (opposite the price badge)
+- Style: Glassmorphism with color coding
+  - Apartments: Blue tint (`bg-blue-500/90`)
+  - Villas: Green tint (`bg-emerald-500/90`)
+- Text: Localized property type name
+
+### 2. Add Localized Property Type Labels
+
+Add translation keys for property type labels in all 10 languages:
+
+| Language | Apartment | Villa |
+|----------|-----------|-------|
+| English | Apartment | Villa |
+| Dutch | Appartement | Villa |
+| German | Apartment | Villa |
+| French | Appartement | Villa |
+| Finnish | Huoneisto | Huvila |
+| Polish | Apartament | Willa |
+| Swedish | Lägenhet | Villa |
+| Danish | Lejlighed | Villa |
+| Hungarian | Apartman | Villa |
+| Norwegian | Leilighet | Villa |
+
+### 3. Update Header Navigation
+
+Change the navbar links to scroll to the properties section on the same page (with category anchors) instead of redirecting to the external Property Finder.
+
+**New Behavior:**
+- Clicking "Apartments" scrolls to the properties section and optionally highlights apartment properties
+- Clicking "Villas" scrolls to the properties section and optionally highlights villa properties
+- "Penthouses" and "Townhouses" can either be removed (since no properties exist with those categories) OR redirect to the external Property Finder for those types
+
+**Recommended Approach:** Keep external links for Penthouses/Townhouses (they go to the broader Property Finder), but add smooth-scroll anchor links for Apartments/Villas to the on-page properties section.
+
+---
+
+## Implementation Details
+
+### File: `src/lib/retargetingTranslations.ts`
+
+Add new translation keys for each language:
+```typescript
+// Property type labels
+propertyTypeApartment: "Apartment",
+propertyTypeVilla: "Villa",
 ```
 
-**Changes:**
-1. Add fixed white header with property category links (matching landing)
-2. Replace transparent header with the landing page header style
-3. Add "Speak with Emma" CTA button that opens EmmaChat
-4. Add EmmaChat component for chat functionality
-5. Restructure section order to match landing page
+### File: `src/components/retargeting/RetargetingProjects.tsx`
 
-### Phase 2: Create/Modify Section Components
+1. **Add Property interface update:**
+```typescript
+interface Property {
+  // ... existing fields
+  category: string | null; // Add category field
+}
+```
 
-#### 2.1 Header Update (`RetargetingLanding.tsx`)
-Replace the current transparent header with landing page's fixed white header:
-- Property category links (Apartments, Penthouses, Townhouses, Villas)
-- Centered logo
-- Language selector
-- "Speak with Emma" CTA button
+2. **Update Supabase query to select category:**
+```typescript
+.select("id, internal_name, location, beds_min, beds_max, baths, size_sqm, price_eur, images, descriptions, category")
+```
 
-#### 2.2 Hero Update (`RetargetingHero.tsx`)
-Update to match landing Hero:
-- Add secondary CTA "Or start with clear answers" below video button
-- Add "No pressure · No obligation" microcopy
+3. **Add helper function for localized property type:**
+```typescript
+const getPropertyTypeLabel = (category: string | null, t: any): string => {
+  if (!category) return "";
+  if (category === "apartment") return t.propertyTypeApartment;
+  if (category === "villa") return t.propertyTypeVilla;
+  return category;
+};
+```
 
-#### 2.3 Add Video Section
-**New component:** Create `RetargetingAutoplayVideo.tsx` based on `AutoplayVideo.tsx`
-- Inline video player (not just modal)
-- Language-specific video URLs (reuse from AutoplayVideo)
-- Bullet points with checkmarks
-- Golden "Ask Emma All Your Questions" CTA
+4. **Add badge in property card (after price badge):**
+```tsx
+{/* Property Type Badge */}
+{property.category && (
+  <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-lg shadow-lg backdrop-blur-md ${
+    property.category === 'apartment' 
+      ? 'bg-blue-500/90 text-white' 
+      : 'bg-emerald-500/90 text-white'
+  }`}>
+    <span className="text-xs font-medium uppercase tracking-wide">
+      {getPropertyTypeLabel(property.category, t)}
+    </span>
+  </div>
+)}
+```
 
-#### 2.4 Testimonials Update (`RetargetingTestimonials.tsx`)
-Update to match landing TestimonialsSection:
-- Add Swiper carousel for mobile
-- Match card styling with flag icons, headlines, body text
-- Add section heading and subheading
+5. **Add section ID for anchor navigation:**
+```tsx
+<section id="properties" className="relative bg-gradient-to-br ...">
+```
 
-#### 2.5 Add Emma Section
-**New component:** Create `RetargetingEmmaSection.tsx` based on `EmmaSection.tsx`
-- Premium card with MessageCircle icon
-- "Start with clarity, not listings" headline
-- "Get clarity with Emma" CTA button
-- Opens EmmaChat on click
+### File: `src/pages/RetargetingLanding.tsx`
 
-#### 2.6 Properties Update (`RetargetingProjects.tsx`)
-Update to match PropertiesShowcase:
-- Keep current 3-column layout and all properties
-- Add category sections (Apartments & Penthouses / Townhouses & Villas)
-- Match card styling with landing page
-- Add "View all" CTAs per category
+Update header links for Apartments and Villas to use anchor navigation:
+```tsx
+<a
+  href="#properties"
+  onClick={(e) => {
+    e.preventDefault();
+    document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
+  }}
+  className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+>
+  {t.headerApartments}
+</a>
+```
 
-#### 2.7 Form Update (`RetargetingForm.tsx`)
-Update to match ClassicOptin:
-- Change from Email-focused to Phone/WhatsApp-focused
-- Add Interest dropdown (Apartments, Villas, Both)
-- Add consent checkbox
-- Match styling and labels
-
-#### 2.8 Footer Update (`RetargetingFooter.tsx`)
-Convert from dark navy to light minimal footer matching landing:
-- Light gray background
-- Same logo, links, copyright format
-
-### Phase 3: Add EmmaChat Integration
-Import and mount EmmaChat from landing components:
-- Add state for `isEmmaOpen`
-- Wire up CTAs to open Emma chat
-- Add event listeners for custom events
-
-### Phase 4: Update Translations
-Extend `retargetingTranslations.ts` with new keys:
-- Header labels (apartments, penthouses, townhouses, villas, cta)
-- Video section (softLine, bullets, ctaButton, reassurance)
-- Emma section (statement, explanation, cta, microcopy)
-- Updated form fields (phone-focused)
-
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/RetargetingLanding.tsx` | Modify | Update header, add EmmaChat, reorder sections |
-| `src/components/retargeting/RetargetingHero.tsx` | Modify | Add secondary CTA and microcopy |
-| `src/components/retargeting/RetargetingAutoplayVideo.tsx` | Create | Inline video section with language-specific videos |
-| `src/components/retargeting/RetargetingEmmaSection.tsx` | Create | Premium card CTA section |
-| `src/components/retargeting/RetargetingTestimonials.tsx` | Modify | Add Swiper carousel, match landing styling |
-| `src/components/retargeting/RetargetingProjects.tsx` | Modify | Add category sections, match card styling |
-| `src/components/retargeting/RetargetingForm.tsx` | Modify | Phone-focused form with interest dropdown |
-| `src/components/retargeting/RetargetingFooter.tsx` | Modify | Light minimal footer |
-| `src/components/retargeting/index.ts` | Modify | Export new components |
-| `src/lib/retargetingTranslations.ts` | Modify | Add new translation keys for all languages |
+Keep external links for Penthouses and Townhouses:
+```tsx
+<Link
+  to={`/${language}/property-finder?type=penthouse`}
+  className="text-landing-navy/70 hover:text-landing-navy transition-colors"
+>
+  {t.headerPenthouses}
+</Link>
+```
 
 ---
 
-## Section Removal
+## Files to Modify
 
-The following current retargeting sections will be removed or repurposed:
-- **RetargetingIntro** - Content merged into Video section
-- **RetargetingVisualContext** - Removed (landing doesn't have this)
-- **RetargetingPositioning** - Removed (replaced by Emma section)
+| File | Changes |
+|------|---------|
+| `src/lib/retargetingTranslations.ts` | Add `propertyTypeApartment` and `propertyTypeVilla` translation keys for all 10 languages |
+| `src/components/retargeting/RetargetingProjects.tsx` | Add category to interface, update query, add type badge to cards, add section ID |
+| `src/pages/RetargetingLanding.tsx` | Update Apartments/Villas links to scroll to properties section |
 
 ---
 
 ## Expected Result
 
-After implementation, the retargeting pages (`/{lang}/welcome-back`) will have:
-1. Fixed white header with property category navigation and Emma CTA
-2. Full-screen Hero with dual CTAs
-3. Inline video section with language-specific videos
-4. Testimonials carousel matching landing page design
-5. Emma premium card section with chat CTA
-6. Property showcase with categories (Apartments + Villas)
-7. Phone/WhatsApp-focused lead capture form
-8. Light minimal footer
-9. Emma AI chatbot integration
-
-All content will remain fully localized across all 10 supported languages (en, nl, de, fr, fi, pl, da, hu, sv, no).
+After implementation:
+1. Each property card displays a colored badge showing "Apartment" or "Villa" (in the page's language)
+2. Clicking "Apartments" or "Villas" in the navbar smoothly scrolls to the properties section
+3. Clicking "Penthouses" or "Townhouses" goes to the Property Finder (since no retargeting properties have those categories)
+4. Users can easily distinguish between property types at a glance
