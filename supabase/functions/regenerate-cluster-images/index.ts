@@ -363,8 +363,20 @@ serve(async (req) => {
 
       let primaryImageUrl: string | null = null;
 
-      // Step 1: Handle English article - either preserve or generate new image
-      if (english) {
+      // Check if English already has a Supabase image (already fixed)
+      const hasSupabaseImage = english?.featured_image_url?.includes('supabase.co/storage');
+      
+      if (hasSupabaseImage) {
+        // SKIP: Already has a proper Supabase image - just use it for sharing
+        console.log(`⏭️ Skipping position ${position} - already has Supabase image`);
+        primaryImageUrl = english.featured_image_url;
+        
+        // Still count as preserved/success
+        imagesPreserved++;
+        successCount++;
+        results.push({ id: english.id, language: 'en', success: true, newUrl: primaryImageUrl || undefined, preserved: true });
+      } else if (english) {
+        // Step 1: Handle English article - either preserve or generate new image
         if (preserveEnglishImages && english.featured_image_url) {
           // PRESERVE MODE: Keep existing English image
           console.log(`📌 Preserving existing English image for position ${position} (${funnel_stage})`);
