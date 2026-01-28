@@ -2195,6 +2195,7 @@ export type Database = {
           claimed_by: string | null
           contact_complete: boolean | null
           conversation_duration: string | null
+          conversation_transcript: Json | null
           country_prefix: string | null
           created_at: string | null
           current_lead_score: number | null
@@ -2261,6 +2262,7 @@ export type Database = {
           claimed_by?: string | null
           contact_complete?: boolean | null
           conversation_duration?: string | null
+          conversation_transcript?: Json | null
           country_prefix?: string | null
           created_at?: string | null
           current_lead_score?: number | null
@@ -2327,6 +2329,7 @@ export type Database = {
           claimed_by?: string | null
           contact_complete?: boolean | null
           conversation_duration?: string | null
+          conversation_transcript?: Json | null
           country_prefix?: string | null
           created_at?: string | null
           current_lead_score?: number | null

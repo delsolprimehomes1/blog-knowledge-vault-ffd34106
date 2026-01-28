@@ -6,6 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface TranscriptMessage {
+  role: 'assistant' | 'user';
+  content: string;
+  timestamp: string;
+}
+
 interface LeadPayload {
   // Contact info
   firstName: string;
@@ -30,6 +36,7 @@ interface LeadPayload {
   intakeComplete?: boolean;
   exitPoint?: string;
   conversationDuration?: string;
+  conversationTranscript?: TranscriptMessage[];
   
   // Form-specific
   propertyRef?: string;
@@ -464,6 +471,7 @@ serve(async (req) => {
         intake_complete: payload.intakeComplete || false,
         exit_point: payload.exitPoint || null,
         conversation_duration: payload.conversationDuration || null,
+        conversation_transcript: payload.conversationTranscript || null,
         property_ref: payload.propertyRef || null,
         property_price: payload.propertyPrice ? String(payload.propertyPrice) : null,
         interest: payload.interest || null,
