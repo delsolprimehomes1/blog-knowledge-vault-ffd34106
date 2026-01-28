@@ -2878,8 +2878,15 @@ export type Database = {
       emma_leads: {
         Row: {
           answer_1: string | null
+          answer_10: string | null
           answer_2: string | null
           answer_3: string | null
+          answer_4: string | null
+          answer_5: string | null
+          answer_6: string | null
+          answer_7: string | null
+          answer_8: string | null
+          answer_9: string | null
           bedrooms_desired: string | null
           budget_range: string | null
           conversation_date: string | null
@@ -2907,8 +2914,15 @@ export type Database = {
           property_purpose: string | null
           property_type: Json | null
           question_1: string | null
+          question_10: string | null
           question_2: string | null
           question_3: string | null
+          question_4: string | null
+          question_5: string | null
+          question_6: string | null
+          question_7: string | null
+          question_8: string | null
+          question_9: string | null
           questions_answered: number | null
           referrer: string | null
           sea_view_importance: string | null
@@ -2922,8 +2936,15 @@ export type Database = {
         }
         Insert: {
           answer_1?: string | null
+          answer_10?: string | null
           answer_2?: string | null
           answer_3?: string | null
+          answer_4?: string | null
+          answer_5?: string | null
+          answer_6?: string | null
+          answer_7?: string | null
+          answer_8?: string | null
+          answer_9?: string | null
           bedrooms_desired?: string | null
           budget_range?: string | null
           conversation_date?: string | null
@@ -2951,8 +2972,15 @@ export type Database = {
           property_purpose?: string | null
           property_type?: Json | null
           question_1?: string | null
+          question_10?: string | null
           question_2?: string | null
           question_3?: string | null
+          question_4?: string | null
+          question_5?: string | null
+          question_6?: string | null
+          question_7?: string | null
+          question_8?: string | null
+          question_9?: string | null
           questions_answered?: number | null
           referrer?: string | null
           sea_view_importance?: string | null
@@ -2966,8 +2994,15 @@ export type Database = {
         }
         Update: {
           answer_1?: string | null
+          answer_10?: string | null
           answer_2?: string | null
           answer_3?: string | null
+          answer_4?: string | null
+          answer_5?: string | null
+          answer_6?: string | null
+          answer_7?: string | null
+          answer_8?: string | null
+          answer_9?: string | null
           bedrooms_desired?: string | null
           budget_range?: string | null
           conversation_date?: string | null
@@ -2995,8 +3030,15 @@ export type Database = {
           property_purpose?: string | null
           property_type?: Json | null
           question_1?: string | null
+          question_10?: string | null
           question_2?: string | null
           question_3?: string | null
+          question_4?: string | null
+          question_5?: string | null
+          question_6?: string | null
+          question_7?: string | null
+          question_8?: string | null
+          question_9?: string | null
           questions_answered?: number | null
           referrer?: string | null
           sea_view_importance?: string | null

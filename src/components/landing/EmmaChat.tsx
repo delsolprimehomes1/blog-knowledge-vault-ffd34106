@@ -914,11 +914,98 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             }
         }
         
-        // If no content phase found via patterns, capture ANY assistant-user exchanges after greeting
+        // Patterns that indicate SETUP PHASE (should be SKIPPED - intro, name collection, phone collection)
+        const setupPhasePatterns = [
+            // English setup patterns
+            'before we go into your questions',
+            'i first need a few details',
+            'is that okay for you',
+            'how may i address you',
+            'what is your name',
+            'which number may i send',
+            'country prefix',
+            'what\'s your name',
+            'may i have your phone',
+            'could you share your phone',
+            'what number can i reach',
+            'briefly explain how this works',
+            'how this works',
+            'i\'m emma',
+            'i am emma',
+            'welcome to',
+            'hello and welcome',
+            // Dutch setup patterns
+            'hoe mag ik je noemen',
+            'wat is je naam',
+            'welk nummer',
+            'landcode',
+            'welkom bij',
+            'ik ben emma',
+            // German setup patterns
+            'wie darf ich sie nennen',
+            'wie heißen sie',
+            'welche nummer',
+            'ländervorwahl',
+            'willkommen bei',
+            'ich bin emma',
+            // French setup patterns
+            'comment puis-je vous appeler',
+            'quel est votre nom',
+            'quel numéro',
+            'indicatif pays',
+            'bienvenue',
+            'je suis emma',
+            // Polish setup patterns
+            'jak mogę się do ciebie zwracać',
+            'jak masz na imię',
+            'jaki numer',
+            'kierunkowy kraju',
+            'witaj',
+            'jestem emma',
+            // Swedish patterns
+            'vad heter du',
+            'vilket nummer',
+            'landskod',
+            // Finnish patterns
+            'mikä on nimesi',
+            'mikä numero',
+            'maatunnus',
+            // Hungarian patterns
+            'hogy szólíthatlak',
+            'mi a neved',
+            'milyen szám',
+            // Norwegian patterns
+            'hva heter du',
+            'hvilket nummer',
+            'landskode',
+            // Danish patterns
+            'hvad hedder du',
+            'hvilket nummer',
+            'landekode'
+        ];
+        
+        // If no content phase found via patterns, look for first message AFTER setup phase
         if (contentPhaseStart === -1) {
-            // Start after first 2 messages (greeting exchange)
-            contentPhaseStart = Math.min(1, msgs.length - 1);
-            console.log('📋 Q&A: No content phase pattern detected, capturing all exchanges after greeting');
+            // Find the first assistant message that is NOT a setup message
+            for (let i = 0; i < msgs.length; i++) {
+                const msg = msgs[i];
+                if (msg.role !== 'assistant') continue;
+                const content = msg.content.toLowerCase();
+                
+                // Skip if this is a setup phase message
+                const isSetupMessage = setupPhasePatterns.some(p => content.includes(p));
+                if (!isSetupMessage && content.includes('?')) {
+                    contentPhaseStart = i;
+                    console.log(`📋 Q&A: Content phase starts at index ${i} (first non-setup question)`);
+                    break;
+                }
+            }
+            
+            // Fallback: if still not found, start after first 4 messages (typically covers intro + name + phone)
+            if (contentPhaseStart === -1) {
+                contentPhaseStart = Math.min(4, msgs.length - 1);
+                console.log('📋 Q&A: No content phase pattern detected, starting after 4th message');
+            }
         }
         
         // Capture sequential assistant-user turns (Emma asks, user answers) - up to 10 pairs
@@ -932,9 +1019,24 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             
             // Emma (assistant) asks a question, user responds
             if (msg.role === 'assistant' && nextMsg && nextMsg.role === 'user') {
-                // Skip very short Emma messages that aren't real questions (acknowledgments like "Great!")
                 const emmaContent = msg.content.trim();
-                if (emmaContent.length < 15 && !emmaContent.includes('?')) {
+                const emmaLower = emmaContent.toLowerCase();
+                
+                // SKIP setup phase messages (even if we're past contentPhaseStart)
+                if (setupPhasePatterns.some(p => emmaLower.includes(p))) {
+                    console.log(`📋 Q&A: Skipping setup message: "${emmaContent.substring(0, 50)}..."`);
+                    continue;
+                }
+                
+                // Skip very short Emma messages that aren't real questions (acknowledgments like "Great!")
+                if (emmaContent.length < 20 && !emmaContent.includes('?')) {
+                    continue;
+                }
+                
+                // Skip very short user responses (like "yes", "ok", "sure")
+                const userAnswer = nextMsg.content.trim();
+                if (userAnswer.length < 5) {
+                    console.log(`📋 Q&A: Skipping short user response: "${userAnswer}"`);
                     continue;
                 }
                 
@@ -944,7 +1046,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 
                 // Question = Emma's prompt, Answer = User's reply
                 qa[qKey] = emmaContent.substring(0, 500);
-                qa[aKey] = nextMsg.content.trim().substring(0, 500);
+                qa[aKey] = userAnswer.substring(0, 500);
                 
                 console.log(`📋 Q&A: Turn ${turnCount} - Emma asked: "${qa[qKey].substring(0, 50)}..." → User replied: "${qa[aKey].substring(0, 50)}..."`);
                 i++; // Skip the user message we just processed

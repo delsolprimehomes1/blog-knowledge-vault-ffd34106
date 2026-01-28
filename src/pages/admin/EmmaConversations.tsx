@@ -33,13 +33,27 @@ interface EmmaLead {
     last_name: string | null;
     phone_number: string | null;
     country_prefix: string | null;
-    // Q&A Phase
+    // Q&A Phase (up to 10 pairs)
     question_1: string | null;
     answer_1: string | null;
     question_2: string | null;
     answer_2: string | null;
     question_3: string | null;
     answer_3: string | null;
+    question_4: string | null;
+    answer_4: string | null;
+    question_5: string | null;
+    answer_5: string | null;
+    question_6: string | null;
+    answer_6: string | null;
+    question_7: string | null;
+    answer_7: string | null;
+    question_8: string | null;
+    answer_8: string | null;
+    question_9: string | null;
+    answer_9: string | null;
+    question_10: string | null;
+    answer_10: string | null;
     questions_answered: number;
     // Property Criteria
     location_preference: string[] | null;
@@ -183,6 +197,20 @@ const EmmaConversations = () => {
                     answer_2: lead.answer_2 || '',
                     question_3: lead.question_3 || '',
                     answer_3: lead.answer_3 || '',
+                    question_4: lead.question_4 || '',
+                    answer_4: lead.answer_4 || '',
+                    question_5: lead.question_5 || '',
+                    answer_5: lead.answer_5 || '',
+                    question_6: lead.question_6 || '',
+                    answer_6: lead.answer_6 || '',
+                    question_7: lead.question_7 || '',
+                    answer_7: lead.answer_7 || '',
+                    question_8: lead.question_8 || '',
+                    answer_8: lead.answer_8 || '',
+                    question_9: lead.question_9 || '',
+                    answer_9: lead.answer_9 || '',
+                    question_10: lead.question_10 || '',
+                    answer_10: lead.answer_10 || '',
                     questions_answered: lead.questions_answered || 0
                 },
                 property_criteria: {
@@ -499,8 +527,8 @@ const EmmaConversations = () => {
                                     <MessageCircle className="w-4 h-4 text-primary" />
                                     Q&A Phase ({selectedLead.questions_answered || 0} questions)
                                 </h3>
-                                <div className="space-y-3">
-                                    {[1, 2, 3].map((num) => {
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
                                         const q = selectedLead[`question_${num}` as keyof EmmaLead] as string;
                                         const a = selectedLead[`answer_${num}` as keyof EmmaLead] as string;
                                         if (!q && !a) return null;
