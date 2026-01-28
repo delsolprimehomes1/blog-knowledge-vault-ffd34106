@@ -104,7 +104,7 @@ export const RetargetingHero = ({ language = "en" }: RetargetingHeroProps) => {
         <RetargetingVideoModal
           isOpen={isVideoOpen}
           onClose={() => setIsVideoOpen(false)}
-          videoUrl="https://www.youtube.com/embed/dQw4w9WgXcQ"
+          videoUrl="https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/697548eba87beb06f5acbadc.mp4"
         />
       </div>
 
