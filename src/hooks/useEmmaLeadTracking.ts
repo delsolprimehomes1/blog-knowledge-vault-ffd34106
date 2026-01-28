@@ -7,13 +7,27 @@ export interface EmmaLeadData {
   last_name?: string;
   phone_number?: string;
   country_prefix?: string;
-  // Q&A Phase
+  // Q&A Phase (up to 10 pairs)
   question_1?: string;
   answer_1?: string;
   question_2?: string;
   answer_2?: string;
   question_3?: string;
   answer_3?: string;
+  question_4?: string;
+  answer_4?: string;
+  question_5?: string;
+  answer_5?: string;
+  question_6?: string;
+  answer_6?: string;
+  question_7?: string;
+  answer_7?: string;
+  question_8?: string;
+  answer_8?: string;
+  question_9?: string;
+  answer_9?: string;
+  question_10?: string;
+  answer_10?: string;
   questions_answered?: number;
   // Property Criteria
   location_preference?: string[];
@@ -179,13 +193,29 @@ export const upsertEmmaLead = async (data: Partial<EmmaLeadData> & { conversatio
     if (data.last_name) leadData.last_name = data.last_name;
     if (data.phone_number) leadData.phone_number = data.phone_number;
     if (data.country_prefix) leadData.country_prefix = data.country_prefix;
+    // Q&A pairs 1-10
     if (data.question_1) leadData.question_1 = data.question_1;
     if (data.answer_1) leadData.answer_1 = data.answer_1;
     if (data.question_2) leadData.question_2 = data.question_2;
     if (data.answer_2) leadData.answer_2 = data.answer_2;
     if (data.question_3) leadData.question_3 = data.question_3;
     if (data.answer_3) leadData.answer_3 = data.answer_3;
+    if (data.question_4) leadData.question_4 = data.question_4;
+    if (data.answer_4) leadData.answer_4 = data.answer_4;
+    if (data.question_5) leadData.question_5 = data.question_5;
+    if (data.answer_5) leadData.answer_5 = data.answer_5;
+    if (data.question_6) leadData.question_6 = data.question_6;
+    if (data.answer_6) leadData.answer_6 = data.answer_6;
+    if (data.question_7) leadData.question_7 = data.question_7;
+    if (data.answer_7) leadData.answer_7 = data.answer_7;
+    if (data.question_8) leadData.question_8 = data.question_8;
+    if (data.answer_8) leadData.answer_8 = data.answer_8;
+    if (data.question_9) leadData.question_9 = data.question_9;
+    if (data.answer_9) leadData.answer_9 = data.answer_9;
+    if (data.question_10) leadData.question_10 = data.question_10;
+    if (data.answer_10) leadData.answer_10 = data.answer_10;
     if (data.questions_answered !== undefined) leadData.questions_answered = data.questions_answered;
+    // Property criteria
     if (data.location_preference) leadData.location_preference = data.location_preference;
     if (data.sea_view_importance) leadData.sea_view_importance = data.sea_view_importance;
     if (data.budget_range) leadData.budget_range = data.budget_range;
@@ -193,6 +223,7 @@ export const upsertEmmaLead = async (data: Partial<EmmaLeadData> & { conversatio
     if (data.property_type) leadData.property_type = data.property_type;
     if (data.property_purpose) leadData.property_purpose = data.property_purpose;
     if (data.timeframe) leadData.timeframe = data.timeframe;
+    // System data
     if (data.detected_language) leadData.detected_language = data.detected_language;
     if (data.intake_complete !== undefined) leadData.intake_complete = data.intake_complete;
     if (data.declined_selection !== undefined) leadData.declined_selection = data.declined_selection;

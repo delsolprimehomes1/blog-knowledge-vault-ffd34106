@@ -499,12 +499,27 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                 last_name: newAccumulatedFields.family_name || newAccumulatedFields.last_name,
                 phone_number: newAccumulatedFields.phone || newAccumulatedFields.phone_number,
                 country_prefix: newAccumulatedFields.country_prefix,
+                // Q&A pairs 1-10
                 question_1: newAccumulatedFields.question_1,
                 answer_1: newAccumulatedFields.answer_1,
                 question_2: newAccumulatedFields.question_2,
                 answer_2: newAccumulatedFields.answer_2,
                 question_3: newAccumulatedFields.question_3,
                 answer_3: newAccumulatedFields.answer_3,
+                question_4: newAccumulatedFields.question_4,
+                answer_4: newAccumulatedFields.answer_4,
+                question_5: newAccumulatedFields.question_5,
+                answer_5: newAccumulatedFields.answer_5,
+                question_6: newAccumulatedFields.question_6,
+                answer_6: newAccumulatedFields.answer_6,
+                question_7: newAccumulatedFields.question_7,
+                answer_7: newAccumulatedFields.answer_7,
+                question_8: newAccumulatedFields.question_8,
+                answer_8: newAccumulatedFields.answer_8,
+                question_9: newAccumulatedFields.question_9,
+                answer_9: newAccumulatedFields.answer_9,
+                question_10: newAccumulatedFields.question_10,
+                answer_10: newAccumulatedFields.answer_10,
                 questions_answered: countQuestionsAnswered(newAccumulatedFields),
                 location_preference: Array.isArray(newAccumulatedFields.location_preference) 
                     ? newAccumulatedFields.location_preference 
@@ -934,6 +949,20 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             'i am emma',
             'welcome to',
             'hello and welcome',
+            // Catch "Thank you" prefix intro messages
+            'thank you.',
+            'thank you,',
+            'thank you\n',
+            'thank you!',
+            'before we',
+            'to avoid incomplete',
+            'to do this correctly',
+            'reviewed by an expert',
+            'via whatsapp or sms',
+            'can reach you at',
+            'will contact you',
+            'is that okay',
+            'is this okay',
             // Dutch setup patterns
             'hoe mag ik je noemen',
             'wat is je naam',
@@ -1033,9 +1062,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     continue;
                 }
                 
-                // Skip very short user responses (like "yes", "ok", "sure")
+                // Skip very short user responses (like "yes", "ok", "sure", "yeah", "no thanks")
                 const userAnswer = nextMsg.content.trim();
-                if (userAnswer.length < 5) {
+                if (userAnswer.length < 10) {
                     console.log(`📋 Q&A: Skipping short user response: "${userAnswer}"`);
                     continue;
                 }
