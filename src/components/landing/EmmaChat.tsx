@@ -906,9 +906,8 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         ];
         
         let contentPhaseStart = -1;
-        let transitionPoint = msgs.length;
         
-        // Find content phase boundaries
+        // Find content phase start (we no longer cut off at transition - capture entire conversation)
         for (let i = 0; i < msgs.length; i++) {
             const msg = msgs[i];
             if (msg.role !== 'assistant') continue;
@@ -919,12 +918,6 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             if (contentPhaseStart === -1 && contentPhaseStartPatterns.some(p => content.includes(p))) {
                 contentPhaseStart = i;
                 console.log(`📋 Q&A: Content phase starts at index ${i}`);
-            }
-            
-            // Find end of content phase (transition to property criteria)
-            if (contentPhaseStart !== -1 && transitionPatterns.some(p => content.includes(p))) {
-                transitionPoint = i;
-                console.log(`📋 Q&A: Content phase ends at index ${i}`);
                 break;
             }
         }
@@ -1037,48 +1030,100 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             }
         }
         
-        // Capture sequential assistant-user turns (Emma asks, user answers) - up to 10 pairs
-        // FIXED: Question = Emma's prompt, Answer = User's reply (semantically correct)
+        // Capture BOTH conversation directions:
+        // 1. USER asks question → EMMA answers (content phase - user curiosity)
+        // 2. EMMA asks structured question → USER answers (intake phase - property criteria)
         let turnCount = 0;
         const maxTurns = 10;
         
-        for (let i = contentPhaseStart; i < transitionPoint && turnCount < maxTurns; i++) {
+        // Short confirmation patterns to skip
+        const shortConfirmations = ['yes', 'ok', 'sure', 'yeah', 'yep', 'no', 'nope', 'great', 'perfect', 'thanks', 'thank you', 'got it', 'okay'];
+        
+        // Helper to check if a message is just a short confirmation
+        const isShortConfirmation = (text: string): boolean => {
+            const cleaned = text.toLowerCase().replace(/[^\w\s]/g, '').trim();
+            // Skip if total length < 15 AND contains only short words
+            if (cleaned.length < 15) {
+                const words = cleaned.split(/\s+/);
+                const isAllShort = words.every(w => w.length <= 5 || shortConfirmations.includes(w));
+                if (isAllShort) return true;
+            }
+            // Also skip exact matches to confirmations
+            return shortConfirmations.some(c => cleaned === c || cleaned === c + ' it' || cleaned === c + ' it does' || cleaned === c + ' it is');
+        };
+        
+        // Continue through ENTIRE conversation (no transitionPoint cutoff)
+        for (let i = contentPhaseStart; i < msgs.length - 1 && turnCount < maxTurns; i++) {
             const msg = msgs[i];
             const nextMsg = msgs[i + 1];
+            if (!nextMsg) continue;
             
-            // Emma (assistant) asks a question, user responds
-            if (msg.role === 'assistant' && nextMsg && nextMsg.role === 'user') {
-                const emmaContent = msg.content.trim();
-                const emmaLower = emmaContent.toLowerCase();
+            // ============ CASE 1: USER asks question → EMMA answers ============
+            // User initiates with a real question, Emma provides detailed answer
+            if (msg.role === 'user' && nextMsg.role === 'assistant') {
+                const userQuestion = msg.content.trim();
+                const emmaAnswer = nextMsg.content.trim();
                 
-                // SKIP setup phase messages (even if we're past contentPhaseStart)
-                if (setupPhasePatterns.some(p => emmaLower.includes(p))) {
-                    console.log(`📋 Q&A: Skipping setup message: "${emmaContent.substring(0, 50)}..."`);
+                // Skip short confirmations from user (like "yes", "ok", "yes it does")
+                if (isShortConfirmation(userQuestion)) {
+                    console.log(`📋 Q&A: Skipping user confirmation: "${userQuestion}"`);
                     continue;
                 }
                 
-                // Skip very short Emma messages that aren't real questions (acknowledgments like "Great!")
-                if (emmaContent.length < 20 && !emmaContent.includes('?')) {
+                // Must be a real question (at least 15 chars)
+                if (userQuestion.length < 15) {
                     continue;
                 }
                 
-                // Skip very short user responses (like "yes", "ok", "sure", "yeah", "no thanks")
-                const userAnswer = nextMsg.content.trim();
-                if (userAnswer.length < 10) {
-                    console.log(`📋 Q&A: Skipping short user response: "${userAnswer}"`);
+                // Skip if Emma's answer is too short (acknowledgments)
+                if (emmaAnswer.length < 50) {
                     continue;
                 }
                 
+                // This is a real USER→EMMA Q&A pair
                 turnCount++;
-                const qKey = `question_${turnCount}`;
-                const aKey = `answer_${turnCount}`;
+                qa[`question_${turnCount}`] = userQuestion.substring(0, 500);
+                qa[`answer_${turnCount}`] = emmaAnswer.substring(0, 2000); // Emma's detailed answers
                 
-                // Question = Emma's prompt, Answer = User's reply
-                qa[qKey] = emmaContent.substring(0, 500);
-                qa[aKey] = userAnswer.substring(0, 500);
+                console.log(`📋 Q&A: Turn ${turnCount} (User→Emma) - Q: "${userQuestion.substring(0, 40)}..." → A: "${emmaAnswer.substring(0, 40)}..."`);
+                i++; // Skip the answer message we just processed
+            }
+            // ============ CASE 2: EMMA asks structured question → USER answers ============
+            // Emma guides user through intake/criteria questions
+            else if (msg.role === 'assistant' && nextMsg.role === 'user') {
+                const emmaQuestion = msg.content.trim();
+                const userAnswer = nextMsg.content.trim();
+                const emmaLower = emmaQuestion.toLowerCase();
                 
-                console.log(`📋 Q&A: Turn ${turnCount} - Emma asked: "${qa[qKey].substring(0, 50)}..." → User replied: "${qa[aKey].substring(0, 50)}..."`);
-                i++; // Skip the user message we just processed
+                // SKIP setup phase messages
+                if (setupPhasePatterns.some(p => emmaLower.includes(p))) {
+                    console.log(`📋 Q&A: Skipping setup message: "${emmaQuestion.substring(0, 50)}..."`);
+                    continue;
+                }
+                
+                // Must contain a question mark OR be a structured options prompt
+                const hasOptions = emmaQuestion.includes('•') || emmaQuestion.includes('Options:');
+                if (!emmaQuestion.includes('?') && !hasOptions) {
+                    continue;
+                }
+                
+                // Skip very short Emma messages (acknowledgments like "Great!")
+                if (emmaQuestion.length < 30 && !emmaQuestion.includes('?')) {
+                    continue;
+                }
+                
+                // Skip very short user responses (single chars)
+                if (userAnswer.length < 2) {
+                    continue;
+                }
+                
+                // This is a real EMMA→USER Q&A pair
+                turnCount++;
+                qa[`question_${turnCount}`] = emmaQuestion.substring(0, 500);
+                qa[`answer_${turnCount}`] = userAnswer.substring(0, 500);
+                
+                console.log(`📋 Q&A: Turn ${turnCount} (Emma→User) - Q: "${emmaQuestion.substring(0, 40)}..." → A: "${userAnswer.substring(0, 40)}..."`);
+                i++; // Skip the answer message we just processed
             }
         }
         
