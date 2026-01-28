@@ -1,144 +1,158 @@
 
-# Sync Retargeting Video Section with Language-Specific Videos + Generate Thumbnail
+# Fix Emma Q&A Capture: Store All Conversation Turns
 
-## Problem
+## Problem Identified
 
-Looking at the Polish retargeting page (`/pl/witamy-ponownie`), there are two issues:
+From the database query, I can see that:
+1. **Only 1 Q&A pair is being saved** - and it's the wrong one (Emma's intro + "yes")
+2. **Database schema limitation**: `emma_leads` table only has columns for 3 Q&A pairs
+3. **Admin page limitation**: Only displays Q1-Q3
 
-1. **Video Not Loading in Inline Section**: The autoplay video section below the hero shows a gray placeholder instead of the actual video
-2. **Different Video Sets**: The hero modal uses the new welcome-back videos (from `retargetingWelcomeBackVideos.ts`), but the inline autoplay section uses a different hardcoded set of videos
-3. **No Poster Image**: Unlike the landing page, the retargeting video has no `poster` attribute, so users see a gray box while loading
+### What's Being Captured (Wrong)
+| Question 1 | Answer 1 |
+|------------|----------|
+| "Before we go into your questions, I want to briefly explain how this works..." | "yes" |
 
-## Solution
+### What Should Be Captured (Correct)
+The actual content questions Emma asks during the conversation, like:
+- "What is your budget range?"
+- "What areas are you considering?"
+- "What type of property are you looking for?"
 
-### 1. Unify Video Sources
+---
 
-Update `RetargetingAutoplayVideo.tsx` to use the same video configuration as the hero section:
+## Root Causes
 
-| Before | After |
-|--------|-------|
-| Hardcoded URLs in component (lines 12-23) | Import from `retargetingWelcomeBackVideos.ts` |
-| Different videos for hero vs inline | Same videos used consistently |
+### 1. Q&A Extraction Logic Issue (`EmmaChat.tsx`)
 
-### 2. Generate Costa del Sol Thumbnail
+The `extractQAFromHistory()` function captures Emma's **intro message** as Question 1 instead of skipping it. The content phase start patterns are too broad.
 
-Create a new edge function to generate a beautiful thumbnail using Nano Banana Pro:
-
-**Prompt for AI image generation:**
+**Current behavior** (lines 918-922):
+```typescript
+// If no content phase found via patterns, capture ANY assistant-user exchanges after greeting
+if (contentPhaseStart === -1) {
+  contentPhaseStart = Math.min(1, msgs.length - 1); // Starts too early
+}
 ```
-Stunning aerial view of Costa del Sol luxury beachfront villa with infinity pool overlooking the Mediterranean Sea. 
-Golden hour lighting, whitewashed Spanish architecture, palm trees, turquoise water, 
-pristine beach. Modern luxury real estate photography style, 16:9 aspect ratio, 
-professional drone shot, warm sunset tones, high-end lifestyle magazine quality.
-```
 
-The generated image will be:
-- Uploaded to Supabase storage
-- Saved as a permanent asset for video thumbnails
+### 2. Database Schema (`emma_leads` table)
 
-### 3. Add Poster Attribute to Video
+Only 3 Q&A columns exist:
+- `question_1`, `answer_1`
+- `question_2`, `answer_2`
+- `question_3`, `answer_3`
 
-Update the video element to show the thumbnail while loading:
+But the code attempts to capture up to 10 pairs.
 
-```tsx
-<video
-  poster={thumbnailUrl}
-  // ... other attributes
->
+### 3. Admin Page Display (`EmmaConversations.tsx`)
+
+Only loops through 3 pairs:
+```typescript
+{[1, 2, 3].map((num) => { ... })}
 ```
 
 ---
 
-## Files to Modify
+## Solution
 
-| File | Action | Changes |
-|------|--------|---------|
-| `supabase/functions/generate-retargeting-thumbnail/index.ts` | **CREATE** | New edge function using Nano Banana Pro to generate Costa del Sol thumbnail |
-| `src/config/retargetingWelcomeBackVideos.ts` | **MODIFY** | Add thumbnail URL export |
-| `src/components/retargeting/RetargetingAutoplayVideo.tsx` | **MODIFY** | Import video config, add poster attribute |
+### Phase 1: Fix Q&A Extraction Logic
+
+Update `extractQAFromHistory()` to:
+1. **Skip intro/setup messages** - Add patterns to identify Emma's setup phase (name collection, phone collection)
+2. **Start capturing AFTER contact info phase** - Only capture Q&A that happen after the user provides their phone number
+3. **Filter out short confirmations** - Already exists but threshold too low (15 chars)
+
+### Phase 2: Expand Database Schema
+
+Add migration to add columns for Q&A pairs 4-10:
+```sql
+ALTER TABLE emma_leads 
+ADD COLUMN IF NOT EXISTS question_4 TEXT,
+ADD COLUMN IF NOT EXISTS answer_4 TEXT,
+ADD COLUMN IF NOT EXISTS question_5 TEXT,
+ADD COLUMN IF NOT EXISTS answer_5 TEXT,
+-- ... up to question_10, answer_10
+```
+
+### Phase 3: Update Edge Function (`send-emma-lead`)
+
+Modify `updateLeadRecord()` to save all 10 Q&A pairs:
+```typescript
+question_4: payload.content_phase.question_4,
+answer_4: payload.content_phase.answer_4,
+// ... up to 10
+```
+
+### Phase 4: Update Admin Page Display
+
+Update `EmmaConversations.tsx` to display all 10 Q&A pairs:
+```typescript
+{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => { ... })}
+```
+
+### Phase 5: CRM Already Correct
+
+The `crm_leads.qa_pairs` JSONB column can store unlimited pairs, and `EmmaConversationCard.tsx` already displays all pairs correctly.
 
 ---
 
 ## Technical Implementation
 
-### Step 1: Create Thumbnail Generation Edge Function
+### File Changes
+
+| File | Action | Changes |
+|------|--------|---------|
+| `src/components/landing/EmmaChat.tsx` | **MODIFY** | Fix `extractQAFromHistory()` to skip intro/setup phase |
+| Database migration | **CREATE** | Add `question_4` through `question_10` and `answer_4` through `answer_10` columns |
+| `supabase/functions/send-emma-lead/index.ts` | **MODIFY** | Save all 10 Q&A pairs to database |
+| `src/pages/admin/EmmaConversations.tsx` | **MODIFY** | Display all 10 Q&A pairs, update TypeScript interface |
+
+---
+
+## Key Fix: Q&A Extraction Pattern Update
+
+The critical fix is in `extractQAFromHistory()`:
 
 ```typescript
-// supabase/functions/generate-retargeting-thumbnail/index.ts
+// NEW: Patterns that indicate SETUP PHASE (should be SKIPPED)
+const setupPhasePatterns = [
+  'before we go into your questions',
+  'i first need a few details',
+  'is that okay for you',
+  'how may i address you',
+  'what is your name',
+  'which number may i send',
+  'country prefix',
+  // ... multilingual variants
+];
 
-const prompt = `Stunning aerial view of Costa del Sol luxury beachfront villa with infinity pool 
-overlooking the Mediterranean Sea. Golden hour lighting, whitewashed Spanish architecture, 
-palm trees, turquoise water, pristine beach. Modern luxury real estate photography style, 
-16:9 aspect ratio, professional drone shot, warm sunset tones, high-end lifestyle magazine quality. 
-No text, no logos, no people.`;
-
-// Use google/gemini-3-pro-image-preview (Nano Banana Pro)
-// Upload to Supabase storage: retargeting/video-thumbnail.jpg
-// Return public URL
-```
-
-### Step 2: Update Video Configuration
-
-```typescript
-// src/config/retargetingWelcomeBackVideos.ts
-
-// Add thumbnail URL (will be populated after generation)
-export const RETARGETING_VIDEO_THUMBNAIL = 
-  "https://kazggnufaoicopvmwhdl.supabase.co/storage/v1/object/public/article-images/retargeting/video-thumbnail.png";
-```
-
-### Step 3: Update Autoplay Video Component
-
-```typescript
-// src/components/retargeting/RetargetingAutoplayVideo.tsx
-
-import { 
-  getWelcomeBackVideoUrl, 
-  RETARGETING_VIDEO_THUMBNAIL 
-} from "@/config/retargetingWelcomeBackVideos";
-
-// Inside component:
-const videoUrl = getWelcomeBackVideoUrl(language);
-
-// In JSX - add poster:
-<video
-  ref={videoRef}
-  src={videoUrl || undefined}
-  poster={RETARGETING_VIDEO_THUMBNAIL}
-  className="w-full aspect-video object-cover"
-  loop
-  muted
-  playsInline
-  preload="auto"
-/>
+// Skip messages that are part of setup/contact collection
+for (let i = contentPhaseStart; i < transitionPoint && turnCount < maxTurns; i++) {
+  const msg = msgs[i];
+  const nextMsg = msgs[i + 1];
+  
+  if (msg.role === 'assistant' && nextMsg?.role === 'user') {
+    const emmaContent = msg.content.toLowerCase();
+    
+    // SKIP setup phase messages
+    if (setupPhasePatterns.some(p => emmaContent.includes(p))) {
+      continue;
+    }
+    
+    // Capture actual content Q&A
+    turnCount++;
+    qa[`question_${turnCount}`] = msg.content.trim();
+    qa[`answer_${turnCount}`] = nextMsg.content.trim();
+  }
+}
 ```
 
 ---
 
-## Graceful Handling
+## Expected Result After Fix
 
-For languages without videos (English, Spanish):
-- Video element still renders with poster thumbnail visible
-- Play button shows but clicking does nothing harmful
-- Alternative: Hide the entire section if no video exists
+| emma_leads Table | crm_leads.qa_pairs | Admin /admin/emma | Agent CRM Dashboard |
+|------------------|-------------------|-------------------|---------------------|
+| Q1-Q10 populated with actual content questions | All Q&A pairs in JSONB array | Displays all 10 Q&A pairs | Displays all Q&A pairs via `EmmaConversationCard` |
 
----
-
-## Expected Result
-
-| Language | Video in Hero Modal | Video in Autoplay Section | Thumbnail |
-|----------|---------------------|---------------------------|-----------|
-| Polish | ✅ Polish video | ✅ Same Polish video | ✅ Costa del Sol image |
-| Dutch | ✅ Dutch video | ✅ Same Dutch video | ✅ Costa del Sol image |
-| German | ✅ German video | ✅ Same German video | ✅ Costa del Sol image |
-| English | Hidden button | Poster only (no video) | ✅ Costa del Sol image |
-
----
-
-## Workflow
-
-1. Create and deploy thumbnail generation edge function
-2. Run the function once to generate and store the thumbnail
-3. Update the config file with the stored thumbnail URL
-4. Update RetargetingAutoplayVideo to use unified video config + poster
-5. Test across all language pages
+All Emma conversations will now capture the **actual questions** Emma asks (budget, location, timeframe, etc.) rather than the intro confirmation.
