@@ -8,3 +8,6 @@ export { RetargetingPropertyModal } from "./RetargetingPropertyModal";
 export { RetargetingVideoModal } from "./RetargetingVideoModal";
 export { RetargetingForm } from "./RetargetingForm";
 export { RetargetingFooter } from "./RetargetingFooter";
+export { RetargetingMeta } from "./RetargetingMeta";
+export { RetargetingHreflang } from "./RetargetingHreflang";
+export { RetargetingLanguageSelector } from "./RetargetingLanguageSelector";

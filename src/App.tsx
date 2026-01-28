@@ -295,8 +295,18 @@ const App = () => (
               <Route path="/sv/landing" element={<LandingSv />} />
               <Route path="/no/landing" element={<LandingNo />} />
               
-              {/* Retargeting Landing Page (English) */}
+              {/* Retargeting Landing Pages (All 11 Languages) */}
               <Route path="/en/welcome-back" element={<RetargetingLanding />} />
+              <Route path="/nl/welkom-terug" element={<RetargetingLanding />} />
+              <Route path="/de/willkommen-zurueck" element={<RetargetingLanding />} />
+              <Route path="/fr/bienvenue" element={<RetargetingLanding />} />
+              <Route path="/es/bienvenido" element={<RetargetingLanding />} />
+              <Route path="/pl/witamy-ponownie" element={<RetargetingLanding />} />
+              <Route path="/sv/valkommen-tillbaka" element={<RetargetingLanding />} />
+              <Route path="/da/velkommen-tilbage" element={<RetargetingLanding />} />
+              <Route path="/hu/udvozoljuk-ujra" element={<RetargetingLanding />} />
+              <Route path="/fi/tervetuloa-takaisin" element={<RetargetingLanding />} />
+              <Route path="/no/velkommen-tilbake" element={<RetargetingLanding />} />
               
               <Route path="/optin" element={<OptIn />} />
               <Route path="/:lang/optin" element={<OptIn />} />
