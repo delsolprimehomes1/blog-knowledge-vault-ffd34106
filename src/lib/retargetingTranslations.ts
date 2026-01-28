@@ -16,6 +16,8 @@ export const retargetingTranslations = {
     visualStatement: "We start with explanation, not listings.",
     visualSupport: "Understanding comes before decisions. We help you navigate the market with clarity and confidence.",
     visualBadge: "Research & Clarity",
+    visualImageUrl: "", // Will be populated after image generation
+    visualImageAlt: "Person reviewing Costa del Sol property research documents in a bright Mediterranean home office",
     
     // TESTIMONIALS
     testimonialTitle: "Why people start with us — before looking at property",
@@ -80,6 +82,8 @@ export const retargetingTranslations = {
     visualStatement: "Wij beginnen met uitleg, niet met aanbiedingen.",
     visualSupport: "Begrip komt voor beslissingen. Wij helpen u de markt te navigeren met duidelijkheid en vertrouwen.",
     visualBadge: "Onderzoek & Duidelijkheid",
+    visualImageUrl: "",
+    visualImageAlt: "Persoon die Costa del Sol vastgoedonderzoeksdocumenten bekijkt in een licht Mediterraan thuiskantoor",
     testimonialTitle: "Waarom mensen bij ons beginnen — voordat ze naar vastgoed kijken",
     testimonialSubtitle: "Ervaringen van mensen die duidelijkheid wilden voordat ze de volgende stap zetten.",
     testimonials: [
@@ -134,6 +138,8 @@ export const retargetingTranslations = {
     visualStatement: "Wir beginnen mit Erklärung, nicht mit Angeboten.",
     visualSupport: "Verständnis kommt vor Entscheidungen. Wir helfen Ihnen, den Markt mit Klarheit und Vertrauen zu navigieren.",
     visualBadge: "Recherche & Klarheit",
+    visualImageUrl: "",
+    visualImageAlt: "Person, die Costa del Sol Immobilienrecherche-Dokumente in einem hellen mediterranen Homeoffice durchsieht",
     testimonialTitle: "Warum Menschen bei uns anfangen — bevor sie Immobilien ansehen",
     testimonialSubtitle: "Erfahrungen von Menschen, die Klarheit wollten, bevor sie den nächsten Schritt machten.",
     testimonials: [
@@ -188,6 +194,8 @@ export const retargetingTranslations = {
     visualStatement: "Nous commençons par l'explication, pas par les annonces.",
     visualSupport: "La compréhension précède les décisions. Nous vous aidons à naviguer sur le marché avec clarté et confiance.",
     visualBadge: "Recherche & Clarté",
+    visualImageUrl: "",
+    visualImageAlt: "Personne consultant des documents de recherche immobilière Costa del Sol dans un bureau à domicile méditerranéen lumineux",
     testimonialTitle: "Pourquoi les gens commencent avec nous — avant de regarder les propriétés",
     testimonialSubtitle: "Expériences de personnes qui voulaient de la clarté avant de passer à l'étape suivante.",
     testimonials: [
@@ -242,6 +250,8 @@ export const retargetingTranslations = {
     visualStatement: "Comenzamos con explicaciones, no con listados.",
     visualSupport: "La comprensión viene antes que las decisiones. Le ayudamos a navegar el mercado con claridad y confianza.",
     visualBadge: "Investigación & Claridad",
+    visualImageUrl: "",
+    visualImageAlt: "Persona revisando documentos de investigación inmobiliaria de Costa del Sol en una luminosa oficina mediterránea",
     testimonialTitle: "Por qué las personas empiezan con nosotros — antes de mirar propiedades",
     testimonialSubtitle: "Experiencias de personas que querían claridad antes de dar el siguiente paso.",
     testimonials: [
@@ -296,6 +306,8 @@ export const retargetingTranslations = {
     visualStatement: "Zaczynamy od wyjaśnień, nie od ofert.",
     visualSupport: "Zrozumienie poprzedza decyzje. Pomagamy nawigować po rynku z jasnością i pewnością.",
     visualBadge: "Badania & Jasność",
+    visualImageUrl: "",
+    visualImageAlt: "Osoba przeglądająca dokumenty dotyczące nieruchomości na Costa del Sol w jasnym śródziemnomorskim biurze domowym",
     testimonialTitle: "Dlaczego ludzie zaczynają od nas — zanim spojrzą na nieruchomości",
     testimonialSubtitle: "Doświadczenia osób, które chciały jasności przed podjęciem następnego kroku.",
     testimonials: [
@@ -350,6 +362,8 @@ export const retargetingTranslations = {
     visualStatement: "Vi börjar med förklaring, inte med listningar.",
     visualSupport: "Förståelse kommer före beslut. Vi hjälper dig navigera marknaden med klarhet och självförtroende.",
     visualBadge: "Forskning & Klarhet",
+    visualImageUrl: "",
+    visualImageAlt: "Person som granskar Costa del Sol fastighetsforskningsdokument i ett ljust medelhavsinspirerat hemmakontor",
     testimonialTitle: "Varför människor börjar med oss — innan de tittar på fastigheter",
     testimonialSubtitle: "Erfarenheter från personer som ville ha klarhet innan de tog nästa steg.",
     testimonials: [
@@ -404,6 +418,8 @@ export const retargetingTranslations = {
     visualStatement: "Vi starter med forklaring, ikke med lister.",
     visualSupport: "Forståelse kommer før beslutninger. Vi hjælper dig med at navigere markedet med klarhed og selvtillid.",
     visualBadge: "Forskning & Klarhed",
+    visualImageUrl: "",
+    visualImageAlt: "Person der gennemgår Costa del Sol ejendomsforskningsdokumenter i et lyst middelhavskontor",
     testimonialTitle: "Hvorfor folk starter hos os — før de kigger på ejendomme",
     testimonialSubtitle: "Oplevelser fra mennesker, der ønskede klarhed, før de tog næste skridt.",
     testimonials: [
@@ -458,6 +474,8 @@ export const retargetingTranslations = {
     visualStatement: "Magyarázattal kezdjük, nem listákkal.",
     visualSupport: "A megértés megelőzi a döntéseket. Segítünk tisztán és magabiztosan navigálni a piacon.",
     visualBadge: "Kutatás & Tisztánlátás",
+    visualImageUrl: "",
+    visualImageAlt: "Személy Costa del Sol ingatlan kutatási dokumentumokat áttekintve egy világos mediterrán otthoni irodában",
     testimonialTitle: "Miért kezdik az emberek nálunk — mielőtt ingatlanokat néznének",
     testimonialSubtitle: "Olyan emberek tapasztalatai, akik tisztánlátást akartak a következő lépés előtt.",
     testimonials: [
@@ -512,6 +530,8 @@ export const retargetingTranslations = {
     visualStatement: "Aloitamme selityksellä, emme listauksilla.",
     visualSupport: "Ymmärrys tulee ennen päätöksiä. Autamme sinua navigoimaan markkinoilla selkeästi ja itsevarmasti.",
     visualBadge: "Tutkimus & Selkeys",
+    visualImageUrl: "",
+    visualImageAlt: "Henkilö tutkii Costa del Solin kiinteistötutkimusasiakirjoja valoisassa välimerellisessä kotitoimistossa",
     testimonialTitle: "Miksi ihmiset aloittavat meistä — ennen kiinteistöjen katsomista",
     testimonialSubtitle: "Kokemuksia ihmisiltä, jotka halusivat selkeyttä ennen seuraavaa askelta.",
     testimonials: [
@@ -566,6 +586,8 @@ export const retargetingTranslations = {
     visualStatement: "Vi starter med forklaring, ikke med lister.",
     visualSupport: "Forståelse kommer før beslutninger. Vi hjelper deg å navigere markedet med klarhet og selvtillit.",
     visualBadge: "Forskning & Klarhet",
+    visualImageUrl: "",
+    visualImageAlt: "Person som gjennomgår Costa del Sol eiendomsforskningsdokumenter i et lyst middelhavsinspirert hjemmekontor",
     testimonialTitle: "Hvorfor folk starter hos oss — før de ser på eiendommer",
     testimonialSubtitle: "Erfaringer fra mennesker som ønsket klarhet før de tok neste steg.",
     testimonials: [
