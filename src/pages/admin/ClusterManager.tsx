@@ -315,7 +315,15 @@ const ClusterManager = () => {
         imageFixIntervalRef.current = null;
       }
       
-      toast.success(`✅ Fixed! ${data.imagesPreserved || 6} preserved, ${data.imagesShared || 54} shared`);
+      // Show appropriate toast based on success/partial success
+      if (data.failCount > 0) {
+        toast.warning(
+          `Partially complete: ${data.successCount}/${data.totalArticles} updated. ` +
+          `${data.failCount} failed - you can retry.`
+        );
+      } else {
+        toast.success(`✅ Fixed! ${data.imagesPreserved || 6} preserved, ${data.imagesShared || 54} shared`);
+      }
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ["cluster-image-health"] });
@@ -334,7 +342,16 @@ const ClusterManager = () => {
         imageFixIntervalRef.current = null;
       }
       
-      toast.error(`Failed to fix images: ${error.message}`);
+      // Check if this might be a partial success with connection interruption
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('connection closed') || errorMsg.includes('connection reset') || errorMsg.includes('FunctionsFetchError')) {
+        toast.warning('Connection interrupted - some images may have been fixed. Refreshing data...');
+        queryClient.invalidateQueries({ queryKey: ["cluster-image-health"] });
+        queryClient.invalidateQueries({ queryKey: ["cluster-articles"] });
+      } else {
+        toast.error(`Failed to fix images: ${error.message}`);
+      }
+      
       setImageFixProgress(null);
       setClusterToFixImages(null);
     }

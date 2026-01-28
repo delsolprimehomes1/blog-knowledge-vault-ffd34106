@@ -52,6 +52,42 @@ const LANGUAGE_NAMES: Record<string, string> = {
 };
 
 /**
+ * Retry wrapper for database updates with exponential backoff
+ */
+async function retryableUpdate(
+  supabase: any,
+  id: string,
+  updates: Record<string, any>,
+  maxRetries: number = 3
+): Promise<{ success: boolean; error?: any }> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { error } = await supabase
+        .from('blog_articles')
+        .update(updates)
+        .eq('id', id);
+      
+      if (!error) {
+        return { success: true };
+      }
+      
+      console.warn(`⚠️ Attempt ${attempt}/${maxRetries} failed for ${id}:`, error.message);
+      
+      if (attempt < maxRetries) {
+        // Exponential backoff: 500ms, 1s, 2s
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+      }
+    } catch (err) {
+      console.warn(`⚠️ Attempt ${attempt}/${maxRetries} threw for ${id}:`, err);
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+      }
+    }
+  }
+  return { success: false, error: 'Max retries exceeded' };
+}
+
+/**
  * Upload image from Fal.ai to Supabase Storage
  */
 async function uploadToStorage(
@@ -340,17 +376,14 @@ serve(async (req) => {
               ? await generateLocalizedMetadata(english, openaiKey)
               : { altText: `Costa del Sol property - ${english.headline}`, caption: null };
             
-            const { error: updateError } = await supabase
-              .from('blog_articles')
-              .update({ 
-                featured_image_alt: altText,
-                featured_image_caption: caption,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', english.id);
+            const updateResult = await retryableUpdate(supabase, english.id, { 
+              featured_image_alt: altText,
+              featured_image_caption: caption,
+              updated_at: new Date().toISOString()
+            });
             
-            if (updateError) {
-              console.error(`❌ Failed to update English metadata:`, updateError);
+            if (!updateResult.success) {
+              console.error(`❌ Failed to update English metadata after retries`);
               failCount++;
               results.push({ id: english.id, language: 'en', success: false });
             } else {
@@ -394,19 +427,16 @@ serve(async (req) => {
               ? await generateLocalizedMetadata(english, openaiKey)
               : { altText: `Costa del Sol property - ${english.headline}`, caption: null };
             
-            // Update English article
-            const { error: updateError } = await supabase
-              .from('blog_articles')
-              .update({ 
-                featured_image_url: newImageUrl,
-                featured_image_alt: altText,
-                featured_image_caption: caption,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', english.id);
+            // Update English article with retry logic
+            const updateResult = await retryableUpdate(supabase, english.id, { 
+              featured_image_url: newImageUrl,
+              featured_image_alt: altText,
+              featured_image_caption: caption,
+              updated_at: new Date().toISOString()
+            });
             
-            if (updateError) {
-              console.error(`❌ Failed to update English article:`, updateError);
+            if (!updateResult.success) {
+              console.error(`❌ Failed to update English article after retries`);
               failCount++;
               results.push({ id: english.id, language: 'en', success: false });
             } else {
@@ -437,19 +467,16 @@ serve(async (req) => {
               ? await generateLocalizedMetadata(translation, openaiKey)
               : { altText: `Costa del Sol property - ${translation.headline}`, caption: null };
             
-            // Update translation with SHARED image + localized metadata
-            const { error: updateError } = await supabase
-              .from('blog_articles')
-              .update({ 
-                featured_image_url: primaryImageUrl,
-                featured_image_alt: altText,
-                featured_image_caption: caption,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', translation.id);
+            // Update translation with SHARED image + localized metadata (with retry)
+            const updateResult = await retryableUpdate(supabase, translation.id, { 
+              featured_image_url: primaryImageUrl,
+              featured_image_alt: altText,
+              featured_image_caption: caption,
+              updated_at: new Date().toISOString()
+            });
             
-            if (updateError) {
-              console.error(`❌ Failed to update ${translation.language} translation:`, updateError);
+            if (!updateResult.success) {
+              console.error(`❌ Failed to update ${translation.language} translation after retries`);
               failCount++;
               results.push({ id: translation.id, language: translation.language, success: false });
             } else {
@@ -483,7 +510,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        success: true,
+        success: failCount === 0,
         clusterId,
         totalArticles: articles.length,
         uniqueImagesGenerated,
@@ -492,7 +519,8 @@ serve(async (req) => {
         successCount,
         failCount,
         preserveMode: preserveEnglishImages,
-        results: results.slice(0, 30)
+        results: results.slice(0, 30),
+        failedArticleIds: results.filter(r => !r.success).map(r => r.id)
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
