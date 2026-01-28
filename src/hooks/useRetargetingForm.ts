@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { registerCrmLead } from "@/utils/crm/registerCrmLead";
 
 interface FormData {
   firstName: string;
@@ -54,6 +55,27 @@ export const useRetargetingForm = (language: string = "en"): UseRetargetingFormR
         });
 
       if (submitError) throw submitError;
+
+      // Parse full name into first/last for CRM
+      const nameParts = (data.firstName || "").trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      // Register in CRM for round-robin routing (non-blocking)
+      await registerCrmLead({
+        firstName,
+        lastName,
+        phone: data.phone || "",
+        leadSource: "Landing Form",
+        leadSourceDetail: `retargeting_welcome_back_${language}`,
+        pageType: "retargeting",
+        pageUrl: typeof window !== "undefined" ? window.location.href : "",
+        pageTitle: typeof window !== "undefined" ? document.title : "",
+        language: language,
+        interest: data.question || "Not specified",
+        message: data.question,
+        referrer: typeof window !== "undefined" ? document.referrer : "",
+      });
 
       setIsSuccess(true);
     } catch (err) {
