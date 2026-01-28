@@ -12,13 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { registerCrmLead } from "@/utils/crm/registerCrmLead";
 import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name is too short").max(100),
   whatsapp: z.string().min(6, "Phone number is required"),
-  questions: z.string().max(1000).optional(),
+  interest: z.string().min(1, "Please select an option"),
+  consent: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to continue" }),
+  }),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -58,6 +69,8 @@ export const RetargetingPropertyModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [whatsappValue, setWhatsappValue] = useState<string>("");
+  const [interestValue, setInterestValue] = useState<string>("");
+  const [consentValue, setConsentValue] = useState<boolean>(false);
 
   const {
     register,
@@ -70,7 +83,8 @@ export const RetargetingPropertyModal = ({
     defaultValues: {
       fullName: "",
       whatsapp: "",
-      questions: "",
+      interest: "",
+      consent: undefined,
     },
   });
 
@@ -79,6 +93,8 @@ export const RetargetingPropertyModal = ({
     if (!isOpen) {
       reset();
       setWhatsappValue("");
+      setInterestValue("");
+      setConsentValue(false);
       setIsSuccess(false);
     }
   }, [isOpen, reset]);
@@ -118,8 +134,7 @@ export const RetargetingPropertyModal = ({
         propertyRef: property.id,
         propertyPrice: property.price_eur ?? undefined,
         propertyType: "Property Card",
-        interest: `${property.internal_name} - ${property.location}`,
-        message: data.questions,
+        interest: `${property.internal_name} - ${data.interest}`,
         referrer: document.referrer,
       });
 
@@ -135,6 +150,17 @@ export const RetargetingPropertyModal = ({
     const phoneValue = value || "";
     setWhatsappValue(phoneValue);
     setValue("whatsapp", phoneValue, { shouldValidate: true });
+  };
+
+  const handleInterestChange = (value: string) => {
+    setInterestValue(value);
+    setValue("interest", value, { shouldValidate: true });
+  };
+
+  const handleConsentChange = (checked: boolean | "indeterminate") => {
+    const isChecked = checked === true;
+    setConsentValue(isChecked);
+    setValue("consent", isChecked as true, { shouldValidate: true });
   };
 
   if (!property) return null;
@@ -160,13 +186,10 @@ export const RetargetingPropertyModal = ({
                 <Check className="w-10 h-10 text-white" strokeWidth={3} />
               </motion.div>
               <h3 className="text-2xl font-semibold text-landing-navy mb-2">
-                Thank You!
+                {t.formSuccess}
               </h3>
               <p className="text-landing-navy/70 text-center">
-                We've received your inquiry about{" "}
-                <span className="font-medium">{property.internal_name}</span>.
-                <br />
-                Our team will contact you shortly.
+                {t.formSuccessSubtext}
               </p>
             </motion.div>
           ) : (
@@ -177,8 +200,8 @@ export const RetargetingPropertyModal = ({
               exit={{ opacity: 0 }}
             >
               <DialogHeader className="p-6 pb-4">
-                <DialogTitle className="text-xl font-semibold text-landing-navy">
-                  Inquire About This Property
+                <DialogTitle className="text-xl font-semibold text-landing-navy leading-relaxed">
+                  {t.formSubtitle}
                 </DialogTitle>
               </DialogHeader>
 
@@ -192,7 +215,7 @@ export const RetargetingPropertyModal = ({
                   <span>{property.location}</span>
                 </div>
                 <div className="inline-block bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm">
-                <span className="text-landing-navy font-semibold">
+                  <span className="text-landing-navy font-semibold">
                     {formatPrice(property.price_eur, t.projectsPriceOnRequest)}
                   </span>
                 </div>
@@ -204,12 +227,12 @@ export const RetargetingPropertyModal = ({
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-medium text-landing-navy/80 mb-1.5">
-                      Full Name *
+                      {t.formFullName} *
                     </label>
                     <input
                       {...register("fullName")}
                       type="text"
-                      placeholder="John Smith"
+                      placeholder={t.formFullNamePlaceholder}
                       className="w-full px-4 py-3 rounded-xl border border-landing-navy/10 bg-white/80 text-landing-navy placeholder:text-landing-navy/40 focus:outline-none focus:ring-2 focus:ring-landing-gold/50 focus:border-landing-gold/30 transition-all"
                     />
                     {errors.fullName && (
@@ -219,10 +242,10 @@ export const RetargetingPropertyModal = ({
                     )}
                   </div>
 
-                  {/* WhatsApp Number */}
+                  {/* WhatsApp / SMS Number */}
                   <div>
                     <label className="block text-sm font-medium text-landing-navy/80 mb-1.5">
-                      WhatsApp Number *
+                      {t.formPhone} *
                     </label>
                     <PhoneInput
                       international
@@ -238,23 +261,56 @@ export const RetargetingPropertyModal = ({
                     )}
                   </div>
 
-                  {/* Questions */}
+                  {/* I'm interested in - Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-landing-navy/80 mb-1.5">
-                      Your Questions (Optional)
+                      {t.formInterest}
                     </label>
-                    <textarea
-                      {...register("questions")}
-                      rows={3}
-                      placeholder="Any specific questions about this property?"
-                      className="w-full px-4 py-3 rounded-xl border border-landing-navy/10 bg-white/80 text-landing-navy placeholder:text-landing-navy/40 focus:outline-none focus:ring-2 focus:ring-landing-gold/50 focus:border-landing-gold/30 transition-all resize-none"
-                    />
-                    {errors.questions && (
+                    <Select value={interestValue} onValueChange={handleInterestChange}>
+                      <SelectTrigger className="w-full px-4 py-3 h-auto rounded-xl border border-landing-navy/10 bg-white/80 text-landing-navy focus:ring-2 focus:ring-landing-gold/50 focus:border-landing-gold/30">
+                        <SelectValue placeholder={t.formInterestOptions[2]} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-landing-navy/10 rounded-xl shadow-lg z-50">
+                        {t.formInterestOptions.map((option, index) => (
+                          <SelectItem 
+                            key={index} 
+                            value={option}
+                            className="cursor-pointer hover:bg-landing-gold/10"
+                          >
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.interest && (
                       <p className="text-red-500 text-xs mt-1">
-                        {errors.questions.message}
+                        {errors.interest.message}
                       </p>
                     )}
                   </div>
+
+                  {/* Consent Checkbox */}
+                  <div className="flex items-start gap-3 pt-2">
+                    <Checkbox
+                      id="consent"
+                      checked={consentValue}
+                      onCheckedChange={handleConsentChange}
+                      className="mt-0.5 border-landing-navy/30 data-[state=checked]:bg-landing-gold data-[state=checked]:border-landing-gold"
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="consent" 
+                        className="text-sm text-landing-navy/80 cursor-pointer leading-relaxed"
+                      >
+                        {t.formConsent}
+                      </label>
+                    </div>
+                  </div>
+                  {errors.consent && (
+                    <p className="text-red-500 text-xs -mt-2">
+                      {errors.consent.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Submit Button */}
@@ -284,16 +340,12 @@ export const RetargetingPropertyModal = ({
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         />
                       </svg>
-                      Sending...
+                      {t.formSubmitting}
                     </span>
                   ) : (
-                    "Send Inquiry"
+                    t.formButton
                   )}
                 </button>
-
-                <p className="text-xs text-landing-navy/50 text-center mt-4">
-                  By submitting, you agree to be contacted about this property.
-                </p>
               </form>
             </motion.div>
           )}
