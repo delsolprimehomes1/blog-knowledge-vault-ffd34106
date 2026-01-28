@@ -1,5 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface TranscriptMessage {
+  role: 'assistant' | 'user';
+  content: string;
+  timestamp: string;
+}
+
 export interface EmmaLeadData {
   conversation_id: string;
   // Contact Info
@@ -46,6 +52,8 @@ export interface EmmaLeadData {
   // Webhook tracking
   webhook_sent?: boolean;
   webhook_payload?: any;
+  // NEW: Complete conversation transcript
+  conversation_transcript?: TranscriptMessage[];
 }
 
 // Extract property criteria from conversation history

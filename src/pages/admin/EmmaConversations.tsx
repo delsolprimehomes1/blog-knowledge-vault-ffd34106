@@ -25,6 +25,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface TranscriptMessage {
+    role: 'assistant' | 'user';
+    content: string;
+    timestamp: string;
+}
+
 interface EmmaLead {
     id: string;
     conversation_id: string;
@@ -75,6 +81,8 @@ interface EmmaLead {
     webhook_sent_at: string | null;
     webhook_attempts: number;
     webhook_last_error: string | null;
+    // NEW: Complete Conversation Transcript
+    conversation_transcript: TranscriptMessage[] | null;
     // Metadata
     created_at: string;
     updated_at: string;
@@ -521,28 +529,58 @@ const EmmaConversations = () => {
                                 </div>
                             </div>
 
-                            {/* Q&A Section */}
+                            {/* Full Conversation Transcript */}
                             <div className="p-4 border-b">
                                 <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                                     <MessageCircle className="w-4 h-4 text-primary" />
-                                    Q&A Phase ({selectedLead.questions_answered || 0} questions)
+                                    Full Conversation ({selectedLead.conversation_transcript?.length || 0} messages)
                                 </h3>
-                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                <div className="space-y-2 max-h-96 overflow-y-auto">
+                                    {selectedLead.conversation_transcript && selectedLead.conversation_transcript.length > 0 ? (
+                                        selectedLead.conversation_transcript.map((msg, i) => (
+                                            <div 
+                                                key={i} 
+                                                className={`rounded-lg p-3 ${msg.role === 'assistant' ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-gray-50 border-l-4 border-gray-300'}`}
+                                            >
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className={`text-xs font-semibold ${msg.role === 'assistant' ? 'text-blue-600' : 'text-gray-600'}`}>
+                                                        {msg.role === 'assistant' ? '🤖 Emma' : '👤 User'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-400 text-sm">No conversation transcript available</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Q&A Summary (Extracted Key Pairs) */}
+                            <div className="p-4 border-b">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                    <MessageCircle className="w-4 h-4 text-primary" />
+                                    Q&A Summary ({selectedLead.questions_answered || 0} key pairs)
+                                </h3>
+                                <div className="space-y-3 max-h-64 overflow-y-auto">
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
                                         const q = selectedLead[`question_${num}` as keyof EmmaLead] as string;
                                         const a = selectedLead[`answer_${num}` as keyof EmmaLead] as string;
                                         if (!q && !a) return null;
                                         return (
                                             <div key={num} className="bg-gray-50 rounded-lg p-3">
-                                                <p className="text-xs text-gray-500 mb-1">Question {num}</p>
+                                                <p className="text-xs text-gray-500 mb-1">Q{num}</p>
                                                 <p className="text-sm font-medium mb-2">{q || '-'}</p>
-                                                <p className="text-xs text-gray-500 mb-1">Answer {num}</p>
+                                                <p className="text-xs text-gray-500 mb-1">A{num}</p>
                                                 <p className="text-sm text-gray-600">{a || '-'}</p>
                                             </div>
                                         );
                                     })}
                                     {!selectedLead.question_1 && !selectedLead.answer_1 && (
-                                        <p className="text-gray-400 text-sm">No Q&A data captured</p>
+                                        <p className="text-gray-400 text-sm">No extracted Q&A pairs</p>
                                     )}
                                 </div>
                             </div>

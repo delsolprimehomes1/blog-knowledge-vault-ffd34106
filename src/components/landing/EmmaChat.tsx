@@ -1234,6 +1234,13 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         try {
             // UNIFIED: Send to edge function ONLY (which handles GHL + DB tracking)
             // Removed duplicate sendEmmaToGHL call - edge function now sends all 34 fields
+            // Build COMPLETE conversation transcript for storage
+            const conversationTranscript = messages.map(m => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp.toISOString()
+            }));
+
             const unifiedPayload = {
                 conversation_id: conversationId,
                 contact_info: {
@@ -1279,7 +1286,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     ),
                     initial_lead_score: fields.intake_complete ? 25 : (fields.phone || fields.phone_number ? 20 : 15),
                     conversation_duration: conversationDuration
-                }
+                },
+                // NEW: Complete conversation transcript (all messages)
+                conversation_transcript: conversationTranscript
             };
 
             console.log('📤 Sending UNIFIED payload to edge function (34 fields to GHL)...');

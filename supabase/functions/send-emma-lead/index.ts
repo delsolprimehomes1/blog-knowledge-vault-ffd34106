@@ -30,6 +30,12 @@ interface ContentPhase {
   questions_answered: number;
 }
 
+interface TranscriptMessage {
+  role: 'assistant' | 'user';
+  content: string;
+  timestamp: string;
+}
+
 interface LeadPayload {
   contact_info: {
     first_name: string;
@@ -68,6 +74,8 @@ interface LeadPayload {
     conversation_duration: string;
   };
   conversation_id?: string;
+  // NEW: Complete conversation transcript
+  conversation_transcript?: TranscriptMessage[];
 }
 
 // Build Q&A pairs array from content phase (up to 10 pairs)
@@ -150,6 +158,8 @@ async function updateLeadRecord(
     lead_segment: pageContext?.lead_segment || null,
     initial_lead_score: pageContext?.initial_lead_score || 15,
     conversation_duration: pageContext?.conversation_duration || null,
+    // NEW: Complete conversation transcript
+    conversation_transcript: payload.conversation_transcript || null,
   };
 
   // Update existing record
