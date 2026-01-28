@@ -1,6 +1,13 @@
 import { motion } from "framer-motion";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-export const RetargetingVisualContext = () => {
+interface RetargetingVisualContextProps {
+  language?: string;
+}
+
+export const RetargetingVisualContext = ({ language = "en" }: RetargetingVisualContextProps) => {
+  const t = getRetargetingTranslations(language);
+
   return (
     <section className="relative bg-gradient-to-br from-[#faf9f7] via-white to-[#faf9f7] py-20 md:py-24 lg:py-28 overflow-hidden">
       {/* Decorative blur circles */}
@@ -73,7 +80,7 @@ export const RetargetingVisualContext = () => {
               
               {/* Floating badge */}
               <div className="absolute -bottom-4 -right-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-white/50">
-                <span className="text-landing-navy/70 text-sm font-medium">Research & Clarity</span>
+                <span className="text-landing-navy/70 text-sm font-medium">{t.visualBadge}</span>
               </div>
             </div>
           </motion.div>
@@ -90,11 +97,11 @@ export const RetargetingVisualContext = () => {
             <div className="hidden md:block w-12 h-1 bg-gradient-to-r from-landing-gold to-landing-gold/50 rounded-full mb-6" />
             
             <p className="font-serif italic text-2xl md:text-[28px] lg:text-[32px] text-landing-navy leading-relaxed">
-              "We start with explanation, not listings."
+              "{t.visualStatement}"
             </p>
             
             <p className="mt-6 text-landing-navy/60 text-base md:text-lg leading-relaxed">
-              Understanding comes before decisions. We help you navigate the market with clarity and confidence.
+              {t.visualSupport}
             </p>
           </motion.div>
         </div>

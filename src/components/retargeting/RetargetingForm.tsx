@@ -5,15 +5,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Check, AlertCircle } from "lucide-react";
 import { useRetargetingForm } from "@/hooks/useRetargetingForm";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-export const RetargetingForm = () => {
+interface RetargetingFormProps {
+  language?: string;
+}
+
+export const RetargetingForm = ({ language = "en" }: RetargetingFormProps) => {
   const [formData, setFormData] = useState({
     firstName: "",
     email: "",
     question: "",
   });
 
-  const { isSubmitting, isSuccess, error, submitForm } = useRetargetingForm("en");
+  const t = getRetargetingTranslations(language);
+  const { isSubmitting, isSuccess, error, submitForm } = useRetargetingForm(language);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +43,10 @@ export const RetargetingForm = () => {
           {/* Header */}
           <div className="text-center mb-10">
             <h2 className="text-xl md:text-2xl font-medium text-landing-navy mb-3">
-              Receive written information if and when you want it.
+              {t.formTitle}
             </h2>
             <p className="text-landing-navy/60 text-sm md:text-base">
-              No obligation. No next step implied.
+              {t.formSubtitle}
             </p>
           </div>
 
@@ -61,10 +67,10 @@ export const RetargetingForm = () => {
                 </motion.div>
               </div>
               <p className="text-landing-navy text-lg font-medium">
-                Thank you.
+                {t.formSuccess}
               </p>
               <p className="text-landing-navy/60 mt-2">
-                We'll send you information shortly.
+                {t.formSuccessSubtext}
               </p>
             </motion.div>
           ) : (
@@ -76,12 +82,12 @@ export const RetargetingForm = () => {
                     htmlFor="firstName"
                     className="block text-sm font-medium text-landing-navy mb-2"
                   >
-                    First name
+                    {t.formFirstName}
                   </label>
                   <Input
                     id="firstName"
                     type="text"
-                    placeholder="Your first name"
+                    placeholder={t.formFirstNamePlaceholder}
                     value={formData.firstName}
                     onChange={(e) =>
                       setFormData({ ...formData, firstName: e.target.value })
@@ -96,13 +102,13 @@ export const RetargetingForm = () => {
                     htmlFor="email"
                     className="block text-sm font-medium text-landing-navy mb-2"
                   >
-                    Email <span className="text-landing-gold">*</span>
+                    {t.formEmail} <span className="text-landing-gold">*</span>
                   </label>
                   <Input
                     id="email"
                     type="email"
                     required
-                    placeholder="your@email.com"
+                    placeholder={t.formEmailPlaceholder}
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
@@ -117,11 +123,11 @@ export const RetargetingForm = () => {
                     htmlFor="question"
                     className="block text-sm font-medium text-landing-navy mb-2"
                   >
-                    What would you like to understand better?
+                    {t.formQuestion}
                   </label>
                   <Textarea
                     id="question"
-                    placeholder="Optional — tell us what's on your mind"
+                    placeholder={t.formQuestionPlaceholder}
                     rows={4}
                     value={formData.question}
                     onChange={(e) =>
@@ -146,7 +152,7 @@ export const RetargetingForm = () => {
                     disabled={isSubmitting || !formData.email}
                     className="bg-gradient-to-r from-landing-gold to-[#d4b563] hover:from-[#b8994f] hover:to-landing-gold text-white px-8 py-5 text-base font-medium rounded-xl transition-all duration-300 shadow-[0_8px_30px_rgba(196,160,83,0.25)] hover:shadow-[0_12px_40px_rgba(196,160,83,0.35)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
-                    {isSubmitting ? "Sending..." : "Request information"}
+                    {isSubmitting ? t.formSubmitting : t.formButton}
                   </Button>
                 </div>
               </form>

@@ -1,27 +1,44 @@
 import { motion } from "framer-motion";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-const testimonials = [
-  {
-    quote: "We weren't ready to view properties. We just wanted to understand how the process works in Spain. Del Sol explained everything clearly, with no pressure to move forward.",
-    name: "Michael & Sarah",
-    country: "United Kingdom",
-    flag: "/flags/gb.svg",
-  },
-  {
-    quote: "I appreciated that they didn't start with listings. They started with questions about what we actually needed to know. That built trust immediately.",
-    name: "Erik",
-    country: "Netherlands",
-    flag: "/flags/nl.svg",
-  },
-  {
-    quote: "After speaking with several agencies who just wanted to show us properties, this approach felt completely different. Education first, decisions later.",
-    name: "Thomas & Anna",
-    country: "Germany",
-    flag: "/flags/de.svg",
-  },
-];
+interface RetargetingTestimonialsProps {
+  language?: string;
+}
 
-export const RetargetingTestimonials = () => {
+const flagMap: Record<string, string> = {
+  "United Kingdom": "/flags/gb.svg",
+  "Vereinigtes Königreich": "/flags/gb.svg",
+  "Verenigd Koninkrijk": "/flags/gb.svg",
+  "Royaume-Uni": "/flags/gb.svg",
+  "Reino Unido": "/flags/gb.svg",
+  "Wielka Brytania": "/flags/gb.svg",
+  "Storbritannien": "/flags/gb.svg",
+  "Egyesült Királyság": "/flags/gb.svg",
+  "Iso-Britannia": "/flags/gb.svg",
+  "Storbritannia": "/flags/gb.svg",
+  "Netherlands": "/flags/nl.svg",
+  "Niederlande": "/flags/nl.svg",
+  "Nederland": "/flags/nl.svg",
+  "Pays-Bas": "/flags/nl.svg",
+  "Países Bajos": "/flags/nl.svg",
+  "Holandia": "/flags/nl.svg",
+  "Nederländerna": "/flags/nl.svg",
+  "Holland": "/flags/nl.svg",
+  "Alankomaat": "/flags/nl.svg",
+  "Germany": "/flags/de.svg",
+  "Deutschland": "/flags/de.svg",
+  "Duitsland": "/flags/de.svg",
+  "Allemagne": "/flags/de.svg",
+  "Alemania": "/flags/de.svg",
+  "Niemcy": "/flags/de.svg",
+  "Tyskland": "/flags/de.svg",
+  "Németország": "/flags/de.svg",
+  "Saksa": "/flags/de.svg",
+};
+
+export const RetargetingTestimonials = ({ language = "en" }: RetargetingTestimonialsProps) => {
+  const t = getRetargetingTranslations(language);
+
   return (
     <section className="relative bg-gradient-to-br from-white via-gray-50/30 to-white py-20 md:py-24 lg:py-28 overflow-hidden">
       {/* Decorative blur circles */}
@@ -38,18 +55,18 @@ export const RetargetingTestimonials = () => {
           className="text-center mb-14 md:mb-16"
         >
           <h2 className="text-2xl md:text-[32px] lg:text-[36px] font-medium text-landing-navy mb-4">
-            Why people start with us — before looking at property
+            {t.testimonialTitle}
           </h2>
           <p className="text-landing-navy/60 text-base md:text-lg max-w-2xl mx-auto">
-            Experiences from people who wanted clarity before taking the next step.
+            {t.testimonialSubtitle}
           </p>
         </motion.div>
 
         {/* Testimonial Cards */}
         <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-          {testimonials.map((testimonial, index) => (
+          {t.testimonials.map((testimonial, index) => (
             <motion.div
-              key={testimonial.name}
+              key={testimonial.author}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
@@ -67,7 +84,7 @@ export const RetargetingTestimonials = () => {
               {/* Attribution */}
               <div className="flex items-center gap-3">
                 <img
-                  src={testimonial.flag}
+                  src={flagMap[testimonial.country] || "/flags/gb.svg"}
                   alt={testimonial.country}
                   className="w-8 h-5 object-cover rounded shadow-sm"
                   onError={(e) => {
@@ -80,7 +97,7 @@ export const RetargetingTestimonials = () => {
                 />
                 <div>
                   <p className="font-medium text-landing-navy text-sm">
-                    {testimonial.name}
+                    {testimonial.author}
                   </p>
                   <p className="text-landing-navy/60 text-sm">
                     {testimonial.country}

@@ -1,6 +1,13 @@
 import { motion } from "framer-motion";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-export const RetargetingPositioning = () => {
+interface RetargetingPositioningProps {
+  language?: string;
+}
+
+export const RetargetingPositioning = ({ language = "en" }: RetargetingPositioningProps) => {
+  const t = getRetargetingTranslations(language);
+
   return (
     <section className="relative bg-landing-navy py-24 md:py-28 lg:py-32 overflow-hidden">
       {/* Subtle gradient overlay */}
@@ -19,14 +26,12 @@ export const RetargetingPositioning = () => {
         className="relative z-10 max-w-4xl mx-auto px-6 text-center"
       >
         <p 
-          className="font-serif text-[28px] md:text-[36px] lg:text-[44px] text-white leading-snug mb-8"
+          className="font-serif text-[28px] md:text-[36px] lg:text-[44px] text-white leading-snug mb-8 whitespace-pre-line"
           style={{ 
             textShadow: "0 0 40px rgba(196, 160, 83, 0.1)" 
           }}
         >
-          "We don't begin with properties.
-          <br />
-          We begin with understanding."
+          "{t.positioningMain}"
         </p>
 
         <motion.p 
@@ -36,7 +41,7 @@ export const RetargetingPositioning = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-lg md:text-xl text-white/90 font-light"
         >
-          Locations, timing, legal context and lifestyle — explained first.
+          {t.positioningSupport}
         </motion.p>
 
         {/* Decorative gold line */}

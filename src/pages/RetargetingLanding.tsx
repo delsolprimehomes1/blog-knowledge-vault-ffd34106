@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   RetargetingHero,
   RetargetingIntro,
@@ -13,6 +13,8 @@ import {
 
 const RetargetingLanding = () => {
   const [scrolled, setScrolled] = useState(false);
+  const { lang } = useParams<{ lang: string }>();
+  const language = lang || "en";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,7 +37,7 @@ const RetargetingLanding = () => {
       >
         <div className="max-w-6xl mx-auto py-4 md:py-5 px-6">
           <div className="flex items-center justify-center">
-            <Link to="/en" className="inline-block">
+            <Link to={`/${language}`} className="inline-block">
               <span
                 className={`text-lg md:text-xl tracking-widest font-light transition-colors duration-300 ${
                   scrolled ? "text-landing-navy" : "text-white"
@@ -56,14 +58,14 @@ const RetargetingLanding = () => {
       </header>
 
       {/* Page Sections */}
-      <RetargetingHero />
-      <RetargetingIntro />
-      <RetargetingVisualContext />
-      <RetargetingTestimonials />
-      <RetargetingPositioning />
-      <RetargetingProjects />
-      <RetargetingForm />
-      <RetargetingFooter />
+      <RetargetingHero language={language} />
+      <RetargetingIntro language={language} />
+      <RetargetingVisualContext language={language} />
+      <RetargetingTestimonials language={language} />
+      <RetargetingPositioning language={language} />
+      <RetargetingProjects language={language} />
+      <RetargetingForm language={language} />
+      <RetargetingFooter language={language} />
     </div>
   );
 };

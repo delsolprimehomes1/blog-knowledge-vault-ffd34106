@@ -1,6 +1,13 @@
 import { motion } from "framer-motion";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-export const RetargetingIntro = () => {
+interface RetargetingIntroProps {
+  language?: string;
+}
+
+export const RetargetingIntro = ({ language = "en" }: RetargetingIntroProps) => {
+  const t = getRetargetingTranslations(language);
+
   return (
     <section className="relative bg-white py-16 md:py-20 overflow-hidden">
       {/* Subtle decorative blur circles */}
@@ -15,7 +22,7 @@ export const RetargetingIntro = () => {
         className="relative z-10 max-w-[700px] mx-auto px-6 text-center"
       >
         <p className="text-lg md:text-xl lg:text-[22px] text-landing-navy leading-relaxed font-normal">
-          In one minute, you'll see how we help people understand the market before making any decisions.
+          {t.introText}
         </p>
       </motion.div>
     </section>

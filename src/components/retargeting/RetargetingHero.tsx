@@ -3,11 +3,17 @@ import { motion } from "framer-motion";
 import { Play, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RetargetingVideoModal } from "./RetargetingVideoModal";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 import heroDesktop from "@/assets/hero-landing-desktop.jpg";
 import heroMobile from "@/assets/hero-landing-mobile.jpg";
 
-export const RetargetingHero = () => {
+interface RetargetingHeroProps {
+  language?: string;
+}
+
+export const RetargetingHero = ({ language = "en" }: RetargetingHeroProps) => {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const t = getRetargetingTranslations(language);
 
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
@@ -59,7 +65,7 @@ export const RetargetingHero = () => {
               textShadow: "0 0 10px rgb(0 0 0), 0 0 30px rgb(0 0 0), 0 0 60px rgb(0 0 0 / 80%), 0 4px 4px rgb(0 0 0)" 
             }}
           >
-            Understand the Costa del Sol property market — calmly and independently.
+            {t.heroH1}
           </h1>
         </motion.div>
         
@@ -74,7 +80,7 @@ export const RetargetingHero = () => {
               textShadow: "0 2px 10px rgb(0 0 0 / 50%)" 
             }}
           >
-            Clear explanations, structured insight and human expertise — before you speak to anyone.
+            {t.heroSubheadline}
           </p>
         </motion.div>
         
@@ -90,7 +96,7 @@ export const RetargetingHero = () => {
             onClick={() => setIsVideoOpen(true)}
           >
             <Play className="w-4 h-4 mr-2" />
-            Watch the 60-second overview
+            {t.heroButton}
           </Button>
         </motion.div>
 

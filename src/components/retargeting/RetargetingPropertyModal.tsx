@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, MapPin, X } from "lucide-react";
+import { Check, MapPin } from "lucide-react";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import {
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { registerCrmLead } from "@/utils/crm/registerCrmLead";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name is too short").max(100),
@@ -31,10 +32,11 @@ interface RetargetingPropertyModalProps {
     location: string;
     price_eur: number | null;
   } | null;
+  language?: string;
 }
 
-const formatPrice = (price: number | null): string => {
-  if (!price) return "Price on request";
+const formatPrice = (price: number | null, priceOnRequest: string): string => {
+  if (!price) return priceOnRequest;
   try {
     return new Intl.NumberFormat("en-EU", {
       style: "currency",
@@ -50,7 +52,9 @@ export const RetargetingPropertyModal = ({
   isOpen,
   onClose,
   property,
+  language = "en",
 }: RetargetingPropertyModalProps) => {
+  const t = getRetargetingTranslations(language);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [whatsappValue, setWhatsappValue] = useState<string>("");
@@ -188,8 +192,8 @@ export const RetargetingPropertyModal = ({
                   <span>{property.location}</span>
                 </div>
                 <div className="inline-block bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm">
-                  <span className="text-landing-navy font-semibold">
-                    {formatPrice(property.price_eur)}
+                <span className="text-landing-navy font-semibold">
+                    {formatPrice(property.price_eur, t.projectsPriceOnRequest)}
                   </span>
                 </div>
               </div>

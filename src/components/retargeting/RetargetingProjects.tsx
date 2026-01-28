@@ -4,6 +4,7 @@ import { ArrowRight, Bed, Bath, Square, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyImageCarousel } from "@/components/landing/PropertyImageCarousel";
 import { RetargetingPropertyModal } from "./RetargetingPropertyModal";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
 interface Property {
   id: string;
@@ -18,6 +19,10 @@ interface Property {
   descriptions: unknown;
 }
 
+interface RetargetingProjectsProps {
+  language?: string;
+}
+
 // Helper to safely extract images array
 const getImagesArray = (images: unknown): string[] => {
   if (Array.isArray(images)) {
@@ -26,8 +31,8 @@ const getImagesArray = (images: unknown): string[] => {
   return [];
 };
 
-const formatPrice = (price: number | null): string => {
-  if (!price) return "Price on request";
+const formatPrice = (price: number | null, priceOnRequest: string): string => {
+  if (!price) return priceOnRequest;
   try {
     return new Intl.NumberFormat("en-EU", {
       style: "currency",
@@ -39,11 +44,12 @@ const formatPrice = (price: number | null): string => {
   }
 };
 
-export const RetargetingProjects = () => {
+export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProps) => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const t = getRetargetingTranslations(language);
 
   const handleViewDetails = (property: Property) => {
     setSelectedProperty(property);
@@ -91,10 +97,10 @@ export const RetargetingProjects = () => {
           className="text-center mb-12 md:mb-14"
         >
           <p className="text-landing-navy/70 text-base md:text-lg mb-2">
-            Some visitors prefer to explore examples first.
+            {t.projectsIntro1}
           </p>
           <p className="text-landing-navy/70 text-base md:text-lg">
-            Below is a small, curated selection for context only.
+            {t.projectsIntro2}
           </p>
         </motion.div>
 
@@ -132,7 +138,7 @@ export const RetargetingProjects = () => {
                   {/* Price Badge with Glassmorphism */}
                   <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-lg">
                     <span className="text-landing-navy font-semibold text-sm">
-                      {formatPrice(property.price_eur)}
+                      {formatPrice(property.price_eur, t.projectsPriceOnRequest)}
                     </span>
                   </div>
                 </div>
@@ -180,7 +186,7 @@ export const RetargetingProjects = () => {
                     onClick={() => handleViewDetails(property)}
                     className="inline-flex items-center text-sm text-landing-navy/70 hover:text-landing-gold transition-colors group/link"
                   >
-                    View details
+                    {t.projectsViewDetails}
                     <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover/link:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
@@ -189,7 +195,7 @@ export const RetargetingProjects = () => {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-landing-navy/60">Properties coming soon.</p>
+            <p className="text-landing-navy/60">{t.projectsComingSoon}</p>
           </div>
         )}
       </div>
@@ -199,6 +205,7 @@ export const RetargetingProjects = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         property={selectedProperty}
+        language={language}
       />
     </section>
   );

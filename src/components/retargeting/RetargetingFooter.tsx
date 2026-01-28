@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
-export const RetargetingFooter = () => {
+interface RetargetingFooterProps {
+  language?: string;
+}
+
+export const RetargetingFooter = ({ language = "en" }: RetargetingFooterProps) => {
+  const t = getRetargetingTranslations(language);
+
   return (
     <footer className="relative bg-landing-navy py-12 md:py-16 overflow-hidden">
       {/* Subtle gradient overlay */}
@@ -22,7 +29,7 @@ export const RetargetingFooter = () => {
 
           {/* Copyright */}
           <p className="text-white/60 text-sm mb-4">
-            © 2026 Del Sol Prime Homes
+            {t.footerCopyright}
           </p>
 
           {/* Legal Links */}
@@ -31,14 +38,14 @@ export const RetargetingFooter = () => {
               to="/privacy"
               className="text-white/50 hover:text-white/90 transition-colors duration-200 relative group"
             >
-              Privacy Policy
+              {t.footerPrivacy}
               <span className="absolute bottom-0 left-0 w-0 h-px bg-landing-gold group-hover:w-full transition-all duration-300" />
             </Link>
             <Link
               to="/terms"
               className="text-white/50 hover:text-white/90 transition-colors duration-200 relative group"
             >
-              Terms of Service
+              {t.footerTerms}
               <span className="absolute bottom-0 left-0 w-0 h-px bg-landing-gold group-hover:w-full transition-all duration-300" />
             </Link>
           </div>
