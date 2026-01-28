@@ -924,7 +924,14 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         
         // Patterns that indicate SETUP PHASE (should be SKIPPED - intro, name collection, phone collection)
         const setupPhasePatterns = [
-            // English setup patterns
+            // English setup patterns - intro greetings
+            'hello, nice to meet you',
+            'nice to meet you',
+            'if you are here, you probably have',
+            'real estate, or other practical topics',
+            'is that correct?',
+            'is that correct',
+            // English setup patterns - existing
             'before we go into your questions',
             'i first need a few details',
             'is that okay for you',
