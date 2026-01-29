@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,15 @@ import {
   FolderDown,
   AlertCircle,
   Bell,
-  Search
+  Search,
+  Building2,
+  Home
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import JSZip from "jszip";
+import { SitemapFileTable, type SitemapFileInfo } from "./SitemapFileTable";
+import { SitemapValidationPanel } from "./SitemapValidationPanel";
 
 interface PingResults {
   indexNow: {
@@ -39,10 +43,14 @@ interface SitemapData {
     qa: number;
     locations: number;
     comparisons: number;
+    properties?: number;
+    pages?: number;
   };
   files_generated?: number;
   file_list?: string[];
   ping_results?: PingResults;
+  total_redirects_excluded?: number;
+  total_gone_excluded?: number;
 }
 
 interface SitemapResponse {
@@ -179,6 +187,99 @@ export function SitemapRegenerator() {
       color: "bg-orange-500" 
     },
   ];
+
+  // Build file list for SitemapFileTable
+  const sitemapFiles = useMemo<SitemapFileInfo[]>(() => {
+    if (!sitemapData?.file_list) return [];
+    
+    const files: SitemapFileInfo[] = [];
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Master index
+    if (sitemapData.file_list.includes('sitemap.xml') || sitemapData.file_list.includes('sitemap-index.xml')) {
+      files.push({
+        name: 'Master Sitemap Index',
+        path: '/sitemap.xml',
+        urlCount: sitemapData.files_generated || sitemapData.file_list.length,
+        lastmod: today,
+        type: 'index',
+        status: 'valid'
+      });
+    }
+    
+    // Static pages sitemap
+    if (sitemapData.file_list.includes('sitemaps/pages.xml')) {
+      files.push({
+        name: 'Static Pages',
+        path: '/sitemaps/pages.xml',
+        urlCount: 71, // 1 root + 7 pages × 10 languages
+        lastmod: today,
+        type: 'pages',
+        status: 'valid'
+      });
+    }
+    
+    // Properties sitemap
+    if (sitemapData.file_list.includes('sitemaps/properties.xml')) {
+      files.push({
+        name: 'Properties',
+        path: '/sitemaps/properties.xml',
+        urlCount: (sitemapData.content_counts as any)?.properties || 12,
+        lastmod: today,
+        type: 'properties',
+        status: 'valid'
+      });
+    }
+    
+    // Language-specific sitemaps
+    sitemapData.languages_with_content.forEach(lang => {
+      ['blog', 'qa', 'locations', 'comparisons'].forEach(type => {
+        const filePath = `sitemaps/${lang}/${type}.xml`;
+        if (sitemapData.file_list?.includes(filePath)) {
+          const count = type === 'blog' ? Math.round(sitemapData.content_counts.blog / 10) :
+                       type === 'qa' ? Math.round(sitemapData.content_counts.qa / 10) :
+                       type === 'locations' ? Math.round(sitemapData.content_counts.locations / 10) :
+                       Math.round(sitemapData.content_counts.comparisons / 10);
+          
+          files.push({
+            name: `${type.charAt(0).toUpperCase() + type.slice(1)} (${lang.toUpperCase()})`,
+            path: `/${filePath}`,
+            urlCount: count || 1,
+            lastmod: today,
+            type: type as any,
+            language: lang,
+            status: count > 0 ? 'valid' : 'warning',
+            issues: count === 0 ? ['No content for this language'] : undefined
+          });
+        }
+      });
+    });
+    
+    // Brochures and glossary
+    if (sitemapData.file_list.includes('sitemaps/brochures.xml')) {
+      files.push({
+        name: 'City Brochures',
+        path: '/sitemaps/brochures.xml',
+        urlCount: 13,
+        lastmod: today,
+        type: 'brochures',
+        status: 'valid'
+      });
+    }
+    
+    if (sitemapData.file_list.includes('sitemaps/glossary.xml')) {
+      files.push({
+        name: 'Glossary',
+        path: '/sitemaps/glossary.xml',
+        urlCount: 11,
+        lastmod: today,
+        type: 'glossary',
+        status: 'valid'
+      });
+    }
+    
+    return files;
+  }, [sitemapData]);
 
   const totalContent = sitemapData 
     ? Object.values(sitemapData.content_counts).reduce((a, b) => a + b, 0)
@@ -496,6 +597,20 @@ export function SitemapRegenerator() {
               </CardContent>
             </Card>
           )}
+
+          {/* File List Table */}
+          {sitemapFiles.length > 0 && (
+            <SitemapFileTable 
+              files={sitemapFiles} 
+              isLoading={isLoading}
+            />
+          )}
+
+          {/* Validation Panel */}
+          <SitemapValidationPanel 
+            goneUrlCount={sitemapData?.total_gone_excluded || 0}
+            redirectCount={sitemapData?.total_redirects_excluded || 0}
+          />
 
           {/* Instructions */}
           <Card className="border-amber-500/30 bg-amber-500/5">

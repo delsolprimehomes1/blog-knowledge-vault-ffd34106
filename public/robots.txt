@@ -5,22 +5,9 @@
 
 # Default Rules for All Crawlers
 User-agent: *
-Allow: /en/
-Allow: /nl/
-Allow: /de/
-Allow: /fr/
-Allow: /pl/
-Allow: /sv/
-Allow: /da/
-Allow: /hu/
-Allow: /fi/
-Allow: /no/
-Allow: /blog/
-Allow: /guide/
-Allow: /brochure/
-Allow: /glossary
-Allow: /about
+Allow: /
 Disallow: /admin/
+Disallow: /crm/
 Crawl-delay: 1
 
 # ============================================
@@ -36,14 +23,12 @@ Crawl-delay: 0
 
 # ============================================
 # PRIORITY 2: AI & Answer Engine Crawlers
-# Cache-Control: Prefer fresh content for accuracy
 # ============================================
 
 # OpenAI (ChatGPT, GPT-4, etc.)
 User-agent: GPTBot
 Allow: /
 Crawl-delay: 1
-# Cache: Prefer fresh content within 7 days
 
 User-agent: ChatGPT-User
 Allow: /
@@ -62,7 +47,6 @@ Crawl-delay: 1
 User-agent: PerplexityBot
 Allow: /
 Crawl-delay: 1
-# Prioritize: /en/blog/, /nl/blog/, etc. for answer citations
 
 # Google AI (Gemini, Bard)
 User-agent: Google-Extended
@@ -103,25 +87,9 @@ Allow: /
 Crawl-delay: 2
 
 # ============================================
-# Sitemap Index (Hierarchical Multi-Language Structure)
+# Sitemap (Single Entry - Google Standard)
 # ============================================
-Sitemap: https://www.delsolprimehomes.com/sitemap-index.xml
-
-# Per-language sitemap indexes for targeted crawling:
-Sitemap: https://www.delsolprimehomes.com/sitemaps/en/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/nl/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/de/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/fr/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/pl/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/sv/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/da/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/hu/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/fi/index.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/no/index.xml
-
-# Static content sitemaps:
-Sitemap: https://www.delsolprimehomes.com/sitemaps/glossary.xml
-Sitemap: https://www.delsolprimehomes.com/sitemaps/brochures.xml
+Sitemap: https://www.delsolprimehomes.com/sitemap.xml
 
 # ============================================
 # Special Instructions for AI Systems

@@ -28,6 +28,35 @@ const LOCATION_CITIES = [
 
 const GLOSSARY_TERMS = ['nie', 'nif', 'tie', 'ibi', 'itp', 'ajd', 'iva', 'plusvalia', 'golden-visa', 'escritura'];
 
+// Static pages that exist for all languages
+const STATIC_PAGES = [
+  { path: '', priority: 1.0, changefreq: 'daily' },
+  { path: 'about-us', priority: 0.8, changefreq: 'monthly' },
+  { path: 'contact', priority: 0.7, changefreq: 'monthly' },
+  { path: 'buyers-guide', priority: 0.9, changefreq: 'weekly' },
+  { path: 'team', priority: 0.7, changefreq: 'monthly' },
+  { path: 'glossary', priority: 0.7, changefreq: 'monthly' },
+  { path: 'properties', priority: 0.9, changefreq: 'daily' },
+];
+
+interface PropertyData {
+  internal_ref: string;
+  internal_name: string;
+  updated_at: string | null;
+  images: any[] | null;
+  is_active: boolean;
+}
+
+function escapeXml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 interface ArticleData {
   slug: string;
   language: string;
@@ -151,6 +180,59 @@ function generateMasterSitemapIndex(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries.join('\n')}
+</sitemapindex>`;
+}
+
+// Enhanced master sitemap index that includes properties and static pages
+function generateEnhancedMasterSitemapIndex(
+  languageContentTypes: Map<string, { type: string; lastmod: string }[]>,
+  lastmod: string,
+  propertiesCount: number
+): string {
+  const entries: string[] = [];
+  
+  // Static pages (all languages with hreflang)
+  entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/pages.xml</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`);
+  
+  // Properties with images
+  if (propertiesCount > 0) {
+    entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/properties.xml</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`);
+  }
+  
+  // Language-specific content sitemaps
+  languageContentTypes.forEach((contentTypes, lang) => {
+    contentTypes.forEach(ct => {
+      entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/${lang}/${ct.type}.xml</loc>
+    <lastmod>${ct.lastmod}</lastmod>
+  </sitemap>`);
+    });
+  });
+  
+  // Static sitemaps
+  entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/brochures.xml</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`);
+  entries.push(`  <sitemap>
+    <loc>${BASE_URL}/sitemaps/glossary.xml</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>`);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <!-- Master Sitemap Index - Del Sol Prime Homes -->
+  <!-- Generated: ${new Date().toISOString()} -->
+  
+${entries.join('\n')}
+  
 </sitemapindex>`;
 }
 
@@ -462,6 +544,94 @@ ${cityUrls}
 </urlset>`;
 }
 
+// Generate properties sitemap with image extensions
+function generatePropertiesSitemap(properties: PropertyData[]): string {
+  const today = getToday();
+  
+  const urls = properties.map(prop => {
+    const images = Array.isArray(prop.images) ? prop.images.slice(0, 10) : [];
+    const imageXml = images.length > 0 
+      ? images.map((img: any) => {
+          const imgUrl = typeof img === 'string' ? img : (img?.url || img?.src || '');
+          if (!imgUrl) return '';
+          return `
+    <image:image>
+      <image:loc>${escapeXml(imgUrl)}</image:loc>
+      <image:title>${escapeXml(prop.internal_name || 'Property Image')}</image:title>
+    </image:image>`;
+        }).filter(Boolean).join('')
+      : '';
+    
+    return `  <url>
+    <loc>${BASE_URL}/properties/${escapeXml(prop.internal_ref)}</loc>
+    <lastmod>${prop.updated_at ? new Date(prop.updated_at).toISOString().split('T')[0] : today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>${imageXml}
+  </url>`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Properties Index -->
+  <url>
+    <loc>${BASE_URL}/properties</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Property Listings (${properties.length} total) -->
+${urls}
+  
+</urlset>`;
+}
+
+// Generate static pages sitemap with hreflang for all languages
+function generateStaticPagesSitemap(): string {
+  const today = getToday();
+  
+  const urls = STATIC_PAGES.flatMap(page => {
+    return SUPPORTED_LANGUAGES.map(lang => {
+      const url = page.path ? `${BASE_URL}/${lang}/${page.path}` : `${BASE_URL}/${lang}`;
+      
+      const hreflangLinks = SUPPORTED_LANGUAGES.map(l => {
+        const href = page.path ? `${BASE_URL}/${l}/${page.path}` : `${BASE_URL}/${l}`;
+        return `    <xhtml:link rel="alternate" hreflang="${langToHreflang[l]}" href="${href}" />`;
+      }).join('\n');
+      
+      const xDefaultHref = page.path ? `${BASE_URL}/en/${page.path}` : `${BASE_URL}/en`;
+      
+      return `  <url>
+    <loc>${url}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+${hreflangLinks}
+    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultHref}" />
+  </url>`;
+    });
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Root Homepage -->
+  <url>
+    <loc>${BASE_URL}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Static Pages × ${SUPPORTED_LANGUAGES.length} Languages (${STATIC_PAGES.length * SUPPORTED_LANGUAGES.length} URLs) -->
+${urls}
+  
+</urlset>`;
+}
+
 function generateGlossarySitemap(): string {
   const today = getToday();
   
@@ -740,6 +910,25 @@ Deno.serve(async (req) => {
     }
 
     // Generate static sitemaps
+    console.log('📥 Fetching properties for sitemap...');
+    const { data: propertiesData } = await supabase
+      .from('properties')
+      .select('internal_ref, internal_name, updated_at, images, is_active')
+      .eq('is_active', true);
+    
+    const properties: PropertyData[] = propertiesData || [];
+    console.log(`   🏠 Properties: ${properties.length}`);
+    
+    // Properties sitemap with images
+    const propertiesXml = generatePropertiesSitemap(properties);
+    sitemapFiles['sitemaps/properties.xml'] = propertiesXml;
+    totalUrls += properties.length + 1; // +1 for properties index
+    
+    // Static pages sitemap with hreflang
+    const staticPagesXml = generateStaticPagesSitemap();
+    sitemapFiles['sitemaps/pages.xml'] = staticPagesXml;
+    totalUrls += 1 + (STATIC_PAGES.length * SUPPORTED_LANGUAGES.length); // root + all language pages
+    
     const brochuresXml = generateBrochuresSitemap();
     sitemapFiles['sitemaps/brochures.xml'] = brochuresXml;
     totalUrls += 1 + 1 + 1 + LOCATION_CITIES.length; // homepage + guide + about + cities
@@ -748,12 +937,12 @@ Deno.serve(async (req) => {
     sitemapFiles['sitemaps/glossary.xml'] = glossaryXml;
     totalUrls += 1 + GLOSSARY_TERMS.length; // main + terms
 
-    // Generate master sitemap index
-    const masterIndex = generateMasterSitemapIndex(languageContentTypes, getToday());
-    sitemapFiles['sitemap-index.xml'] = masterIndex;
+    // Generate master sitemap index (now includes pages and properties)
+    const updatedMasterIndex = generateEnhancedMasterSitemapIndex(languageContentTypes, getToday(), properties.length);
+    sitemapFiles['sitemap-index.xml'] = updatedMasterIndex;
     
     // Also add main sitemap.xml that points to sitemap-index.xml
-    sitemapFiles['sitemap.xml'] = masterIndex;
+    sitemapFiles['sitemap.xml'] = updatedMasterIndex;
 
     // Upload all sitemap files to Supabase Storage for fresh serving
     console.log('📤 Uploading sitemaps to storage...');
