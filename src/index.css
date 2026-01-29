@@ -746,3 +746,76 @@ All colors MUST be HSL.
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Landing page form phone input styling */
+.landing-form-phone-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border));
+  background-color: white;
+  transition: all 0.2s;
+}
+
+.landing-form-phone-input:focus-within {
+  outline: none;
+  border-color: #D4A853;
+  box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.25);
+}
+
+.landing-form-phone-input .PhoneInputInput {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  font-size: 1rem;
+  width: 100%;
+  color: hsl(215 25% 15%);
+}
+
+.landing-form-phone-input .PhoneInputInput::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.landing-form-phone-input .PhoneInputCountry {
+  margin-right: 0.75rem;
+}
+
+.landing-form-phone-input .PhoneInputCountrySelect {
+  background: transparent;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.landing-form-phone-input .PhoneInputCountrySelectArrow {
+  border-color: currentColor;
+  opacity: 0.5;
+  margin-left: 0.25rem;
+}
+
+.landing-form-phone-input .PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: auto;
+}
+
+.landing-form-phone-input .PhoneInputCountryIcon--border {
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* Custom circular checkbox animation */
+@keyframes checkmark-pop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.checkbox-animate-in {
+  animation: checkmark-pop 0.2s ease-out;
+}
