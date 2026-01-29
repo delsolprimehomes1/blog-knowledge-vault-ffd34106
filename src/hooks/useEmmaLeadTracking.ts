@@ -144,11 +144,43 @@ export const extractPropertyCriteriaFromHistory = (messages: Array<{ role: strin
       }
     }
     
-    // Extract bedrooms (look for numbers near bedroom-related words)
+    // Extract bedrooms - context-aware extraction
     if (!criteria.bedrooms_desired) {
+      // First try: number followed by bedroom word
       const bedroomMatch = content.match(/(\d+)\s*(?:bed|bedroom|br|dormitor)/i);
       if (bedroomMatch) {
         criteria.bedrooms_desired = bedroomMatch[1];
+      } else {
+        // Second try: standalone number if previous message asked about bedrooms
+        const msgIndex = messages.indexOf(msg);
+        if (msgIndex > 0) {
+          const prevMsg = messages[msgIndex - 1];
+          if (prevMsg.role === 'assistant') {
+            const prevContent = prevMsg.content.toLowerCase();
+            // Check if Emma asked about bedrooms (multilingual)
+            const bedroomQuestionPatterns = [
+              'how many bedrooms',
+              'bedrooms are you',
+              'bedrooms do you',
+              'hoeveel slaapkamers',   // Dutch
+              'combien de chambres',    // French
+              'wie viele schlafzimmer', // German
+              'ile sypialni',           // Polish
+              'hur många sovrum',       // Swedish
+              'hvor mange soveværelser',// Danish
+              'kuinka monta makuuhuonetta', // Finnish
+              'hány hálószoba'          // Hungarian
+            ];
+            
+            if (bedroomQuestionPatterns.some(p => prevContent.includes(p))) {
+              // User's response to bedroom question - extract standalone number
+              const standaloneNumber = content.trim().match(/^(\d+)$/);
+              if (standaloneNumber) {
+                criteria.bedrooms_desired = standaloneNumber[1];
+              }
+            }
+          }
+        }
       }
     }
     
@@ -163,12 +195,38 @@ export const extractPropertyCriteriaFromHistory = (messages: Array<{ role: strin
       criteria.property_type = foundTypes;
     }
     
-    // Extract purpose
+    // Extract purpose - context-aware extraction
     if (!criteria.property_purpose) {
+      // First try existing patterns
       for (const pattern of purposePatterns) {
         if (pattern.pattern.test(content)) {
           criteria.property_purpose = pattern.value;
           break;
+        }
+      }
+      
+      // Second try: standalone keywords if Emma asked about purpose
+      if (!criteria.property_purpose) {
+        const msgIndex = messages.indexOf(msg);
+        if (msgIndex > 0 && messages[msgIndex - 1].role === 'assistant') {
+          const prevContent = messages[msgIndex - 1].content.toLowerCase();
+          if (prevContent.includes('primary purpose') || prevContent.includes('purpose of the property') || prevContent.includes('purpose of this property')) {
+            const purposeKeywords = [
+              { pattern: /^winter$/i, value: 'winter_stay' },
+              { pattern: /^holiday$/i, value: 'holiday' },
+              { pattern: /^holidays$/i, value: 'holiday' },
+              { pattern: /^investment$/i, value: 'investment' },
+              { pattern: /^combination$/i, value: 'combination' },
+              { pattern: /^primary$/i, value: 'primary_residence' },
+              { pattern: /^residence$/i, value: 'primary_residence' }
+            ];
+            for (const kw of purposeKeywords) {
+              if (kw.pattern.test(content.trim())) {
+                criteria.property_purpose = kw.value;
+                break;
+              }
+            }
+          }
         }
       }
     }
