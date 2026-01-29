@@ -12,6 +12,32 @@ export const COMPANY_CONTACT = {
 } as const;
 
 /**
+ * Centralized company address information.
+ */
+export const COMPANY_ADDRESS = {
+  street: 'C. Alfonso XIII, 6',
+  building: 'ED SAN FERNAN',
+  floor: '1 OFICINA',
+  postalCode: '29640',
+  city: 'Fuengirola',
+  province: 'Málaga',
+  country: 'Spain',
+  full: 'ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga, Spain',
+  googleMapsUrl: 'https://maps.app.goo.gl/wHXoXoaAQJBbzUyz5',
+  googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3205.1234567890123!2d-4.6234567890123456!3d36.54321098765432!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sED%20SAN%20FERNAN!5e0!3m2!1sen!2ses!4v1234567890123!5m2!1sen!2ses'
+} as const;
+
+/**
+ * Centralized company office hours.
+ */
+export const COMPANY_HOURS = {
+  weekdays: { open: '09:00', close: '18:00' },
+  saturday: { open: '10:00', close: '14:00' },
+  sunday: null, // Closed
+  timezone: 'CET'
+} as const;
+
+/**
  * Centralized company facts and statistics.
  * Update these values in one place to reflect across the entire site.
  */

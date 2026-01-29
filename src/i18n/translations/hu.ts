@@ -212,6 +212,7 @@ export const hu = {
       blogInsights: "Blog & Betekintések",
       glossary: "Ingatlan Szószedet",
       comparisons: "Összehasonlítások",
+      contact: "Kapcsolat",
     },
     legal: {
       privacy: "Adatvédelmi Irányelvek",

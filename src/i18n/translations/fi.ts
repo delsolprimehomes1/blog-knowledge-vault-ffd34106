@@ -212,6 +212,7 @@ export const fi = {
       blogInsights: "Blogi & Näkemyksiä",
       glossary: "Kiinteistösanasto",
       comparisons: "Vertailut",
+      contact: "Yhteystiedot",
     },
     legal: {
       privacy: "Tietosuojakäytäntö",

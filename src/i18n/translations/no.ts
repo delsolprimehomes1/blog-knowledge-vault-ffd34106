@@ -212,6 +212,7 @@ export const no = {
       blogInsights: "Blogg & Innsikt",
       glossary: "Eiendomsordliste",
       comparisons: "Sammenligninger",
+      contact: "Kontakt",
     },
     legal: {
       privacy: "Personvernerklæring",

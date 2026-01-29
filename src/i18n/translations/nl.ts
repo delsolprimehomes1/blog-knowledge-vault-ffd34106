@@ -212,6 +212,7 @@ export const nl = {
       blogInsights: "Blog & Inzichten",
       glossary: "Vastgoed Woordenlijst",
       comparisons: "Vergelijkingen",
+      contact: "Contact",
     },
     legal: {
       privacy: "Privacybeleid",

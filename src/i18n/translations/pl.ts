@@ -212,6 +212,7 @@ export const pl = {
       blogInsights: "Blog i Spostrzeżenia",
       glossary: "Słownik Nieruchomości",
       comparisons: "Porównania",
+      contact: "Kontakt",
     },
     legal: {
       privacy: "Polityka Prywatności",

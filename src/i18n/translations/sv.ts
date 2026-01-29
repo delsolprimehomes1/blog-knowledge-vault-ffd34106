@@ -212,6 +212,7 @@ export const sv = {
       blogInsights: "Blogg & Insikter",
       glossary: "Fastighetsordlista",
       comparisons: "Jämförelser",
+      contact: "Kontakt",
     },
     legal: {
       privacy: "Integritetspolicy",
