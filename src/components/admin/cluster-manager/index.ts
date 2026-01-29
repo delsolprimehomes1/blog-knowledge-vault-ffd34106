@@ -8,3 +8,8 @@ export * from "./ClusterHreflangTab";
 export * from "./CreateClusterDialog";
 export * from "./ImageSharingFixDialog";
 export * from "./ImageSharingProgress";
+export * from "./ClusterManagerDashboard";
+export * from "./BulkOperationsPanel";
+export * from "./BulkOperationProgress";
+export * from "./ValidationWarningsPanel";
+export * from "./AdvancedFilters";
