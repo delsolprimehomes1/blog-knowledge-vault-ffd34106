@@ -222,6 +222,24 @@ export const en = {
       gdpr: "GDPR Compliance",
     },
   },
+  locationGuides: {
+    readyToExplore: "Ready to explore {city}?",
+    contactWhatsApp: "Contact via WhatsApp",
+    expertGuidance: "Expert Guidance Available",
+    quickResponse: "Quick Response",
+    licensedAgents: "Licensed Agents",
+    multipleLanguages: "10+ Languages",
+    connectWithExperts: "Connect with our local experts who can help you find your perfect property",
+    andAnswerQuestions: "and answer all your questions about {topic}",
+    inCity: "in {city}",
+    chatWithEmma: "Chat with EMMA",
+    aboutCity: "About {city}",
+    localInsights: "Local insights and overview",
+    marketOverview: "Market Overview",
+    marketTrends: "Current trends and pricing data",
+    summaryRecommendations: "Summary & Recommendations",
+    keyTakeaways: "Key takeaways for buyers",
+  },
   brochures: {
     marbella: {
       hero: {

@@ -14,6 +14,7 @@ import { LocationCTASection } from "@/components/location/LocationCTASection";
 import { StickyMobileCTA } from "@/components/blog-article/StickyMobileCTA";
 import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import { TrendingUp, Building, Info } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 import { 
   type LocationPage as LocationPageType,
   type BestArea,
@@ -24,6 +25,7 @@ import type { Author } from "@/types/blog";
 
 const LocationPage = () => {
   const { citySlug, topicSlug, lang = 'en' } = useParams<{ citySlug: string; topicSlug: string; lang: string }>();
+  const { t } = useTranslation();
 
   const { data: page, isLoading, error } = useQuery({
     queryKey: ['location-page', citySlug, topicSlug, lang],
@@ -46,6 +48,9 @@ const LocationPage = () => {
     },
     enabled: !!citySlug && !!topicSlug && !!lang,
   });
+
+  // Helper function to replace placeholders
+  const replaceCity = (text: string, city: string) => text.replace('{city}', city);
 
   if (isLoading) {
     return (
@@ -107,10 +112,10 @@ const LocationPage = () => {
                 </div>
                 <div>
                   <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                    About {page.city_name}
+                    {replaceCity(t.locationGuides?.aboutCity || "About {city}", page.city_name)}
                   </h2>
                   <p className="text-muted-foreground mt-1">
-                    Local insights and overview
+                    {t.locationGuides?.localInsights || "Local insights and overview"}
                   </p>
                 </div>
               </div>
@@ -143,10 +148,10 @@ const LocationPage = () => {
                 </div>
                 <div>
                   <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                    Market Overview
+                    {t.locationGuides?.marketOverview || "Market Overview"}
                   </h2>
                   <p className="text-muted-foreground mt-1">
-                    Current trends and pricing data
+                    {t.locationGuides?.marketTrends || "Current trends and pricing data"}
                   </p>
                 </div>
               </div>
@@ -197,10 +202,10 @@ const LocationPage = () => {
                 </div>
                 <div>
                   <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                    Summary & Recommendations
+                    {t.locationGuides?.summaryRecommendations || "Summary & Recommendations"}
                   </h2>
                   <p className="text-muted-foreground mt-1">
-                    Key takeaways for buyers
+                    {t.locationGuides?.keyTakeaways || "Key takeaways for buyers"}
                   </p>
                 </div>
               </div>
@@ -230,6 +235,7 @@ const LocationPage = () => {
         <LocationCTASection 
           cityName={page.city_name}
           topicName={page.headline}
+          language={page.language || 'en'}
         />
       </main>
 

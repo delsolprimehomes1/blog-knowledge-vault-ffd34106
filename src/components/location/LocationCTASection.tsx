@@ -1,17 +1,25 @@
-import { MessageCircle, Calendar, ArrowRight, Phone, Shield, Clock } from "lucide-react";
+import { MessageCircle, ArrowRight, Phone, Shield, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface LocationCTASectionProps {
   cityName: string;
   topicName?: string;
+  language?: string;
 }
 
 export function LocationCTASection({ cityName, topicName }: LocationCTASectionProps) {
+  const { t } = useTranslation();
+  
   const openChat = () => {
     const event = new CustomEvent('openChatbot');
     window.dispatchEvent(event);
   };
+
+  // Helper function to replace placeholders
+  const replaceCity = (text: string) => text.replace('{city}', cityName);
+  const replaceTopic = (text: string) => text.replace('{topic}', topicName?.toLowerCase() || '');
 
   return (
     <section className="py-12 md:py-16 relative overflow-hidden">
@@ -40,17 +48,17 @@ export function LocationCTASection({ cityName, topicName }: LocationCTASectionPr
                   className="bg-primary/10 text-primary border-primary/20"
                 >
                   <Shield className="w-3 h-3 mr-1" />
-                  Expert Guidance Available
+                  {t.locationGuides?.expertGuidance || "Expert Guidance Available"}
                 </Badge>
                 
                 {/* Heading */}
                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                  Ready to Explore {cityName}?
+                  {replaceCity(t.locationGuides?.readyToExplore || "Ready to explore {city}?")}
                 </h2>
                 
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Connect with our local experts who can help you find your perfect property 
-                  {topicName ? ` and answer all your questions about ${topicName.toLowerCase()}` : ''} in {cityName}.
+                  {t.locationGuides?.connectWithExperts || "Connect with our local experts who can help you find your perfect property"}
+                  {topicName ? ` ${replaceTopic(t.locationGuides?.andAnswerQuestions || "and answer all your questions about {topic}")}` : ''} {replaceCity(t.locationGuides?.inCity || "in {city}")}.
                 </p>
                 
                 {/* CTA Buttons */}
@@ -61,7 +69,7 @@ export function LocationCTASection({ cityName, topicName }: LocationCTASectionPr
                     onClick={openChat}
                   >
                     <MessageCircle className="w-5 h-5 mr-2" />
-                    Chat with EMMA
+                    {t.locationGuides?.chatWithEmma || "Chat with EMMA"}
                     <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
                   </Button>
                   
@@ -71,9 +79,9 @@ export function LocationCTASection({ cityName, topicName }: LocationCTASectionPr
                     className="border-primary/30 hover:bg-primary/5 hover:border-primary/50 w-full sm:w-auto"
                     asChild
                   >
-                    <a href="tel:+34630039090">
+                    <a href="https://wa.me/34630039090" target="_blank" rel="noopener noreferrer">
                       <Phone className="w-5 h-5 mr-2" />
-                      Call Us Now
+                      {t.locationGuides?.contactWhatsApp || "Contact via WhatsApp"}
                     </a>
                   </Button>
                 </div>
@@ -82,15 +90,15 @@ export function LocationCTASection({ cityName, topicName }: LocationCTASectionPr
                 <div className="flex flex-wrap items-center justify-center gap-6 pt-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-primary" />
-                    <span>Quick Response</span>
+                    <span>{t.locationGuides?.quickResponse || "Quick Response"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-primary" />
-                    <span>Licensed Agents</span>
+                    <span>{t.locationGuides?.licensedAgents || "Licensed Agents"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MessageCircle className="w-4 h-4 text-primary" />
-                    <span>10+ Languages</span>
+                    <span>{t.locationGuides?.multipleLanguages || "10+ Languages"}</span>
                   </div>
                 </div>
               </div>
