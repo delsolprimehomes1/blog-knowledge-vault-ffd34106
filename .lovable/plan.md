@@ -1,58 +1,129 @@
-# Sync Sitemap Generation with 410 Gone URLs System
 
-## ✅ COMPLETED - January 29, 2026
+# Fix: Bedrooms Not Being Captured from Emma Conversations
 
-All sitemap generation methods now filter out URLs marked in the `gone_urls` table.
+## Problem
 
----
+The user answered **"3"** when Emma asked "How many bedrooms are you looking for?" but this value is not being saved to `bedrooms_desired` in the database.
 
-## Implementation Summary
+**Root Cause:** The current regex pattern only matches numbers when they're directly followed by bedroom-related words:
 
-### Files Modified
+```javascript
+// Current pattern - FAILS for "3"
+const bedroomMatch = content.match(/(\d+)\s*(?:bed|bedroom|br|dormitor)/i);
+```
 
-| File | Status | Changes |
-|------|--------|---------|
-| `supabase/functions/regenerate-sitemap/index.ts` | ✅ Done | Added `gone_urls` fetching and filtering for all content types |
-| `src/hooks/useSitemapData.ts` | ✅ Done | Added `fetchGoneUrls()` helper, all fetch functions accept goneUrls param |
-| `src/pages/Sitemap.tsx` | ✅ Done | Displays 410 Gone count and info banner |
+This doesn't capture standalone numeric answers like "3", "4", or "5" which are common user responses to the bedrooms question.
 
----
+## Solution
 
-## Technical Details
+Update the extraction logic in `src/hooks/useEmmaLeadTracking.ts` to also consider the **context** from the previous assistant message. If Emma just asked about bedrooms, and the user replies with a number, that number should be captured.
 
-### Edge Function Changes
-- Fetches all `gone_urls` at start of sitemap generation
-- Filters each content type (blog, qa, locations, comparisons) against gone paths
-- Logs exclusion counts for audit: `🚫 Total 410 Gone excluded: X`
-- Returns both `excluded_redirects` and `excluded_gone` stats in response
+### Implementation
 
-### Frontend Hook Changes
-- New `fetchGoneUrls()` function with pagination support
-- All fetch functions (`fetchAllArticles`, `fetchAllQAPages`, etc.) accept optional `goneUrls` Set
-- Content filtered client-side before being added to sitemap
+**File: `src/hooks/useEmmaLeadTracking.ts`**
 
-### Admin UI Changes
-- Added 410 Gone count to stats grid with distinctive red styling
-- Info banner explaining automatic exclusion when gone URLs exist
-- Filter applied during sitemap download generation
+**Change 1:** Modify `extractPropertyCriteriaFromHistory` function to check previous messages for context
 
----
+```typescript
+// Enhanced bedrooms extraction - check context from previous Emma message
+if (!criteria.bedrooms_desired) {
+  // First try: number followed by bedroom word
+  const bedroomMatch = content.match(/(\d+)\s*(?:bed|bedroom|br|dormitor)/i);
+  if (bedroomMatch) {
+    criteria.bedrooms_desired = bedroomMatch[1];
+  } else {
+    // Second try: standalone number if previous message asked about bedrooms
+    const msgIndex = messages.indexOf(msg);
+    if (msgIndex > 0) {
+      const prevMsg = messages[msgIndex - 1];
+      if (prevMsg.role === 'assistant') {
+        const prevContent = prevMsg.content.toLowerCase();
+        // Check if Emma asked about bedrooms
+        const bedroomQuestionPatterns = [
+          'how many bedrooms',
+          'bedrooms are you',
+          'bedrooms do you',
+          'hoeveel slaapkamers',   // Dutch
+          'combien de chambres',    // French
+          'wie viele schlafzimmer', // German
+          'ile sypialni',           // Polish
+          'hur många sovrum',       // Swedish
+          'hvor mange soveværelser',// Danish
+          'kuinka monta makuuhuonetta', // Finnish
+          'hány hálószoba'          // Hungarian
+        ];
+        
+        if (bedroomQuestionPatterns.some(p => prevContent.includes(p))) {
+          // User's response to bedroom question - extract standalone number
+          const standaloneNumber = content.match(/^(\d+)$/);
+          if (standaloneNumber) {
+            criteria.bedrooms_desired = standaloneNumber[1];
+          }
+        }
+      }
+    }
+  }
+}
+```
 
-## Path Matching Patterns
+### Similar Pattern for Purpose
 
-| Content Type | Path Format |
-|--------------|-------------|
-| Blog | `/{lang}/blog/{slug}` |
-| Q&A | `/{lang}/qa/{slug}` |
-| Comparisons | `/{lang}/compare/{slug}` |
-| Locations | `/{lang}/locations/{city_slug}/{topic_slug}` |
+The same issue exists for `property_purpose`. The user answered **"winter"** when Emma asked about the primary purpose, but the current patterns look for phrases like "winter stay" or "escape winter". 
 
----
+**Change 2:** Add standalone keyword matching with context awareness:
 
-## Expected Behavior
+```typescript
+// Enhanced purpose extraction - check context
+if (!criteria.property_purpose) {
+  // First try existing patterns
+  for (const pattern of purposePatterns) {
+    if (pattern.pattern.test(content)) {
+      criteria.property_purpose = pattern.value;
+      break;
+    }
+  }
+  
+  // Second try: standalone keywords if Emma asked about purpose
+  if (!criteria.property_purpose) {
+    const msgIndex = messages.indexOf(msg);
+    if (msgIndex > 0 && messages[msgIndex - 1].role === 'assistant') {
+      const prevContent = messages[msgIndex - 1].content.toLowerCase();
+      if (prevContent.includes('primary purpose') || prevContent.includes('purpose of the property')) {
+        const purposeKeywords = [
+          { pattern: /^winter$/i, value: 'winter_stay' },
+          { pattern: /^holiday$/i, value: 'holiday' },
+          { pattern: /^investment$/i, value: 'investment' },
+          { pattern: /^combination$/i, value: 'combination' }
+        ];
+        for (const kw of purposeKeywords) {
+          if (kw.pattern.test(content.trim())) {
+            criteria.property_purpose = kw.value;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+```
 
-1. **Sitemap Regeneration** (edge function): Excludes all paths in `gone_urls`
-2. **Admin Sitemap Page**: Downloads exclude `gone_urls` paths
-3. **Build Script**: Already had filtering (unchanged)
+## Files to Modify
 
-No conflicting signals will be sent to Google - sitemaps and 410 responses are now in sync.
+| File | Change |
+|------|--------|
+| `src/hooks/useEmmaLeadTracking.ts` | Add context-aware extraction for bedrooms and purpose |
+
+## Testing
+
+After implementation:
+1. Test a new Emma conversation
+2. When asked about bedrooms, answer with just "3"
+3. Verify the Property Criteria shows "3" for Bedrooms
+4. Similarly test purpose with just "winter"
+
+## Expected Results
+
+| Field | User Answer | Current Result | After Fix |
+|-------|-------------|----------------|-----------|
+| Bedrooms | "3" | - (empty) | 3 |
+| Purpose | "winter" | - (empty) | winter_stay |
