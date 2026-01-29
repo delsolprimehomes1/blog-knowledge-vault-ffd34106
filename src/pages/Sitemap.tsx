@@ -1,15 +1,13 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { isFeatureEnabled } from "@/lib/featureFlags";
 import { Button } from "@/components/ui/button";
-import { Download, Copy, Check, RefreshCw } from "lucide-react";
+import { Download, Copy, Check, RefreshCw, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import {
   useSitemapCounts,
   fetchAllArticles,
-  fetchAllQAPages,
-  fetchAllComparisonPages,
-  fetchAllLocationPages,
+  fetchGoneUrls,
   type ArticleData,
 } from "@/hooks/useSitemapData";
 
@@ -145,19 +143,24 @@ ${articleUrls}
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Del Sol Prime Homes Sitemap Index -->
   <!-- Total: ${totalUrls} published pages -->
-${entries.join('\n')}
 </sitemapindex>`;
   }, [totalUrls]);
 
   const handleDownloadAll = async () => {
     setGenerating(true);
-    setProgress({ current: 0, total: totalUrls, phase: 'Fetching blog articles...' });
+    setProgress({ current: 0, total: totalUrls, phase: 'Loading 410 Gone URLs...' });
 
     try {
-      // Fetch ALL articles with pagination (no 1000 row limit)
+      // Fetch gone URLs first for filtering
+      const goneUrls = await fetchGoneUrls();
+      console.log(`Loaded ${goneUrls.size} gone URLs for filtering`);
+
+      setProgress(prev => ({ ...prev, phase: 'Fetching blog articles...' }));
+      
+      // Fetch ALL articles with pagination AND gone URL filtering
       const allArticles = await fetchAllArticles((fetched) => {
         setProgress(prev => ({ ...prev, current: fetched, phase: `Fetching blog articles... (${fetched})` }));
-      });
+      }, goneUrls);
 
       // Build cluster map for hreflang
       const clusterMap = new Map<string, ArticleData[]>();
@@ -213,7 +216,7 @@ ${entries.join('\n')}
 
       toast({
         title: "Sitemaps Generated",
-        description: `Downloaded sitemap index and ${downloadCount} language sitemaps (${allArticles.length} total articles)`,
+        description: `Downloaded sitemap index and ${downloadCount} language sitemaps (${allArticles.length} articles, filtered ${goneUrls.size} gone URLs)`,
       });
     } catch (error) {
       console.error('Sitemap generation error:', error);
@@ -251,7 +254,7 @@ ${entries.join('\n')}
       ) : (
         <>
           {/* Stats - Using accurate COUNT queries */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div className="p-4 bg-muted rounded-lg text-center">
               <div className="text-2xl font-bold">{counts?.articles?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Blog Articles</div>
@@ -268,11 +271,34 @@ ${entries.join('\n')}
               <div className="text-2xl font-bold">{counts?.locations?.toLocaleString() || 0}</div>
               <div className="text-sm text-muted-foreground">Locations</div>
             </div>
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+              <div className="flex items-center justify-center gap-1">
+                <Ban className="h-4 w-4 text-destructive" />
+                <div className="text-2xl font-bold text-destructive">{counts?.goneUrls?.toLocaleString() || 0}</div>
+              </div>
+              <div className="text-sm text-muted-foreground">410 Gone</div>
+            </div>
             <div className="p-4 bg-primary/10 rounded-lg text-center">
               <div className="text-2xl font-bold text-primary">{totalUrls.toLocaleString()}</div>
               <div className="text-sm text-muted-foreground">Total URLs</div>
             </div>
           </div>
+
+          {/* 410 Gone Info Banner */}
+          {(counts?.goneUrls || 0) > 0 && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-950/20 dark:border-amber-800">
+              <div className="flex items-start gap-3">
+                <Ban className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-amber-800 dark:text-amber-200">410 Gone URL Filtering Active</h4>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    {counts?.goneUrls?.toLocaleString()} URLs are marked as permanently removed and will be automatically 
+                    excluded from sitemap generation. This prevents conflicting signals to search engines.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Settings */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">

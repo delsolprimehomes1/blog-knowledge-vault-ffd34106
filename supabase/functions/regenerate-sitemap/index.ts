@@ -547,27 +547,65 @@ Deno.serve(async (req) => {
       { column: 'updated_at', ascending: false }
     );
 
-    // Filter out redirects from sitemap
-    const articles = (rawArticles || []).filter(a => !a.is_redirect && !a.redirect_to);
-    const qaPages = (rawQaPages || []).filter(q => !q.is_redirect && !q.redirect_to);
-    const locationPages = (rawLocationPages || []).filter(l => !l.is_redirect && !l.redirect_to);
-    const comparisonPages = (rawComparisonPages || []).filter(c => !c.is_redirect && !c.redirect_to);
+    // Fetch gone URLs to exclude from sitemap (sync with 410 Gone system)
+    console.log('📥 Fetching gone URLs to exclude...');
+    const { data: goneUrlData } = await supabase
+      .from('gone_urls')
+      .select('url_path');
+    const goneUrlPaths = new Set((goneUrlData || []).map((g: { url_path: string }) => g.url_path));
+    console.log(`   🚫 Gone URLs loaded: ${goneUrlPaths.size}`);
 
+    // Helper to check if path is in gone_urls
+    const isGonePath = (path: string): boolean => goneUrlPaths.has(path);
+
+    // Filter out redirects AND gone URLs from sitemap
+    const articles = (rawArticles || []).filter(a => {
+      if (a.is_redirect || a.redirect_to) return false;
+      const path = `/${a.language}/blog/${a.slug}`;
+      return !isGonePath(path);
+    });
+    const qaPages = (rawQaPages || []).filter(q => {
+      if (q.is_redirect || q.redirect_to) return false;
+      const path = `/${q.language}/qa/${q.slug}`;
+      return !isGonePath(path);
+    });
+    const locationPages = (rawLocationPages || []).filter(l => {
+      if (l.is_redirect || l.redirect_to) return false;
+      const path = `/${l.language}/locations/${l.city_slug}/${l.topic_slug}`;
+      return !isGonePath(path);
+    });
+    const comparisonPages = (rawComparisonPages || []).filter(c => {
+      if (c.is_redirect || c.redirect_to) return false;
+      const path = `/${c.language}/compare/${c.slug}`;
+      return !isGonePath(path);
+    });
+
+    // Calculate exclusion stats
     const excludedRedirects = {
-      blog: (rawArticles?.length || 0) - articles.length,
-      qa: (rawQaPages?.length || 0) - qaPages.length,
-      locations: (rawLocationPages?.length || 0) - locationPages.length,
-      comparisons: (rawComparisonPages?.length || 0) - comparisonPages.length,
+      blog: (rawArticles || []).filter(a => a.is_redirect || a.redirect_to).length,
+      qa: (rawQaPages || []).filter(q => q.is_redirect || q.redirect_to).length,
+      locations: (rawLocationPages || []).filter(l => l.is_redirect || l.redirect_to).length,
+      comparisons: (rawComparisonPages || []).filter(c => c.is_redirect || c.redirect_to).length,
     };
-    const totalExcluded = excludedRedirects.blog + excludedRedirects.qa + excludedRedirects.locations + excludedRedirects.comparisons;
+    const excludedGone = {
+      blog: (rawArticles || []).filter(a => !a.is_redirect && !a.redirect_to && isGonePath(`/${a.language}/blog/${a.slug}`)).length,
+      qa: (rawQaPages || []).filter(q => !q.is_redirect && !q.redirect_to && isGonePath(`/${q.language}/qa/${q.slug}`)).length,
+      locations: (rawLocationPages || []).filter(l => !l.is_redirect && !l.redirect_to && isGonePath(`/${l.language}/locations/${l.city_slug}/${l.topic_slug}`)).length,
+      comparisons: (rawComparisonPages || []).filter(c => !c.is_redirect && !c.redirect_to && isGonePath(`/${c.language}/compare/${c.slug}`)).length,
+    };
+    const totalExcludedRedirects = excludedRedirects.blog + excludedRedirects.qa + excludedRedirects.locations + excludedRedirects.comparisons;
+    const totalExcludedGone = excludedGone.blog + excludedGone.qa + excludedGone.locations + excludedGone.comparisons;
 
-    console.log(`📊 Content counts (after filtering redirects):`);
-    console.log(`   📝 Blog: ${articles.length} (excluded ${excludedRedirects.blog} redirects)`);
-    console.log(`   🔍 Q&A: ${qaPages.length} (excluded ${excludedRedirects.qa} redirects)`);
-    console.log(`   📍 Locations: ${locationPages.length} (excluded ${excludedRedirects.locations} redirects)`);
-    console.log(`   ⚖️ Comparisons: ${comparisonPages.length} (excluded ${excludedRedirects.comparisons} redirects)`);
-    if (totalExcluded > 0) {
-      console.log(`   🔀 Total redirects excluded from sitemap: ${totalExcluded}`);
+    console.log(`📊 Content counts (after filtering):`);
+    console.log(`   📝 Blog: ${articles.length} (excluded ${excludedRedirects.blog} redirects, ${excludedGone.blog} gone)`);
+    console.log(`   🔍 Q&A: ${qaPages.length} (excluded ${excludedRedirects.qa} redirects, ${excludedGone.qa} gone)`);
+    console.log(`   📍 Locations: ${locationPages.length} (excluded ${excludedRedirects.locations} redirects, ${excludedGone.locations} gone)`);
+    console.log(`   ⚖️ Comparisons: ${comparisonPages.length} (excluded ${excludedRedirects.comparisons} redirects, ${excludedGone.comparisons} gone)`);
+    if (totalExcludedRedirects > 0) {
+      console.log(`   🔀 Total redirects excluded: ${totalExcludedRedirects}`);
+    }
+    if (totalExcludedGone > 0) {
+      console.log(`   🚫 Total 410 Gone excluded: ${totalExcludedGone}`);
     }
 
     // Build cluster map for blog articles
@@ -774,7 +812,9 @@ Deno.serve(async (req) => {
         comparisons: comparisonPages.length,
       },
       excluded_redirects: excludedRedirects,
-      total_redirects_excluded: totalExcluded,
+      excluded_gone: excludedGone,
+      total_redirects_excluded: totalExcludedRedirects,
+      total_gone_excluded: totalExcludedGone,
       files_generated: Object.keys(sitemapFiles).length,
       files_uploaded: uploadedCount,
       upload_errors: uploadErrors.length > 0 ? uploadErrors : undefined,
