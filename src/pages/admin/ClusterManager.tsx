@@ -16,13 +16,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Loader2, FolderOpen, RefreshCw, Link2, AlertTriangle, PlayCircle, Plus, ImageIcon } from "lucide-react";
+import { Search, Loader2, FolderOpen, RefreshCw, Link2, AlertTriangle, PlayCircle, Plus, ImageIcon, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { ClusterCard } from "@/components/admin/cluster-manager/ClusterCard";
 import { CreateClusterDialog } from "@/components/admin/cluster-manager/CreateClusterDialog";
 import { BulkImageRegenerationDialog } from "@/components/admin/cluster-manager/BulkImageRegenerationDialog";
 import { ImageSharingFixDialog } from "@/components/admin/cluster-manager/ImageSharingFixDialog";
 import { ImageSharingProgress } from "@/components/admin/cluster-manager/ImageSharingProgress";
+import { ClusterManagerDashboard } from "@/components/admin/cluster-manager/ClusterManagerDashboard";
+import { BulkOperationsPanel } from "@/components/admin/cluster-manager/BulkOperationsPanel";
+import { ValidationWarningsPanel } from "@/components/admin/cluster-manager/ValidationWarningsPanel";
+import { useClusterManagerStats } from "@/hooks/useClusterManagerStats";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   ClusterData, 
   QAJobProgress,
@@ -55,7 +60,10 @@ const ClusterManager = () => {
   const [publishingQAs, setPublishingQAs] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showBulkImageDialog, setShowBulkImageDialog] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true);
   
+  // Dashboard stats
+  const { data: dashboardStats, isLoading: isLoadingStats } = useClusterManagerStats();
   // Image sharing fix state
   const [clusterToFixImages, setClusterToFixImages] = useState<ClusterData | null>(null);
   const [showImageFixConfirm, setShowImageFixConfirm] = useState(false);
@@ -1133,6 +1141,36 @@ setTranslationProgress({
             </Button>
           </div>
         </div>
+
+        {/* Dashboard Section - Collapsible */}
+        <Collapsible open={showDashboard} onOpenChange={setShowDashboard}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Dashboard Overview
+                  </div>
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {showDashboard ? 'Click to collapse' : 'Click to expand'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-6">
+                <ClusterManagerDashboard stats={dashboardStats} isLoading={isLoadingStats} />
+                
+                {/* Bulk Operations */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <BulkOperationsPanel stats={dashboardStats} />
+                  <ValidationWarningsPanel stats={dashboardStats} />
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Filters */}
         <Card>
