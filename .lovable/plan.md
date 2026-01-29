@@ -1,331 +1,213 @@
 
-# Enhance Cluster Manager: Comprehensive Dashboard and Bulk Operations
+# Fix and Optimize Sitemap Generation System
 
 ## Executive Summary
 
-The Cluster Manager already has solid foundations with image health tracking, QA management, and citation tabs. This enhancement adds:
-1. **Comprehensive Dashboard Overview** with all content health statistics
-2. **Bulk Operations Panel** with "Fix Missing Images" and "Fix Missing External Links" buttons
-3. **Advanced Filtering** for articles list
-4. **Individual Article Actions** with quick operations
-5. **Validation Warnings Panel** for content quality issues
-6. **Rate-Limited Batch Processing** with progress tracking and pause/resume
+The project already has a **robust sitemap system** with:
+- **Edge function** (`regenerate-sitemap`) that generates XML dynamically from database
+- **Build script** (`scripts/generateSitemap.ts`) for static generation during deployment
+- **Admin UI** (`SitemapRegenerator.tsx`) with regeneration, download, and IndexNow ping
+- **Database triggers** (`notify_sitemap_ping`) that auto-ping IndexNow on publish
+- **Storage integration** uploading to `sitemaps` bucket
+- **Gone URL filtering** to exclude 410 pages
+
+### Current Content Volume
+| Content Type | Published Count |
+|-------------|-----------------|
+| Blog Articles | 3,271 |
+| Q&A Pages | 9,600 |
+| Comparison Pages | 47 |
+| Location Pages | 198 |
+| Properties | 12 |
+| City Brochures | 10 |
+| **Total** | **~13,138** |
+
+### Current Structure
+```
+/sitemap-index.xml (master)
+├── /sitemaps/en/blog.xml
+├── /sitemaps/en/qa.xml
+├── /sitemaps/en/locations.xml
+├── /sitemaps/en/comparisons.xml
+├── ... (×10 languages)
+├── /sitemaps/glossary.xml
+└── /sitemaps/brochures.xml
+```
+
+### What's Missing (per requirements)
+1. **Properties sitemap** with image extensions
+2. **Static pages sitemap** with hreflang for 10 languages (home, about, contact, buyers-guide)
+3. **New-builds sitemap** (if applicable)
+4. **Enhanced admin dashboard** with validation status and per-sitemap regeneration
+5. **Automatic caching** with 6-hour TTL
+6. **Robots.txt update** - currently points to `/sitemap-index.xml` not `/sitemap.xml`
 
 ---
 
-## Current State
+## Phase 1: Rename Master Sitemap to /sitemap.xml
 
-| Feature | Status |
-|---------|--------|
-| Image health per cluster | Exists (via `get_cluster_image_health` RPC) |
-| Image regeneration per article | Exists (`regenerate-article-image` function) |
-| Citation discovery per cluster | Exists (`discover-cluster-citations` function) |
-| Batch image generation page | Exists (`BatchImageGeneration.tsx`) |
-| Dashboard with article stats | Exists (`useDashboardStats` hook) |
-| Rate limiting library (Bottleneck) | Not installed |
-| Global bulk operations | Missing |
-| Article-level quick actions | Missing |
-| Validation warnings panel | Missing |
-| Progress tracking with pause/resume | Missing |
+### Current Issue
+- `robots.txt` references `/sitemap-index.xml`
+- Google standard expects `/sitemap.xml`
+
+### Fix
+Update both generation scripts and `robots.txt` to consistently use `/sitemap.xml` as the primary entry point (currently already copies to both, but naming needs standardization).
+
+**Files to modify:**
+- `public/robots.txt` - Change `Sitemap: .../sitemap-index.xml` to `Sitemap: .../sitemap.xml`
 
 ---
 
-## Phase 1: Dashboard Overview Statistics
+## Phase 2: Add Properties Sitemap with Image Extensions
 
-### Add new statistics section at top of ClusterManager
+### New sitemap: `/sitemaps/properties.xml`
 
-Create a new component `ClusterManagerDashboard.tsx` displaying:
-
-| Metric | Query | Source |
-|--------|-------|--------|
-| Total clusters created | Count unique `cluster_id` | blog_articles table |
-| Total articles generated | Count all articles with `cluster_id` | blog_articles table |
-| Articles by status (draft/published) | Group by status | blog_articles table |
-| Articles missing images | Where `featured_image_url IS NULL` | blog_articles table |
-| Articles missing external links | Where `external_citations IS NULL OR = '[]'` | blog_articles table |
-| Articles by language breakdown | Group by language | blog_articles table |
-| Word count validation | Articles < 1500 or > 2500 words | blog_articles table |
-
-### UI Layout
-
-```text
-+----------------------------------------------------------------------+
-| CLUSTER MANAGER DASHBOARD                                             |
-+----------------------------------------------------------------------+
-| +----------------+ +----------------+ +----------------+ +------------+|
-| | 24 Clusters    | | 1,440 Articles | | 95% Published  | | 10 Lang.  ||
-| +----------------+ +----------------+ +----------------+ +------------+|
-|                                                                       |
-| CONTENT HEALTH                                                        |
-| +---------------------------+ +---------------------------+           |
-| | 🖼️ Images                 | | 🔗 External Links         |           |
-| | ✅ 1,380 have images      | | ✅ 1,200 have citations   |           |
-| | ⚠️ 60 missing             | | ⚠️ 240 missing            |           |
-| | [Fix Missing Images]      | | [Fix Missing Links]       |           |
-| +---------------------------+ +---------------------------+           |
-|                                                                       |
-| VALIDATION WARNINGS                                                   |
-| +--------------------------------------------------------------------+|
-| | ⚠️ 15 articles < 1500 words  | ⚠️ 8 articles > 2500 words          ||
-| | ⚠️ 12 broken internal links  | ⚠️ 5 articles missing FAQ schema   ||
-| +--------------------------------------------------------------------+|
-+----------------------------------------------------------------------+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://www.delsolprimehomes.com/properties/{internal_ref}</loc>
+    <lastmod>2026-01-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://.../image1.jpg</image:loc>
+      <image:title>Property Title - Image 1</image:title>
+    </image:image>
+    <!-- More images -->
+  </url>
+</urlset>
 ```
+
+**Implementation:**
+- Query `properties` table where `is_active = true`
+- Extract images from `images` JSONB column
+- Generate image sitemap extension for each property
+
+**Files to modify:**
+- `scripts/generateSitemap.ts` - Add `generatePropertiesSitemap()` function
+- `supabase/functions/regenerate-sitemap/index.ts` - Add properties generation
 
 ---
 
-## Phase 2: Bulk Operations with Rate Limiting
+## Phase 3: Add Static Pages Sitemap with Hreflang
 
-### Install Rate Limiting
+### New sitemap: `/sitemaps/pages.xml`
 
-The project doesn't use Bottleneck, but we can implement rate limiting using a custom utility with `setTimeout` delays:
+Static pages need hreflang for all 10 languages:
+- Homepage: `/`, `/{lang}/`
+- About: `/about`, `/{lang}/about-us`
+- Contact: `/{lang}/contact`
+- Buyers Guide: `/guide`, `/{lang}/buyers-guide`
+- Team: `/{lang}/team`
+- Glossary: `/glossary`, `/{lang}/glossary`
 
-```typescript
-// src/lib/rateLimiter.ts
-export class RateLimiter {
-  private queue: Array<() => Promise<any>> = [];
-  private running = false;
-  private paused = false;
-  private completed = 0;
-  private failed = 0;
-  
-  constructor(
-    private requestsPerMinute: number,
-    private onProgress?: (progress: ProgressState) => void,
-    private onCheckpoint?: (state: CheckpointState) => void
-  ) {}
-
-  async add<T>(fn: () => Promise<T>): Promise<T> { ... }
-  pause(): void { ... }
-  resume(): void { ... }
-  getProgress(): ProgressState { ... }
-}
+```xml
+<url>
+  <loc>https://www.delsolprimehomes.com/en</loc>
+  <lastmod>2026-01-29</lastmod>
+  <changefreq>daily</changefreq>
+  <priority>1.0</priority>
+  <xhtml:link rel="alternate" hreflang="en-GB" href="https://www.delsolprimehomes.com/en" />
+  <xhtml:link rel="alternate" hreflang="de-DE" href="https://www.delsolprimehomes.com/de" />
+  <xhtml:link rel="alternate" hreflang="nl-NL" href="https://www.delsolprimehomes.com/nl" />
+  <!-- ... all 10 languages + x-default -->
+</url>
 ```
 
-### Bulk "Fix Missing Images" Button
-
-**Edge Function Invocation Flow:**
-1. Query all articles where `featured_image_url IS NULL`
-2. Batch into groups of 10
-3. For each article, invoke `regenerate-article-image` function
-4. Track progress with checkpoint saves every 10 articles
-5. Handle failures gracefully (log and continue)
-
-**UI Component:**
-
-```typescript
-interface BulkOperationProgress {
-  isRunning: boolean;
-  isPaused: boolean;
-  currentIndex: number;
-  totalCount: number;
-  successCount: number;
-  failCount: number;
-  currentArticle: string;
-  estimatedTimeRemaining: string;
-  errors: Array<{ articleId: string; error: string }>;
-  checkpointId?: string;
-}
-```
-
-### Bulk "Fix Missing External Links" Button
-
-**Edge Function Invocation Flow:**
-1. Query all articles where `external_citations IS NULL OR external_citations = '[]'`
-2. Batch into groups of 8 (Perplexity rate limit: 30/min)
-3. For each article, invoke `find-citations-perplexity` function
-4. Filter results through approved domains
-5. Update article with 3-5 verified citations
-6. Track progress and save checkpoints
+**Files to modify:**
+- `scripts/generateSitemap.ts` - Add `generateStaticPagesSitemap()` 
+- `supabase/functions/regenerate-sitemap/index.ts` - Add static pages generation
 
 ---
 
-## Phase 3: Advanced Article Filters
+## Phase 4: Enhanced Admin Dashboard
 
-### Add new filter controls to ClusterManager
+### Current UI
+The `SitemapRegenerator.tsx` shows:
+- Total URLs, content counts, language breakdown
+- Regenerate button, Download ZIP, Ping IndexNow
 
-| Filter | Type | Options |
-|--------|------|---------|
-| Has Image | Select | Yes / No / All |
-| Has Citations | Select | Yes / No / All |
-| Language | Select | en, de, nl, fr, pl, sv, da, hu, fi, no, All |
-| Funnel Stage | Select | TOFU / MOFU / BOFU / All |
-| Cluster | Select | (dropdown of cluster themes) |
-| Status | Select | draft / published / archived / All |
-| Word Count | Select | < 1500 / 1500-2500 / > 2500 / All |
+### Enhancements Required
+1. **Per-sitemap table with details:**
+   - File name, URL count, last modified, size
+   - Individual "Regenerate" button per sitemap
+   - Validation status (✅ Valid / ⚠️ Issues)
 
-### Filter Implementation
+2. **Validation panel:**
+   - Check for 404/410/redirect URLs in sitemap
+   - Flag URLs exceeding 50,000 limit per file
+   - XML syntax validation
 
-Enhance the existing `filteredClusters` memo to support all new filters, or add a new article-level filtered view:
+3. **Quick actions:**
+   - "Validate All" button
+   - "Submit to GSC" links (external to Google Search Console)
+   - Last ping timestamps per search engine
 
-```typescript
-const [filters, setFilters] = useState<FilterState>({
-  hasImage: 'all',
-  hasCitations: 'all',
-  language: 'all',
-  funnelStage: 'all',
-  clusterId: 'all',
-  status: 'all',
-  wordCount: 'all'
-});
-```
+**Files to modify:**
+- `src/components/admin/SitemapRegenerator.tsx` - Add per-sitemap table with actions
 
 ---
 
-## Phase 4: Individual Article Actions
+## Phase 5: Add Caching with 6-Hour TTL
 
-### Add per-article action buttons in ClusterArticlesTab
+### Current State
+- Build script generates static files during deployment
+- Edge function regenerates on demand and uploads to storage
+- `_headers` sets 5-minute cache (`max-age=300`)
 
-| Action | Icon | Behavior |
-|--------|------|----------|
-| Regenerate Image | ImageIcon | Invoke `regenerate-article-image` |
-| Refresh Citations | Link2 | Invoke `find-citations-perplexity` |
-| Edit Article | Edit | Navigate to `/admin/articles/{id}/edit` |
-| Preview | Eye | Open public URL in new tab |
-| Publish/Unpublish | CheckCircle/XCircle | Toggle status |
+### Enhancement
+1. **Storage-based caching:**
+   - Store `last_regenerated_at` timestamp in `content_settings` table
+   - Edge function checks timestamp; if < 6 hours old, serve from storage
+   - Force regeneration option bypasses cache
 
-### UI Enhancement
+2. **Auto-regeneration trigger:**
+   - Already exists via `notify_sitemap_ping` database trigger
+   - Enhance to batch updates (debounce multiple publishes within 5 minutes)
 
-```text
-+---------------------------------------------------------------------+
-| Article: "Best Areas to Buy Property in Marbella"                   |
-| EN | TOFU | Published | 2,100 words                                 |
-+---------------------------------------------------------------------+
-| 🖼️ Image: ✅ | 🔗 Citations: 3 | 📝 FAQ: ✅                          |
-| [🔄 Regen Image] [🔗 Refresh Links] [✏️ Edit] [👁️ View] [Unpublish] |
-+---------------------------------------------------------------------+
-```
+**Files to modify:**
+- `supabase/functions/regenerate-sitemap/index.ts` - Add cache check logic
+- Database: Store regeneration timestamp
 
 ---
 
-## Phase 5: Validation Warnings Panel
+## Phase 6: Update robots.txt
 
-### Create ValidationWarningsPanel component
-
-Queries for content quality issues:
-
-| Validation | Query | Severity |
-|------------|-------|----------|
-| Word count < 1500 | `LENGTH(detailed_content) < X` | Warning |
-| Word count > 2500 | `LENGTH(detailed_content) > Y` | Info |
-| Missing FAQ schema | `qa_entities IS NULL OR = '[]'` | Warning |
-| Broken internal links | Cross-check `internal_links` URLs | Error |
-| Invalid external links (404s) | Check `external_citation_health` table | Error |
-
-### UI Layout
-
-```text
-+----------------------------------------------------------------------+
-| ⚠️ VALIDATION WARNINGS (45 issues)                                   |
-+----------------------------------------------------------------------+
-| Type               | Count | Severity |                              |
-|--------------------|-------|----------|------------------------------|
-| Word count < 1500  | 15    | ⚠️ Warn  | [View] [Fix All]             |
-| Word count > 2500  | 8     | ℹ️ Info  | [View]                       |
-| Missing FAQ schema | 12    | ⚠️ Warn  | [View] [Generate All]        |
-| Broken internal    | 5     | 🔴 Error | [View] [Fix All]             |
-| Invalid citations  | 5     | 🔴 Error | [View] [Replace All]         |
-+----------------------------------------------------------------------+
+### Current
 ```
+Sitemap: https://www.delsolprimehomes.com/sitemap-index.xml
+```
+
+### Updated (Single Entry)
+```
+Sitemap: https://www.delsolprimehomes.com/sitemap.xml
+```
+
+Remove redundant per-language sitemap references (Google follows the index automatically).
+
+**Files to modify:**
+- `public/robots.txt`
 
 ---
 
-## Phase 6: Progress Tracking System
+## Phase 7: Ensure Valid XML Generation
 
-### Create BulkOperationProgress component
+### Validation Requirements
+1. **Escape special characters** in URLs (already handled)
+2. **No 404/410/redirect URLs** (already filtered via `gone_urls` table)
+3. **UTF-8 encoding** (already specified in XML header)
+4. **Max 50,000 URLs per sitemap** (needs check for Q&A pages - currently 9,600, safe)
 
-Features:
-- Real-time progress bar with percentage
-- Current article being processed (headline)
-- Estimated time remaining (based on average processing time)
-- Pause/Resume buttons
-- Error log with expandable details
-- Retry failed items button
+### URL Limit Check
+| Sitemap | Current Count | Safe? |
+|---------|---------------|-------|
+| EN Blog | ~440 | ✅ |
+| EN Q&A | ~960 | ✅ |
+| All Q&A | 9,600 | ✅ (split by language) |
 
-### Checkpoint System
-
-Store progress in localStorage:
-
-```typescript
-interface BulkOperationCheckpoint {
-  operationType: 'fix_images' | 'fix_citations' | 'regenerate_all_images' | 'refresh_all_citations';
-  startedAt: string;
-  articleIds: string[];
-  completedIds: string[];
-  failedIds: Array<{ id: string; error: string }>;
-  pausedAt?: string;
-}
-
-// Save checkpoint every 10 articles
-localStorage.setItem('bulkOperationCheckpoint', JSON.stringify(checkpoint));
-```
-
-### Resume Flow
-
-On page load, check for existing checkpoint:
-```typescript
-useEffect(() => {
-  const checkpoint = localStorage.getItem('bulkOperationCheckpoint');
-  if (checkpoint) {
-    setShowResumePrompt(true);
-    setPendingCheckpoint(JSON.parse(checkpoint));
-  }
-}, []);
-```
-
----
-
-## Phase 7: API Rate Limit Handling
-
-### Rate Limits to Respect
-
-| API | Limit | Delay Between Calls |
-|-----|-------|---------------------|
-| Fal.ai (images) | 20/min | 3 seconds |
-| Perplexity (citations) | 30/min | 2 seconds |
-| OpenAI (alt text) | 50/min | 1.2 seconds |
-
-### Implementation
-
-Use sequential processing with delays instead of Bottleneck:
-
-```typescript
-async function processBatch<T>(
-  items: T[],
-  processor: (item: T) => Promise<void>,
-  delayMs: number,
-  onProgress: (completed: number, total: number) => void
-) {
-  for (let i = 0; i < items.length; i++) {
-    try {
-      await processor(items[i]);
-      onProgress(i + 1, items.length);
-    } catch (error) {
-      console.error(`Failed item ${i}:`, error);
-      // Log and continue
-    }
-    if (i < items.length - 1) {
-      await new Promise(r => setTimeout(r, delayMs));
-    }
-  }
-}
-```
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/admin/cluster-manager/ClusterManagerDashboard.tsx` | Overview statistics panel |
-| `src/components/admin/cluster-manager/BulkOperationsPanel.tsx` | Fix images/links buttons |
-| `src/components/admin/cluster-manager/ValidationWarningsPanel.tsx` | Content quality warnings |
-| `src/components/admin/cluster-manager/BulkOperationProgress.tsx` | Progress tracking UI |
-| `src/components/admin/cluster-manager/ArticleActionsRow.tsx` | Per-article action buttons |
-| `src/components/admin/cluster-manager/AdvancedFilters.tsx` | Enhanced filter controls |
-| `src/lib/rateLimiter.ts` | Custom rate limiting utility |
-| `src/hooks/useClusterManagerStats.ts` | Dashboard statistics hook |
-| `src/hooks/useBulkOperation.ts` | Bulk operation state management |
+No pagination needed as largest per-language sitemap is well under 50,000.
 
 ---
 
@@ -333,182 +215,151 @@ async function processBatch<T>(
 
 | File | Changes |
 |------|---------|
-| `src/pages/admin/ClusterManager.tsx` | Integrate dashboard, bulk ops panel, filters |
-| `src/components/admin/cluster-manager/ClusterArticlesTab.tsx` | Add per-article actions |
-| `src/components/admin/cluster-manager/types.ts` | Add new type definitions |
+| `scripts/generateSitemap.ts` | Add `generatePropertiesSitemap()`, `generateStaticPagesSitemap()` |
+| `supabase/functions/regenerate-sitemap/index.ts` | Add properties, static pages, cache check |
+| `src/components/admin/SitemapRegenerator.tsx` | Add per-sitemap table, validation panel |
+| `public/robots.txt` | Simplify to single sitemap entry |
+| `public/_headers` | Optionally increase cache to 6 hours for sitemaps |
 
 ---
 
-## Database Queries (Already Existing Tables)
+## Files to Create
 
-No new tables required. All data comes from existing:
-- `blog_articles` - articles with images, citations, content
-- `external_citation_health` - citation status tracking
-- `cluster_generations` - cluster job status
+| File | Purpose |
+|------|---------|
+| `src/components/admin/SitemapValidationPanel.tsx` | Validation results display |
+| `src/components/admin/SitemapFileTable.tsx` | Per-sitemap management table |
 
 ---
 
 ## Implementation Order
 
-1. **Phase 1**: Create `useClusterManagerStats` hook and `ClusterManagerDashboard` component
-2. **Phase 2**: Create `rateLimiter.ts` utility and `useBulkOperation` hook
-3. **Phase 3**: Create `BulkOperationsPanel` with Fix Images/Fix Links buttons
-4. **Phase 4**: Create `BulkOperationProgress` component with pause/resume
-5. **Phase 5**: Create `AdvancedFilters` component
-6. **Phase 6**: Enhance `ClusterArticlesTab` with `ArticleActionsRow`
-7. **Phase 7**: Create `ValidationWarningsPanel` component
-8. **Phase 8**: Integrate all components into `ClusterManager.tsx`
-
----
-
-## Testing Checklist
-
-- [ ] Dashboard shows accurate counts for all metrics
-- [ ] "Fix Missing Images" button queries correct articles
-- [ ] Image generation respects 3-second delay (20/min Fal limit)
-- [ ] Progress bar updates in real-time
-- [ ] Pause button stops processing, Resume continues from where left off
-- [ ] Checkpoint saves every 10 articles
-- [ ] Page refresh shows "Resume Operation" prompt
-- [ ] "Fix Missing Links" uses correct Perplexity rate limit
-- [ ] Citations filtered through approved domains
-- [ ] Filters work correctly in combination
-- [ ] Individual article actions work (regenerate image, refresh links)
-- [ ] Validation warnings show accurate counts
-- [ ] Error log displays failed items with retry option
+1. **Phase 1**: Update `robots.txt` to use `/sitemap.xml`
+2. **Phase 2**: Add properties sitemap with image extensions
+3. **Phase 3**: Add static pages sitemap with hreflang
+4. **Phase 6**: Update master index to include new sitemaps
+5. **Phase 4**: Enhance admin dashboard with per-sitemap management
+6. **Phase 5**: Add caching mechanism
 
 ---
 
 ## Technical Details
 
-### Rate Limiter Implementation
+### Properties Sitemap Generator Function
 
 ```typescript
-// src/lib/rateLimiter.ts
-export async function processWithRateLimit<T>(
-  items: T[],
-  processor: (item: T, index: number) => Promise<void>,
-  options: {
-    delayMs: number;
-    batchSize?: number;
-    onProgress?: (state: ProgressState) => void;
-    onCheckpoint?: (completed: number) => void;
-    checkpointInterval?: number;
-    isPausedRef?: React.MutableRefObject<boolean>;
-  }
-): Promise<{ success: number; failed: number; errors: Array<{ index: number; error: string }> }> {
-  const { delayMs, batchSize = 1, onProgress, onCheckpoint, checkpointInterval = 10, isPausedRef } = options;
-  let success = 0;
-  let failed = 0;
-  const errors: Array<{ index: number; error: string }> = [];
+function generatePropertiesSitemap(properties: PropertyData[]): string {
+  const urls = properties.map(prop => {
+    const images = (prop.images as { url: string }[]) || [];
+    const imageXml = images.slice(0, 10).map(img => `
+    <image:image>
+      <image:loc>${escapeXml(img.url)}</image:loc>
+      <image:title>${escapeXml(prop.internal_name)}</image:title>
+    </image:image>`).join('');
+    
+    return `  <url>
+    <loc>${BASE_URL}/properties/${prop.internal_ref}</loc>
+    <lastmod>${formatDate(prop.updated_at)}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>${imageXml}
+  </url>`;
+  }).join('\n');
 
-  for (let i = 0; i < items.length; i++) {
-    // Check for pause
-    while (isPausedRef?.current) {
-      await new Promise(r => setTimeout(r, 500));
-    }
-
-    try {
-      await processor(items[i], i);
-      success++;
-    } catch (error) {
-      failed++;
-      errors.push({ index: i, error: error instanceof Error ? error.message : 'Unknown error' });
-    }
-
-    // Progress callback
-    onProgress?.({
-      currentIndex: i + 1,
-      totalCount: items.length,
-      successCount: success,
-      failCount: failed,
-      percentComplete: Math.round(((i + 1) / items.length) * 100)
-    });
-
-    // Checkpoint callback
-    if ((i + 1) % checkpointInterval === 0) {
-      onCheckpoint?.(i + 1);
-    }
-
-    // Rate limit delay
-    if (i < items.length - 1) {
-      await new Promise(r => setTimeout(r, delayMs));
-    }
-  }
-
-  return { success, failed, errors };
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${urls}
+</urlset>`;
 }
 ```
 
-### Fix Images Mutation
+### Static Pages Sitemap Generator
 
 ```typescript
-const fixMissingImagesMutation = useMutation({
-  mutationFn: async () => {
-    // Query articles missing images
-    const { data: articles } = await supabase
-      .from('blog_articles')
-      .select('id, headline, language, cluster_id, funnel_stage')
-      .is('featured_image_url', null)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
+function generateStaticPagesSitemap(): string {
+  const STATIC_PAGES = [
+    { path: '', priority: 1.0, changefreq: 'daily' },      // homepage
+    { path: 'about-us', priority: 0.8, changefreq: 'monthly' },
+    { path: 'contact', priority: 0.7, changefreq: 'monthly' },
+    { path: 'buyers-guide', priority: 0.9, changefreq: 'weekly' },
+    { path: 'team', priority: 0.7, changefreq: 'monthly' },
+    { path: 'glossary', priority: 0.7, changefreq: 'monthly' },
+  ];
 
-    if (!articles?.length) return { success: 0, failed: 0 };
-
-    return processWithRateLimit(articles, async (article) => {
-      const { error } = await supabase.functions.invoke('regenerate-article-image', {
-        body: { articleId: article.id }
-      });
-      if (error) throw error;
-    }, {
-      delayMs: 3000, // 20/min for Fal.ai
-      onProgress: (state) => setBulkProgress(state),
-      onCheckpoint: (completed) => saveCheckpoint('fix_images', completed),
-      isPausedRef
-    });
-  }
-});
-```
-
-### Fix Citations Mutation
-
-```typescript
-const fixMissingCitationsMutation = useMutation({
-  mutationFn: async () => {
-    // Query articles missing citations
-    const { data: articles } = await supabase
-      .from('blog_articles')
-      .select('id, headline, language, detailed_content, cluster_id')
-      .or('external_citations.is.null,external_citations.eq.[]')
-      .eq('status', 'published');
-
-    if (!articles?.length) return { success: 0, failed: 0 };
-
-    return processWithRateLimit(articles, async (article) => {
-      const { data, error } = await supabase.functions.invoke('find-citations-perplexity', {
-        body: { 
-          articleId: article.id,
-          headline: article.headline,
-          content: article.detailed_content?.substring(0, 3000),
-          language: article.language
-        }
-      });
-      if (error) throw error;
+  const urls = STATIC_PAGES.flatMap(page => {
+    return SUPPORTED_LANGUAGES.map(lang => {
+      const url = page.path ? `${BASE_URL}/${lang}/${page.path}` : `${BASE_URL}/${lang}`;
+      const hreflangLinks = SUPPORTED_LANGUAGES.map(l => {
+        const href = page.path ? `${BASE_URL}/${l}/${page.path}` : `${BASE_URL}/${l}`;
+        return `<xhtml:link rel="alternate" hreflang="${langToHreflang[l]}" href="${href}" />`;
+      }).join('\n    ');
       
-      // Update article with citations
-      if (data?.citations?.length) {
-        await supabase
-          .from('blog_articles')
-          .update({ external_citations: data.citations })
-          .eq('id', article.id);
-      }
-    }, {
-      delayMs: 2000, // 30/min for Perplexity
-      batchSize: 8,
-      onProgress: (state) => setBulkProgress(state),
-      onCheckpoint: (completed) => saveCheckpoint('fix_citations', completed),
-      isPausedRef
+      return `  <url>
+    <loc>${url}</loc>
+    <lastmod>${getToday()}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+    ${hreflangLinks}
+    <xhtml:link rel="alternate" hreflang="x-default" href="${page.path ? `${BASE_URL}/en/${page.path}` : `${BASE_URL}/en`}" />
+  </url>`;
     });
-  }
-});
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${urls}
+</urlset>`;
+}
 ```
+
+---
+
+## Updated Master Sitemap Index
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Static Pages (all languages) -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/pages.xml</loc></sitemap>
+  
+  <!-- Properties with images -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/properties.xml</loc></sitemap>
+  
+  <!-- Blog per language -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/en/blog.xml</loc></sitemap>
+  <!-- ... other languages -->
+  
+  <!-- Q&A per language -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/en/qa.xml</loc></sitemap>
+  <!-- ... other languages -->
+  
+  <!-- Locations per language -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/en/locations.xml</loc></sitemap>
+  
+  <!-- Comparisons per language -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/en/comparisons.xml</loc></sitemap>
+  
+  <!-- Brochures -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/brochures.xml</loc></sitemap>
+  
+  <!-- Glossary -->
+  <sitemap><loc>https://www.delsolprimehomes.com/sitemaps/glossary.xml</loc></sitemap>
+</sitemapindex>
+```
+
+---
+
+## Testing Checklist
+
+- [ ] Master sitemap at `/sitemap.xml` is valid XML
+- [ ] Properties sitemap includes image extensions
+- [ ] Static pages sitemap has 11 hreflang tags per URL
+- [ ] All URLs return 200 (no 404/410/redirects)
+- [ ] No sitemap exceeds 50,000 URLs
+- [ ] Admin dashboard shows per-sitemap details
+- [ ] "Regenerate" button per sitemap works
+- [ ] Validation panel detects issues
+- [ ] robots.txt points to correct sitemap
+- [ ] Auto-regeneration triggers on publish
+- [ ] IndexNow ping fires after regeneration
