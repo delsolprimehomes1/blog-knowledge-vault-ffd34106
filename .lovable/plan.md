@@ -1,335 +1,470 @@
 
+# Create Comprehensive Contact Page
 
-# Fix City Brochures Pages - Complete Translations and Functionality
+## Overview
 
-## Executive Summary
-
-This plan addresses hardcoded English text in brochure components, missing translation keys, inconsistent CTA behavior, and ensures Emma chatbot and WhatsApp functionality work on all brochure pages.
-
----
-
-## Current State Analysis
-
-### What's Working Well
-| Component | Status |
-|-----------|--------|
-| Database content (city_brochures) | ✅ All 10 cities have i18n content for descriptions and headlines |
-| Translation files | ✅ All 10 languages have brochures.{city} content for 7 cities |
-| Lead capture form (BrochureOptInForm) | ✅ Saves to database, sends to GHL/CRM |
-| Language routing (/{lang}/brochure/{city}) | ✅ Works correctly |
-| CrossCityDiscovery | ✅ Uses language from context |
-
-### Issues Identified
-
-| Issue | Location | Severity |
-|-------|----------|----------|
-| **Hardcoded "Download Brochure"** | `BrochureHero.tsx` line 185 | 🔴 High |
-| **Hardcoded "Speak With Expert"** | `BrochureHero.tsx` line 195 | 🔴 High |
-| **Hardcoded trust signals (English)** | `BrochureHero.tsx` lines 22-25 | 🔴 High |
-| **Hardcoded breadcrumb "Home"/"Locations"** | `BrochureHero.tsx` lines 106-108 | 🔴 High |
-| **Hardcoded "Explore" scroll indicator** | `BrochureHero.tsx` line 206 | 🟡 Medium |
-| **Hardcoded "Costa del Sol, Spain" badge** | `BrochureHero.tsx` line 121 | 🟡 Medium |
-| **BrochureOptInForm all text hardcoded** | `BrochureOptInForm.tsx` entire file | 🔴 High |
-| **InvestmentHighlights hardcoded** | `InvestmentHighlights.tsx` lines 17-21, 119-127 | 🔴 High |
-| **LifestyleFeatures hardcoded** | `LifestyleFeatures.tsx` lines 19-26, 56-64 | 🔴 High |
-| **CrossCityDiscovery hardcoded** | `CrossCityDiscovery.tsx` lines 36-41, 112-113, 126 | 🔴 High |
-| **BrochureChatbot hardcoded** | `BrochureChatbot.tsx` lines 33-34, 61-62, 99-103, 111 | 🟡 Medium |
-| **"Speak With Expert" opens chatbot not WhatsApp** | `BrochureHero.tsx` line 189 | 🟡 Medium |
-| **Form doesn't trigger Emma after submission** | `BrochureOptInForm.tsx` line 125 | 🟡 Medium |
+This plan creates a fully-featured Contact page with WhatsApp as the primary contact method, full translations for all 10 languages, lead capture integration, and complete SEO optimization.
 
 ---
 
-## Implementation Plan
+## Current State
 
-### Phase 1: Add Brochure-Specific Translation Keys
+| Item | Status |
+|------|--------|
+| Contact page exists | No - needs to be created |
+| Route defined | No - needs to be added to App.tsx |
+| Translations | No - need to add contact section to all 10 language files |
+| Leads table | Exists and supports full contact submissions |
+| Webhook integration | Exists in webhookHandler.ts |
+| CRM integration | Exists via registerCrmLead utility |
 
-**Files to modify:** All 10 translation files in `src/i18n/translations/`
+---
 
-Add a new `brochures.ui` section with all UI strings:
+## Implementation Summary
+
+### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/Contact.tsx` | Main Contact page |
+| `src/components/contact/ContactHero.tsx` | Hero section with headline |
+| `src/components/contact/ContactOptions.tsx` | 3-column contact options grid |
+| `src/components/contact/ContactForm.tsx` | Full contact form with validation |
+| `src/components/contact/OfficeInfo.tsx` | Office hours, map, and address |
+| `src/components/contact/ContactFAQ.tsx` | FAQ accordion section |
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add route `/:lang/contact` and legacy redirect |
+| `src/i18n/translations/*.ts` | Add `contact` section to all 10 languages |
+| `src/components/home/Footer.tsx` | Add Contact link to navigation |
+| `src/constants/company.ts` | Add office hours and address constant |
+
+---
+
+## Phase 1: Add Company Constants
+
+**File: `src/constants/company.ts`**
+
+Add office hours and address to centralized constants:
 
 ```typescript
-brochures: {
-  ui: {
-    // Hero Section
-    downloadBrochure: "Download Brochure",
-    speakWithExpert: "Speak With Expert",
-    explore: "Explore",
-    costaDelSolSpain: "Costa del Sol, Spain",
-    
-    // Breadcrumbs
-    home: "Home",
-    locations: "Locations",
-    
-    // Trust Signals
-    apiRegistered: "API Registered",
-    yearsExperience: "{years}+ Years Experience",
-    happyBuyers: "{count}+ Happy Buyers",
-    
-    // Investment Section
-    investmentPotential: "Investment Potential",
-    whyInvestIn: "Why Invest in {city}?",
-    investmentDescription: "Discover the compelling numbers behind one of Europe's most sought-after property markets.",
-    rentalYield: "Rental Yield",
-    daysOfSunshine: "Days of Sunshine",
-    averagePrice: "Average Price",
-    valueGrowth: "Value Growth 2024",
-    
-    // Lifestyle Section
-    theLifestyle: "The Lifestyle",
-    liveTheDream: "Live The {city} Dream",
-    lifestyleDescription: "Experience a lifestyle where every day feels like a vacation...",
-    
-    // Default Lifestyle Features
-    worldClassGolf: "World-Class Golf",
-    golfDescription: "Over 70 championship courses within 30 minutes",
-    mediterraneanBeaches: "Mediterranean Beaches",
-    beachesDescription: "Crystal-clear waters and golden sand coastlines",
-    michelinDining: "Michelin Dining",
-    diningDescription: "Award-winning restaurants and vibrant culinary scene",
-    luxuryMarinas: "Luxury Marinas",
-    marinasDescription: "Premier yacht clubs and nautical lifestyle",
-    wellnessSpa: "Wellness & Spa",
-    wellnessDescription: "World-renowned wellness retreats and thermal spas",
-    designerShopping: "Designer Shopping",
-    shoppingDescription: "Boutiques, galleries, and luxury retail experiences",
-    
-    // Form Section
-    exclusiveGuide: "Exclusive Guide",
-    getYourFree: "Get Your Free",
-    brochure: "{city} Brochure",
-    discoverExclusive: "Discover exclusive property insights, investment opportunities, and lifestyle guides for {city}.",
-    propertyGuide: "{city} Property Guide 2024",
-    instantPdfDownload: "Instant PDF Download",
-    pagesOfInsights: "40+ Pages of Insights",
-    testimonialQuote: "The brochure gave us incredible insights into {city}. Within weeks of our inquiry, we found our dream villa!",
-    testimonialAuthor: "— James & Sarah, UK",
-    firstName: "First Name",
-    lastName: "Last Name",
-    emailAddress: "Email Address",
-    phoneNumber: "Phone Number",
-    tellUsRequirements: "Tell us about your requirements (Optional)",
-    requirementsPlaceholder: "Budget, property type, timeline...",
-    privacyConsent: "I agree to the Privacy Policy and consent to Del Sol Prime Homes processing my data.",
-    marketingConsent: "I'd like to receive exclusive property alerts and market insights.",
-    downloadFreebrochure: "Download Free Brochure",
-    processing: "Processing...",
-    instantAccess: "Instant access • No spam • Unsubscribe anytime",
-    thankYou: "Thank You!",
-    brochureOnWay: "Your {city} brochure is on its way! Our property specialists will be in touch within 24 hours.",
-    meanwhileExplore: "Meanwhile, explore our latest listings in {city}",
-    
-    // Cross City Discovery
-    exploreMore: "Explore More",
-    otherPrimeLocations: "Other Prime Locations",
-    swipeToExplore: "Swipe to explore more →",
-    explore: "Explore {city}",
-    
-    // Chatbot
-    chatAbout: "Chat About {city}",
-    askUsAnything: "Ask us anything about properties in {city}",
-    clickToStart: "Click send to start the conversation",
-    typeMessage: "Type your message...",
-    interestedIn: "Hi, I'm interested in properties in {city}",
-    thanksForInterest: "Thank you for your interest in {city}! Our team of local experts can help you find the perfect property. Would you like to chat with Emma for personalized guidance, or would you prefer to receive our detailed brochure first?",
+export const COMPANY_ADDRESS = {
+  street: 'C. Alfonso XIII, 6',
+  building: 'ED SAN FERNAN',
+  floor: '1 OFICINA',
+  postalCode: '29640',
+  city: 'Fuengirola',
+  province: 'Málaga',
+  country: 'Spain',
+  full: 'ED SAN FERNAN, C. Alfonso XIII, 6, 1 OFICINA, 29640 Fuengirola, Málaga, Spain',
+  googleMapsUrl: 'https://goo.gl/maps/YOUR_MAP_ID',
+  googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!...'
+} as const;
+
+export const COMPANY_HOURS = {
+  weekdays: { open: '09:00', close: '18:00' },
+  saturday: { open: '10:00', close: '14:00' },
+  sunday: null, // Closed
+  timezone: 'CET (Central European Time)'
+} as const;
+```
+
+---
+
+## Phase 2: Add Contact Translations to All 10 Languages
+
+Add new `contact` section to each translation file:
+
+### English (`en.ts`):
+
+```typescript
+contact: {
+  meta: {
+    title: "Contact Del Sol Prime Homes | Costa del Sol Real Estate",
+    description: "Get in touch with our expert real estate team. WhatsApp, email, or call us for personalized property guidance on the Costa del Sol."
   },
-  common: { /* existing common keys */ },
-  marbella: { /* existing city content */ },
-  // ... other cities
+  hero: {
+    headline: "Get in Touch",
+    subheadline: "We're here to help you find your perfect Costa del Sol property"
+  },
+  options: {
+    whatsapp: {
+      title: "Chat on WhatsApp",
+      description: "Get instant responses from our team",
+      cta: "Open WhatsApp",
+      prefill: "Hi, I'm interested in Costa del Sol properties. Can you help me?"
+    },
+    email: {
+      title: "Send Us an Email",
+      description: "We'll respond within 24 hours",
+      cta: "Send Email"
+    },
+    phone: {
+      title: "Call Our Office",
+      description: "Speak directly with an advisor",
+      cta: "Call Now"
+    }
+  },
+  form: {
+    headline: "Send Us a Message",
+    subheadline: "Fill out the form and we'll get back to you shortly",
+    fields: {
+      fullName: "Full Name",
+      email: "Email Address",
+      phone: "Phone Number (Optional)",
+      language: "Preferred Language",
+      subject: "Subject",
+      message: "Your Message",
+      referral: "How did you hear about us? (Optional)",
+      privacy: "I agree to the Privacy Policy and consent to processing of my data."
+    },
+    subjects: {
+      general: "General Inquiry",
+      property: "Property Inquiry",
+      selling: "Selling My Property",
+      viewing: "Schedule a Viewing",
+      other: "Other"
+    },
+    referrals: {
+      google: "Google Search",
+      socialMedia: "Social Media",
+      referral: "Friend/Family Referral",
+      advertisement: "Online Advertisement",
+      other: "Other"
+    },
+    submit: "Send Message",
+    submitting: "Sending...",
+    success: {
+      title: "Message Sent!",
+      description: "Thank you for contacting us. We'll respond within 24 hours."
+    }
+  },
+  office: {
+    headline: "Visit Our Office",
+    hours: {
+      title: "Office Hours",
+      weekdays: "Monday - Friday",
+      saturday: "Saturday",
+      sunday: "Sunday",
+      closed: "Closed",
+      timezone: "Central European Time (CET)"
+    },
+    directions: "Get Directions"
+  },
+  faq: {
+    headline: "Frequently Asked Questions",
+    items: [
+      {
+        question: "How quickly will you respond?",
+        answer: "We aim to respond to all inquiries within 24 hours during business days. WhatsApp messages typically receive faster responses."
+      },
+      {
+        question: "Do you speak my language?",
+        answer: "Yes! Our team speaks 10+ languages including English, Dutch, German, French, Swedish, Norwegian, Danish, Finnish, Polish, and Hungarian."
+      },
+      {
+        question: "Can I schedule a video call?",
+        answer: "Absolutely! Contact us via WhatsApp or email to arrange a convenient time for a video consultation with one of our property experts."
+      },
+      {
+        question: "What areas do you cover?",
+        answer: "We specialize in the entire Costa del Sol region, from Málaga to Sotogrande, including Marbella, Estepona, Fuengirola, Benalmádena, and Mijas."
+      }
+    ]
+  },
+  emma: {
+    callout: "Prefer instant answers?",
+    cta: "Chat with Emma, our AI assistant"
+  }
 }
 ```
 
-### Phase 2: Update BrochureHero Component
+### Translations for other languages
 
-**File:** `src/components/brochures/BrochureHero.tsx`
-
-Changes:
-1. Add `language` prop and import `useTranslation`
-2. Replace hardcoded text with translation keys
-3. Change "Speak With Expert" to open WhatsApp instead of chatbot
-
-```typescript
-// Before (line 185):
-<span>Download Brochure</span>
-
-// After:
-<span>{t.brochures.ui.downloadBrochure}</span>
-```
-
-```typescript
-// Before (line 189-196):
-<Button onClick={onChat} variant="outline">
-  <span>Speak With Expert</span>
-</Button>
-
-// After - WhatsApp link:
-<a 
-  href={COMPANY_CONTACT.whatsappWithMessage(`Hi, I'm interested in properties in ${city.name}. Can you help?`)}
-  target="_blank"
-  rel="noopener noreferrer"
->
-  <Button variant="outline">
-    <span>{t.brochures.ui.speakWithExpert}</span>
-  </Button>
-</a>
-```
-
-### Phase 3: Update BrochureOptInForm Component
-
-**File:** `src/components/brochures/BrochureOptInForm.tsx`
-
-Changes:
-1. Add `language` prop to interface
-2. Import `useTranslation` hook
-3. Replace all hardcoded strings (~30 instances)
-4. Add Emma chat trigger after successful form submission:
-
-```typescript
-// After setIsSubmitted(true) - line 125:
-setIsSubmitted(true);
-
-// Trigger Emma chat with context
-setTimeout(() => {
-  window.dispatchEvent(new CustomEvent('openEmmaChat'));
-}, 2000);
-```
-
-### Phase 4: Update InvestmentHighlights Component
-
-**File:** `src/components/brochures/InvestmentHighlights.tsx`
-
-Changes:
-1. Add `language` prop and translation hook
-2. Replace section header text
-3. Replace stat labels with translated versions
-
-### Phase 5: Update LifestyleFeatures Component
-
-**File:** `src/components/brochures/LifestyleFeatures.tsx`
-
-Changes:
-1. Add `language` prop and translation hook
-2. Replace section header and feature descriptions
-3. Use translations for default features array
-
-### Phase 6: Update CrossCityDiscovery Component
-
-**File:** `src/components/brochures/CrossCityDiscovery.tsx`
-
-Changes:
-1. Already uses `useTranslation` for `currentLanguage`
-2. Replace "Explore More" and "Other Prime Locations" headers
-3. Replace "Swipe to explore more →" hint
-4. Replace "Explore {city}" CTA text
-
-### Phase 7: Update BrochureChatbot Component
-
-**File:** `src/components/brochures/BrochureChatbot.tsx`
-
-Changes:
-1. Add `language` prop and translation hook
-2. Replace all UI text with translation keys
-3. Pre-filled message should be translated
-
-### Phase 8: Update CityBrochure Page
-
-**File:** `src/pages/CityBrochure.tsx`
-
-Changes:
-1. Pass `language={lang}` prop to all child components
-2. Ensure Emma chat widget is always accessible
+Similar structure with translated content for:
+- Dutch (`nl.ts`)
+- German (`de.ts`) 
+- French (`fr.ts`)
+- Swedish (`sv.ts`)
+- Norwegian (`no.ts`)
+- Danish (`da.ts`)
+- Finnish (`fi.ts`)
+- Polish (`pl.ts`)
+- Hungarian (`hu.ts`)
 
 ---
 
-## Translation Examples (All 10 Languages)
+## Phase 3: Create Contact Page Components
 
-### "Download Brochure"
-| Language | Translation |
-|----------|-------------|
-| EN | Download Brochure |
-| NL | Download Brochure |
-| DE | Broschüre Herunterladen |
-| FR | Télécharger la Brochure |
-| SV | Ladda ner Broschyr |
-| NO | Last ned Brosjyre |
-| DA | Download Brochure |
-| FI | Lataa Esite |
-| PL | Pobierz Broszurę |
-| HU | Brosúra Letöltése |
+### Component 1: ContactHero.tsx
 
-### "Speak With Expert"
-| Language | Translation |
-|----------|-------------|
-| EN | Speak With Expert |
-| NL | Spreek met Expert |
-| DE | Mit Experten Sprechen |
-| FR | Parler à un Expert |
-| SV | Tala med Expert |
-| NO | Snakk med Ekspert |
-| DA | Tal med Ekspert |
-| FI | Puhu Asiantuntijan Kanssa |
-| PL | Porozmawiaj z Ekspertem |
-| HU | Beszéljen Szakértővel |
+Simple hero with headline, subheadline, and gradient background.
 
-### Trust Signals - "{years}+ Years Experience"
-| Language | Translation |
-|----------|-------------|
-| EN | {years}+ Years Experience |
-| NL | {years}+ Jaar Ervaring |
-| DE | {years}+ Jahre Erfahrung |
-| FR | {years}+ Ans d'Expérience |
-| SV | {years}+ Års Erfarenhet |
-| NO | {years}+ Års Erfaring |
-| DA | {years}+ Års Erfaring |
-| FI | {years}+ Vuoden Kokemus |
-| PL | {years}+ Lat Doświadczenia |
-| HU | {years}+ Év Tapasztalat |
+### Component 2: ContactOptions.tsx
+
+3-column grid with:
+- **WhatsApp** (PRIMARY - most prominent, green accent)
+- **Email** (Secondary)
+- **Phone** (Tertiary)
+
+Each with icon, description, and CTA button.
+
+**WhatsApp link:**
+```typescript
+const whatsappUrl = COMPANY_CONTACT.whatsappWithMessage(t.contact.options.whatsapp.prefill);
+```
+
+**Analytics tracking:**
+```typescript
+onClick={() => {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    (window as any).gtag('event', 'whatsapp_click', {
+      category: 'Contact',
+      location: 'contact_page_options'
+    });
+  }
+}}
+```
+
+### Component 3: ContactForm.tsx
+
+Full form with:
+- Full Name (required)
+- Email (required, validated)
+- Phone (optional)
+- Preferred Language (dropdown, 10 options)
+- Subject (dropdown, 5 options)
+- Message (textarea, required)
+- How did you hear about us? (dropdown, optional)
+- Privacy checkbox (required)
+
+**Form submission flow:**
+1. Validate all fields with Zod schema
+2. Save to leads table via Supabase
+3. Send to GHL webhook via `sendFormToGHL()`
+4. Register in CRM via `registerCrmLead()`
+5. Track `generate_lead` event in GA4
+6. Show success message
+7. Trigger Emma chat after 2 seconds
+
+### Component 4: OfficeInfo.tsx
+
+- Google Maps embed iframe
+- Office address display
+- "Get Directions" button (opens Google Maps)
+- Office hours table
+- Timezone note
+
+### Component 5: ContactFAQ.tsx
+
+Accordion component using existing `Accordion` UI component with FAQ items from translations.
 
 ---
 
-## Files to Modify Summary
+## Phase 4: Create Main Contact Page
 
-| File | Change Type | Priority |
-|------|-------------|----------|
-| `src/i18n/translations/en.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/nl.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/de.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/fr.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/sv.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/no.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/da.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/fi.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/pl.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/i18n/translations/hu.ts` | Add `brochures.ui` section | 🔴 High |
-| `src/components/brochures/BrochureHero.tsx` | Add translations + WhatsApp CTA | 🔴 High |
-| `src/components/brochures/BrochureOptInForm.tsx` | Add translations + Emma trigger | 🔴 High |
-| `src/components/brochures/InvestmentHighlights.tsx` | Add translations | 🟡 Medium |
-| `src/components/brochures/LifestyleFeatures.tsx` | Add translations | 🟡 Medium |
-| `src/components/brochures/CrossCityDiscovery.tsx` | Add translations | 🟡 Medium |
-| `src/components/brochures/BrochureChatbot.tsx` | Add translations | 🟡 Medium |
-| `src/pages/CityBrochure.tsx` | Pass language prop | 🟡 Medium |
+**File: `src/pages/Contact.tsx`**
+
+Structure:
+```
+<Header />
+<main>
+  <ContactHero />
+  <ContactOptions />
+  <ContactForm />
+  <OfficeInfo />
+  <ContactFAQ />
+  <EmmaCallout />
+</main>
+<Footer />
+```
+
+SEO elements:
+- LocalBusiness JSON-LD schema
+- Consistent NAP (Name, Address, Phone)
+- Language-specific meta tags
+
+---
+
+## Phase 5: Add Routes
+
+**File: `src/App.tsx`**
+
+Add lazy import:
+```typescript
+const Contact = lazy(() => import("./pages/Contact"));
+```
+
+Add routes (before the `/:lang` catch-all):
+```typescript
+{/* Contact page with language prefix */}
+<Route path="/:lang/contact" element={<Contact />} />
+
+{/* Legacy redirect */}
+<Route path="/contact" element={<Navigate to="/en/contact" replace />} />
+```
+
+---
+
+## Phase 6: Update Footer Navigation
+
+**File: `src/components/home/Footer.tsx`**
+
+Add Contact link to Quick Links section:
+```typescript
+<li>
+  <Link to={`/${currentLanguage}/contact`} className="hover:text-prime-gold transition-colors font-nav">
+    {t.footer.links.contact || "Contact"}
+  </Link>
+</li>
+```
+
+Add translation key to all 10 language files:
+```typescript
+footer: {
+  links: {
+    contact: "Contact",
+    // ... other links
+  }
+}
+```
+
+---
+
+## Phase 7: Mobile-Specific Features
+
+### Sticky WhatsApp Button
+
+```typescript
+<div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-luxury border-t border-border" 
+     style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+  <div className="flex items-center gap-3 p-4">
+    <a href={whatsappUrl} className="flex-1">
+      <Button className="w-full h-14 bg-green-600 hover:bg-green-700">
+        <MessageCircle className="w-5 h-5 mr-2" />
+        Chat on WhatsApp
+      </Button>
+    </a>
+    <a href={`tel:${COMPANY_CONTACT.phoneClean}`}>
+      <Button variant="outline" className="h-14 w-14">
+        <Phone className="w-5 h-5" />
+      </Button>
+    </a>
+  </div>
+</div>
+```
+
+### Touch-Friendly Form
+
+- All inputs with `h-12` minimum height
+- 44px minimum tap targets
+- `touch-manipulation` class on buttons
+- Simplified layout on mobile (single column)
+
+---
+
+## Phase 8: Analytics Tracking
+
+Track all contact interactions:
+
+| Event | Trigger |
+|-------|---------|
+| `whatsapp_click` | WhatsApp button clicked |
+| `email_click` | Email link clicked |
+| `phone_click` | Phone link clicked |
+| `generate_lead` | Form submitted successfully |
+| `map_directions_click` | Get Directions clicked |
+| `emma_open` | Emma chat callout clicked |
+
+---
+
+## Database Integration
+
+Uses existing `leads` table structure:
+- `full_name` ← Form full name
+- `email` ← Form email
+- `phone` ← Form phone
+- `comment` ← Form message
+- `language` ← Selected language
+- `source` ← 'contact_page'
+- `page_url` ← Current URL
+- `user_agent` ← Browser info
+- UTM parameters ← From URL
+
+---
+
+## Files Summary
+
+### New Files (6)
+
+| File | Lines |
+|------|-------|
+| `src/pages/Contact.tsx` | ~200 |
+| `src/components/contact/ContactHero.tsx` | ~50 |
+| `src/components/contact/ContactOptions.tsx` | ~150 |
+| `src/components/contact/ContactForm.tsx` | ~300 |
+| `src/components/contact/OfficeInfo.tsx` | ~100 |
+| `src/components/contact/ContactFAQ.tsx` | ~60 |
+
+### Modified Files (12)
+
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add Contact route + redirect |
+| `src/constants/company.ts` | Add address + hours constants |
+| `src/components/home/Footer.tsx` | Add Contact link |
+| `src/i18n/translations/en.ts` | Add contact section |
+| `src/i18n/translations/nl.ts` | Add contact section |
+| `src/i18n/translations/de.ts` | Add contact section |
+| `src/i18n/translations/fr.ts` | Add contact section |
+| `src/i18n/translations/sv.ts` | Add contact section |
+| `src/i18n/translations/no.ts` | Add contact section |
+| `src/i18n/translations/da.ts` | Add contact section |
+| `src/i18n/translations/fi.ts` | Add contact section |
+| `src/i18n/translations/pl.ts` | Add contact section |
+| `src/i18n/translations/hu.ts` | Add contact section |
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-- [ ] Visit `/en/brochure/marbella` - all English text displays
-- [ ] Visit `/nl/brochure/marbella` - all Dutch text displays  
-- [ ] Visit `/de/brochure/marbella` - all German text displays
-- [ ] Repeat for all 10 languages
-- [ ] "Download Brochure" button scrolls to form
-- [ ] "Speak With Expert" opens WhatsApp with pre-filled city message
-- [ ] Form submission triggers Emma chat after 2 seconds
-- [ ] Cross-city discovery links use correct language prefix
-- [ ] Mobile view: All elements properly sized and translated
-- [ ] Trust signals show correct language text with company constants
+- [ ] Visit `/en/contact` - verify all English text
+- [ ] Visit `/nl/contact` - verify Dutch translations
+- [ ] Visit `/de/contact` - verify German translations
+- [ ] Test all 10 language versions
+- [ ] WhatsApp button opens WhatsApp with pre-filled message
+- [ ] Email link opens email client with subject
+- [ ] Phone link initiates call on mobile
+- [ ] Form submission saves to leads table
+- [ ] Form submission triggers GHL webhook
+- [ ] Form submission registers in CRM
+- [ ] Success message displays after submission
+- [ ] Emma chat opens after form submission
+- [ ] Google Maps embed displays correctly
+- [ ] "Get Directions" opens Google Maps
+- [ ] FAQ accordion expands/collapses
+- [ ] Mobile sticky WhatsApp bar appears on mobile
+- [ ] All buttons have 44px minimum tap targets
+- [ ] Analytics events fire correctly
 
 ---
 
-## Technical Notes
+## URL Structure
 
-1. **No Database Changes Required** - All UI translations go into translation files, not database
-2. **Company Constants Reused** - Trust signals use `COMPANY_FACTS` from `src/constants/company.ts`
-3. **WhatsApp Integration** - Uses existing `COMPANY_CONTACT.whatsappWithMessage()` utility
-4. **Emma Integration** - Uses existing `openEmmaChat` custom event pattern
-
+| Language | URL |
+|----------|-----|
+| English | `/en/contact` |
+| Dutch | `/nl/contact` |
+| German | `/de/contact` |
+| French | `/fr/contact` |
+| Swedish | `/sv/contact` |
+| Norwegian | `/no/contact` |
+| Danish | `/da/contact` |
+| Finnish | `/fi/contact` |
+| Polish | `/pl/contact` |
+| Hungarian | `/hu/contact` |
+| Legacy | `/contact` → redirects to `/en/contact` |
