@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslation } from '@/i18n/useTranslation';
 
 interface BrochureChatbotProps {
   cityName: string;
   isOpen: boolean;
   onToggle: () => void;
+  language?: string;
 }
 
 interface Message {
@@ -16,23 +18,43 @@ interface Message {
   timestamp: Date;
 }
 
+interface BrochureUITranslations {
+  chatAbout?: string;
+  askUsAnything?: string;
+  clickToStart?: string;
+  typeMessage?: string;
+  interestedIn?: string;
+}
+
 export const BrochureChatbot: React.FC<BrochureChatbotProps> = ({
   cityName,
   isOpen,
   onToggle,
+  language = 'en',
 }) => {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Get UI translations with fallbacks
+  const brochuresUI = (t.brochures as Record<string, unknown>)?.ui as BrochureUITranslations | undefined;
+  const uiText = {
+    chatAbout: brochuresUI?.chatAbout || 'Chat About {city}',
+    askUsAnything: brochuresUI?.askUsAnything || 'Ask us anything about properties in {city}',
+    clickToStart: brochuresUI?.clickToStart || 'Click send to start the conversation',
+    typeMessage: brochuresUI?.typeMessage || 'Type your message...',
+    interestedIn: brochuresUI?.interestedIn || "Hi, I'm interested in properties in {city}",
+  };
+
   // Pre-fill the first message when opened
   useEffect(() => {
     if (isOpen && !hasStarted) {
-      setInput(`Hi, I'm interested in properties in ${cityName}`);
+      setInput(uiText.interestedIn.replace('{city}', cityName));
     }
-  }, [isOpen, cityName, hasStarted]);
+  }, [isOpen, cityName, hasStarted, uiText.interestedIn]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -56,9 +78,10 @@ export const BrochureChatbot: React.FC<BrochureChatbotProps> = ({
 
     // Simulate bot response (in production, connect to your AI chatbot)
     setTimeout(() => {
+      const botResponse = `Thank you for your interest in ${cityName}! Our team of local experts can help you find the perfect property. Would you like to chat with Emma for personalized guidance, or would you prefer to receive our detailed brochure first?`;
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Thank you for your interest in ${cityName}! Our team of local experts can help you find the perfect property. Would you like to chat with Emma for personalized guidance, or would you prefer to receive our detailed brochure first?`,
+        text: botResponse,
         sender: 'bot',
         timestamp: new Date(),
       };
@@ -97,10 +120,10 @@ export const BrochureChatbot: React.FC<BrochureChatbotProps> = ({
           {/* Header */}
           <div className="bg-prime-950 px-4 py-4">
             <h3 className="font-display text-lg text-white">
-              Chat About {cityName}
+              {uiText.chatAbout.replace('{city}', cityName)}
             </h3>
             <p className="text-white/70 text-sm">
-              Ask us anything about properties in {cityName}
+              {uiText.askUsAnything.replace('{city}', cityName)}
             </p>
           </div>
 
@@ -108,7 +131,7 @@ export const BrochureChatbot: React.FC<BrochureChatbotProps> = ({
           <div className="h-[300px] overflow-y-auto p-4 space-y-4 bg-muted/20">
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground text-sm py-8">
-                Click send to start the conversation
+                {uiText.clickToStart}
               </div>
             )}
             {messages.map((message) => (
@@ -146,7 +169,7 @@ export const BrochureChatbot: React.FC<BrochureChatbotProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
+                placeholder={uiText.typeMessage}
                 className="flex-1"
               />
               <Button
