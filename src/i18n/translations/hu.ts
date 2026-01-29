@@ -194,7 +194,7 @@ export const hu = {
     headlineHighlight: "Álmaid Otthonát?",
     description: "Akár most kezded a keresést, akár készen állsz a továbblépésre, API-akkreditált tanácsadóink itt vannak, hogy vezessenek — világosan, átláthatóan és a te nyelveden.",
     ctaPrimary: "Csevegj Emmával",
-    ctaSecondary: "Mondd El, Mit Keresel",
+    ctaSecondary: "Kapcsolat WhatsApp-on",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Új építésű és tervezett szakértők a Costa del Solon. API-regisztrált. Többnyelvű támogatás. Nemzetközi szakértelem.",

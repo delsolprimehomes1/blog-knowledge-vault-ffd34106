@@ -194,7 +194,7 @@ export const de = {
     headlineHighlight: "Traumhaus zu Finden?",
     description: "Ob Sie gerade erst mit Ihrer Suche beginnen oder bereit sind, voranzukommen, unsere API-akkreditierten Berater sind hier, um Sie zu begleiten — klar, transparent und in Ihrer Sprache.",
     ctaPrimary: "Mit Emma chatten",
-    ctaSecondary: "Sagen Sie Uns, Wonach Sie Suchen",
+    ctaSecondary: "Kontakt über WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Neubau- und Off-Plan-Spezialisten an der Costa del Sol. API-registriert. Mehrsprachige Beratung. Internationale Expertise.",

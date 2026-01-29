@@ -1,11 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Section } from '../ui/Section';
 import { Button } from '../ui/Button';
 import { Shield, Award, Brain, FileCheck, ArrowRight } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
 
 export const MiniAbout: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
   
   return (
     <Section background="light" className="pt-24 md:pt-32">
@@ -21,9 +22,11 @@ export const MiniAbout: React.FC = () => {
         </p>
         
         <div>
-          <Button variant="outline" className="group">
-            {t.miniAbout.cta} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          <Link to={`/${currentLanguage}/about`}>
+            <Button variant="outline" className="group">
+              {t.miniAbout.cta} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </div>
     </Section>

@@ -34,9 +34,13 @@ export const Reviews: React.FC = () => {
       </div>
 
       <div className="text-center reveal-on-scroll">
-        <Link to="/blog">
+        <a 
+          href="https://www.google.com/maps/place/Del+Sol+Prime+Homes/@36.5433,-4.6289,17z"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <Button variant="outline">{t.reviews.cta}</Button>
-        </Link>
+        </a>
       </div>
     </Section>
   );

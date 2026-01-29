@@ -194,7 +194,7 @@ export const fr = {
     headlineHighlight: "Maison de Rêve?",
     description: "Que vous commenciez tout juste votre recherche ou que vous soyez prêt à avancer, nos conseillers accrédités API sont là pour vous guider — clairement, en toute transparence et dans votre langue.",
     ctaPrimary: "Discuter avec Emma",
-    ctaSecondary: "Dites-Nous Ce Que Vous Cherchez",
+    ctaSecondary: "Contact via WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Spécialistes du neuf et sur plan sur la Costa del Sol. Enregistré API. Accompagnement multilingue. Expertise internationale.",

@@ -194,7 +194,7 @@ export const fi = {
     headlineHighlight: "Unelmiesi Kodin?",
     description: "Olitpa vasta aloittamassa hakuasi tai valmis etenemään, API-akkreditoidut neuvonantajamme ovat täällä ohjaamassa sinua — selkeästi, läpinäkyvästi ja omalla kielelläsi.",
     ctaPrimary: "Keskustele Emman kanssa",
-    ctaSecondary: "Kerro Meille, Mitä Etsit",
+    ctaSecondary: "Ota yhteyttä WhatsAppilla",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Uudiskohteiden ja pohjapiirustuksella myytävien kiinteistöjen asiantuntijat Costa del Solilla. API-rekisteröity. Monikielinen ohjaus. Kansainvälinen asiantuntemus.",

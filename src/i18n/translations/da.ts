@@ -194,7 +194,7 @@ export const da = {
     headlineHighlight: "Drømmehjem?",
     description: "Uanset om du lige er startet din søgning eller er klar til at gå videre, er vores API-akkrediterede rådgivere her for at guide dig — klart, transparent og på dit sprog.",
     ctaPrimary: "Chat med Emma",
-    ctaSecondary: "Fortæl Os Hvad Du Leder Efter",
+    ctaSecondary: "Kontakt via WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Nybyggede og off-plan specialister på Costa del Sol. API-registreret. Flersproget vejledning. International ekspertise.",

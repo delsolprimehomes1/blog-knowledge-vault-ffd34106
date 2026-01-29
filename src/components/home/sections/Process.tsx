@@ -6,7 +6,7 @@ import { Phone, Search, FileText, Plane, Key } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
 
 export const Process: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
   
   const icons = [Phone, Search, FileText, Plane, Key];
 
@@ -49,7 +49,7 @@ export const Process: React.FC = () => {
       </div>
 
       <div className="mt-20 text-center reveal-on-scroll">
-        <Link to="/buyers-guide">
+        <Link to={`/${currentLanguage}/buyers-guide`}>
           <Button variant="primary">{t.process.cta}</Button>
         </Link>
       </div>

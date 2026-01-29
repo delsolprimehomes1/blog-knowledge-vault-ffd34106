@@ -110,14 +110,27 @@ function Home() {
                >
                  {t.finalCta.ctaPrimary}
                </Button>
-               <Button 
-                 variant="outline" 
-                 size="lg" 
-                 className="border-white/30 text-white hover:bg-white hover:text-prime-900"
-                 onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
-               >
-                  {t.finalCta.ctaSecondary}
-               </Button>
+                <a 
+                  href="https://wa.me/34630039090?text=Hi,%20I'm%20interested%20in%20Costa%20del%20Sol%20properties"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && (window as any).gtag) {
+                      (window as any).gtag('event', 'whatsapp_click', { 
+                        category: 'Contact', 
+                        location: 'homepage_final_cta' 
+                      });
+                    }
+                  }}
+                >
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="border-white/30 text-white hover:bg-white hover:text-prime-900"
+                  >
+                    {t.finalCta.ctaSecondary}
+                  </Button>
+                </a>
              </div>
            </div>
         </Section>

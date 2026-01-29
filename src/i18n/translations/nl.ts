@@ -194,7 +194,7 @@ export const nl = {
     headlineHighlight: "Droomhuis te Vinden?",
     description: "Of u nu net begint met zoeken of klaar bent om verder te gaan, onze API-geaccrediteerde adviseurs zijn er om u te begeleiden — duidelijk, transparant en in uw taal.",
     ctaPrimary: "Chat met Emma",
-    ctaSecondary: "Vertel Ons Waar U Naar Zoekt",
+    ctaSecondary: "Contact via WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Nieuwbouw en off-plan specialisten aan de Costa del Sol. API-geregistreerd. Meertalige begeleiding. Internationale expertise.",

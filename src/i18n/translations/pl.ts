@@ -194,7 +194,7 @@ export const pl = {
     headlineHighlight: "Dom Marzeń?",
     description: "Niezależnie od tego, czy dopiero zaczynasz poszukiwania, czy jesteś gotowy do działania, nasi doradcy akredytowani przez API są tutaj, aby Cię poprowadzić — jasno, przejrzyście i w Twoim języku.",
     ctaPrimary: "Czatuj z Emmą",
-    ctaSecondary: "Powiedz Nam, Czego Szukasz",
+    ctaSecondary: "Kontakt przez WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — Specjaliści od nieruchomości nowo budowanych i w planie na Costa del Sol. Zarejestrowany w API. Wielojęzyczne wsparcie. Międzynarodowa ekspertyza.",

@@ -194,7 +194,7 @@ export const en = {
     headlineHighlight: "Dream Home?",
     description: "Whether you're just starting your search or ready to move forward, our API-accredited advisors are here to guide you — clearly, transparently, and in your language.",
     ctaPrimary: "Chat with Emma",
-    ctaSecondary: "Tell Us What You're Looking For",
+    ctaSecondary: "Contact via WhatsApp",
   },
   footer: {
     brandDescription: "DelSolPrimeHomes — New-build and off-plan specialists on the Costa del Sol. API-registered. Multilingual guidance. International expertise.",

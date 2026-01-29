@@ -1,4 +1,17 @@
 /**
+ * Centralized company contact information.
+ * Update these values in one place to reflect across the entire site.
+ */
+export const COMPANY_CONTACT = {
+  phone: '+34 630 03 90 90',
+  phoneClean: '34630039090',
+  email: 'info@delsolprimehomes.com',
+  whatsappBase: 'https://wa.me/34630039090',
+  whatsappWithMessage: (msg: string) => 
+    `https://wa.me/34630039090?text=${encodeURIComponent(msg)}`,
+} as const;
+
+/**
  * Centralized company facts and statistics.
  * Update these values in one place to reflect across the entire site.
  */
