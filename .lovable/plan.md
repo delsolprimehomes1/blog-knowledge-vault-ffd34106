@@ -1,219 +1,214 @@
 
-# Fix Translation Issues Across the Site
+# Fix Desktop Homepage CTAs and Functionality
 
-## Analysis Summary
+## Current State Analysis
 
-### Current Translation Architecture
-The site uses a well-structured i18n system with:
-- **10 supported languages**: EN, NL, DE, FR, FI, PL, DA, HU, SV, NO
-- **Translation files**: `src/i18n/translations/[lang].ts` for main content
-- **Specialized modules**: `buyersGuide/` and `propertyFinder/` subfolders
-- **Language context**: `LanguageContext.tsx` manages language state and URL synchronization
-- **Translation hook**: `useTranslation.ts` provides access to translations
+After reviewing the homepage components, I've identified the current CTA implementations:
 
-### Identified Issues
+| Section | Current CTA | Current Behavior | Status |
+|---------|------------|------------------|--------|
+| **Hero** | "Start Your Property Search" | ✅ Navigates to `/[lang]/properties` | Working |
+| **Hero** | "Chat with Emma" | ✅ Opens Emma chatbot via `openEmmaChat` event | Working |
+| **Mini About** | "Meet the Team" | ⚠️ Button exists but has no `onClick` or `href` | **BROKEN** |
+| **Featured Areas** | Each card | ✅ Links to `/{lang}/brochure/{city}` | Working |
+| **Featured Areas** | "Explore All Areas" | ✅ Links to `/{lang}/properties` | Working |
+| **Process** | "View the Buyers Guide" | ⚠️ Links to `/buyers-guide` (no language prefix) | **NEEDS FIX** |
+| **Reviews** | Reviews widget + "Read All Reviews" | ⚠️ Links to `/blog` (wrong page) | **NEEDS FIX** |
+| **Blog Teaser** | "Visit the Blog" | ✅ Links to `/blog` | Working |
+| **Glossary Teaser** | "Explore Full Glossary" | ✅ Links to `/glossary` | Working |
+| **Final CTA** | "Chat with Emma" | ✅ Opens Emma chatbot | Working |
+| **Final CTA** | "Tell Us What You're Looking For" | ⚠️ Opens Emma chatbot (same as primary) | **NEEDS DIFFERENTIATION** |
 
-| Issue | Location | Status |
-|-------|----------|--------|
-| "Ready to Explore {city}?" | `LocationCTASection.tsx` line 48 | Hardcoded English |
-| "Call Us Now" | `LocationCTASection.tsx` line 76 | Should be "Contact via WhatsApp" |
-| "Expert Guidance Available" | `LocationCTASection.tsx` line 43 | Hardcoded English |
-| "Quick Response" | `LocationCTASection.tsx` line 85 | Hardcoded English |
-| "Licensed Agents" | `LocationCTASection.tsx` line 89 | Hardcoded English |
-| "10+ Languages" | `LocationCTASection.tsx` line 93 | Hardcoded English |
-| "About {city}" | `LocationPage.tsx` line 110 | Hardcoded English |
-| "Local insights and overview" | `LocationPage.tsx` line 113 | Hardcoded English |
-| "Market Overview" | `LocationPage.tsx` line 146 | Hardcoded English |
-| "Summary & Recommendations" | `LocationPage.tsx` line 200 | Hardcoded English |
+## Issues to Fix
 
----
+### 1. Mini About - "Meet the Team" Button (Line 24-27 in ContentBlocks.tsx)
+**Problem**: Button has no navigation - it just renders a button with no action
+**Fix**: Add `Link` wrapper to navigate to `/{lang}/about`
+
+### 2. Process Section - "View the Buyers Guide" (Line 51-54 in Process.tsx)
+**Problem**: Links to `/buyers-guide` without language prefix
+**Fix**: Change to `/${currentLanguage}/buyers-guide`
+
+### 3. Reviews Section - "Read All Reviews" CTA (Line 36-39 in ReviewsAndBlog.tsx)
+**Problem**: Links to `/blog` which is incorrect for reviews
+**Fix**: Link to Google My Business reviews page or create dedicated reviews page
+
+### 4. Final CTA Section - Secondary Button Differentiation (Line 113-120 in Home.tsx)
+**Problem**: Both buttons open Emma chat - no differentiation
+**Fix**: Secondary button should open WhatsApp for direct expert contact
 
 ## Implementation Plan
 
-### Phase 1: Add Location Page Translations to All 10 Languages
+### Files to Modify
 
-**Files to modify:**
-- `src/i18n/translations/en.ts`
-- `src/i18n/translations/nl.ts`
-- `src/i18n/translations/de.ts`
-- `src/i18n/translations/fr.ts`
-- `src/i18n/translations/sv.ts`
-- `src/i18n/translations/no.ts`
-- `src/i18n/translations/da.ts`
-- `src/i18n/translations/fi.ts`
-- `src/i18n/translations/pl.ts`
-- `src/i18n/translations/hu.ts`
+| File | Change |
+|------|--------|
+| `src/components/home/sections/ContentBlocks.tsx` | Wrap "Meet the Team" button with Link to about page |
+| `src/components/home/sections/Process.tsx` | Fix buyers-guide link to include language prefix |
+| `src/components/home/sections/ReviewsAndBlog.tsx` | Fix reviews CTA to link to Google reviews or dedicated page |
+| `src/pages/Home.tsx` | Differentiate secondary CTA to use WhatsApp |
+| `src/i18n/translations/en.ts` | Update CTA label to "Contact via WhatsApp" |
+| `src/i18n/translations/[nl,de,fr,sv,no,da,fi,pl,hu].ts` | Add translated WhatsApp CTA labels |
 
-**New translation keys to add (locationGuides section):**
+---
+
+## Detailed Changes
+
+### 1. Fix "Meet the Team" Button (ContentBlocks.tsx)
 
 ```typescript
-locationGuides: {
-  readyToExplore: "Ready to explore {city}?",
-  contactWhatsApp: "Contact via WhatsApp",
-  expertGuidance: "Expert Guidance Available",
-  quickResponse: "Quick Response",
-  licensedAgents: "Licensed Agents",
-  multipleLanguages: "10+ Languages",
-  connectWithExperts: "Connect with our local experts who can help you find your perfect property",
-  andAnswerQuestions: "and answer all your questions about {topic}",
-  inCity: "in {city}",
-  chatWithEmma: "Chat with EMMA",
-  aboutCity: "About {city}",
-  localInsights: "Local insights and overview",
-  marketOverview: "Market Overview",
-  marketTrends: "Current trends and pricing data",
-  summaryRecommendations: "Summary & Recommendations",
-  keyTakeaways: "Key takeaways for buyers",
-},
+// Before (line 23-27):
+<div>
+  <Button variant="outline" className="group">
+    {t.miniAbout.cta} <ArrowRight size={18} className="ml-2 ..." />
+  </Button>
+</div>
+
+// After:
+<div>
+  <Link to={`/${currentLanguage}/about`}>
+    <Button variant="outline" className="group">
+      {t.miniAbout.cta} <ArrowRight size={18} className="ml-2 ..." />
+    </Button>
+  </Link>
+</div>
 ```
 
-### Phase 2: Translations for All 10 Languages
-
-| Key | EN | NL | DE |
-|-----|----|----|-----|
-| readyToExplore | Ready to explore {city}? | Klaar om {city} te verkennen? | Bereit, {city} zu erkunden? |
-| contactWhatsApp | Contact via WhatsApp | Contact via WhatsApp | Kontakt über WhatsApp |
-| expertGuidance | Expert Guidance Available | Deskundige Begeleiding Beschikbaar | Expertenberatung Verfügbar |
-| quickResponse | Quick Response | Snelle Reactie | Schnelle Antwort |
-| licensedAgents | Licensed Agents | Gediplomeerde Agenten | Lizenzierte Makler |
-| multipleLanguages | 10+ Languages | 10+ Talen | 10+ Sprachen |
-| aboutCity | About {city} | Over {city} | Über {city} |
-| marketOverview | Market Overview | Marktoverzicht | Marktübersicht |
-
-| Key | FR | SV | NO |
-|-----|----|----|-----|
-| readyToExplore | Prêt à explorer {city}? | Redo att utforska {city}? | Klar til å utforske {city}? |
-| contactWhatsApp | Contact via WhatsApp | Kontakta via WhatsApp | Kontakt via WhatsApp |
-| expertGuidance | Conseil Expert Disponible | Expertguidning Tillgänglig | Ekspertveiledning Tilgjengelig |
-| quickResponse | Réponse Rapide | Snabbt Svar | Rask Respons |
-| licensedAgents | Agents Agréés | Licensierade Mäklare | Lisensierte Agenter |
-| multipleLanguages | 10+ Langues | 10+ Språk | 10+ Språk |
-
-| Key | DA | FI | PL | HU |
-|-----|----|----|-----|-----|
-| readyToExplore | Klar til at udforske {city}? | Valmis tutkimaan {city}? | Gotowy do odkrywania {city}? | Készen áll {city} felfedezésére? |
-| contactWhatsApp | Kontakt via WhatsApp | Ota yhteyttä WhatsAppilla | Kontakt przez WhatsApp | Kapcsolat WhatsApp-on |
-| expertGuidance | Ekspertvejledning Tilgængelig | Asiantuntijaohjaus Saatavilla | Fachowe Doradztwo Dostępne | Szakértői Tanácsadás Elérhető |
-
-### Phase 3: Update Components to Use Translations
-
-**File: `src/components/location/LocationCTASection.tsx`**
+### 2. Fix Buyers Guide Link (Process.tsx)
 
 ```typescript
-// Add language prop and translation hook
-interface LocationCTASectionProps {
-  cityName: string;
-  topicName?: string;
-  language?: string;
-}
+// Before (line 52):
+<Link to="/buyers-guide">
 
-export function LocationCTASection({ cityName, topicName, language = 'en' }: LocationCTASectionProps) {
-  const { t } = useTranslation();
-  
-  // Replace hardcoded strings:
-  // Line 43: "Expert Guidance Available" → t.locationGuides.expertGuidance
-  // Line 48: "Ready to Explore {city}?" → t.locationGuides.readyToExplore.replace('{city}', cityName)
-  // Line 52-53: Connect with experts text → t.locationGuides.connectWithExperts + conditional topic text
-  // Line 76: "Call Us Now" → t.locationGuides.contactWhatsApp
-  // Line 85: "Quick Response" → t.locationGuides.quickResponse
-  // Line 89: "Licensed Agents" → t.locationGuides.licensedAgents
-  // Line 93: "10+ Languages" → t.locationGuides.multipleLanguages
-}
+// After:
+<Link to={`/${currentLanguage}/buyers-guide`}>
 ```
 
-**File: `src/pages/LocationPage.tsx`**
+### 3. Fix Reviews CTA (ReviewsAndBlog.tsx)
 
 ```typescript
-// Add translation usage for section headings
-// Line 110: "About {city}" → t.locationGuides.aboutCity.replace('{city}', page.city_name)
-// Line 113: "Local insights..." → t.locationGuides.localInsights
-// Line 146: "Market Overview" → t.locationGuides.marketOverview
-// Line 200: "Summary & Recommendations" → t.locationGuides.summaryRecommendations
+// Before (line 37-38):
+<Link to="/blog">
+  <Button variant="outline">{t.reviews.cta}</Button>
+</Link>
+
+// After - Link to Google My Business:
+<a 
+  href="https://www.google.com/maps/place/Del+Sol+Prime+Homes"
+  target="_blank" 
+  rel="noopener noreferrer"
+>
+  <Button variant="outline">{t.reviews.cta}</Button>
+</a>
 ```
 
-### Phase 4: Create Admin Translation Audit Interface (Future Enhancement)
+### 4. Differentiate Final CTA Buttons (Home.tsx)
 
-Create a new admin page at `/admin/translation-audit` with:
-
-1. **Translation Coverage Dashboard**
-   - Progress bars showing completion % per language
-   - Missing keys highlighted in red
-   - One-click navigation to edit
-
-2. **Key Comparison View**
-   - Side-by-side comparison of English vs target language
-   - Empty/missing translations flagged
-   - Bulk export to JSON/CSV
-
-3. **AI Translation Helper**
-   - "Translate Missing" button using Gemini API
-   - Review & approve workflow
-   - Batch processing capability
-
-### Phase 5: Translation Fallback System
-
-**File: `src/i18n/useTranslation.ts`**
-
-Add fallback logic:
 ```typescript
-export const useTranslation = () => {
-  const { currentLanguage } = context;
-  const t = translations[currentLanguage];
-  const fallback = translations[Language.EN];
-  
-  // Create proxy that falls back to English for missing keys
-  const tWithFallback = new Proxy(t, {
-    get: (target, prop) => {
-      return target[prop] ?? fallback[prop];
+// Before (line 113-120):
+<Button 
+  variant="outline" 
+  onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
+>
+  {t.finalCta.ctaSecondary}
+</Button>
+
+// After - WhatsApp link with tracking:
+<a 
+  href="https://wa.me/34630039090?text=Hi,%20I'm%20interested%20in%20Costa%20del%20Sol%20properties"
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() => {
+    // Track WhatsApp click
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'whatsapp_click', { 
+        category: 'Contact', 
+        location: 'homepage_final_cta' 
+      });
     }
-  });
-  
-  return { t: tWithFallback, currentLanguage };
+  }}
+>
+  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-prime-900">
+    {t.finalCta.ctaSecondary}
+  </Button>
+</a>
+```
+
+### 5. Update Translation Labels
+
+Update `ctaSecondary` in `finalCta` for all 10 languages:
+
+| Language | Current | Updated |
+|----------|---------|---------|
+| EN | "Tell Us What You're Looking For" | "Contact via WhatsApp" |
+| NL | varies | "Contact via WhatsApp" |
+| DE | varies | "Kontakt über WhatsApp" |
+| FR | varies | "Contact via WhatsApp" |
+| SV | varies | "Kontakta via WhatsApp" |
+| NO | varies | "Kontakt via WhatsApp" |
+| DA | varies | "Kontakt via WhatsApp" |
+| FI | varies | "Ota yhteyttä WhatsAppilla" |
+| PL | varies | "Kontakt przez WhatsApp" |
+| HU | varies | "Kapcsolat WhatsApp-on" |
+
+---
+
+## Additional Improvements
+
+### Add Analytics Tracking
+
+Create a utility function for consistent event tracking:
+
+```typescript
+// src/utils/analytics.ts
+export const trackCTAClick = (ctaName: string, location: string) => {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    (window as any).gtag('event', `${ctaName}_click`, {
+      category: 'CTA',
+      location: location,
+    });
+  }
 };
 ```
 
----
+### WhatsApp Constants
 
-## Files to Modify
+Add company WhatsApp number to constants:
 
-| File | Change Type |
-|------|-------------|
-| `src/i18n/translations/en.ts` | Add `locationGuides` section |
-| `src/i18n/translations/nl.ts` | Add `locationGuides` section (Dutch) |
-| `src/i18n/translations/de.ts` | Add `locationGuides` section (German) |
-| `src/i18n/translations/fr.ts` | Add `locationGuides` section (French) |
-| `src/i18n/translations/sv.ts` | Add `locationGuides` section (Swedish) |
-| `src/i18n/translations/no.ts` | Add `locationGuides` section (Norwegian) |
-| `src/i18n/translations/da.ts` | Add `locationGuides` section (Danish) |
-| `src/i18n/translations/fi.ts` | Add `locationGuides` section (Finnish) |
-| `src/i18n/translations/pl.ts` | Add `locationGuides` section (Polish) |
-| `src/i18n/translations/hu.ts` | Add `locationGuides` section (Hungarian) |
-| `src/components/location/LocationCTASection.tsx` | Replace hardcoded strings with translation keys |
-| `src/pages/LocationPage.tsx` | Replace hardcoded section headings with translations |
+```typescript
+// Add to src/constants/company.ts
+export const COMPANY_CONTACT = {
+  phone: '+34 630 03 90 90',
+  phoneClean: '34630039090',
+  email: 'info@delsolprimehomes.com',
+  whatsappBase: 'https://wa.me/34630039090',
+  whatsappWithMessage: (msg: string) => 
+    `https://wa.me/34630039090?text=${encodeURIComponent(msg)}`,
+} as const;
+```
 
 ---
 
-## Priority Order
+## Summary of Changes
 
-1. **Immediate (This Session):**
-   - Add `locationGuides` translations to all 10 language files
-   - Update `LocationCTASection.tsx` to use translations
-   - Update `LocationPage.tsx` section headings
-   - Change "Call Us Now" to "Contact via WhatsApp" in all languages
-
-2. **Follow-up:**
-   - Create admin translation audit interface
-   - Implement translation fallback system
-   - Add URL path translations (e.g., `/nl/locaties`)
+| # | Issue | Fix | File |
+|---|-------|-----|------|
+| 1 | "Meet the Team" has no link | Add Link to `/{lang}/about` | `ContentBlocks.tsx` |
+| 2 | Buyers Guide missing lang prefix | Add `currentLanguage` to path | `Process.tsx` |
+| 3 | Reviews links to wrong page | Link to Google reviews | `ReviewsAndBlog.tsx` |
+| 4 | Both final CTAs identical | Secondary → WhatsApp | `Home.tsx` |
+| 5 | CTA label unclear | "Contact via WhatsApp" | 10 translation files |
+| 6 | WhatsApp number hardcoded | Add to constants | `company.ts` |
 
 ---
 
 ## Testing Checklist
 
-After implementation:
-- [ ] Visit `/en/locations/marbella/overview` - verify English text
-- [ ] Visit `/nl/locations/marbella/overview` - verify Dutch text
-- [ ] Visit `/de/locations/marbella/overview` - verify German text
-- [ ] Check all 10 languages show correct translations
-- [ ] Verify "Contact via WhatsApp" replaces "Call Us Now"
-- [ ] Confirm no English text appears when viewing in other languages
+After implementation, verify:
+- [ ] "Meet the Team" navigates to `/en/about` (or current language)
+- [ ] "View the Buyers Guide" navigates to `/{lang}/buyers-guide`
+- [ ] "Read All Reviews" opens Google reviews in new tab
+- [ ] Secondary final CTA opens WhatsApp with pre-filled message
+- [ ] All CTAs work in all 10 languages
+- [ ] All links have proper hover states
+- [ ] Mobile tap targets are at least 44px
