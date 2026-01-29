@@ -11,7 +11,7 @@ export const buyersGuidePl = {
     scrollText: "Przewiń, aby odkryć",
     stats: {
       steps: { value: "8", label: "Prostych Kroków" },
-      timeline: { value: "3-6", label: "Miesięcy" },
+      timeline: { value: "6-12", label: "Tygodni" },
       locations: { value: "15+", label: "Lokalizacji Premium" },
       languages: { value: "10+", label: "Języków" }
     }
@@ -34,42 +34,44 @@ export const buyersGuidePl = {
     steps: [
       {
         title: "Określ Swoje Wymagania",
-        description: "Ustal budżet, preferowaną lokalizację, typ nieruchomości i niezbędne funkcje. Rozważ bliskość plaż, pól golfowych, międzynarodowych szkół i lotnisk.",
-        documents: []
+        description: "Ustal zakres budżetu, typ nieruchomości (apartament, penthouse, szeregowiec, willa), preferencje lokalizacyjne i niezbędne vs mile widziane. Rozważ swój harmonogram zakupu.",
+        documents: [],
+        cta: { text: "Zacznij od naszej Wyszukiwarki Nieruchomości", link: "/pl/find-property" }
+      },
+      {
+        title: "Poszukiwanie Nieruchomości",
+        description: "Współpracuj z Del Sol Prime Homes, aby obejrzeć odpowiednie nieruchomości. Oferujemy wirtualne wycieczki, osobiste oglądanie i wyjazdy zapoznawcze z okolicą.",
+        documents: [],
+        cta: { text: "Szukaj Nieruchomości", link: "/pl/find-property" }
+      },
+      {
+        title: "Rezerwacja",
+        description: "Gdy znajdziesz swoją nieruchomość, złóż ofertę. Po akceptacji podpisz umowę rezerwacyjną i wpłać depozyt (zazwyczaj €6 000-€10 000), aby zabezpieczyć nieruchomość na 2-4 tygodnie.",
+        documents: ["Umowa rezerwacyjna", "Kopia paszportu", "Dowód środków"]
+      },
+      {
+        title: "Zatrudnij Prawnika (Pełnomocnictwo)",
+        description: "Zatrudnij hiszpańskiego prawnika, który będzie reprezentować Twoje interesy. Udziel mu Pełnomocnictwa (Poder Notarial), aby mógł przeprowadzić proces prawny w Twoim imieniu — nawet jeśli nie jesteś w Hiszpanii.",
+        documents: ["Dokument pełnomocnictwa", "Kopia paszportu", "List zaangażowania prawnika"]
       },
       {
         title: "Uzyskaj Numer NIE",
-        description: "Złóż wniosek o Número de Identificación de Extranjero (NIE) - hiszpański numer identyfikacji podatkowej wymagany do wszystkich transakcji nieruchomościowych. Można to zrobić w konsulacie hiszpańskim lub w Hiszpanii.",
-        documents: ["Ważny paszport", "Formularz wniosku NIE (EX-15)", "Dowód przyczyny (list zainteresowania nieruchomością)"]
+        description: "Twój prawnik uzyskuje Twój NIE (Número de Identificación de Extranjero) — hiszpański numer identyfikacji podatkowej wymagany do wszystkich transakcji nieruchomościowych. To zazwyczaj trwa 1-3 tygodnie.",
+        documents: ["Kopia paszportu", "Formularz wniosku NIE (EX-15)", "Powód wniosku"]
       },
       {
         title: "Otwórz Hiszpańskie Konto Bankowe",
-        description: "Załóż hiszpańskie konto bankowe do obsługi płatności za nieruchomość, podatków i bieżących rachunków. Większość banków oferuje konta dla nierezydentów.",
-        documents: ["Numer NIE", "Ważny paszport", "Dowód adresu", "Dowód dochodu"]
+        description: "Twój prawnik organizuje hiszpańskie konto bankowe na Twoje nazwisko — wymagane do zakupu nieruchomości i bieżących płatności. Można to zrobić zdalnie z Twoim Pełnomocnictwem.",
+        documents: ["Numer NIE", "Kopia paszportu", "Dowód adresu", "Dowód dochodu"]
       },
       {
-        title: "Poszukiwanie Nieruchomości & Oglądanie",
-        description: "Współpracuj z zaufanym pośrednikiem nieruchomości, aby zidentyfikować odpowiednie nieruchomości. Zaplanuj oglądanie i poznaj różne obszary Costa del Sol.",
-        documents: []
-      },
-      {
-        title: "Złóż Ofertę & Rezerwację",
-        description: "Gdy znajdziesz idealną nieruchomość, złóż ofertę. Po akceptacji wpłać depozyt rezerwacyjny (zazwyczaj €6 000-€10 000), aby wycofać nieruchomość z rynku.",
-        documents: ["Umowa rezerwacyjna", "Dowód środków"]
-      },
-      {
-        title: "Prawne Due Diligence",
-        description: "Zatrudnij niezależnego hiszpańskiego prawnika do weryfikacji własności, sprawdzenia długów lub obciążeń, przeglądu pozwoleń budowlanych i upewnienia się, że wszystko jest zgodne z prawem.",
-        documents: ["Nota Simple", "Rachunki IBI", "Rachunki za opłaty wspólnotowe"]
-      },
-      {
-        title: "Podpisz Prywatną Umowę Kupna",
-        description: "Podpisz contrato de arras (prywatną umowę kupna) i wpłać 10% ceny zakupu jako depozyt. To prawnie wiąże obie strony do finalizacji sprzedaży.",
-        documents: ["Contrato de arras", "10% depozyt"]
+        title: "Prywatna Umowa Kupna",
+        description: "Podpisz Contrato Privado de Compraventa. Wpłać 10% ceny zakupu (minus depozyt rezerwacyjny). Umowa ustala datę finalizacji i prawnie wiąże obie strony.",
+        documents: ["Contrato Privado", "10% depozyt", "Raport due diligence od prawnika"]
       },
       {
         title: "Finalizacja u Notariusza",
-        description: "Podpisz escritura (akt własności) w kancelarii notarialnej, zapłać pozostałą kwotę i odbierz klucze. Notariusz zarejestruje nieruchomość na Twoje nazwisko.",
+        description: "Podpisz Escritura (akt własności) w kancelarii notarialnej, zapłać końcowe saldo i odbierz klucze! Notariusz rejestruje nieruchomość na Twoje nazwisko w Rejestrze Nieruchomości.",
         documents: ["Escritura", "Płatność końcowa", "Cała poprzednia dokumentacja"]
       }
     ]

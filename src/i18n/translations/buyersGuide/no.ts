@@ -11,7 +11,7 @@ export const buyersGuideNo = {
     scrollText: "Scroll for å utforske",
     stats: {
       steps: { value: "8", label: "Enkle Steg" },
-      timeline: { value: "3-6", label: "Måneders Tidslinje" },
+      timeline: { value: "6-12", label: "Ukers Tidslinje" },
       locations: { value: "15+", label: "Premiumlokasjoner" },
       languages: { value: "10+", label: "Språk" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideNo = {
     steps: [
       {
         title: "Definer Dine Krav",
-        description: "Bestem budsjettet ditt, foretrukket beliggenhet, eiendomstype og must-have funksjoner. Vurder nærhet til strender, golfbaner, internasjonale skoler og flyplasser.",
-        documents: []
+        description: "Fastsett budsjettet ditt, eiendomstype (leilighet, penthouse, rekkehus, villa), stedspreferanser og må-ha vs ønskelig. Vurder din tidslinje for kjøp.",
+        documents: [],
+        cta: { text: "Start med vår Eiendomssøker", link: "/no/find-property" }
+      },
+      {
+        title: "Eiendomssøk",
+        description: "Arbeid med Del Sol Prime Homes for å besøke passende eiendommer. Vi tilbyr virtuelle omvisninger, personlige visninger og områdefamiliariseringsturer.",
+        documents: [],
+        cta: { text: "Søk Eiendommer", link: "/no/find-property" }
+      },
+      {
+        title: "Reservasjon",
+        description: "Når du har funnet din eiendom, legg inn et bud. Etter godkjenning, signer en reservasjonsavtale og betal et depositum (vanligvis €6 000-€10 000) for å sikre eiendommen i 2-4 uker.",
+        documents: ["Reservasjonsavtale", "Passkopi", "Bevis på midler"]
+      },
+      {
+        title: "Engasjer en Advokat (Fullmakt)",
+        description: "Engasjer en spansk advokat som representerer dine interesser. Gi dem Fullmakt (Poder Notarial) slik at de kan håndtere den juridiske prosessen på dine vegne — selv om du ikke er i Spania.",
+        documents: ["Fullmaktsdokument", "Passkopi", "Advokatengasjementsbrev"]
       },
       {
         title: "Skaff Ditt NIE-nummer",
-        description: "Søk om ditt Número de Identificación de Extranjero (NIE) - det spanske skatteidentifikasjonsnummeret som kreves for alle eiendomstransaksjoner. Dette kan gjøres ved et spansk konsulat eller i Spania.",
-        documents: ["Gyldig pass", "NIE-søknadsskjema (EX-15)", "Bevis på grunn (eiendomsinteressebrev)"]
+        description: "Din advokat skaffer din NIE (Número de Identificación de Extranjero) — den spanske skatte-ID-en som kreves for alle eiendomstransaksjoner. Dette tar vanligvis 1-3 uker.",
+        documents: ["Passkopi", "NIE-søknadsskjema (EX-15)", "Grunn for søknad"]
       },
       {
-        title: "Åpne en Spansk Bankkonto",
-        description: "Opprett en spansk bankkonto for å håndtere eiendomsbetalinger, skatter og løpende regninger. De fleste banker tilbyr kontoer for ikke-residenter.",
-        documents: ["NIE-nummer", "Gyldig pass", "Adressebevis", "Inntektsbevis"]
+        title: "Åpne Spansk Bankkonto",
+        description: "Din advokat ordner en spansk bankkonto i ditt navn — påkrevd for eiendomskjøpet og løpende betalinger. Dette kan gjøres eksternt med din Fullmakt.",
+        documents: ["NIE-nummer", "Passkopi", "Adressebevis", "Inntektsbevis"]
       },
       {
-        title: "Eiendomssøk & Visninger",
-        description: "Arbeid med en pålitelig eiendomsmegler for å identifisere passende eiendommer. Planlegg visninger og utforsk forskjellige områder på Costa del Sol.",
-        documents: []
-      },
-      {
-        title: "Legg inn Bud & Reservasjon",
-        description: "Når du har funnet din ideelle eiendom, legg inn et bud. Etter godkjenning, betal et reservasjonsdepositum (vanligvis €6.000-€10.000) for å ta eiendommen av markedet.",
-        documents: ["Reservasjonskontrakt", "Bevis på midler"]
-      },
-      {
-        title: "Juridisk Due Diligence",
-        description: "Engasjer en uavhengig spansk advokat for å verifisere eierskap, sjekke for gjeld eller heftelser, gjennomgå byggetillatelser og sikre at alt er juridisk i orden.",
-        documents: ["Nota Simple", "IBI-kvitteringer", "Fellesutgiftskvitteringer"]
-      },
-      {
-        title: "Signer Privat Kjøpskontrakt",
-        description: "Signer contrato de arras (privat kjøpskontrakt) og betal 10% av kjøpesummen som depositum. Dette binder begge parter juridisk til å fullføre salget.",
-        documents: ["Contrato de arras", "10% depositum"]
+        title: "Privat Kjøpskontrakt",
+        description: "Signer Contrato Privado de Compraventa. Betal 10% av kjøpesummen (minus reservasjonsdepositumet). Kontrakten fastsetter fullføringsdato og binder begge parter juridisk.",
+        documents: ["Contrato Privado", "10% depositum", "Due diligence-rapport fra advokat"]
       },
       {
         title: "Fullføring hos Notarius",
-        description: "Signer escritura (skjøte) på notarkontoret, betal gjenstående beløp og motta nøklene dine. Notaren vil registrere eiendommen i ditt navn.",
+        description: "Signer Escritura (skjøte) på notarkontoret, betal sluttsaldoen og motta nøklene dine! Notaren registrerer eiendommen i ditt navn i Eiendomsregisteret.",
         documents: ["Escritura", "Sluttbetaling", "All tidligere dokumentasjon"]
       }
     ]

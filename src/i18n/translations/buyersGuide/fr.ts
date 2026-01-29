@@ -11,7 +11,7 @@ export const buyersGuideFr = {
     scrollText: "Faites défiler pour découvrir",
     stats: {
       steps: { value: "8", label: "Étapes Simples" },
-      timeline: { value: "3-6", label: "Mois de Délai" },
+      timeline: { value: "6-12", label: "Semaines de Délai" },
       locations: { value: "15+", label: "Emplacements Premium" },
       languages: { value: "10+", label: "Langues" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideFr = {
     steps: [
       {
         title: "Définissez Vos Besoins",
-        description: "Déterminez votre budget, emplacement préféré, type de propriété et caractéristiques indispensables. Considérez la proximité des plages, terrains de golf, écoles internationales et aéroports.",
-        documents: []
+        description: "Établissez votre fourchette de budget, type de propriété (appartement, penthouse, maison de ville, villa), préférences de localisation et indispensables versus souhaités. Considérez votre calendrier d'achat.",
+        documents: [],
+        cta: { text: "Commencez avec notre Recherche de Propriétés", link: "/fr/find-property" }
+      },
+      {
+        title: "Recherche de Propriétés",
+        description: "Travaillez avec Del Sol Prime Homes pour visiter des propriétés adaptées. Nous offrons des visites virtuelles, des visites en personne et des voyages de familiarisation avec la région.",
+        documents: [],
+        cta: { text: "Rechercher des Propriétés", link: "/fr/find-property" }
+      },
+      {
+        title: "Réservation",
+        description: "Une fois votre propriété trouvée, faites une offre. Après acceptation, signez un contrat de réservation et versez un acompte (généralement €6 000-€10 000) pour sécuriser la propriété pendant 2-4 semaines.",
+        documents: ["Contrat de réservation", "Copie du passeport", "Preuve de fonds"]
+      },
+      {
+        title: "Engagez un Avocat (Procuration)",
+        description: "Engagez un avocat espagnol qui représentera vos intérêts. Accordez-lui une Procuration (Poder Notarial) pour qu'il puisse gérer le processus juridique en votre nom — même si vous n'êtes pas en Espagne.",
+        documents: ["Document de procuration", "Copie du passeport", "Lettre d'engagement de l'avocat"]
       },
       {
         title: "Obtenez Votre Numéro NIE",
-        description: "Demandez votre Número de Identificación de Extranjero (NIE) - le numéro d'identification fiscale espagnol requis pour toutes les transactions immobilières. Cela peut se faire au consulat espagnol ou en Espagne.",
-        documents: ["Passeport valide", "Formulaire de demande NIE (EX-15)", "Preuve de raison (lettre d'intérêt immobilier)"]
+        description: "Votre avocat obtient votre NIE (Número de Identificación de Extranjero) — le numéro d'identification fiscale espagnol requis pour toutes les transactions immobilières. Cela prend généralement 1-3 semaines.",
+        documents: ["Copie du passeport", "Formulaire de demande NIE (EX-15)", "Raison de la demande"]
       },
       {
         title: "Ouvrez un Compte Bancaire Espagnol",
-        description: "Ouvrez un compte bancaire espagnol pour gérer les paiements immobiliers, les impôts et les factures courantes. La plupart des banques proposent des comptes pour les non-résidents.",
-        documents: ["Numéro NIE", "Passeport valide", "Justificatif de domicile", "Justificatif de revenus"]
+        description: "Votre avocat organise l'ouverture d'un compte bancaire espagnol à votre nom — requis pour l'achat immobilier et les paiements en cours. Cela peut être fait à distance avec votre Procuration.",
+        documents: ["Numéro NIE", "Copie du passeport", "Justificatif de domicile", "Justificatif de revenus"]
       },
       {
-        title: "Recherche & Visites de Biens",
-        description: "Travaillez avec un agent immobilier de confiance pour identifier les propriétés appropriées. Planifiez des visites et explorez différentes zones de la Costa del Sol.",
-        documents: []
-      },
-      {
-        title: "Faites une Offre & Réservation",
-        description: "Une fois votre propriété idéale trouvée, faites une offre. Après acceptation, versez un acompte de réservation (généralement 6 000-10 000 €) pour retirer le bien du marché.",
-        documents: ["Contrat de réservation", "Preuve de fonds"]
-      },
-      {
-        title: "Vérification Juridique",
-        description: "Engagez un avocat espagnol indépendant pour vérifier la propriété, contrôler les dettes ou charges, examiner les permis de construire et s'assurer que tout est légalement conforme.",
-        documents: ["Nota Simple", "Reçus IBI", "Reçus de charges de copropriété"]
-      },
-      {
-        title: "Signez le Contrat d'Achat Privé",
-        description: "Signez le contrato de arras (contrat d'achat privé) et versez 10% du prix d'achat en acompte. Cela lie légalement les deux parties à finaliser la vente.",
-        documents: ["Contrato de arras", "Acompte de 10%"]
+        title: "Contrat d'Achat Privé",
+        description: "Signez le Contrato Privado de Compraventa. Versez 10% du prix d'achat (moins l'acompte de réservation). Le contrat fixe la date de finalisation et lie légalement les deux parties.",
+        documents: ["Contrato Privado", "Acompte de 10%", "Rapport de vérification préalable de l'avocat"]
       },
       {
         title: "Finalisation chez le Notaire",
-        description: "Signez l'escritura (acte de propriété) chez le notaire, payez le solde restant et recevez vos clés. Le notaire enregistrera la propriété à votre nom.",
+        description: "Signez l'Escritura (acte de propriété) chez le notaire, payez le solde final et recevez vos clés ! Le notaire enregistre la propriété à votre nom au Registre Foncier.",
         documents: ["Escritura", "Paiement final", "Toute la documentation précédente"]
       }
     ]

@@ -11,7 +11,7 @@ export const buyersGuideSv = {
     scrollText: "Scrolla för att utforska",
     stats: {
       steps: { value: "8", label: "Enkla Steg" },
-      timeline: { value: "3-6", label: "Månaders Tidslinje" },
+      timeline: { value: "6-12", label: "Veckors Tidslinje" },
       locations: { value: "15+", label: "Premiumlägen" },
       languages: { value: "10+", label: "Språk" }
     }
@@ -32,14 +32,14 @@ export const buyersGuideSv = {
     subheadline: "Följ dessa åtta väsentliga steg för att framgångsrikt köpa din fastighet på Costa del Sol.",
     requiredDocuments: "Nödvändiga Dokument",
     steps: [
-      { title: "Definiera Dina Krav", description: "Bestäm din budget, föredragen plats, fastighetstyp och måste-ha-funktioner. Överväg närhet till stränder, golfbanor, internationella skolor och flygplatser.", documents: [] },
-      { title: "Skaffa Ditt NIE-nummer", description: "Ansök om ditt Número de Identificación de Extranjero (NIE) - det spanska skatteidentifikationsnumret som krävs för alla fastighetstransaktioner.", documents: ["Giltigt pass", "NIE-ansökningsformulär (EX-15)", "Bevis på anledning"] },
-      { title: "Öppna ett Spanskt Bankkonto", description: "Skapa ett spanskt bankkonto för att hantera fastighetsbetalningar, skatter och löpande räkningar. De flesta banker erbjuder konton för icke-residenter.", documents: ["NIE-nummer", "Giltigt pass", "Adressbevis", "Inkomstbevis"] },
-      { title: "Fastighetssökning & Visningar", description: "Arbeta med en pålitlig fastighetsmäklare för att identifiera lämpliga fastigheter. Planera visningar och utforska olika områden på Costa del Sol.", documents: [] },
-      { title: "Lägg ett Bud & Reservation", description: "När du hittat din idealiska fastighet, lägg ett bud. Efter godkännande, betala en reservationsdeposition för att ta fastigheten från marknaden.", documents: ["Reservationskontrakt", "Bevis på medel"] },
-      { title: "Juridisk Due Diligence", description: "Anlita en oberoende spansk advokat för att verifiera äganderätt, kontrollera skulder eller inteckningar och granska bygglov.", documents: ["Nota Simple", "IBI-kvitton", "Kvitton för samfällighetsavgifter"] },
-      { title: "Signera Privat Köpekontrakt", description: "Signera contrato de arras och betala 10% av köpeskillingen som handpenning. Detta binder juridiskt båda parter till att fullfölja försäljningen.", documents: ["Contrato de arras", "10% handpenning"] },
-      { title: "Slutförande hos Notarie", description: "Signera escritura hos notariekontoret, betala resterande saldo och få dina nycklar. Notarien registrerar fastigheten i ditt namn.", documents: ["Escritura", "Slutbetalning", "All tidigare dokumentation"] }
+      { title: "Definiera Dina Krav", description: "Fastställ din budgetram, fastighetstyp (lägenhet, penthouse, radhus, villa), platspreferenser och måste-ha vs önskvärt. Överväg din tidslinje för köp.", documents: [], cta: { text: "Börja med vår Fastighetssökare", link: "/sv/find-property" } },
+      { title: "Fastighetssökning", description: "Arbeta med Del Sol Prime Homes för att besöka lämpliga fastigheter. Vi erbjuder virtuella turer, personliga visningar och områdesbekantskapsresor.", documents: [], cta: { text: "Sök Fastigheter", link: "/sv/find-property" } },
+      { title: "Reservation", description: "När du hittat din fastighet, lägg ett bud. Efter godkännande, signera ett reservationsavtal och betala en deposition (vanligtvis €6 000-€10 000) för att säkra fastigheten i 2-4 veckor.", documents: ["Reservationsavtal", "Passkopia", "Bevis på medel"] },
+      { title: "Anlita en Advokat (Fullmakt)", description: "Anlita en spansk advokat som representerar dina intressen. Ge dem Fullmakt (Poder Notarial) så de kan hantera den juridiska processen för din räkning — även om du inte är i Spanien.", documents: ["Fullmaktsdokument", "Passkopia", "Advokatuppdragsbrev"] },
+      { title: "Erhåll Ditt NIE-nummer", description: "Din advokat erhåller din NIE (Número de Identificación de Extranjero) — det spanska skatte-ID som krävs för alla fastighetstransaktioner. Detta tar vanligtvis 1-3 veckor.", documents: ["Passkopia", "NIE-ansökningsformulär (EX-15)", "Anledning för ansökan"] },
+      { title: "Öppna Spanskt Bankkonto", description: "Din advokat ordnar ett spanskt bankkonto i ditt namn — krävs för fastighetsköpet och löpande betalningar. Detta kan göras på distans med din Fullmakt.", documents: ["NIE-nummer", "Passkopia", "Adressbevis", "Inkomstbevis"] },
+      { title: "Privat Köpekontrakt", description: "Signera Contrato Privado de Compraventa. Betala 10% av köpeskillingen (minus reservationsdeposition). Kontraktet anger slutförandedatum och binder båda parter juridiskt.", documents: ["Contrato Privado", "10% handpenning", "Due diligence-rapport från advokat"] },
+      { title: "Slutförande hos Notarie", description: "Signera Escritura (lagfart) hos notariekontoret, betala slutsaldot och få dina nycklar! Notarien registrerar fastigheten i ditt namn i Fastighetsregistret.", documents: ["Escritura", "Slutbetalning", "All tidigare dokumentation"] }
     ]
   },
   costs: {

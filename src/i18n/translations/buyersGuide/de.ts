@@ -11,7 +11,7 @@ export const buyersGuideDe = {
     scrollText: "Scrollen zum Entdecken",
     stats: {
       steps: { value: "8", label: "Einfache Schritte" },
-      timeline: { value: "3-6", label: "Monate Zeitplan" },
+      timeline: { value: "6-12", label: "Wochen Zeitplan" },
       locations: { value: "15+", label: "Top-Standorte" },
       languages: { value: "10+", label: "Sprachen" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideDe = {
     steps: [
       {
         title: "Definieren Sie Ihre Anforderungen",
-        description: "Bestimmen Sie Ihr Budget, bevorzugte Lage, Immobilientyp und Must-Have-Merkmale. Berücksichtigen Sie die Nähe zu Stränden, Golfplätzen, internationalen Schulen und Flughäfen.",
-        documents: []
+        description: "Legen Sie Ihren Budgetrahmen fest, Immobilientyp (Wohnung, Penthouse, Reihenhaus, Villa), Standortpräferenzen und Must-Haves gegenüber Nice-to-Haves. Berücksichtigen Sie Ihren Zeitrahmen für den Kauf.",
+        documents: [],
+        cta: { text: "Starten Sie mit unserem Immobilienfinder", link: "/de/find-property" }
       },
       {
-        title: "Holen Sie Ihre NIE-Nummer",
-        description: "Beantragen Sie Ihre Número de Identificación de Extranjero (NIE) - die spanische Steueridentifikationsnummer, die für alle Immobilientransaktionen erforderlich ist. Dies kann bei einem spanischen Konsulat oder in Spanien erfolgen.",
-        documents: ["Gültiger Reisepass", "NIE-Antragsformular (EX-15)", "Nachweis des Grundes (Immobilieninteresse-Brief)"]
+        title: "Immobiliensuche",
+        description: "Arbeiten Sie mit Del Sol Prime Homes zusammen, um geeignete Immobilien zu besichtigen. Wir bieten virtuelle Touren, persönliche Besichtigungen und Gebietskenntnis-Reisen an.",
+        documents: [],
+        cta: { text: "Immobilien suchen", link: "/de/find-property" }
+      },
+      {
+        title: "Reservierung",
+        description: "Sobald Sie Ihre Immobilie gefunden haben, geben Sie ein Angebot ab. Nach Annahme unterzeichnen Sie einen Reservierungsvertrag und zahlen eine Anzahlung (typischerweise €6.000-€10.000), um die Immobilie 2-4 Wochen zu sichern.",
+        documents: ["Reservierungsvertrag", "Reisepasskopie", "Finanzierungsnachweis"]
+      },
+      {
+        title: "Beauftragen Sie einen Anwalt (Vollmacht)",
+        description: "Beauftragen Sie einen spanischen Anwalt, der Ihre Interessen vertritt. Erteilen Sie ihm eine Vollmacht (Poder Notarial), damit er den rechtlichen Prozess in Ihrem Namen abwickeln kann — auch wenn Sie nicht in Spanien sind.",
+        documents: ["Vollmachtsdokument", "Reisepasskopie", "Anwaltsbeauftragung"]
+      },
+      {
+        title: "Erhalten Sie Ihre NIE-Nummer",
+        description: "Ihr Anwalt beschafft Ihre NIE (Número de Identificación de Extranjero) — die spanische Steuer-ID, die für alle Immobilientransaktionen erforderlich ist. Dies dauert typischerweise 1-3 Wochen.",
+        documents: ["Reisepasskopie", "NIE-Antragsformular (EX-15)", "Grund für den Antrag"]
       },
       {
         title: "Eröffnen Sie ein spanisches Bankkonto",
-        description: "Richten Sie ein spanisches Bankkonto ein, um Immobilienzahlungen, Steuern und laufende Nebenkosten abzuwickeln. Die meisten Banken bieten Konten für Nichtansässige an.",
-        documents: ["NIE-Nummer", "Gültiger Reisepass", "Adressnachweis", "Einkommensnachweis"]
+        description: "Ihr Anwalt richtet ein spanisches Bankkonto in Ihrem Namen ein — erforderlich für den Immobilienkauf und laufende Zahlungen. Dies kann ferngesteuert mit Ihrer Vollmacht erfolgen.",
+        documents: ["NIE-Nummer", "Reisepasskopie", "Adressnachweis", "Einkommensnachweis"]
       },
       {
-        title: "Immobiliensuche & Besichtigungen",
-        description: "Arbeiten Sie mit einem vertrauenswürdigen Immobilienmakler zusammen, um geeignete Immobilien zu identifizieren. Planen Sie Besichtigungen und erkunden Sie verschiedene Gebiete der Costa del Sol.",
-        documents: []
-      },
-      {
-        title: "Abgabe eines Angebots & Reservierung",
-        description: "Sobald Sie Ihre ideale Immobilie gefunden haben, geben Sie ein Angebot ab. Nach Annahme zahlen Sie eine Reservierungsanzahlung (typischerweise 6.000-10.000 €), um die Immobilie vom Markt zu nehmen.",
-        documents: ["Reservierungsvertrag", "Finanzierungsnachweis"]
-      },
-      {
-        title: "Rechtliche Due Diligence",
-        description: "Beauftragen Sie einen unabhängigen spanischen Anwalt, um das Eigentum zu überprüfen, Schulden oder Belastungen zu prüfen, Baugenehmigungen zu überprüfen und sicherzustellen, dass alles rechtlich konform ist.",
-        documents: ["Nota Simple", "IBI-Belege", "Gemeinschaftskostenbelege"]
-      },
-      {
-        title: "Unterzeichnung des privaten Kaufvertrags",
-        description: "Unterzeichnen Sie den Contrato de Arras (privater Kaufvertrag) und zahlen Sie 10% des Kaufpreises als Anzahlung. Dies bindet beide Parteien rechtlich zur Vollendung des Verkaufs.",
-        documents: ["Contrato de Arras", "10% Anzahlung"]
+        title: "Privater Kaufvertrag",
+        description: "Unterzeichnen Sie den Contrato Privado de Compraventa. Zahlen Sie 10% des Kaufpreises (abzüglich der Reservierungsanzahlung). Der Vertrag legt das Fertigstellungsdatum fest und bindet beide Parteien rechtlich.",
+        documents: ["Contrato Privado", "10% Anzahlung", "Due-Diligence-Bericht vom Anwalt"]
       },
       {
         title: "Abschluss beim Notar",
-        description: "Unterzeichnen Sie die Escritura (Eigentumsurkunde) beim Notarbüro, zahlen Sie den Restbetrag und erhalten Sie Ihre Schlüssel. Der Notar registriert die Immobilie auf Ihren Namen.",
+        description: "Unterzeichnen Sie die Escritura (Eigentumsurkunde) im Notarbüro, zahlen Sie den Restbetrag und erhalten Sie Ihre Schlüssel! Der Notar registriert die Immobilie auf Ihren Namen im Grundbuch.",
         documents: ["Escritura", "Schlusszahlung", "Alle vorherigen Unterlagen"]
       }
     ]

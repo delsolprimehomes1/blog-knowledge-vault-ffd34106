@@ -11,7 +11,7 @@ export const buyersGuideNl = {
     scrollText: "Scroll om te ontdekken",
     stats: {
       steps: { value: "8", label: "Eenvoudige Stappen" },
-      timeline: { value: "3-6", label: "Maanden Tijdlijn" },
+      timeline: { value: "6-12", label: "Weken Tijdlijn" },
       locations: { value: "15+", label: "Toplocaties" },
       languages: { value: "10+", label: "Talen" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideNl = {
     steps: [
       {
         title: "Bepaal Uw Wensen",
-        description: "Bepaal uw budget, voorkeurslocatie, type woning en must-have kenmerken. Denk aan nabijheid van stranden, golfbanen, internationale scholen en luchthavens.",
-        documents: []
+        description: "Bepaal uw budgetbereik, woningtype (appartement, penthouse, rijtjeshuis, villa), locatievoorkeuren en must-haves versus nice-to-haves. Overweeg uw tijdlijn voor aankoop.",
+        documents: [],
+        cta: { text: "Start met onze Woningzoeker", link: "/nl/find-property" }
+      },
+      {
+        title: "Woningzoektocht",
+        description: "Werk samen met Del Sol Prime Homes om geschikte woningen te bezichtigen. Wij bieden virtuele rondleidingen, persoonlijke bezichtigingen en kennismakingsreizen naar het gebied.",
+        documents: [],
+        cta: { text: "Zoek Woningen", link: "/nl/find-property" }
+      },
+      {
+        title: "Reservering",
+        description: "Zodra u uw woning heeft gevonden, doet u een bod. Na acceptatie ondertekent u een reserveringsovereenkomst en betaalt u een aanbetaling (meestal €6.000-€10.000) om de woning 2-4 weken te reserveren.",
+        documents: ["Reserveringsovereenkomst", "Kopie paspoort", "Bewijs van fondsen"]
+      },
+      {
+        title: "Schakel een Advocaat in (Volmacht)",
+        description: "Schakel een Spaanse advocaat in die uw belangen behartigt. Geef hem/haar een Volmacht (Poder Notarial) zodat zij het juridische proces namens u kunnen afhandelen — zelfs als u niet in Spanje bent.",
+        documents: ["Volmachtdocument", "Kopie paspoort", "Advocaatovereenkomst"]
       },
       {
         title: "Verkrijg Uw NIE-nummer",
-        description: "Vraag uw Número de Identificación de Extranjero (NIE) aan - het Spaanse belastingidentificatienummer dat vereist is voor alle vastgoedtransacties. Dit kan bij een Spaans consulaat of in Spanje.",
-        documents: ["Geldig paspoort", "NIE-aanvraagformulier (EX-15)", "Bewijs van reden (vastgoedinteresse brief)"]
+        description: "Uw advocaat verkrijgt uw NIE (Número de Identificación de Extranjero) — het Spaanse belastingnummer dat vereist is voor alle vastgoedtransacties. Dit duurt meestal 1-3 weken.",
+        documents: ["Kopie paspoort", "NIE-aanvraagformulier (EX-15)", "Reden voor aanvraag"]
       },
       {
-        title: "Open een Spaanse Bankrekening",
-        description: "Open een Spaanse bankrekening voor het afhandelen van vastgoedbetalingen, belastingen en lopende nutsvoorzieningen. De meeste banken bieden rekeningen aan voor niet-ingezetenen.",
-        documents: ["NIE-nummer", "Geldig paspoort", "Adresbewijs", "Inkomensbewijs"]
+        title: "Open Spaanse Bankrekening",
+        description: "Uw advocaat regelt een Spaanse bankrekening op uw naam — vereist voor de vastgoedaankoop en lopende betalingen. Dit kan op afstand met uw Volmacht.",
+        documents: ["NIE-nummer", "Kopie paspoort", "Adresbewijs", "Inkomensbewijs"]
       },
       {
-        title: "Woningzoektocht & Bezichtigingen",
-        description: "Werk samen met een betrouwbare makelaar om geschikte woningen te identificeren. Plan bezichtigingen en verken verschillende gebieden van de Costa del Sol.",
-        documents: []
+        title: "Privé Koopcontract",
+        description: "Onderteken het Contrato Privado de Compraventa. Betaal 10% van de aankoopprijs (minus de reserveringsaanbetaling). Het contract bepaalt de overdrachtsdatum en bindt beide partijen juridisch.",
+        documents: ["Contrato Privado", "10% aanbetaling", "Due diligence rapport van advocaat"]
       },
       {
-        title: "Doe een Bod & Reservering",
-        description: "Zodra u uw ideale woning heeft gevonden, doet u een bod. Na acceptatie betaalt u een reserveringsaanbetaling (meestal €6.000-€10.000) om de woning uit de markt te halen.",
-        documents: ["Reserveringscontract", "Bewijs van fondsen"]
-      },
-      {
-        title: "Juridische Due Diligence",
-        description: "Schakel een onafhankelijke Spaanse advocaat in om het eigendom te verifiëren, te controleren op schulden of lasten, bouwvergunningen te beoordelen en ervoor te zorgen dat alles juridisch in orde is.",
-        documents: ["Nota Simple", "IBI-bonnen", "Bonnen gemeenschapskosten"]
-      },
-      {
-        title: "Onderteken Privé Koopcontract",
-        description: "Onderteken het contrato de arras (privé koopcontract) en betaal 10% van de aankoopprijs als aanbetaling. Dit bindt beide partijen juridisch om de verkoop te voltooien.",
-        documents: ["Contrato de arras", "10% aanbetaling"]
-      },
-      {
-        title: "Afronding bij de Notaris",
-        description: "Onderteken de escritura (eigendomsakte) bij het notariskantoor, betaal het resterende saldo en ontvang uw sleutels. De notaris registreert de woning op uw naam.",
+        title: "Afronding bij Notaris",
+        description: "Onderteken de Escritura (eigendomsakte) bij de notaris, betaal het eindsaldo en ontvang uw sleutels! De notaris registreert de woning op uw naam bij het Kadaster.",
         documents: ["Escritura", "Slotbetaling", "Alle eerdere documentatie"]
       }
     ]

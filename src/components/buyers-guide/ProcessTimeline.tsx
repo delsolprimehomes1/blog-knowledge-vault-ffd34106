@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
+  ClipboardList,
   Search, 
+  CalendarCheck,
+  Scale, 
   FileText, 
   Building2, 
-  Eye, 
-  HandCoins, 
-  Scale, 
   FileSignature, 
   Key,
   CheckCircle2,
@@ -13,7 +13,10 @@ import {
 } from 'lucide-react';
 import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
 
-const stepIcons = [Search, FileText, Building2, Eye, HandCoins, Scale, FileSignature, Key];
+// Icons matching the correct 8-step process:
+// 1. Define Requirements, 2. Property Search, 3. Reservation, 4. Lawyer/POA,
+// 5. NIE Number, 6. Bank Account, 7. Private Contract, 8. Complete at Notary
+const stepIcons = [ClipboardList, Search, CalendarCheck, Scale, FileText, Building2, FileSignature, Key];
 
 const stepImages = [
   'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80', // Property search

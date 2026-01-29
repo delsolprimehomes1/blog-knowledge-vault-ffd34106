@@ -11,7 +11,7 @@ export const buyersGuideFi = {
     scrollText: "Vieritä tutkiaksesi",
     stats: {
       steps: { value: "8", label: "Yksinkertaista Vaihetta" },
-      timeline: { value: "3-6", label: "Kuukauden Aikajana" },
+      timeline: { value: "6-12", label: "Viikon Aikajana" },
       locations: { value: "15+", label: "Premium Sijaintia" },
       languages: { value: "10+", label: "Kieltä" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideFi = {
     steps: [
       {
         title: "Määritä Vaatimuksesi",
-        description: "Päätä budjettisi, suosikkisijainti, kiinteistötyyppi ja välttämättömät ominaisuudet. Harkitse läheisyyttä rantoihin, golfkenttiin, kansainvälisiin kouluihin ja lentokenttiin.",
-        documents: []
+        description: "Määrittele budjettihaarukkasi, kiinteistötyyppi (asunto, penthouse, rivitalo, huvila), sijaintitoiveet ja välttämättömät vs. mukavat. Harkitse aikatauluasi ostolle.",
+        documents: [],
+        cta: { text: "Aloita Kiinteistöhakullamme", link: "/fi/find-property" }
+      },
+      {
+        title: "Kiinteistöhaku",
+        description: "Työskentele Del Sol Prime Homesin kanssa sopivien kiinteistöjen katselemiseksi. Tarjoamme virtuaalikierroksia, henkilökohtaisia näyttöjä ja alueen tutustumismatkoja.",
+        documents: [],
+        cta: { text: "Hae Kiinteistöjä", link: "/fi/find-property" }
+      },
+      {
+        title: "Varaus",
+        description: "Kun olet löytänyt kiinteistösi, tee tarjous. Hyväksynnän jälkeen allekirjoita varaussopimus ja maksa käsiraha (tyypillisesti €6 000-€10 000) varmistaaksesi kiinteistön 2-4 viikoksi.",
+        documents: ["Varaussopimus", "Passikopio", "Todistus varoista"]
+      },
+      {
+        title: "Palkkaa Asianajaja (Valtakirja)",
+        description: "Palkkaa espanjalainen asianajaja, joka edustaa etujasi. Anna hänelle Valtakirja (Poder Notarial), jotta hän voi hoitaa oikeudellisen prosessin puolestasi — vaikka et ole Espanjassa.",
+        documents: ["Valtakirja-asiakirja", "Passikopio", "Asianajajan toimeksiantokirje"]
       },
       {
         title: "Hanki NIE-numerosi",
-        description: "Hae Número de Identificación de Extranjero (NIE) - espanjalainen verotunniste, jota vaaditaan kaikissa kiinteistökaupoissa. Tämä voidaan tehdä Espanjan konsulaatissa tai Espanjassa.",
-        documents: ["Voimassa oleva passi", "NIE-hakemuslomake (EX-15)", "Todistus syystä (kiinteistökiinnostuskirje)"]
+        description: "Asianajajasi hankkii NIE:si (Número de Identificación de Extranjero) — espanjalainen verotunnus, jota vaaditaan kaikissa kiinteistökaupoissa. Tämä kestää tyypillisesti 1-3 viikkoa.",
+        documents: ["Passikopio", "NIE-hakemuslomake (EX-15)", "Hakemuksen syy"]
       },
       {
         title: "Avaa Espanjalainen Pankkitili",
-        description: "Perusta espanjalainen pankkitili kiinteistömaksujen, verojen ja juoksevien laskujen hoitamiseen. Useimmat pankit tarjoavat tilejä ulkomaalaisille.",
-        documents: ["NIE-numero", "Voimassa oleva passi", "Osoitetodistus", "Tulotodistus"]
+        description: "Asianajajasi järjestää espanjalaisen pankkitilin nimelläsi — vaaditaan kiinteistön ostoon ja jatkuviin maksuihin. Tämä voidaan tehdä etänä Valtakirjallasi.",
+        documents: ["NIE-numero", "Passikopio", "Osoitetodistus", "Tulotodistus"]
       },
       {
-        title: "Kiinteistöhaku & Näytöt",
-        description: "Työskentele luotettavan kiinteistönvälittäjän kanssa löytääksesi sopivia kiinteistöjä. Varaa näyttöjä ja tutki Costa del Solin eri alueita.",
-        documents: []
-      },
-      {
-        title: "Tee Tarjous & Varaus",
-        description: "Kun olet löytänyt ihanteellisen kiinteistösi, tee tarjous. Hyväksymisen jälkeen maksa varausmaksu (tyypillisesti €6 000-€10 000) poistaaksesi kiinteistön markkinoilta.",
-        documents: ["Varaussopimus", "Todistus varoista"]
-      },
-      {
-        title: "Oikeudellinen Due Diligence",
-        description: "Palkkaa riippumaton espanjalainen asianajaja tarkistamaan omistajuus, tarkastamaan velat tai rasitteet, arvioimaan rakennusluvat ja varmistamaan, että kaikki on laillisesti kunnossa.",
-        documents: ["Nota Simple", "IBI-kuitit", "Yhtiövastikeuitit"]
-      },
-      {
-        title: "Allekirjoita Yksityinen Kauppasopimus",
-        description: "Allekirjoita contrato de arras (yksityinen kauppasopimus) ja maksa 10% ostohinnasta käsirahana. Tämä sitoo molemmat osapuolet oikeudellisesti kaupan loppuunsaattamiseen.",
-        documents: ["Contrato de arras", "10% käsiraha"]
+        title: "Yksityinen Kauppasopimus",
+        description: "Allekirjoita Contrato Privado de Compraventa. Maksa 10% ostohinnasta (miinus varausmaksu). Sopimus määrittää valmistumispäivän ja sitoo molemmat osapuolet oikeudellisesti.",
+        documents: ["Contrato Privado", "10% käsiraha", "Due diligence -raportti asianajajalta"]
       },
       {
         title: "Loppuunsaattaminen Notaarilla",
-        description: "Allekirjoita escritura (omistusoikeuskirja) notaaritoimistossa, maksa loppusumma ja vastaanota avaimesi. Notaari rekisteröi kiinteistön nimellesi.",
+        description: "Allekirjoita Escritura (omistuskirja) notaaritoimistossa, maksa loppusumma ja vastaanota avaimesi! Notaari rekisteröi kiinteistön nimelläsi Kiinteistörekisteriin.",
         documents: ["Escritura", "Loppumaksu", "Kaikki aiemmat asiakirjat"]
       }
     ]

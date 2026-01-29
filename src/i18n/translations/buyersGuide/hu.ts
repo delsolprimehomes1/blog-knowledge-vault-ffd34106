@@ -11,7 +11,7 @@ export const buyersGuideHu = {
     scrollText: "Görgessen a felfedezéshez",
     stats: {
       steps: { value: "8", label: "Egyszerű Lépés" },
-      timeline: { value: "3-6", label: "Hónapos Időkeret" },
+      timeline: { value: "6-12", label: "Hetes Időkeret" },
       locations: { value: "15+", label: "Prémium Helyszín" },
       languages: { value: "10+", label: "Nyelv" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideHu = {
     steps: [
       {
         title: "Határozza Meg Követelményeit",
-        description: "Döntse el a költségvetését, preferált helyszínt, ingatlantípust és kötelező funkciókat. Vegye figyelembe a strandok, golfpályák, nemzetközi iskolák és repülőterek közelségét.",
-        documents: []
+        description: "Határozza meg költségvetési keretét, ingatlantípust (lakás, penthouse, sorház, villa), helyszínpreferenciákat és kötelező vs. kívánatos funkciókat. Vegye figyelembe a vásárlási időkeretét.",
+        documents: [],
+        cta: { text: "Kezdje Ingatlankeresőnkkel", link: "/hu/find-property" }
+      },
+      {
+        title: "Ingatlankeresés",
+        description: "Dolgozzon együtt a Del Sol Prime Homes-szal megfelelő ingatlanok megtekintéséhez. Virtuális túrákat, személyes megtekintéseket és területmegismerő utakat kínálunk.",
+        documents: [],
+        cta: { text: "Ingatlanok Keresése", link: "/hu/find-property" }
+      },
+      {
+        title: "Foglalás",
+        description: "Miután megtalálta ingatlanát, tegyen ajánlatot. Elfogadás után írjon alá foglalási megállapodást és fizessen letétet (jellemzően €6 000-€10 000) az ingatlan 2-4 hétre való biztosításához.",
+        documents: ["Foglalási megállapodás", "Útlevélmásolat", "Fedezet igazolása"]
+      },
+      {
+        title: "Bízzon Meg egy Ügyvédet (Meghatalmazás)",
+        description: "Bízzon meg egy spanyol ügyvédet, aki képviseli érdekeit. Adjon neki Meghatalmazást (Poder Notarial), hogy az Ön nevében intézhesse a jogi folyamatot — még ha nincs is Spanyolországban.",
+        documents: ["Meghatalmazási dokumentum", "Útlevélmásolat", "Ügyvédi megbízási levél"]
       },
       {
         title: "Szerezze Be NIE-számát",
-        description: "Igényelje a Número de Identificación de Extranjero (NIE) - a spanyol adóazonosító számot, amely minden ingatlantransakcióhoz szükséges. Ezt spanyol konzulátusokon vagy Spanyolországban lehet intézni.",
-        documents: ["Érvényes útlevél", "NIE-kérelmi űrlap (EX-15)", "Indoklás igazolása (ingatlaniránt levél)"]
+        description: "Ügyvédje beszerzi az Ön NIE-jét (Número de Identificación de Extranjero) — a spanyol adóazonosítót, amely minden ingatlantransakcióhoz szükséges. Ez általában 1-3 hetet vesz igénybe.",
+        documents: ["Útlevélmásolat", "NIE-kérelmi űrlap (EX-15)", "Kérelem indoka"]
       },
       {
         title: "Nyisson Spanyol Bankszámlát",
-        description: "Hozzon létre spanyol bankszámlát az ingatlan-kifizetések, adók és folyó számlák kezelésére. A legtöbb bank kínál számlát nem-rezidenseknek.",
-        documents: ["NIE-szám", "Érvényes útlevél", "Lakcímigazolás", "Jövedelemigazolás"]
+        description: "Ügyvédje spanyol bankszámlát nyit az Ön nevében — szükséges az ingatlanvásárláshoz és a folyamatos fizetésekhez. Ez távolról is intézhető a Meghatalmazásával.",
+        documents: ["NIE-szám", "Útlevélmásolat", "Lakcímigazolás", "Jövedelemigazolás"]
       },
       {
-        title: "Ingatlankeresés & Megtekintések",
-        description: "Dolgozzon együtt egy megbízható ingatlanügynökkel a megfelelő ingatlanok azonosításához. Tervezzen megtekintéseket és fedezze fel a Costa del Sol különböző területeit.",
-        documents: []
-      },
-      {
-        title: "Tegyen Ajánlatot & Foglaljon",
-        description: "Ha megtalálta ideális ingatlanát, tegyen ajánlatot. Elfogadás után fizessen foglalási letétet (jellemzően €6 000-€10 000), hogy levegye az ingatlant a piacról.",
-        documents: ["Foglalási szerződés", "Fedezet igazolása"]
-      },
-      {
-        title: "Jogi Átvilágítás",
-        description: "Bízzon meg egy független spanyol ügyvédet a tulajdonjog ellenőrzésére, tartozások vagy terhek ellenőrzésére, építési engedélyek áttekintésére és annak biztosítására, hogy minden jogilag rendben legyen.",
-        documents: ["Nota Simple", "IBI-bizonylatok", "Közös költség bizonylatok"]
-      },
-      {
-        title: "Írja Alá a Magán Adásvételi Szerződést",
-        description: "Írja alá a contrato de arras-t (magán adásvételi szerződés) és fizesse ki a vételár 10%-át letétként. Ez jogilag kötelezi mindkét felet az eladás befejezésére.",
-        documents: ["Contrato de arras", "10% letét"]
+        title: "Magán Adásvételi Szerződés",
+        description: "Írja alá a Contrato Privado de Compraventa-t. Fizesse ki a vételár 10%-át (mínusz a foglalási letét). A szerződés meghatározza a befejezési dátumot és jogilag köti mindkét felet.",
+        documents: ["Contrato Privado", "10% letét", "Ügyvédi átvilágítási jelentés"]
       },
       {
         title: "Lebonyolítás a Közjegyzőnél",
-        description: "Írja alá az escritura-t (tulajdoni lap) a közjegyzői irodában, fizesse ki a fennmaradó összeget és vegye át a kulcsait. A közjegyző az Ön nevére jegyzi be az ingatlant.",
+        description: "Írja alá az Escritura-t (tulajdoni lap) a közjegyzői irodában, fizesse ki a végső egyenleget és vegye át a kulcsait! A közjegyző az Ön nevére jegyzi be az ingatlant a Földhivatalban.",
         documents: ["Escritura", "Végső fizetés", "Minden korábbi dokumentáció"]
       }
     ]

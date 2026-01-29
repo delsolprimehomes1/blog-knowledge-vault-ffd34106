@@ -11,7 +11,7 @@ export const buyersGuideEn = {
     scrollText: "Scroll to explore",
     stats: {
       steps: { value: "8", label: "Simple Steps" },
-      timeline: { value: "3-6", label: "Month Timeline" },
+      timeline: { value: "6-12", label: "Week Timeline" },
       locations: { value: "15+", label: "Prime Locations" },
       languages: { value: "10+", label: "Languages" }
     }
@@ -34,42 +34,44 @@ export const buyersGuideEn = {
     steps: [
       {
         title: "Define Your Requirements",
-        description: "Determine your budget, preferred location, property type, and must-have features. Consider proximity to beaches, golf courses, international schools, and airports.",
-        documents: []
+        description: "Establish your budget range, property type (apartment, penthouse, townhouse, villa), location preferences, and must-haves versus nice-to-haves. Consider your timeline for purchase.",
+        documents: [],
+        cta: { text: "Start with our Property Finder", link: "/en/find-property" }
       },
       {
-        title: "Get Your NIE Number",
-        description: "Apply for your Número de Identificación de Extranjero (NIE) - the Spanish tax identification number required for all property transactions. This can be done at a Spanish consulate or in Spain.",
-        documents: ["Valid passport", "NIE application form (EX-15)", "Proof of reason (property interest letter)"]
+        title: "Property Search",
+        description: "Work with Del Sol Prime Homes to view suitable properties. We offer virtual tours, in-person viewings, and area familiarization trips to help you find your perfect home.",
+        documents: [],
+        cta: { text: "Search Properties", link: "/en/find-property" }
       },
       {
-        title: "Open a Spanish Bank Account",
-        description: "Set up a Spanish bank account to handle the property purchase payments, taxes, and ongoing utility bills. Most banks offer accounts for non-residents.",
-        documents: ["NIE number", "Valid passport", "Proof of address", "Proof of income"]
+        title: "Reservation",
+        description: "Once you've found your property, make an offer. Upon acceptance, sign a reservation agreement and pay a deposit (typically €6,000-€10,000) to secure the property for 2-4 weeks.",
+        documents: ["Reservation agreement", "Passport copy", "Proof of funds"]
       },
       {
-        title: "Property Search & Viewings",
-        description: "Work with a trusted real estate agent to identify suitable properties. Schedule viewings and explore different areas of the Costa del Sol.",
-        documents: []
+        title: "Appoint a Lawyer (Power of Attorney)",
+        description: "Engage a Spanish lawyer who will represent your interests. Grant them Power of Attorney (Poder Notarial) so they can handle the legal process on your behalf—even if you're not in Spain.",
+        documents: ["Power of Attorney document", "Passport copy", "Lawyer engagement letter"]
       },
       {
-        title: "Make an Offer & Reservation",
-        description: "Once you've found your ideal property, make an offer. Upon acceptance, pay a reservation deposit (typically €6,000-€10,000) to take the property off the market.",
-        documents: ["Reservation contract", "Proof of funds"]
+        title: "Obtain Your NIE Number",
+        description: "Your lawyer obtains your NIE (Número de Identificación de Extranjero)—the Spanish tax ID required for all property transactions. This typically takes 1-3 weeks.",
+        documents: ["Passport copy", "NIE application form (EX-15)", "Reason for application"]
       },
       {
-        title: "Legal Due Diligence",
-        description: "Hire an independent Spanish lawyer to verify property ownership, check for debts or charges, review building licenses, and ensure everything is legally compliant.",
-        documents: ["Nota Simple", "IBI receipts", "Community fee receipts"]
+        title: "Open Spanish Bank Account",
+        description: "Your lawyer arranges a Spanish bank account in your name—required for the property purchase and ongoing payments. This can be done remotely with your Power of Attorney.",
+        documents: ["NIE number", "Passport copy", "Proof of address", "Proof of income"]
       },
       {
-        title: "Sign Private Purchase Contract",
-        description: "Sign the contrato de arras (private purchase contract) and pay 10% of the purchase price as a deposit. This legally binds both parties to complete the sale.",
-        documents: ["Contrato de arras", "10% deposit"]
+        title: "Private Purchase Contract",
+        description: "Sign the Contrato Privado de Compraventa. Pay 10% of the purchase price (minus the reservation deposit). The contract sets the completion date and binds both parties legally.",
+        documents: ["Contrato Privado", "10% deposit", "Due diligence report from lawyer"]
       },
       {
-        title: "Complete at the Notary",
-        description: "Sign the escritura (title deed) at the notary's office, pay the remaining balance, and receive your keys. The notary will register the property in your name.",
+        title: "Complete at Notary",
+        description: "Sign the Escritura (title deed) at the notary's office, pay the final balance, and receive your keys! The notary registers the property in your name at the Land Registry.",
         documents: ["Escritura", "Final payment", "All previous documentation"]
       }
     ]
