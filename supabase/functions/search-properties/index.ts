@@ -159,7 +159,7 @@ serve(async (req) => {
     const body = await req.json();
     console.log('📦 Search request:', JSON.stringify(body));
     
-    const { lang = 'en', page = 1, limit = 20, ...filters } = body;
+    const { lang = 'en', page = 1, limit = 500, ...filters } = body;
     const langNum = LANGUAGE_MAP[lang] || 1;
     
     // Set default minimum price for New Developments
@@ -193,7 +193,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         properties,
-        total: properties.length,
+        total: total, // Use QueryInfo.PropertyCount from API, not filtered array length
         page,
         pageSize: limit,
       }),
