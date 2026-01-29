@@ -13,12 +13,15 @@ import { VerdictSection } from "@/components/comparison/VerdictSection";
 import { ComparisonFAQ } from "@/components/comparison/ComparisonFAQ";
 import { CTASection } from "@/components/comparison/CTASection";
 import { TLDRSummary } from "@/components/comparison/TLDRSummary";
+import { ComparisonLanguageSwitcher } from "@/components/comparison/ComparisonLanguageSwitcher";
 import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import { ComparisonPage as ComparisonPageType } from "@/lib/comparisonSchemaGenerator";
 import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, ArrowLeft, BookOpen, Layers, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const BASE_URL = "https://www.delsolprimehomes.com";
 
 export default function ComparisonPage() {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
@@ -112,12 +115,81 @@ export default function ComparisonPage() {
     : [];
 
   const canonicalUrl = (comparison as any).canonical_url || 
-    `https://www.delsolprimehomes.com/${comparison.language}/compare/${comparison.slug}`;
+    `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`;
+
+  // Build hreflang tags from translations
+  const translations = (comparison as any).translations as Record<string, string> | null;
+  const hreflangTags: { lang: string; href: string }[] = [];
+  
+  // Add current language (self-referencing)
+  hreflangTags.push({
+    lang: comparison.language || 'en',
+    href: `${BASE_URL}/${comparison.language}/compare/${comparison.slug}`,
+  });
+  
+  // Add all translations
+  if (translations) {
+    Object.entries(translations).forEach(([lang, slug]) => {
+      if (lang !== comparison.language) {
+        hreflangTags.push({
+          lang,
+          href: `${BASE_URL}/${lang}/compare/${slug}`,
+        });
+      }
+    });
+  }
+
+  // Determine x-default (English or current if no English)
+  const xDefaultSlug = translations?.en || comparison.slug;
+  const xDefaultLang = translations?.en ? 'en' : comparison.language;
+
+  // Build JSON-LD schema with translations
+  const comparisonSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": comparison.headline,
+    "description": comparison.meta_description,
+    "inLanguage": comparison.language,
+    "datePublished": comparison.date_published,
+    "dateModified": comparison.date_modified,
+    "publisher": {
+      "@type": "Organization",
+      "name": "Del Sol Prime Homes",
+      "url": BASE_URL,
+    },
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "Del Sol Prime Homes",
+      "url": BASE_URL,
+    },
+    ...(translations && Object.keys(translations).length > 0 ? {
+      "workTranslation": Object.entries(translations)
+        .filter(([lang]) => lang !== comparison.language)
+        .map(([lang, slug]) => ({
+          "@type": "Article",
+          "inLanguage": lang,
+          "url": `${BASE_URL}/${lang}/compare/${slug}`,
+        })),
+    } : {}),
+  };
 
   return (
     <>
       <Helmet>
         <link rel="canonical" href={canonicalUrl} />
+        
+        {/* Hreflang tags for all translations */}
+        {hreflangTags.map(({ lang, href }) => (
+          <link key={lang} rel="alternate" hrefLang={lang} href={href} />
+        ))}
+        
+        {/* x-default points to English or current language */}
+        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/${xDefaultLang}/compare/${xDefaultSlug}`} />
+        
+        {/* JSON-LD Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify(comparisonSchema)}
+        </script>
       </Helmet>
       <Header />
       
@@ -132,6 +204,15 @@ export default function ComparisonPage() {
           featuredImageAlt={comparison.featured_image_alt}
           featuredImageCaption={comparison.featured_image_caption}
         />
+        
+        {/* Language Switcher */}
+        <div className="container mx-auto px-4 -mt-4">
+          <ComparisonLanguageSwitcher
+            currentLanguage={comparison.language || 'en'}
+            translations={translations}
+            currentSlug={comparison.slug}
+          />
+        </div>
 
         <article className="container mx-auto px-4 py-12 max-w-5xl">
           {/* Speakable Answer - Most important for AI */}
