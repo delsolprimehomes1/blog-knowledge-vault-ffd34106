@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Linkedin, Globe, Award, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { TeamMemberModal } from "@/components/team/TeamMemberModal";
 
 interface Founder {
   name: string;
@@ -21,8 +23,39 @@ interface FounderProfilesProps {
   founders: Founder[];
 }
 
+// Transform Founder to TeamMember format for modal compatibility
+const transformFounderToTeamMember = (founder: Founder) => ({
+  id: founder.name.toLowerCase().replace(/\s+/g, '-'),
+  name: founder.name,
+  role: founder.role,
+  role_translations: null,
+  bio: founder.bio,
+  bio_translations: null,
+  photo_url: founder.photo_url,
+  email: null,
+  phone: null,
+  whatsapp: null,
+  linkedin_url: founder.linkedin_url,
+  languages_spoken: founder.languages,
+  specializations: [founder.specialization],
+  areas_of_expertise: null,
+  years_experience: founder.years_experience,
+  credentials: founder.credentials,
+  is_founder: true,
+});
+
 export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
+  const [selectedFounder, setSelectedFounder] = useState<Founder | null>(null);
+
   if (!founders || founders.length === 0) return null;
+
+  const handleCardClick = (founder: Founder) => {
+    setSelectedFounder(founder);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedFounder(null);
+  };
 
   return (
     <section className="py-20 bg-white" aria-labelledby="founders-heading">
@@ -55,7 +88,10 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.15 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden group">
+                <Card 
+                  className="h-full border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer hover:scale-[1.02]"
+                  onClick={() => handleCardClick(founder)}
+                >
                   {/* Header with gradient */}
                   <div className="bg-gradient-to-br from-prime-900 to-prime-800 p-6 text-center relative">
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(212,175,55,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(212,175,55,0.05)_1px,transparent_1px)] bg-[size:20px_20px]" />
@@ -119,6 +155,7 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
                       variant="outline" 
                       className="w-full border-prime-gold/30 text-prime-800 hover:bg-prime-gold hover:text-white transition-colors"
                       asChild
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <a href={founder.linkedin_url} target="_blank" rel="noopener noreferrer">
                         <Linkedin className="w-4 h-4 mr-2" />
@@ -132,6 +169,13 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
           </div>
         </motion.div>
       </div>
+
+      {/* Modal for founder details */}
+      <TeamMemberModal
+        member={selectedFounder ? transformFounderToTeamMember(selectedFounder) : null}
+        isOpen={!!selectedFounder}
+        onClose={handleCloseModal}
+      />
     </section>
   );
 };
