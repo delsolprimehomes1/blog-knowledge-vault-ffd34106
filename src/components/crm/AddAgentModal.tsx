@@ -51,7 +51,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
     defaultValues: {
       role: "agent",
       languages: ["en"],
-      max_active_leads: 50,
+      max_active_leads: 500,
       email_notifications: true,
       timezone: "Europe/Madrid",
     },
@@ -207,7 +207,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
                 id="max_active_leads"
                 type="number"
                 {...register("max_active_leads", { valueAsNumber: true })}
-                defaultValue={50}
+                defaultValue={500}
               />
             </div>
             <div className="space-y-2">
