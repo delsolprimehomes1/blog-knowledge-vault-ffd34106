@@ -9,6 +9,7 @@ import { PropertyFinderHreflangTags } from "@/components/PropertyHreflangTags";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Grid3x3, List, MapPin, ChevronLeft, ChevronRight, Building2, TrendingUp, Shield, ArrowUpDown } from "lucide-react";
+import { COMPANY_DISPLAY } from "@/constants/company";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePropertyFinderTranslation } from "@/hooks/usePropertyFinderTranslation";
@@ -121,9 +122,9 @@ const PropertyFinder = () => {
 
   // Stats data with translations
   const stats = [
-    { icon: Building2, value: "7,000+", label: t.stats.properties },
-    { icon: MapPin, value: "50+", label: t.stats.locations },
-    { icon: TrendingUp, value: "15+", label: t.stats.experience },
+    { icon: Building2, value: COMPANY_DISPLAY.propertiesInPortfolio, label: t.stats.properties },
+    { icon: MapPin, value: COMPANY_DISPLAY.locations, label: t.stats.locations },
+    { icon: TrendingUp, value: COMPANY_DISPLAY.yearsExperience, label: t.stats.experience },
     { icon: Shield, value: "100%", label: t.stats.trusted },
   ];
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Star, Sparkles, Globe } from 'lucide-react';
 import { useTranslation } from '../../../i18n';
+import { COMPANY_FACTS } from '@/constants/company';
 
 const benefits = [
   {
@@ -14,7 +15,7 @@ const benefits = [
     icon: Star,
     titleKey: 'experience',
     descKey: 'experienceDesc',
-    fallbackTitle: '35+ Years Experience',
+    fallbackTitle: `${COMPANY_FACTS.yearsExperience}+ Years Experience`,
     fallbackDesc: 'Our team has helped hundreds of families buy safely in Spain.',
   },
   {

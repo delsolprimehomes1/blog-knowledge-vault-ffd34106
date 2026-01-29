@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, MessageCircle, Play, Pause, Shield, Award, Users, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { COMPANY_DISPLAY, COMPANY_FACTS } from '@/constants/company';
 
 interface BrochureHeroProps {
   city: {
@@ -19,8 +20,8 @@ interface BrochureHeroProps {
 
 const TRUST_SIGNALS = [
   { icon: Shield, text: 'API Registered' },
-  { icon: Award, text: '20+ Years Experience' },
-  { icon: Users, text: '1000+ Happy Buyers' },
+  { icon: Award, text: `${COMPANY_FACTS.yearsExperience}+ Years Experience` },
+  { icon: Users, text: `${COMPANY_FACTS.happyClients}+ Happy Buyers` },
 ];
 
 export const BrochureHero: React.FC<BrochureHeroProps> = ({ 

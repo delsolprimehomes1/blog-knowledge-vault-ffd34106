@@ -12,21 +12,22 @@ import { Credentials } from "@/components/about/Credentials";
 import { AboutFAQ } from "@/components/about/AboutFAQ";
 import { AboutCTA } from "@/components/about/AboutCTA";
 import { type AboutPageContent } from "@/lib/aboutSchemaGenerator";
+import { COMPANY_FACTS } from "@/constants/company";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
 // Default content fallback
 const defaultContent: AboutPageContent = {
   meta_title: "About Del Sol Prime Homes | Expert Real Estate Agents Costa del Sol",
-  meta_description: "Meet the founders of Del Sol Prime Homes. 15+ years experience helping international buyers find their perfect property in Marbella, Estepona, and the Costa del Sol.",
+  meta_description: `Meet the founders of Del Sol Prime Homes. ${COMPANY_FACTS.yearsExperience}+ years experience helping international buyers find their perfect property in Marbella, Estepona, and the Costa del Sol.`,
   canonical_url: `${BASE_URL}/about`,
-  speakable_summary: "Del Sol Prime Homes is a premier real estate agency on the Costa del Sol, founded by experienced professionals with over 15 years of combined experience helping international buyers find their dream properties.",
+  speakable_summary: `Del Sol Prime Homes is a premier real estate agency on the Costa del Sol, founded by experienced professionals with over ${COMPANY_FACTS.yearsExperience} years of combined experience helping international buyers find their dream properties.`,
   hero_headline: "Your Trusted Partners in Costa del Sol Real Estate",
-  hero_subheadline: "Three founders, 15+ years of expertise, and one mission: making your Spanish property dreams a reality.",
+  hero_subheadline: `Three founders, ${COMPANY_FACTS.yearsExperience}+ years of expertise, and one mission: making your Spanish property dreams a reality.`,
   mission_statement: "We believe everyone deserves expert guidance when making one of life's biggest investments. Our mission is to provide transparent, personalized real estate services that put your interests first.",
-  years_in_business: 15,
-  properties_sold: 500,
-  client_satisfaction_percent: 98,
+  years_in_business: COMPANY_FACTS.yearsExperience,
+  properties_sold: COMPANY_FACTS.propertiesSold,
+  client_satisfaction_percent: COMPANY_FACTS.clientSatisfaction,
   faq_entities: [],
   citations: [],
   founders: [],
@@ -63,9 +64,9 @@ const About = () => {
         hero_headline: content.hero_headline,
         hero_subheadline: content.hero_subheadline,
         mission_statement: content.mission_statement,
-        years_in_business: content.years_in_business || 15,
-        properties_sold: content.properties_sold || 500,
-        client_satisfaction_percent: content.client_satisfaction_percent || 98,
+        years_in_business: content.years_in_business || COMPANY_FACTS.yearsExperience,
+        properties_sold: content.properties_sold || COMPANY_FACTS.propertiesSold,
+        client_satisfaction_percent: content.client_satisfaction_percent || COMPANY_FACTS.clientSatisfaction,
         faq_entities: (content.faq_entities as unknown as AboutPageContent["faq_entities"]) || [],
         citations: (content.citations as unknown as AboutPageContent["citations"]) || [],
         founders: (content.founders as unknown as AboutPageContent["founders"]) || [],
