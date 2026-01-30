@@ -45,7 +45,7 @@ interface NotificationRequest {
   lead: Lead;
   agents: Agent[];
   claimWindowMinutes: number;
-  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert';
+  notification_type?: 'broadcast' | 'direct_assignment' | 'sla_escalation' | 'test_urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert' | 'form_submission_alert';
   lead_priority?: string;
   isAdminFallback?: boolean;
   assigned_agent_name?: string;
@@ -53,6 +53,11 @@ interface NotificationRequest {
   triggered_by?: string;
   trigger_reason?: string;
   scheduled_release_at?: string;
+  // Form submission alert specific fields
+  form_name?: string;
+  form_data?: Record<string, unknown>;
+  utm_source?: string;
+  utm_campaign?: string;
 }
 
 function getLanguageFlag(language: string): string {
@@ -144,6 +149,50 @@ function generateNightHoldAlertEmailHtml(lead: Lead, adminName: string, leadDeta
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>🌙 After-Hours Lead</title></head><body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f3f4f6;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(99, 102, 241, 0.15);"><tr><td style="background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); padding: 30px; text-align: center;"><h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">🌙 AFTER-HOURS LEAD RECEIVED</h1><p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 15px; font-weight: 500;">This lead has been placed on Night Hold</p></td></tr><tr><td style="background-color: #E0E7FF; padding: 16px 30px; border-bottom: 2px solid #6366F1;"><p style="margin: 0; color: #3730A3; font-size: 14px; font-weight: 700;">⏰ Scheduled for automatic release: ${releaseTimeDisplay}</p><p style="margin: 4px 0 0; color: #4338CA; font-size: 13px;">No immediate action required • Lead will be routed to agents during business hours</p></td></tr><tr><td style="padding: 30px;"><p style="margin: 0 0 20px; color: #374151; font-size: 16px;">Hi ${adminName},</p><p style="margin: 0 0 24px; color: #374151; font-size: 16px;">A new ${flag} ${normalizedLead.language?.toUpperCase()} lead arrived outside business hours and has been automatically placed on hold:</p><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F5F3FF; border-radius: 8px; border: 2px solid #C4B5FD; margin-bottom: 24px;"><tr><td style="padding: 20px;"><h2 style="margin: 0 0 8px; color: #111827; font-size: 20px; font-weight: bold;">${lead.first_name} ${lead.last_name}</h2><span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">${normalizedLead.lead_segment}</span><span style="display: inline-block; background-color: #6366F1; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">${flag} ${normalizedLead.language?.toUpperCase()}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;"><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.phone_number}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Email</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.email || 'Not provided'}</p></td></tr><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Budget</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${lead.budget_range || "Not specified"}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Source</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${normalizedLead.lead_source}</p></td></tr><tr><td colspan="2" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Created At</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${createdAt}</p></td></tr></table></td></tr></table><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><a href="${leadDetailUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">📋 View Lead Details</a></td></tr></table><p style="margin: 24px 0 0; color: #6B7280; font-size: 14px; text-align: center;">This lead will be automatically routed at ${releaseTimeDisplay}. If urgent, you can manually assign it now.</p></td></tr><tr><td style="background-color: #1F2937; padding: 20px 30px;"><p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">Del Sol Prime Homes CRM • Night Hold System<br><span style="color: #A5B4FC;">This is an informational after-hours notification</span></p></td></tr></table></td></tr></table></body></html>`;
 }
 
+function generateFormSubmissionAlertEmailHtml(
+  lead: Lead, 
+  adminName: string, 
+  leadDetailUrl: string, 
+  formName: string,
+  pageUrl: string,
+  language: string,
+  formData: Record<string, unknown>,
+  utmSource?: string,
+  utmCampaign?: string
+): string {
+  const normalizedLead = normalizeLead(lead);
+  const flag = getLanguageFlag(normalizedLead.language!);
+  const segmentColor = getSegmentColor(normalizedLead.lead_segment!);
+  const createdAt = lead.created_at ? new Date(lead.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  
+  // Build form data rows
+  let formDataHtml = '';
+  if (formData && Object.keys(formData).length > 0) {
+    formDataHtml = Object.entries(formData)
+      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .map(([key, value]) => {
+        const label = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return `<tr><td style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">${label}</p><p style="margin: 4px 0 0; color: #111827; font-size: 14px; font-weight: 500;">${String(value)}</p></td></tr>`;
+      })
+      .join('');
+  }
+  
+  // Build source tracking section
+  let sourceTrackingHtml = '';
+  if (utmSource || utmCampaign || normalizedLead.lead_source) {
+    sourceTrackingHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F3F4F6; border-radius: 8px; padding: 16px; margin-top: 16px;">
+        <tr><td><h4 style="margin: 0 0 12px; color: #374151; font-size: 14px; font-weight: 600;">📊 Source Tracking</h4></td></tr>
+        ${normalizedLead.lead_source ? `<tr><td style="padding: 4px 0;"><span style="color: #6b7280; font-size: 12px;">Source:</span> <span style="color: #111827; font-size: 13px; font-weight: 500;">${normalizedLead.lead_source}</span></td></tr>` : ''}
+        ${utmSource ? `<tr><td style="padding: 4px 0;"><span style="color: #6b7280; font-size: 12px;">UTM Source:</span> <span style="color: #111827; font-size: 13px; font-weight: 500;">${utmSource}</span></td></tr>` : ''}
+        ${utmCampaign ? `<tr><td style="padding: 4px 0;"><span style="color: #6b7280; font-size: 12px;">UTM Campaign:</span> <span style="color: #111827; font-size: 13px; font-weight: 500;">${utmCampaign}</span></td></tr>` : ''}
+      </table>
+    `;
+  }
+  
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>📬 New Form Submission</title></head><body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f3f4f6;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.15);"><tr><td style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 30px; text-align: center;"><h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">📬 NEW FORM SUBMISSION</h1><p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 15px; font-weight: 500;">Form: ${formName}</p></td></tr><tr><td style="background-color: #DBEAFE; padding: 16px 30px; border-bottom: 2px solid #3B82F6;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td><p style="margin: 0; color: #1E40AF; font-size: 13px;"><strong>Page:</strong> ${pageUrl}</p></td></tr><tr><td><p style="margin: 4px 0 0; color: #1E40AF; font-size: 13px;"><strong>Language:</strong> ${flag} ${language.toUpperCase()}</p></td></tr><tr><td><p style="margin: 4px 0 0; color: #1E40AF; font-size: 13px;"><strong>Time:</strong> ${createdAt}</p></td></tr></table></td></tr><tr><td style="padding: 30px;"><p style="margin: 0 0 20px; color: #374151; font-size: 16px;">Hi ${adminName},</p><p style="margin: 0 0 24px; color: #374151; font-size: 16px;">A new form submission has been received and routed to the CRM:</p><table width="100%" cellpadding="0" cellspacing="0" style="background-color: #EFF6FF; border-radius: 8px; border: 2px solid #93C5FD; margin-bottom: 24px;"><tr><td style="padding: 20px;"><h2 style="margin: 0 0 8px; color: #111827; font-size: 20px; font-weight: bold;">${lead.first_name} ${lead.last_name}</h2><span style="display: inline-block; background-color: ${segmentColor}; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px; margin-right: 8px;">${normalizedLead.lead_segment}</span><span style="display: inline-block; background-color: #3B82F6; color: white; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 9999px;">${flag} ${normalizedLead.language?.toUpperCase()}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px;"><tr><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Phone</p><p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${normalizedLead.phone_number}</p></td><td width="50%" style="padding: 8px 0;"><p style="margin: 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Email</p><p style="margin: 4px 0 0; color: #111827; font-size: 15px; font-weight: 600;">${lead.email || 'Not provided'}</p></td></tr>${formDataHtml}</table>${sourceTrackingHtml}</td></tr></table><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><a href="${leadDetailUrl}" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">📋 View in Admin Dashboard</a></td></tr></table><p style="margin: 24px 0 0; color: #6B7280; font-size: 14px; text-align: center;">This lead is being routed through the CRM round-robin system.</p></td></tr><tr><td style="background-color: #1F2937; padding: 20px 30px;"><p style="margin: 0; color: #9CA3AF; font-size: 12px; text-align: center;">Del Sol Prime Homes CRM • Form Submission Alert<br><span style="color: #93C5FD;">Real-time notification for all website form submissions</span></p></td></tr></table></td></tr></table></body></html>`;
+}
+
 // Log email to database for audit trail
 async function logEmail(
   supabase: any,
@@ -203,12 +252,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { lead, agents, claimWindowMinutes, notification_type, lead_priority, assigned_agent_name, time_since_assignment_minutes, triggered_by, trigger_reason, scheduled_release_at }: NotificationRequest = await req.json();
+    const { lead, agents, claimWindowMinutes, notification_type, lead_priority, assigned_agent_name, time_since_assignment_minutes, triggered_by, trigger_reason, scheduled_release_at, form_name, form_data, utm_source, utm_campaign }: NotificationRequest = await req.json();
     console.log(`[send-lead-notification] Sending email notifications to ${agents.length} agents for lead ${lead.id}, type: ${notification_type || 'broadcast'}`);
 
     const appUrl = Deno.env.get("APP_URL") || "https://blog-knowledge-vault.lovable.app";
-    const results: Array<{ agent: string; emailSuccess: boolean; emailType?: 'standard' | 'urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert'; error?: string }> = [];
+    const results: Array<{ agent: string; emailSuccess: boolean; emailType?: 'standard' | 'urgent' | 'admin_unclaimed' | 'sla_warning' | 'night_hold_alert' | 'form_submission_alert'; error?: string }> = [];
 
+    const isFormSubmissionAlertNotification = notification_type === 'form_submission_alert';
     const isNightHoldAlertNotification = notification_type === 'night_hold_alert';
     const isSlaWarningNotification = notification_type === 'sla_warning';
     const isAdminUnclaimedNotification = notification_type === 'admin_unclaimed';
@@ -220,7 +270,7 @@ serve(async (req) => {
     for (const agent of agents) {
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
       // Admin-targeted notifications should use admin routes
-      const isAdminTargetedNotification = isNightHoldAlertNotification || isAdminUnclaimedNotification || isSlaWarningNotification;
+      const isAdminTargetedNotification = isNightHoldAlertNotification || isAdminUnclaimedNotification || isSlaWarningNotification || isFormSubmissionAlertNotification;
       const leadDetailUrl = isAdminTargetedNotification
         ? `${appUrl}/crm/admin/leads/${lead.id}`
         : `${appUrl}/crm/agent/leads/${lead.id}`;
@@ -228,11 +278,12 @@ serve(async (req) => {
       let resendMessageId: string | undefined;
       let errorMessage: string | undefined;
       
+      const useFormSubmissionAlertTemplate = isFormSubmissionAlertNotification;
       const useNightHoldAlertTemplate = isNightHoldAlertNotification;
       const useAdminUnclaimedTemplate = isAdminUnclaimedNotification;
       const useSlaWarningTemplate = isSlaWarningNotification;
-      const useUrgentTemplate = !useNightHoldAlertTemplate && !useAdminUnclaimedTemplate && !useSlaWarningTemplate && isUrgentNotification && agent.urgent_emails_enabled !== false;
-      const emailType = useNightHoldAlertTemplate ? 'night_hold_alert' : (useSlaWarningTemplate ? 'sla_warning' : (useAdminUnclaimedTemplate ? 'admin_unclaimed' : (useUrgentTemplate ? 'urgent' : 'standard')));
+      const useUrgentTemplate = !useFormSubmissionAlertTemplate && !useNightHoldAlertTemplate && !useAdminUnclaimedTemplate && !useSlaWarningTemplate && isUrgentNotification && agent.urgent_emails_enabled !== false;
+      const emailType = useFormSubmissionAlertTemplate ? 'form_submission_alert' : (useNightHoldAlertTemplate ? 'night_hold_alert' : (useSlaWarningTemplate ? 'sla_warning' : (useAdminUnclaimedTemplate ? 'admin_unclaimed' : (useUrgentTemplate ? 'urgent' : 'standard'))));
 
       const normalizedLead = normalizeLead(lead);
       const flag = getLanguageFlag(normalizedLead.language!);
@@ -243,7 +294,9 @@ serve(async (req) => {
       // Build trigger reason if not provided
       let reasonText = trigger_reason;
       if (!reasonText) {
-        if (useNightHoldAlertTemplate) {
+        if (useFormSubmissionAlertTemplate) {
+          reasonText = `New form submission from ${form_name || 'Website'} - ${normalizedLead.language?.toUpperCase()}`;
+        } else if (useNightHoldAlertTemplate) {
           reasonText = `Lead arrived after hours - scheduled for release at ${scheduled_release_at || 'next business day'}`;
         } else if (useSlaWarningTemplate) {
           reasonText = `SLA breach - no activity after ${time_since_assignment_minutes || claimWindowMinutes} minutes`;
@@ -260,7 +313,19 @@ serve(async (req) => {
 
       try {
         let emailHtml: string;
-        if (useNightHoldAlertTemplate) {
+        if (useFormSubmissionAlertTemplate) {
+          emailHtml = generateFormSubmissionAlertEmailHtml(
+            lead,
+            agent.first_name,
+            leadDetailUrl,
+            form_name || 'Website Form',
+            lead.source || 'Unknown Page',
+            normalizedLead.language || 'en',
+            form_data || {},
+            utm_source,
+            utm_campaign
+          );
+        } else if (useNightHoldAlertTemplate) {
           emailHtml = generateNightHoldAlertEmailHtml(
             lead, 
             agent.first_name, 
@@ -285,7 +350,9 @@ serve(async (req) => {
           emailHtml = generateEmailHtml(lead, agent.first_name, claimUrl, claimWindowMinutes);
         }
 
-        if (useNightHoldAlertTemplate) {
+        if (useFormSubmissionAlertTemplate) {
+          emailSubject = `📬 Form Submission: ${lead.first_name} ${lead.last_name} (${form_name || 'Website'}) - ${flag} ${normalizedLead.language?.toUpperCase()}`;
+        } else if (useNightHoldAlertTemplate) {
           emailSubject = `🌙 After-Hours Lead: ${lead.first_name} ${lead.last_name} (${flag} ${normalizedLead.language?.toUpperCase()})`;
         } else if (useSlaWarningTemplate) {
           emailSubject = `⚠️ SLA Warning: ${lead.first_name} ${lead.last_name} not worked by ${assigned_agent_name || 'Agent'}`;
@@ -360,7 +427,8 @@ serve(async (req) => {
     const urgentEmailCount = results.filter(r => r.emailType === 'urgent').length;
     const slaWarningCount = results.filter(r => r.emailType === 'sla_warning').length;
     const nightHoldAlertCount = results.filter(r => r.emailType === 'night_hold_alert').length;
-    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails sent (${urgentEmailCount} urgent, ${slaWarningCount} SLA warnings, ${nightHoldAlertCount} night-hold alerts)`);
+    const formSubmissionAlertCount = results.filter(r => r.emailType === 'form_submission_alert').length;
+    console.log(`[send-lead-notification] Summary: ${emailSuccessCount}/${agents.length} emails sent (${urgentEmailCount} urgent, ${slaWarningCount} SLA warnings, ${nightHoldAlertCount} night-hold alerts, ${formSubmissionAlertCount} form alerts)`);
 
     return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: unknown) {
