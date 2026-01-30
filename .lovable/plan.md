@@ -1,81 +1,88 @@
 
 
-# Fix: Update "2024" to "2026" Across All Property Guides
+# Update Property Guides from 2024 → 2026
 
 ## Problem Identified
 
-The screenshot shows **"Fuengirola Property Guide 2024"** - this is outdated and needs to be **2026** across all 10 languages.
+Multiple references to **"2024"** appear in Property Guides, Buyers Guides, and Investment Highlights across all 10 languages. These need to be updated to **"2026"** to reflect current market content.
 
 ---
 
-## Locations Requiring Updates
+## Files Requiring Updates
 
-### 1. Translation Files - Brochure UI (10 files)
+### 1. Main Translation Files (10 files × 2 strings each = 20 changes)
 
-Each language file has two instances of "2024" in the `brochures.ui` section:
+Each language file has `valueGrowth` and `propertyGuide` strings with "2024":
 
-| File | Lines to Update |
-|------|-----------------|
-| `src/i18n/translations/en.ts` | `valueGrowth: "Value Growth 2024"` → `2026`<br>`propertyGuide: "{city} Property Guide 2024"` → `2026` |
-| `src/i18n/translations/de.ts` | `valueGrowth: "Wertzuwachs 2024"` → `2026`<br>`propertyGuide: "{city} Immobilienführer 2024"` → `2026` |
-| `src/i18n/translations/nl.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/fr.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/pl.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/sv.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/da.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/hu.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/fi.ts` | `valueGrowth` + `propertyGuide` |
-| `src/i18n/translations/no.ts` | `valueGrowth` + `propertyGuide` |
+| File | valueGrowth | propertyGuide |
+|------|-------------|---------------|
+| `src/i18n/translations/en.ts` | Line 265: `"Value Growth 2024"` | Line 275: `"{city} Property Guide 2024"` |
+| `src/i18n/translations/de.ts` | Line 261: `"Wertzuwachs 2024"` | Line 269: `"{city} Immobilienführer 2024"` |
+| `src/i18n/translations/nl.ts` | Line 261: `"Waardestijging 2024"` | Line 269: `"{city} Vastgoedgids 2024"` |
+| `src/i18n/translations/fr.ts` | Line 261 | Line 269 |
+| `src/i18n/translations/pl.ts` | Line 261: `"Wzrost Wartości 2024"` | Line 269: `"Przewodnik po Nieruchomościach {city} 2024"` |
+| `src/i18n/translations/sv.ts` | Line 261: `"Värdetillväxt 2024"` | Line 269: `"{city} Fastighetsguide 2024"` |
+| `src/i18n/translations/da.ts` | Line 261: `"Værditilvækst 2024"` | Line 269: `"{city} Ejendomsguide 2024"` |
+| `src/i18n/translations/hu.ts` | Line 261: `"Értéknövekedés 2024"` | Line 269: `"{city} Ingatlan Útmutató 2024"` |
+| `src/i18n/translations/fi.ts` | Line 261: `"Arvonnousu 2024"` | Line 269: `"{city} Kiinteistöopas 2024"` |
+| `src/i18n/translations/no.ts` | Line 261: `"Verdiøkning 2024"` | Line 269: `"{city} Eiendomsguide 2024"` |
 
-### 2. Buyers Guide Badge (10 files)
+### 2. Buyers Guide Badge (10 files × 1 string = 10 changes)
 
-Each language's Buyers Guide has a hero badge with "2024":
+Each Buyers Guide has a hero badge at Line 7:
 
-| File | Change |
-|------|--------|
-| `src/i18n/translations/buyersGuide/en.ts` | `badge: "Complete 2024 Guide"` → `2026` |
-| `src/i18n/translations/buyersGuide/de.ts` | `badge: "Kompletter 2024 Guide"` → `2026` |
-| `src/i18n/translations/buyersGuide/nl.ts` | `badge: "Complete Gids 2024"` → `2026` |
-| `src/i18n/translations/buyersGuide/fr.ts` | `badge: "Guide Complet 2024"` → `2026` |
-| `src/i18n/translations/buyersGuide/pl.ts` | `badge: "Kompletny Przewodnik 2024"` → `2026` |
-| `src/i18n/translations/buyersGuide/sv.ts` | Badge line |
-| `src/i18n/translations/buyersGuide/da.ts` | `badge: "Komplet Guide 2024"` → `2026` |
-| `src/i18n/translations/buyersGuide/hu.ts` | Badge line |
-| `src/i18n/translations/buyersGuide/fi.ts` | `badge: "Täydellinen Opas 2024"` → `2026` |
-| `src/i18n/translations/buyersGuide/no.ts` | Badge line |
+| File | Current Badge |
+|------|---------------|
+| `src/i18n/translations/buyersGuide/en.ts` | `"Complete 2024 Guide"` |
+| `src/i18n/translations/buyersGuide/de.ts` | `"Kompletter Leitfaden 2024"` |
+| `src/i18n/translations/buyersGuide/nl.ts` | `"Complete Gids 2024"` |
+| `src/i18n/translations/buyersGuide/fr.ts` | `"Guide Complet 2024"` |
+| `src/i18n/translations/buyersGuide/pl.ts` | `"Kompletny Przewodnik 2024"` |
+| `src/i18n/translations/buyersGuide/sv.ts` | `"Komplett Guide 2024"` |
+| `src/i18n/translations/buyersGuide/da.ts` | `"Komplet Guide 2024"` |
+| `src/i18n/translations/buyersGuide/hu.ts` | `"Teljes Útmutató 2024"` |
+| `src/i18n/translations/buyersGuide/fi.ts` | `"Täydellinen Opas 2024"` |
+| `src/i18n/translations/buyersGuide/no.ts` | `"Komplett Guide 2024"` |
 
-### 3. Hardcoded Component
+### 3. Component Files (2 files × 1 change each = 2 changes)
 
-| File | Change |
-|------|--------|
-| `src/components/brochures/BrochureOptInForm.tsx` | Line 219: `{cityName} Property Guide 2024` → Use localized `t('brochures.ui.propertyGuide')` instead |
-
-### 4. Investment Highlights Component
-
-| File | Change |
-|------|--------|
-| `src/components/brochures/InvestmentHighlights.tsx` | Line 79: fallback `"Value Growth 2024"` → `2026` |
+| File | Line | Current Value |
+|------|------|---------------|
+| `src/components/brochures/BrochureOptInForm.tsx` | 219 | Hardcoded: `{cityName} Property Guide 2024` |
+| `src/components/brochures/InvestmentHighlights.tsx` | 79 | Fallback: `"Value Growth 2024"` |
 
 ---
 
 ## Summary
 
-| Category | Files | Total Changes |
-|----------|-------|---------------|
-| Brochure translations (10 langs × 2 strings) | 10 | 20 |
-| Buyers Guide badge (10 langs) | 10 | 10 |
-| BrochureOptInForm hardcoded | 1 | 1 |
-| InvestmentHighlights fallback | 1 | 1 |
+| Category | Files | Changes |
+|----------|-------|---------|
+| Main translations (10 langs × 2 strings) | 10 | 20 |
+| Buyers Guide badges (10 langs) | 10 | 10 |
+| BrochureOptInForm.tsx | 1 | 1 |
+| InvestmentHighlights.tsx | 1 | 1 |
 | **Total** | **22 files** | **32 changes** |
 
 ---
 
 ## Implementation Steps
 
-1. Update all 10 main translation files (`en.ts`, `de.ts`, etc.) - change `2024` → `2026` in `valueGrowth` and `propertyGuide`
-2. Update all 10 Buyers Guide translation files - change badge year
-3. Fix `BrochureOptInForm.tsx` to use the localized translation key instead of hardcoded English
-4. Update `InvestmentHighlights.tsx` fallback text
+1. **Main Translation Files** - Update all 10 language files:
+   - Change `valueGrowth: "... 2024"` → `"... 2026"`
+   - Change `propertyGuide: "... 2024"` → `"... 2026"`
 
-This ensures consistent "2026" branding across all city brochures, buyers guides, and all 10 supported languages.
+2. **Buyers Guide Files** - Update all 10 language files:
+   - Change `badge: "... 2024"` → `"... 2026"`
+
+3. **BrochureOptInForm.tsx** - Replace hardcoded English string with localized translation key to ensure proper localization
+
+4. **InvestmentHighlights.tsx** - Update fallback text from `"Value Growth 2024"` → `"Value Growth 2026"`
+
+---
+
+## Technical Notes
+
+- All changes are simple string replacements: `2024` → `2026`
+- The BrochureOptInForm fix also improves localization by using the translation key instead of hardcoded English
+- No database or API changes required - purely frontend translation updates
 
