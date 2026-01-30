@@ -1,41 +1,54 @@
 
-# Update Google Reviews Link
 
-## Problem
-The "Read All Reviews" button on the homepage currently links to Google Maps:
-```
-https://www.google.com/maps/place/Del+Sol+Prime+Homes/@36.5433,-4.6289,17z
-```
+# Fix Mobile Navigation Menu z-index on Location Hub Page
 
-The user wants it updated to the new Google Business Profile reviews link.
+## Problem Identified
+
+The mobile navigation menu on the Location Guides page (`/en/locations`) has a **z-index conflict** that causes it to render behind page content in certain scenarios.
+
+Looking at the user's screenshot:
+- The X (close) button is visible at the top-right (indicating the menu is "open")
+- But the actual menu content (Explore, Learn, Compare, About sections) is NOT visible
+- The hero content is showing through instead
 
 ---
 
-## Location Found
+## Root Cause
 
-**File:** `src/components/home/sections/ReviewsAndBlog.tsx`
+In `src/components/home/Header.tsx`:
 
-**Lines 37-43:**
+**Current Code (lines 245-250):**
 ```jsx
-<a 
-  href="https://www.google.com/maps/place/Del+Sol+Prime+Homes/@36.5433,-4.6289,17z"
-  target="_blank"
-  rel="noopener noreferrer"
+<div 
+  className={`fixed inset-0 bg-card z-40 flex flex-col ...`}
 >
-  <Button variant="outline">{t.reviews.cta}</Button>
-</a>
 ```
+
+**The Issue:**
+- The header itself has `z-50`
+- The mobile toggle button has `z-50` (correct - stays visible)
+- But the mobile menu overlay only has `z-40`
+
+This means the mobile menu content can be rendered **behind** elements with z-index between 40-50.
 
 ---
 
-## Change Required
+## Solution
 
-Update the `href` attribute from the old Google Maps URL to the new Google Business Profile reviews URL:
+Update the mobile menu overlay from `z-40` to `z-50` (or higher like `z-[45]`) to ensure it renders above all page content but at the same level as the header controls.
 
-**New URL:**
+**File:** `src/components/home/Header.tsx`  
+**Line:** 246
+
+**Change:**
+```diff
+- className={`fixed inset-0 bg-card z-40 flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
++ className={`fixed inset-0 bg-card z-[45] flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
 ```
-https://www.google.com/search?sca_esv=ab4b4c8b17b2f68e&rlz=1C1FHFK_esES1176ES1176&sxsrf=ANbL-n6cwHuTgRtfDEJAzE8AcYPESuO9sA:1769744919200&kgmid=/g/11zj8zmh9b&q=DelSolPrimeHomes&shem=bdsle,ptotple,shrtsdl&shndl=30&source=sh/x/loc/uni/m1/1&kgs=3deac8e88e622d63&utm_source=bdsle,ptotple,shrtsdl,sh/x/loc/uni/m1/1
-```
+
+Using `z-[45]` ensures the mobile menu:
+- Appears above page content (hero sections, etc.)
+- Stays below the header bar and toggle button (`z-50`) so the X button and logo remain clickable
 
 ---
 
@@ -43,9 +56,10 @@ https://www.google.com/search?sca_esv=ab4b4c8b17b2f68e&rlz=1C1FHFK_esES1176ES117
 
 | Item | Details |
 |------|---------|
-| File | `src/components/home/sections/ReviewsAndBlog.tsx` |
-| Line | 38 |
-| Change | Replace Google Maps URL with Google Business Profile URL |
-| Button Text | "Read All Reviews" (from translation key `t.reviews.cta`) |
+| File | `src/components/home/Header.tsx` |
+| Line | 246 |
+| Change | `z-40` → `z-[45]` |
+| Impact | Fixes mobile menu visibility on all pages |
 
-This is a single-line change that will redirect users clicking "Read All Reviews" to the correct Google Business Profile reviews page.
+This is a one-line change that fixes the mobile navigation menu stacking issue across all pages that use the Header component.
+
