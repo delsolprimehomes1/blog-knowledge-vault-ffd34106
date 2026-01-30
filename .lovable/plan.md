@@ -1,130 +1,101 @@
 
-# Update Property Search to Show All Residential Properties
+# Update Property Search Price Defaults
 
-## Goal
-Update the property search to show ALL residential properties at ANY price by:
-1. Removing the default €500,000 minimum price filter
-2. Defaulting to "Sales" instead of "New Developments" 
-3. Always passing `propertyTypes=1-1,2-1` to filter apartments/houses at the API level
-4. Expected result: ~7,067 properties when no price filter is applied
+## Current Issue
+The URL shows `priceMin=500000&newDevs=only` from a previous session. These URL parameters override any defaults since `getInitialParams()` reads from URL search params.
 
----
+## Required Changes
 
-## Changes Overview
+### 1. Update PRICE_OPTIONS in PropertyFilters.tsx (lines 19-33)
 
-### 1. Edge Function: Remove Default Price Filter
-
-**File**: `supabase/functions/search-properties/index.ts`
-
-Remove the logic that automatically adds a €500,000 minimum price for New Developments:
-
-```text
-DELETE lines 165-170:
-// Set default minimum price for New Developments
-const effectiveFilters = { ...filters };
-if (filters.newDevs === 'only' && !filters.priceMin) {
-  effectiveFilters.priceMin = 500000;
-  console.log('💰 Applied default minPrice: €500,000 for New Developments');
-}
-```
-
-Replace with:
+**Current:**
 ```javascript
-const effectiveFilters = { ...filters };
+const PRICE_OPTIONS = [
+  { label: "Any", value: "" },
+  { label: "€50,000", value: "50000" },
+  { label: "€100,000", value: "100000" },
+  { label: "€150,000", value: "150000" },
+  { label: "€200,000", value: "200000" },
+  { label: "€250,000", value: "250000" },
+  { label: "€300,000", value: "300000" },
+  { label: "€400,000", value: "400000" },
+  { label: "€500,000", value: "500000" },
+  { label: "€750,000", value: "750000" },
+  { label: "€1,000,000", value: "1000000" },
+  { label: "€2,000,000", value: "2000000" },
+  { label: "€5,000,000", value: "5000000" },
+];
 ```
 
----
-
-### 2. Edge Function: Add Default Property Types
-
-Pass `propertyTypes=1-1,2-1` by default to filter apartments and houses at the API level (more efficient than post-filtering):
-
-In `callProxySearch()`, add default propertyTypes if not specified:
-
+**Updated:**
 ```javascript
-// Default to apartments (1-1) and houses (2-1) for residential filtering
-if (!filters.propertyType) {
-  proxyParams.propertyTypes = '1-1,2-1';
-}
+const PRICE_OPTIONS = [
+  { label: "Any", value: "" },
+  { label: "€100,000", value: "100000" },
+  { label: "€180,000", value: "180000" },
+  { label: "€250,000", value: "250000" },
+  { label: "€300,000", value: "300000" },
+  { label: "€400,000", value: "400000" },
+  { label: "€500,000", value: "500000" },
+  { label: "€750,000", value: "750000" },
+  { label: "€1,000,000", value: "1000000" },
+  { label: "€2,000,000", value: "2000000" },
+  { label: "€3,000,000", value: "3000000" },
+  { label: "€5,000,000", value: "5000000" },
+  { label: "€10,000,000", value: "10000000" },
+];
 ```
 
 ---
 
-### 3. Frontend: Change Default Status to "Sales"
+### 2. Update PRICE_OPTIONS in QuickSearch.tsx (lines 10-24)
 
-**File**: `src/pages/PropertyFinder.tsx`
+Same changes as above - add €180,000 and €10,000,000 options, update the range.
 
-Change the default behavior on initial load from "New Developments" to "Sales":
+---
 
-```text
-BEFORE (lines 113-120):
-useEffect(() => {
-  const params = getInitialParams();
-  if (!params.newDevs) {
-    params.newDevs = "only";
-  }
-  searchProperties(params);
-}, []);
+### 3. Edge Function: Apply Default Price Range (search-properties/index.ts)
 
-AFTER:
-useEffect(() => {
-  const params = getInitialParams();
-  // No longer defaulting to New Developments - show all sales
-  searchProperties(params);
-}, []);
+Add default prices at the API level when not specified by user:
+
+**Current (lines 116-119):**
+```javascript
+if (filters.location) proxyParams.location = filters.location;
+if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
+if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
+if (filters.priceMax) proxyParams.maxPrice = String(filters.priceMax);
+```
+
+**Updated:**
+```javascript
+if (filters.location) proxyParams.location = filters.location;
+if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
+// Default price range: €180,000 - €10,000,000
+proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '180000';
+proxyParams.maxPrice = filters.priceMax ? String(filters.priceMax) : '10000000';
 ```
 
 ---
 
-### 4. PropertyFilters Component: Default to Sales
+### 4. Clear Cached URL State
 
-**File**: `src/components/property/PropertyFilters.tsx`
-
-Update default status from "new-developments" to "sales":
-
-| Line | Before | After |
-|------|--------|-------|
-| 73-74 | `initialParams.newDevs === "only" \|\| initialParams.newDevs === undefined ? "new-developments" : "sales"` | `initialParams.newDevs === "only" ? "new-developments" : "sales"` |
-| 92 | Same logic | Same fix |
-| 122 | `setStatus("new-developments")` | `setStatus("sales")` |
-| 123 | `onSearch({ transactionType: "sale", newDevs: "only" })` | `onSearch({ transactionType: "sale" })` |
+The user must navigate to a clean URL to clear the old parameters:
+- Navigate to `/en/properties` (without query params)
+- Or click "Clear All" / "Reset" button in filters
 
 ---
 
-### 5. QuickSearch Component: Default to Sales
+## Summary of Changes
 
-**File**: `src/components/home/sections/QuickSearch.tsx`
-
-Change line 50:
-```text
-BEFORE: const [status, setStatus] = useState("new-developments");
-AFTER:  const [status, setStatus] = useState("sales");
-```
-
-Change `handleReset()` (line 67):
-```text
-BEFORE: setStatus("new-developments");
-AFTER:  setStatus("sales");
-```
-
----
-
-## Technical Summary
-
-| Component | Change |
-|-----------|--------|
-| **Edge Function** | Remove €500,000 default price; add `propertyTypes=1-1,2-1` default |
-| **PropertyFinder.tsx** | Remove `newDevs = "only"` default on mount |
-| **PropertyFilters.tsx** | Default status to "sales", update reset behavior |
-| **QuickSearch.tsx** | Default status to "sales", update reset behavior |
-
----
+| File | Change |
+|------|--------|
+| `PropertyFilters.tsx` | Add €180K and €10M options; remove €50K, €150K, €200K |
+| `QuickSearch.tsx` | Same PRICE_OPTIONS update |
+| `search-properties/index.ts` | Default minPrice=180000, maxPrice=10000000 |
 
 ## Expected Behavior After Changes
 
-1. **Default search** shows all apartments and houses (no price filter)
-2. **API request** includes `propertyTypes=1-1,2-1` by default
-3. **No P_Min/minPrice** sent unless user selects a minimum price
-4. **Expected count**: ~7,067 properties
-5. **User can still select** "New Developments" filter if desired
-6. **Residential filtering** now happens at API level (more efficient)
+1. **Default search** (no filters): €180,000 - €10,000,000
+2. **Price dropdown**: Shows €180K as a key option, goes up to €10M
+3. **API request**: Always includes `minPrice=180000&maxPrice=10000000` unless user specifies different values
+4. **Property count**: Should increase to match API's full residential inventory within price range
