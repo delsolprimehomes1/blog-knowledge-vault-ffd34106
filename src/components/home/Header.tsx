@@ -243,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
 
       {/* Mobile Menu - CSS animated */}
       <div 
-        className={`fixed inset-0 bg-card z-40 flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
+        className={`fixed inset-0 bg-card z-[45] flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
           isMobileMenuOpen 
             ? 'opacity-100 translate-x-0' 
             : 'opacity-0 translate-x-full pointer-events-none'
