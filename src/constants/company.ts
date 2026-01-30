@@ -96,5 +96,5 @@ export const COMPANY_DISPLAY = {
  * Centralized company resources and downloadable content URLs.
  */
 export const COMPANY_RESOURCES = {
-  buyersGuideUrl: 'https://gamma.app/docs/The-Complete-Costa-del-Sol-Property-Buyers-Guide-2026-xatxssoipntjvc5',
+  buyersGuideUrl: '/downloads/The-Complete-Costa-del-Sol-Property-Buyers-Guide-2026.pdf',
 } as const;
