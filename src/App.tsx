@@ -110,6 +110,8 @@ const BrokenLinkChecker = lazy(() => import("./pages/admin/BrokenLinkChecker"));
 const BulkImageUpdate = lazy(() => import("./pages/admin/BulkImageUpdate"));
 const WebhookTesting = lazy(() => import("./pages/admin/WebhookTesting"));
 const SEOStatusChecker = lazy(() => import("./pages/admin/SEOStatusChecker"));
+const DuplicateDetector = lazy(() => import("./pages/admin/DuplicateDetector"));
+const CanonicalBackfill = lazy(() => import("./pages/admin/CanonicalBackfill"));
 
 // CRM Pages
 const AgentLogin = lazy(() => import("./pages/crm/AgentLogin"));
@@ -240,6 +242,8 @@ const App = () => (
               <Route path="/admin/bulk-image-update" element={<ProtectedRoute><BulkImageUpdate /></ProtectedRoute>} />
               <Route path="/admin/webhook-testing" element={<ProtectedRoute><WebhookTesting /></ProtectedRoute>} />
               <Route path="/admin/seo-status" element={<ProtectedRoute><SEOStatusChecker /></ProtectedRoute>} />
+              <Route path="/admin/duplicate-detector" element={<ProtectedRoute><DuplicateDetector /></ProtectedRoute>} />
+              <Route path="/admin/canonical-backfill" element={<ProtectedRoute><CanonicalBackfill /></ProtectedRoute>} />
 
               {/* Standalone Property Management Page */}
               <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />
