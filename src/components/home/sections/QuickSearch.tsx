@@ -9,10 +9,8 @@ import { usePropertyTypes } from '@/hooks/usePropertyTypes';
 
 const PRICE_OPTIONS = [
   { label: "Any", value: "" },
-  { label: "€50,000", value: "50000" },
   { label: "€100,000", value: "100000" },
-  { label: "€150,000", value: "150000" },
-  { label: "€200,000", value: "200000" },
+  { label: "€180,000", value: "180000" },
   { label: "€250,000", value: "250000" },
   { label: "€300,000", value: "300000" },
   { label: "€400,000", value: "400000" },
@@ -20,7 +18,9 @@ const PRICE_OPTIONS = [
   { label: "€750,000", value: "750000" },
   { label: "€1,000,000", value: "1000000" },
   { label: "€2,000,000", value: "2000000" },
+  { label: "€3,000,000", value: "3000000" },
   { label: "€5,000,000", value: "5000000" },
+  { label: "€10,000,000", value: "10000000" },
 ];
 
 const BEDROOM_OPTIONS = [
