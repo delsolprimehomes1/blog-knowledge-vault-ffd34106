@@ -216,7 +216,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                     <BookOpen className="w-10 h-10 text-prime-gold" />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-2">{cityName} Property Guide 2024</h4>
+                    <h4 className="text-white font-semibold mb-2">{cityName} Property Guide 2026</h4>
                     <ul className="space-y-1 text-sm text-white/60">
                       <li className="flex items-center gap-2">
                         <Download className="w-3 h-3" /> Instant PDF Download

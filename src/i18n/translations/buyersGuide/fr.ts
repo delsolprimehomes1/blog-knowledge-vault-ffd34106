@@ -4,7 +4,7 @@ export const buyersGuideFr = {
     description: "Votre guide complet pour acheter un bien immobilier sur la Costa del Sol. Processus étape par étape, coûts, exigences légales et conseils d'experts."
   },
   hero: {
-    badge: "Guide Complet 2024",
+    badge: "Guide Complet 2026",
     headline: "Le Guide Complet pour Acheter un Bien Immobilier sur la",
     headlineHighlight: "Costa del Sol",
     subheadline: "Tout ce que vous devez savoir pour acheter la maison de vos rêves dans la région la plus prisée d'Espagne. Des exigences légales aux coûts cachés — nous avons tout prévu.",

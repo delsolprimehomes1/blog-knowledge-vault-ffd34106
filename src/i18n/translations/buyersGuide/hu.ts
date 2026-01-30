@@ -4,7 +4,7 @@ export const buyersGuideHu = {
     description: "Átfogó útmutatója ingatlanvásárláshoz a Costa del Solon. Lépésről lépésre folyamat, költségek, jogi követelmények és szakértői tanácsok."
   },
   hero: {
-    badge: "Teljes Útmutató 2024",
+    badge: "Teljes Útmutató 2026",
     headline: "A Teljes Útmutató Ingatlanvásárláshoz a",
     headlineHighlight: "Costa del Sol",
     subheadline: "Minden, amit tudnia kell álmai otthonának megvásárlásáról Spanyolország legkeresettebb régiójában. Jogi követelményektől a rejtett költségekig — mindent lefedünk.",

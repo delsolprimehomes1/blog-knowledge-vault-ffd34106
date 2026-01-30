@@ -262,7 +262,7 @@ export const en = {
       rentalYield: "Rental Yield",
       daysOfSunshine: "Days of Sunshine",
       averagePrice: "Average Price",
-      valueGrowth: "Value Growth 2024",
+      valueGrowth: "Value Growth 2026",
       // Lifestyle Section
       theLifestyle: "The Lifestyle",
       liveTheDream: "Live The {city} Dream",
@@ -272,7 +272,7 @@ export const en = {
       getYourFree: "Get Your Free",
       brochure: "{city} Brochure",
       discoverExclusive: "Discover exclusive property insights, investment opportunities, and lifestyle guides for {city}.",
-      propertyGuide: "{city} Property Guide 2024",
+      propertyGuide: "{city} Property Guide 2026",
       instantPdfDownload: "Instant PDF Download",
       pagesOfInsights: "40+ Pages of Insights",
       testimonialQuote: "The brochure gave us incredible insights into {city}. Within weeks of our inquiry, we found our dream villa!",

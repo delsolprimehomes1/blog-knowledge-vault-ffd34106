@@ -4,7 +4,7 @@ export const buyersGuideFi = {
     description: "Kattava oppaasi kiinteistön ostamiseen Costa del Solilta. Vaiheittainen prosessi, kustannukset, oikeudelliset vaatimukset ja asiantuntijaneuvot."
   },
   hero: {
-    badge: "Täydellinen Opas 2024",
+    badge: "Täydellinen Opas 2026",
     headline: "Täydellinen Opas Kiinteistön Ostamiseen",
     headlineHighlight: "Costa del Sol",
     subheadline: "Kaikki mitä sinun tarvitsee tietää unelmiesi kodin ostamisesta Espanjan halutuimmalta alueelta. Oikeudellisista vaatimuksista piileviin kuluihin — me autamme.",
