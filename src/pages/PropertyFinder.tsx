@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePropertyFinderTranslation } from "@/hooks/usePropertyFinderTranslation";
 import type { Property, PropertySearchParams } from "@/types/property";
 import { Language, AVAILABLE_LANGUAGES } from "@/types/home";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 const PropertyFinder = () => {
   const { lang } = useParams<{ lang?: string }>();
@@ -465,6 +466,7 @@ const PropertyFinder = () => {
       </main>
 
       <Footer />
+      <BlogEmmaChat language={lang || 'en'} />
     </div>
   );
 };

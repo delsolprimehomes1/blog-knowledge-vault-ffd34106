@@ -11,6 +11,7 @@ import { ContactFAQ } from '@/components/contact/ContactFAQ';
 import { EmmaCallout } from '@/components/contact/EmmaCallout';
 import { MobileStickyContact } from '@/components/contact/MobileStickyContact';
 import { useTranslation } from '@/i18n';
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import { COMPANY_ADDRESS, COMPANY_CONTACT, COMPANY_FACTS } from '@/constants/company';
 
 const Contact: React.FC = () => {
@@ -95,6 +96,8 @@ const Contact: React.FC = () => {
       </main>
 
       <Footer />
+
+      <BlogEmmaChat language={language} />
 
       {/* Mobile sticky WhatsApp bar */}
       <MobileStickyContact 

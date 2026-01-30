@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import { generateAllGlossarySchemas, getGlossaryName, getOGLocale } from "@/lib/glossarySchemaGenerator";
 import { glossaryTranslations, type GlossaryTranslation } from "@/i18n/translations/glossary";
 import { SUPPORTED_LANGUAGES } from "@/types/hreflang";
@@ -482,6 +483,7 @@ const Glossary: React.FC = () => {
       </main>
 
       <Footer />
+      <BlogEmmaChat language={currentLang} />
     </>
   );
 };
