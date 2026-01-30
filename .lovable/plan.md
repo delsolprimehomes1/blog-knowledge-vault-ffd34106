@@ -1,93 +1,81 @@
 
 
-# Fix: Supabase 1000-Row Limit Bug in 404 Resolver
+# Fix: Update "2024" to "2026" Across All Property Guides
 
 ## Problem Identified
 
-The 404 Resolution Dashboard shows incorrect counts due to **Supabase's default 1000-row limit**:
-
-| What You See | Actual Data |
-|--------------|-------------|
-| Summary: 997 malformed | **4,159 malformed** |
-| Table: 2 URLs | **4,159 URLs** |
-
-### Why This Happens
-
-When fetching data from Supabase without an explicit limit, it returns a maximum of 1000 rows. The malformed URLs happen to be mostly in rows 1001+ (ordered by date), so they're never fetched.
-
-Database breakdown:
-- First 1000 rows: Only 2 malformed URLs
-- Rows 1001-5209: 4,157 malformed URLs
+The screenshot shows **"Fuengirola Property Guide 2024"** - this is outdated and needs to be **2026** across all 10 languages.
 
 ---
 
-## Solution
+## Locations Requiring Updates
 
-Update `useNotFoundAnalysis.ts` to fetch **all rows** using pagination (batch fetching).
+### 1. Translation Files - Brochure UI (10 files)
 
-### Technical Approach
+Each language file has two instances of "2024" in the `brochures.ui` section:
 
-Create a helper function that fetches data in batches of 1000 until all rows are retrieved:
+| File | Lines to Update |
+|------|-----------------|
+| `src/i18n/translations/en.ts` | `valueGrowth: "Value Growth 2024"` → `2026`<br>`propertyGuide: "{city} Property Guide 2024"` → `2026` |
+| `src/i18n/translations/de.ts` | `valueGrowth: "Wertzuwachs 2024"` → `2026`<br>`propertyGuide: "{city} Immobilienführer 2024"` → `2026` |
+| `src/i18n/translations/nl.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/fr.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/pl.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/sv.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/da.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/hu.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/fi.ts` | `valueGrowth` + `propertyGuide` |
+| `src/i18n/translations/no.ts` | `valueGrowth` + `propertyGuide` |
 
-```typescript
-async function fetchAllGoneUrls() {
-  const allData = [];
-  let offset = 0;
-  const batchSize = 1000;
-  
-  while (true) {
-    const { data } = await supabase
-      .from("gone_urls")
-      .select("id, url_path, reason, created_at")
-      .range(offset, offset + batchSize - 1)
-      .order("created_at", { ascending: false });
-    
-    if (!data || data.length === 0) break;
-    allData.push(...data);
-    
-    if (data.length < batchSize) break;
-    offset += batchSize;
-  }
-  
-  return allData;
-}
-```
+### 2. Buyers Guide Badge (10 files)
 
-### Files to Modify
+Each language's Buyers Guide has a hero badge with "2024":
 
 | File | Change |
 |------|--------|
-| `src/hooks/useNotFoundAnalysis.ts` | Add batch fetching to all query functions |
+| `src/i18n/translations/buyersGuide/en.ts` | `badge: "Complete 2024 Guide"` → `2026` |
+| `src/i18n/translations/buyersGuide/de.ts` | `badge: "Kompletter 2024 Guide"` → `2026` |
+| `src/i18n/translations/buyersGuide/nl.ts` | `badge: "Complete Gids 2024"` → `2026` |
+| `src/i18n/translations/buyersGuide/fr.ts` | `badge: "Guide Complet 2024"` → `2026` |
+| `src/i18n/translations/buyersGuide/pl.ts` | `badge: "Kompletny Przewodnik 2024"` → `2026` |
+| `src/i18n/translations/buyersGuide/sv.ts` | Badge line |
+| `src/i18n/translations/buyersGuide/da.ts` | `badge: "Komplet Guide 2024"` → `2026` |
+| `src/i18n/translations/buyersGuide/hu.ts` | Badge line |
+| `src/i18n/translations/buyersGuide/fi.ts` | `badge: "Täydellinen Opas 2024"` → `2026` |
+| `src/i18n/translations/buyersGuide/no.ts` | Badge line |
 
-### Functions Affected
+### 3. Hardcoded Component
 
-1. `useNotFoundSummary()` - Uses `allUrls` which is limited to 1000
-2. `useMalformedUrls()` - Fetches without limit
-3. `useLanguageMismatches()` - Fetches without limit  
-4. `useConfirmedGoneUrls()` - Fetches without limit
-5. `countLanguageMismatches()` - Fetches without limit
+| File | Change |
+|------|--------|
+| `src/components/brochures/BrochureOptInForm.tsx` | Line 219: `{cityName} Property Guide 2024` → Use localized `t('brochures.ui.propertyGuide')` instead |
+
+### 4. Investment Highlights Component
+
+| File | Change |
+|------|--------|
+| `src/components/brochures/InvestmentHighlights.tsx` | Line 79: fallback `"Value Growth 2024"` → `2026` |
 
 ---
 
-## Expected Results After Fix
+## Summary
 
-| Metric | Before Fix | After Fix |
-|--------|------------|-----------|
-| Malformed URLs shown | 2 | 4,159 |
-| Summary card accuracy | Wrong | Correct |
-| Language mismatches | Incomplete | Complete |
-| Confirmed 410s | Incomplete | Complete |
+| Category | Files | Total Changes |
+|----------|-------|---------------|
+| Brochure translations (10 langs × 2 strings) | 10 | 20 |
+| Buyers Guide badge (10 langs) | 10 | 10 |
+| BrochureOptInForm hardcoded | 1 | 1 |
+| InvestmentHighlights fallback | 1 | 1 |
+| **Total** | **22 files** | **32 changes** |
 
 ---
 
 ## Implementation Steps
 
-1. Create `fetchAllGoneUrls()` helper function for batch fetching
-2. Update `useNotFoundSummary()` to use the helper
-3. Update `useMalformedUrls()` to use the helper
-4. Update `useLanguageMismatches()` to use the helper
-5. Update `useConfirmedGoneUrls()` to use the helper
-6. Update `countLanguageMismatches()` to use the helper
+1. Update all 10 main translation files (`en.ts`, `de.ts`, etc.) - change `2024` → `2026` in `valueGrowth` and `propertyGuide`
+2. Update all 10 Buyers Guide translation files - change badge year
+3. Fix `BrochureOptInForm.tsx` to use the localized translation key instead of hardcoded English
+4. Update `InvestmentHighlights.tsx` fallback text
 
-This ensures all 5,209 URLs are analyzed, not just the first 1000.
+This ensures consistent "2026" branding across all city brochures, buyers guides, and all 10 supported languages.
 
