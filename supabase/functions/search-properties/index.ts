@@ -117,7 +117,8 @@ async function callProxySearch(filters: any, langNum: number, limit: number, pag
   if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
   if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
   if (filters.priceMax) proxyParams.maxPrice = String(filters.priceMax);
-  if (filters.propertyType) proxyParams.propertyTypes = filters.propertyType;
+  // Default to apartments (1-1) and houses (2-1) for residential filtering if not specified
+  proxyParams.propertyTypes = filters.propertyType || '1-1,2-1';
   if (filters.bedrooms) proxyParams.beds = String(filters.bedrooms);
   if (filters.bathrooms) proxyParams.baths = String(filters.bathrooms);
   if (filters.reference) proxyParams.reference = filters.reference;
@@ -162,12 +163,7 @@ serve(async (req) => {
     const { lang = 'en', page = 1, limit = 500, ...filters } = body;
     const langNum = LANGUAGE_MAP[lang] || 1;
     
-    // Set default minimum price for New Developments
     const effectiveFilters = { ...filters };
-    if (filters.newDevs === 'only' && !filters.priceMin) {
-      effectiveFilters.priceMin = 500000;
-      console.log('💰 Applied default minPrice: €500,000 for New Developments');
-    }
     
     const postBody = {
       ...effectiveFilters,

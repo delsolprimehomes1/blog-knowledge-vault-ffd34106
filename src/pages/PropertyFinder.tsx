@@ -112,10 +112,7 @@ const PropertyFinder = () => {
 
   useEffect(() => {
     const params = getInitialParams();
-    // Default to New Developments if no newDevs param is specified
-    if (!params.newDevs) {
-      params.newDevs = "only";
-    }
+    // Show all residential properties by default (no newDevs filter)
     searchProperties(params);
   }, []);
 
