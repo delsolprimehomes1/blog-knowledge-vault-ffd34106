@@ -294,6 +294,11 @@ export const nl = {
       clickToStart: "Klik op verzenden om het gesprek te starten",
       typeMessage: "Typ uw bericht...",
       interestedIn: "Hallo, ik ben geïnteresseerd in woningen in {city}",
+      // Toast messages
+      privacyRequired: "Privacytoestemming vereist",
+      privacyRequiredDesc: "Ga akkoord met het privacybeleid om door te gaan.",
+      somethingWentWrong: "Er is iets misgegaan",
+      tryAgainLater: "Probeer het later opnieuw.",
     },
     common: {
       exploreProperties: "Ontdek Woningen",

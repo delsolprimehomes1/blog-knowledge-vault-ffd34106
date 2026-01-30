@@ -294,6 +294,11 @@ export const sv = {
       clickToStart: "Klicka på skicka för att starta konversationen",
       typeMessage: "Skriv ditt meddelande...",
       interestedIn: "Hej, jag är intresserad av fastigheter i {city}",
+      // Toast messages
+      privacyRequired: "Sekretessgodkännande krävs",
+      privacyRequiredDesc: "Vänligen godkänn integritetspolicyn för att fortsätta.",
+      somethingWentWrong: "Något gick fel",
+      tryAgainLater: "Försök igen senare.",
     },
     common: {
       exploreProperties: "Utforska Fastigheter",

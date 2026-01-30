@@ -294,6 +294,11 @@ export const fi = {
       clickToStart: "Klikkaa lähetä aloittaaksesi keskustelun",
       typeMessage: "Kirjoita viestisi...",
       interestedIn: "Hei, olen kiinnostunut kiinteistöistä {city}",
+      // Toast messages
+      privacyRequired: "Tietosuojasuostumus vaaditaan",
+      privacyRequiredDesc: "Hyväksy tietosuojakäytäntö jatkaaksesi.",
+      somethingWentWrong: "Jokin meni pieleen",
+      tryAgainLater: "Yritä myöhemmin uudelleen.",
     },
     common: {
       exploreProperties: "Tutustu Kiinteistöihin",

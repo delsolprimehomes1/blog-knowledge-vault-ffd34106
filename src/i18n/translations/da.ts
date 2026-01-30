@@ -294,6 +294,11 @@ export const da = {
       clickToStart: "Klik send for at starte samtalen",
       typeMessage: "Skriv din besked...",
       interestedIn: "Hej, jeg er interesseret i ejendomme i {city}",
+      // Toast messages
+      privacyRequired: "Privatlivssamtykke påkrævet",
+      privacyRequiredDesc: "Accepter venligst privatlivspolitikken for at fortsætte.",
+      somethingWentWrong: "Noget gik galt",
+      tryAgainLater: "Prøv venligst igen senere.",
     },
     common: {
       exploreProperties: "Udforsk Ejendomme",

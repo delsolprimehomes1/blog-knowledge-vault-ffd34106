@@ -302,6 +302,11 @@ export const en = {
       clickToStart: "Click send to start the conversation",
       typeMessage: "Type your message...",
       interestedIn: "Hi, I'm interested in properties in {city}",
+      // Toast messages
+      privacyRequired: "Privacy consent required",
+      privacyRequiredDesc: "Please agree to the privacy policy to continue.",
+      somethingWentWrong: "Something went wrong",
+      tryAgainLater: "Please try again later.",
     },
     marbella: {
       hero: {

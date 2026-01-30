@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, BookOpen, Download, ArrowRight, Star, Quote } from 'lucide-react';
 import { sendFormToGHL, getPageMetadata } from '@/lib/webhookHandler';
 import { registerCrmLead } from '@/utils/crm/registerCrmLead';
+import { useTranslation } from '@/i18n';
 
 interface BrochureOptInFormProps {
   cityName: string;
@@ -38,6 +39,9 @@ const COUNTRY_CODES = [
 export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>(
   ({ cityName, citySlug }, ref) => {
     const { toast } = useToast();
+    const { t } = useTranslation();
+    const ui = (t.brochures as any)?.ui || {};
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [formData, setFormData] = useState({
@@ -56,8 +60,8 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
       
       if (!formData.privacyConsent) {
         toast({
-          title: 'Privacy consent required',
-          description: 'Please agree to the privacy policy to continue.',
+          title: ui.privacyRequired || 'Privacy consent required',
+          description: ui.privacyRequiredDesc || 'Please agree to the privacy policy to continue.',
           variant: 'destructive',
         });
         return;
@@ -124,7 +128,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
 
         setIsSubmitted(true);
         toast({
-          title: 'Thank you!',
+          title: ui.thankYou || 'Thank you!',
           description: 'Your brochure request has been received.',
         });
 
@@ -135,8 +139,8 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
       } catch (error) {
         console.error('Form submission error:', error);
         toast({
-          title: 'Something went wrong',
-          description: 'Please try again later.',
+          title: ui.somethingWentWrong || 'Something went wrong',
+          description: ui.tryAgainLater || 'Please try again later.',
           variant: 'destructive',
         });
       } finally {
@@ -160,14 +164,14 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                 <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
               <h3 className="font-serif text-3xl md:text-4xl text-foreground mb-4">
-                Thank You!
+                {ui.thankYou || 'Thank You!'}
               </h3>
               <p className="font-body text-lg text-muted-foreground leading-relaxed">
-                Your {cityName} brochure is on its way! Our property specialists will be in touch within 24 hours.
+                {(ui.brochureOnWay || 'Your {city} brochure is on its way! Our property specialists will be in touch within 24 hours.').replace('{city}', cityName)}
               </p>
               <div className="mt-8 pt-8 border-t border-border/50">
                 <p className="text-sm text-muted-foreground">
-                  Meanwhile, explore our latest listings in {cityName}
+                  {(ui.meanwhileExplore || 'Meanwhile, explore our latest listings in {city}').replace('{city}', cityName)}
                 </p>
               </div>
             </div>
@@ -197,16 +201,16 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
             <div className="reveal-on-scroll">
               {/* Section Header */}
               <span className="inline-block px-4 py-2 bg-prime-gold/20 border border-prime-gold/30 rounded-full text-prime-goldLight text-sm font-nav tracking-wider uppercase mb-6">
-                Exclusive Guide
+                {ui.exclusiveGuide || 'Exclusive Guide'}
               </span>
               
               <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl text-white mb-6 leading-tight">
-                Get Your Free<br />
-                <span className="text-prime-gold">{cityName} Brochure</span>
+                {ui.getYourFree || 'Get Your Free'}<br />
+                <span className="text-prime-gold">{(ui.brochure || '{city} Brochure').replace('{city}', cityName)}</span>
               </h2>
               
               <p className="text-lg text-white/70 mb-8 leading-relaxed">
-                Discover exclusive property insights, investment opportunities, and lifestyle guides for {cityName}.
+                {(ui.discoverExclusive || 'Discover exclusive property insights, investment opportunities, and lifestyle guides for {city}.').replace('{city}', cityName)}
               </p>
               
               {/* Brochure Preview Mock */}
@@ -216,13 +220,13 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                     <BookOpen className="w-10 h-10 text-prime-gold" />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-2">{cityName} Property Guide 2026</h4>
+                    <h4 className="text-white font-semibold mb-2">{(ui.propertyGuide || '{city} Property Guide 2026').replace('{city}', cityName)}</h4>
                     <ul className="space-y-1 text-sm text-white/60">
                       <li className="flex items-center gap-2">
-                        <Download className="w-3 h-3" /> Instant PDF Download
+                        <Download className="w-3 h-3" /> {ui.instantPdfDownload || 'Instant PDF Download'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <ArrowRight className="w-3 h-3" /> 40+ Pages of Insights
+                        <ArrowRight className="w-3 h-3" /> {ui.pagesOfInsights || '40+ Pages of Insights'}
                       </li>
                     </ul>
                   </div>
@@ -238,9 +242,9 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                 </div>
                 <Quote className="w-6 h-6 text-prime-gold/30 mb-2" />
                 <p className="text-white/80 italic mb-4">
-                  "The brochure gave us incredible insights into {cityName}. Within weeks of our inquiry, we found our dream villa!"
+                  "{(ui.testimonialQuote || 'The brochure gave us incredible insights into {city}. Within weeks of our inquiry, we found our dream villa!').replace('{city}', cityName)}"
                 </p>
-                <p className="text-sm text-white/50">— James & Sarah, UK</p>
+                <p className="text-sm text-white/50">{ui.testimonialAuthor || '— James & Sarah, UK'}</p>
               </div>
             </div>
 
@@ -249,7 +253,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
               <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 md:p-10 shadow-2xl border border-prime-gold/10 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium">First Name *</Label>
+                    <Label htmlFor="firstName" className="text-sm font-medium">{(ui.firstName || 'First Name')} *</Label>
                     <Input
                       id="firstName"
                       required
@@ -260,7 +264,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium">Last Name *</Label>
+                    <Label htmlFor="lastName" className="text-sm font-medium">{(ui.lastName || 'Last Name')} *</Label>
                     <Input
                       id="lastName"
                       required
@@ -273,7 +277,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email Address *</Label>
+                  <Label htmlFor="email" className="text-sm font-medium">{(ui.emailAddress || 'Email Address')} *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -286,7 +290,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-sm font-medium">Phone Number *</Label>
+                  <Label htmlFor="phone" className="text-sm font-medium">{(ui.phoneNumber || 'Phone Number')} *</Label>
                   <div className="flex gap-2">
                     <Select
                       value={formData.countryCode}
@@ -316,12 +320,12 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="message" className="text-sm font-medium">Tell us about your requirements (Optional)</Label>
+                  <Label htmlFor="message" className="text-sm font-medium">{ui.tellUsRequirements || 'Tell us about your requirements (Optional)'}</Label>
                   <Textarea
                     id="message"
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Budget, property type, timeline..."
+                    placeholder={ui.requirementsPlaceholder || 'Budget, property type, timeline...'}
                     rows={3}
                     className="bg-muted/50 border-border/50 focus:border-prime-gold focus:ring-prime-gold/20 resize-none"
                   />
@@ -338,7 +342,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                       className="mt-1"
                     />
                     <Label htmlFor="privacy" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                      I agree to the <a href="/privacy" className="text-prime-gold hover:underline">Privacy Policy</a> and consent to Del Sol Prime Homes processing my data. *
+                      {ui.privacyConsent || <>I agree to the <a href="/privacy" className="text-prime-gold hover:underline">Privacy Policy</a> and consent to Del Sol Prime Homes processing my data.</>} *
                     </Label>
                   </div>
 
@@ -352,7 +356,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                       className="mt-1"
                     />
                     <Label htmlFor="marketing" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                      I'd like to receive exclusive property alerts and market insights.
+                      {ui.marketingConsent || "I'd like to receive exclusive property alerts and market insights."}
                     </Label>
                   </div>
                 </div>
@@ -365,18 +369,18 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <span className="w-5 h-5 border-2 border-prime-950/30 border-t-prime-950 rounded-full animate-spin" />
-                      Processing...
+                      {ui.processing || 'Processing...'}
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <Download className="w-5 h-5" />
-                      Download Free Brochure
+                      {ui.downloadFreeBrochure || 'Download Free Brochure'}
                     </span>
                   )}
                 </Button>
                 
                 <p className="text-center text-xs text-muted-foreground">
-                  Instant access • No spam • Unsubscribe anytime
+                  {ui.instantAccess || 'Instant access • No spam • Unsubscribe anytime'}
                 </p>
               </form>
             </div>

@@ -294,6 +294,11 @@ export const hu = {
       clickToStart: "Kattintson a küldésre a beszélgetés indításához",
       typeMessage: "Írja be üzenetét...",
       interestedIn: "Szia, érdekelnek az ingatlanok {city}",
+      // Toast messages
+      privacyRequired: "Adatvédelmi hozzájárulás szükséges",
+      privacyRequiredDesc: "Kérjük, fogadja el az adatvédelmi szabályzatot a folytatáshoz.",
+      somethingWentWrong: "Valami hiba történt",
+      tryAgainLater: "Kérjük, próbálja újra később.",
     },
     common: {
       exploreProperties: "Fedezd Fel az Ingatlanokat",

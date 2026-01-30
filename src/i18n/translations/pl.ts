@@ -294,6 +294,11 @@ export const pl = {
       clickToStart: "Kliknij wyślij, aby rozpocząć rozmowę",
       typeMessage: "Wpisz wiadomość...",
       interestedIn: "Cześć, jestem zainteresowany nieruchomościami w {city}",
+      // Toast messages
+      privacyRequired: "Wymagana zgoda na prywatność",
+      privacyRequiredDesc: "Proszę zaakceptować politykę prywatności, aby kontynuować.",
+      somethingWentWrong: "Coś poszło nie tak",
+      tryAgainLater: "Proszę spróbować później.",
     },
     common: {
       exploreProperties: "Odkryj Nieruchomości",

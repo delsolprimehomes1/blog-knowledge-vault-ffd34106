@@ -294,6 +294,11 @@ export const fr = {
       clickToStart: "Cliquez sur envoyer pour démarrer la conversation",
       typeMessage: "Tapez votre message...",
       interestedIn: "Bonjour, je suis intéressé par des propriétés à {city}",
+      // Toast messages
+      privacyRequired: "Consentement de confidentialité requis",
+      privacyRequiredDesc: "Veuillez accepter la politique de confidentialité pour continuer.",
+      somethingWentWrong: "Une erreur s'est produite",
+      tryAgainLater: "Veuillez réessayer plus tard.",
     },
     common: {
       exploreProperties: "Explorer les Propriétés",
