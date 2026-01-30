@@ -115,8 +115,9 @@ async function callProxySearch(filters: any, langNum: number, limit: number, pag
   // Map filters to proxy format
   if (filters.location) proxyParams.location = filters.location;
   if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
-  if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
-  if (filters.priceMax) proxyParams.maxPrice = String(filters.priceMax);
+  // Default price range: €180,000 - €10,000,000
+  proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '180000';
+  proxyParams.maxPrice = filters.priceMax ? String(filters.priceMax) : '10000000';
   // Default to apartments (1-1) and houses (2-1) for residential filtering if not specified
   proxyParams.propertyTypes = filters.propertyType || '1-1,2-1';
   if (filters.bedrooms) proxyParams.beds = String(filters.bedrooms);
