@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Menu as MenuIcon, X, ChevronDown, Scale, Users, Phone, Home, Landmark, GraduationCap, Newspaper, MessageCircleQuestion, GitCompare, BookMarked, Info, MapPin } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -35,6 +36,18 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   // Supabase Storage base URL for navbar images
   const storageBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/navbar-images`;
 
@@ -70,9 +83,109 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
     },
   ];
 
+  // Mobile menu portal content
+  const mobileMenuContent = (
+    <div 
+      className={`fixed inset-0 bg-background z-[90] flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
+        isMobileMenuOpen 
+          ? 'opacity-100 translate-x-0' 
+          : 'opacity-0 translate-x-full pointer-events-none'
+      }`}
+    >
+      {/* Explore Section */}
+      <MobileMenuSection 
+        title="Explore" 
+        isOpen={mobileSubmenu === 'explore'}
+        onToggle={() => setMobileSubmenu(mobileSubmenu === 'explore' ? null : 'explore')}
+      >
+        <MobileLink to={`/${currentLanguage}/properties`} onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
+          Property Finder
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
+          City Brochures
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
+          Location Guides
+        </MobileLink>
+      </MobileMenuSection>
+
+      {/* Learn Section */}
+      <MobileMenuSection 
+        title="Learn" 
+        isOpen={mobileSubmenu === 'learn'}
+        onToggle={() => setMobileSubmenu(mobileSubmenu === 'learn' ? null : 'learn')}
+      >
+        <MobileLink to={`/${currentLanguage}/blog`} onClick={() => setIsMobileMenuOpen(false)} icon={<Newspaper className="w-5 h-5" />}>
+          Blog & Insights
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/qa`} onClick={() => setIsMobileMenuOpen(false)} icon={<MessageCircleQuestion className="w-5 h-5" />}>
+          Q&A Center
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/glossary`} onClick={() => setIsMobileMenuOpen(false)} icon={<BookMarked className="w-5 h-5" />}>
+          Property Glossary
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/buyers-guide`} onClick={() => setIsMobileMenuOpen(false)} icon={<GraduationCap className="w-5 h-5" />}>
+          Buyer's Guide
+        </MobileLink>
+      </MobileMenuSection>
+
+      {/* Compare Section */}
+      <MobileMenuSection 
+        title="Compare" 
+        isOpen={mobileSubmenu === 'compare'}
+        onToggle={() => setMobileSubmenu(mobileSubmenu === 'compare' ? null : 'compare')}
+      >
+        <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<GitCompare className="w-5 h-5" />}>
+          Comparison Index
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<Scale className="w-5 h-5" />}>
+          City vs City
+        </MobileLink>
+      </MobileMenuSection>
+
+      {/* About Section */}
+      <MobileMenuSection 
+        title="About" 
+        isOpen={mobileSubmenu === 'about'}
+        onToggle={() => setMobileSubmenu(mobileSubmenu === 'about' ? null : 'about')}
+      >
+        <MobileLink to={`/${currentLanguage}/about`} onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
+          About Us
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/team`} onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
+          Our Team
+        </MobileLink>
+        <MobileLink to={`/${currentLanguage}/contact`} onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
+          Contact
+        </MobileLink>
+      </MobileMenuSection>
+      
+      {/* Language Selector */}
+      <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Language</span>
+        {contentContext ? (
+          <ContentLanguageSwitcher
+            currentLanguage={contentContext.currentLanguage}
+            hreflangGroupId={contentContext.hreflangGroupId}
+            contentType={contentContext.type}
+            currentSlug={contentContext.currentSlug}
+            variant="default"
+          />
+        ) : (
+          <LanguageSwitcher variant="default" className="w-full" />
+        )}
+      </div>
+      
+      <Button fullWidth onClick={() => { setIsMobileMenuOpen(false); window.dispatchEvent(new CustomEvent('openEmmaChat')); }} className="mt-auto mb-8">
+        {t.common.chatWithEmma}
+      </Button>
+    </div>
+  );
+
   return (
+    <>
     <header 
-      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      className={`fixed top-0 w-full z-[100] transition-all duration-500 ${
         isLightBackground 
           ? 'glass-nav py-3 border-b border-border/50 shadow-sm' 
           : 'bg-transparent py-4 border-transparent'
@@ -235,109 +348,16 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
         {/* Mobile Toggle - positioned in grid column 2 (or 3 on lg) */}
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className={`lg:hidden z-50 justify-self-end transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-foreground' : 'text-white'}`}
+          className={`lg:hidden z-[110] justify-self-end transition-colors duration-300 ${isLightBackground || isMobileMenuOpen ? 'text-foreground' : 'text-white'}`}
         >
           {isMobileMenuOpen ? <X size={28} /> : <MenuIcon size={28} />}
         </button>
       </div>
-
-      {/* Mobile Menu - CSS animated */}
-      <div 
-        className={`fixed inset-0 bg-card z-[45] flex flex-col pt-24 px-6 gap-2 lg:hidden overflow-y-auto transition-all duration-300 ${
-          isMobileMenuOpen 
-            ? 'opacity-100 translate-x-0' 
-            : 'opacity-0 translate-x-full pointer-events-none'
-        }`}
-      >
-        {/* Explore Section */}
-        <MobileMenuSection 
-          title="Explore" 
-          isOpen={mobileSubmenu === 'explore'}
-          onToggle={() => setMobileSubmenu(mobileSubmenu === 'explore' ? null : 'explore')}
-        >
-          <MobileLink to={`/${currentLanguage}/properties`} onClick={() => setIsMobileMenuOpen(false)} icon={<Home className="w-5 h-5" />}>
-            Property Finder
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/brochure/marbella`} onClick={() => setIsMobileMenuOpen(false)} icon={<Landmark className="w-5 h-5" />}>
-            City Brochures
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/locations`} onClick={() => setIsMobileMenuOpen(false)} icon={<MapPin className="w-5 h-5" />}>
-            Location Guides
-          </MobileLink>
-        </MobileMenuSection>
-
-        {/* Learn Section */}
-        <MobileMenuSection 
-          title="Learn" 
-          isOpen={mobileSubmenu === 'learn'}
-          onToggle={() => setMobileSubmenu(mobileSubmenu === 'learn' ? null : 'learn')}
-        >
-          <MobileLink to={`/${currentLanguage}/blog`} onClick={() => setIsMobileMenuOpen(false)} icon={<Newspaper className="w-5 h-5" />}>
-            Blog & Insights
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/qa`} onClick={() => setIsMobileMenuOpen(false)} icon={<MessageCircleQuestion className="w-5 h-5" />}>
-            Q&A Center
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/glossary`} onClick={() => setIsMobileMenuOpen(false)} icon={<BookMarked className="w-5 h-5" />}>
-            Property Glossary
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/buyers-guide`} onClick={() => setIsMobileMenuOpen(false)} icon={<GraduationCap className="w-5 h-5" />}>
-            Buyer's Guide
-          </MobileLink>
-        </MobileMenuSection>
-
-        {/* Compare Section */}
-        <MobileMenuSection 
-          title="Compare" 
-          isOpen={mobileSubmenu === 'compare'}
-          onToggle={() => setMobileSubmenu(mobileSubmenu === 'compare' ? null : 'compare')}
-        >
-          <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<GitCompare className="w-5 h-5" />}>
-            Comparison Index
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/compare`} onClick={() => setIsMobileMenuOpen(false)} icon={<Scale className="w-5 h-5" />}>
-            City vs City
-          </MobileLink>
-        </MobileMenuSection>
-
-        {/* About Section */}
-        <MobileMenuSection 
-          title="About" 
-          isOpen={mobileSubmenu === 'about'}
-          onToggle={() => setMobileSubmenu(mobileSubmenu === 'about' ? null : 'about')}
-        >
-          <MobileLink to={`/${currentLanguage}/about`} onClick={() => setIsMobileMenuOpen(false)} icon={<Info className="w-5 h-5" />}>
-            About Us
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/team`} onClick={() => setIsMobileMenuOpen(false)} icon={<Users className="w-5 h-5" />}>
-            Our Team
-          </MobileLink>
-          <MobileLink to={`/${currentLanguage}/contact`} onClick={() => setIsMobileMenuOpen(false)} icon={<Phone className="w-5 h-5" />}>
-            Contact
-          </MobileLink>
-        </MobileMenuSection>
-        
-        {/* Language Selector */}
-        <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
-          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Language</span>
-          {contentContext ? (
-            <ContentLanguageSwitcher
-              currentLanguage={contentContext.currentLanguage}
-              hreflangGroupId={contentContext.hreflangGroupId}
-              contentType={contentContext.type}
-              currentSlug={contentContext.currentSlug}
-              variant="default"
-            />
-          ) : (
-            <LanguageSwitcher variant="default" className="w-full" />
-          )}
-        </div>
-        
-        <Button fullWidth onClick={() => { setIsMobileMenuOpen(false); window.dispatchEvent(new CustomEvent('openEmmaChat')); }} className="mt-auto mb-8">
-          {t.common.chatWithEmma}
-        </Button>
-      </div>
     </header>
+    
+    {/* Mobile Menu Portal - rendered outside header to avoid stacking context issues */}
+    {typeof document !== 'undefined' && createPortal(mobileMenuContent, document.body)}
+    </>
   );
 };
 

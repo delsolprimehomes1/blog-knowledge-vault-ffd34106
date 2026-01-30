@@ -38,7 +38,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
             {currentLangInfo?.flag} {currentLanguage.toUpperCase()}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-popover border border-border z-[120]">
           {availableLanguages.map((lang) => (
             <SelectItem key={lang.code} value={lang.code}>
               {lang.flag} {lang.code.toUpperCase()}
@@ -57,7 +57,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
             {currentLangInfo?.flag}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-popover border border-border z-[120]">
           {availableLanguages.map((lang) => (
             <SelectItem key={lang.code} value={lang.code}>
               {lang.flag} {lang.nativeName}
@@ -75,7 +75,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
           {currentLangInfo?.flag} {currentLangInfo?.nativeName}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="bg-popover border border-border z-[120]">
         {availableLanguages.map((lang) => (
           <SelectItem key={lang.code} value={lang.code}>
             {lang.flag} {lang.nativeName}

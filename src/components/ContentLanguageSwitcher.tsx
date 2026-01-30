@@ -184,7 +184,7 @@ export function ContentLanguageSwitcher({
           <ChevronDown className="h-4 w-4 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-popover border border-border z-50">
+      <DropdownMenuContent align="end" className="w-56 bg-popover border border-border z-[120]">
         {languages.map((language) => (
           <DropdownMenuItem
             key={language.code}
