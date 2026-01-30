@@ -22,8 +22,7 @@ export const OurStory = ({ content }: OurStoryProps) => {
     { year: "1997", event: "Steven Roberts arrives in Spain", icon: History },
     { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol", icon: History },
     { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
-    { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp },
-    { year: "2025", event: "Team obtains API License", icon: TrendingUp }
+    { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp }
   ];
 
   return (
