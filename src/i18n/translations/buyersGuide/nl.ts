@@ -4,7 +4,7 @@ export const buyersGuideNl = {
     description: "Uw uitgebreide gids voor het kopen van onroerend goed aan de Costa del Sol. Stapsgewijs proces, kosten, juridische vereisten en deskundig advies."
   },
   hero: {
-    badge: "Complete Gids 2024",
+    badge: "Complete Gids 2026",
     headline: "De Complete Gids voor het Kopen van Vastgoed aan de",
     headlineHighlight: "Costa del Sol",
     subheadline: "Alles wat u moet weten over het kopen van uw droomhuis in de meest gewilde regio van Spanje. Van juridische vereisten tot verborgen kosten — wij helpen u.",

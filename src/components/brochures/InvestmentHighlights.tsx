@@ -76,7 +76,7 @@ export const InvestmentHighlights: React.FC<InvestmentHighlightsProps> = ({
     { value: '8.5', suffix: '%', label: ui.rentalYield || 'Rental Yield', icon: 'yield' },
     { value: '320', suffix: '+', label: ui.daysOfSunshine || 'Days of Sunshine', icon: 'sun' },
     { value: '1.2', suffix: 'M€', label: ui.averagePrice || 'Average Price', icon: 'price' },
-    { value: '12', suffix: '%', label: ui.valueGrowth || 'Value Growth 2024', icon: 'growth' },
+    { value: '12', suffix: '%', label: ui.valueGrowth || 'Value Growth 2026', icon: 'growth' },
   ];
 
   const displayStats = stats || DEFAULT_STATS;

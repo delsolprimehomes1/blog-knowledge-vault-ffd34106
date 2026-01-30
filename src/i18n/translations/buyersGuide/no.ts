@@ -4,7 +4,7 @@ export const buyersGuideNo = {
     description: "Din komplette guide til å kjøpe eiendom på Costa del Sol. Steg-for-steg prosess, kostnader, juridiske krav og ekspertråd."
   },
   hero: {
-    badge: "Komplett Guide 2024",
+    badge: "Komplett Guide 2026",
     headline: "Den Komplette Guiden for å Kjøpe Eiendom på",
     headlineHighlight: "Costa del Sol",
     subheadline: "Alt du trenger å vite om å kjøpe drømmeboligen din i Spanias mest ettertraktede region. Fra juridiske krav til skjulte kostnader — vi har det dekket.",

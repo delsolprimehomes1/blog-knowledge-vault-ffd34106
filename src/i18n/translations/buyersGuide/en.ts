@@ -4,7 +4,7 @@ export const buyersGuideEn = {
     description: "Your comprehensive guide to buying property on the Costa del Sol. Step-by-step process, costs, legal requirements, and expert advice."
   },
   hero: {
-    badge: "Complete 2024 Guide",
+    badge: "Complete 2026 Guide",
     headline: "The Complete Guide to Buying Property on the",
     headlineHighlight: "Costa del Sol",
     subheadline: "Everything you need to know about purchasing your dream home in Spain's most desirable region. From legal requirements to hidden costs—we've got you covered.",

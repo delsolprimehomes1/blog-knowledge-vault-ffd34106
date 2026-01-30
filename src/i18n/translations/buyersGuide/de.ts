@@ -4,7 +4,7 @@ export const buyersGuideDe = {
     description: "Ihr umfassender Leitfaden zum Immobilienkauf an der Costa del Sol. Schritt-für-Schritt-Prozess, Kosten, rechtliche Anforderungen und Expertenberatung."
   },
   hero: {
-    badge: "Kompletter Leitfaden 2024",
+    badge: "Kompletter Leitfaden 2026",
     headline: "Der komplette Leitfaden zum Immobilienkauf an der",
     headlineHighlight: "Costa del Sol",
     subheadline: "Alles, was Sie über den Kauf Ihres Traumhauses in Spaniens begehrtester Region wissen müssen. Von rechtlichen Anforderungen bis zu versteckten Kosten — wir haben alles für Sie.",

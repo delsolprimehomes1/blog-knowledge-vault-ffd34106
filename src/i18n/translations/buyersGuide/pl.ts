@@ -4,7 +4,7 @@ export const buyersGuidePl = {
     description: "Twój kompleksowy przewodnik po zakupie nieruchomości na Costa del Sol. Proces krok po kroku, koszty, wymogi prawne i porady ekspertów."
   },
   hero: {
-    badge: "Kompletny Przewodnik 2024",
+    badge: "Kompletny Przewodnik 2026",
     headline: "Kompletny Przewodnik po Zakupie Nieruchomości na",
     headlineHighlight: "Costa del Sol",
     subheadline: "Wszystko, co musisz wiedzieć o zakupie wymarzonego domu w najbardziej pożądanym regionie Hiszpanii. Od wymogów prawnych po ukryte koszty — mamy to objęte.",
