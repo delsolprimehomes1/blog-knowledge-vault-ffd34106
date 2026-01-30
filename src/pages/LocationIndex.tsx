@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronRight, FileText, Clock, ArrowRight, Sparkles, TrendingUp, Users, Home as HomeIcon, DollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
 import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
+import { useTranslation } from "@/i18n/useTranslation";
 
 // Intent type icons and colors
 const INTENT_CONFIG: Record<string, { icon: typeof FileText; color: string; bgColor: string }> = {
@@ -22,21 +23,10 @@ const INTENT_CONFIG: Record<string, { icon: typeof FileText; color: string; bgCo
   'relocation-guide': { icon: FileText, color: 'text-indigo-600', bgColor: 'bg-indigo-500/10' },
 };
 
-const intentLabels: Record<string, string> = {
-  'buying-property': 'Buying Guide',
-  'best-areas-families': 'Best Areas for Families',
-  'best-areas-investors': 'Investment Areas',
-  'best-areas-expats': 'Expat Guide',
-  'best-areas-retirees': 'Retirement Guide',
-  'cost-of-living': 'Cost of Living',
-  'cost-of-property': 'Property Prices',
-  'investment-guide': 'Investment Guide',
-  'relocation-guide': 'Relocation Guide',
-};
-
 const LocationIndex = () => {
   const { citySlug, lang = 'en' } = useParams<{ citySlug: string; lang: string }>();
   const [isLoaded, setIsLoaded] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -62,12 +52,18 @@ const LocationIndex = () => {
   const cityName = pages?.[0]?.city_name || citySlug?.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const cityImage = pages?.[0]?.featured_image_url;
 
+  // Get localized intent label with fallback
+  const getIntentLabel = (intentType: string): string => {
+    const intentLabels = t.locationGuides.intentLabels as Record<string, string>;
+    return intentLabels[intentType] || intentType;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Loading guides...</p>
+          <p className="text-muted-foreground">{t.locationGuides.loadingGuides}</p>
         </div>
       </div>
     );
@@ -129,11 +125,11 @@ const LocationIndex = () => {
             >
               <ol className={`flex items-center gap-2 text-sm flex-wrap ${cityImage ? 'text-white/80' : 'text-muted-foreground'}`}>
                 <li>
-                  <Link to="/" className={`hover:${cityImage ? 'text-white' : 'text-primary'} transition-colors`}>Home</Link>
+                  <Link to="/" className={`hover:${cityImage ? 'text-white' : 'text-primary'} transition-colors`}>{t.locationGuides.home}</Link>
                 </li>
                 <ChevronRight className="w-4 h-4" />
                 <li>
-                  <Link to="/locations" className={`hover:${cityImage ? 'text-white' : 'text-primary'} transition-colors`}>Locations</Link>
+                  <Link to={`/${lang}/locations`} className={`hover:${cityImage ? 'text-white' : 'text-primary'} transition-colors`}>{t.locationGuides.locations}</Link>
                 </li>
                 <ChevronRight className="w-4 h-4" />
                 <li className={`${cityImage ? 'text-white' : 'text-foreground'} font-medium`}>{cityName}</li>
@@ -146,7 +142,7 @@ const LocationIndex = () => {
             >
               <Badge className="badge-luxury px-4 py-2 text-sm font-medium backdrop-blur-sm bg-white/10 border-white/20 text-white">
                 <Sparkles className="w-4 h-4 mr-2" />
-                {pages.length} Expert {pages.length === 1 ? 'Guide' : 'Guides'}
+                {pages.length} {pages.length === 1 ? t.locationGuides.expertGuide : t.locationGuides.expertGuides}
               </Badge>
             </div>
 
@@ -156,7 +152,7 @@ const LocationIndex = () => {
             >
               {cityName}
               <span className={`block text-2xl md:text-3xl font-sans font-normal mt-2 ${cityImage ? 'text-white/80' : 'text-muted-foreground'}`}>
-                Property & Lifestyle Guides
+                {t.locationGuides.propertyLifestyleGuides}
               </span>
             </h1>
 
@@ -164,7 +160,7 @@ const LocationIndex = () => {
             <p 
               className={`text-lg md:text-xl leading-relaxed max-w-2xl mb-8 transition-all duration-1000 delay-300 ${cityImage ? 'text-white/90' : 'text-muted-foreground'} ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
             >
-              Everything you need to know about living, investing, and buying property in {cityName}, Costa del Sol.
+              {t.locationGuides.heroDescription.replace('{city}', cityName)}
             </p>
           </div>
 
@@ -193,7 +189,7 @@ const LocationIndex = () => {
                         <Icon className={`w-6 h-6 ${intentConfig.color}`} />
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        {intentLabels[page.intent_type] || page.intent_type}
+                        {getIntentLabel(page.intent_type)}
                       </Badge>
                     </div>
 
@@ -213,11 +209,11 @@ const LocationIndex = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>5 min read</span>
+                        <span>5 {t.locationGuides.minRead}</span>
                       </div>
                       
                       <div className="flex items-center gap-1 text-primary font-medium text-sm opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                        <span>Read Guide</span>
+                        <span>{t.locationGuides.readGuide}</span>
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>

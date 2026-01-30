@@ -240,6 +240,27 @@ export const en = {
     marketTrends: "Current trends and pricing data",
     summaryRecommendations: "Summary & Recommendations",
     keyTakeaways: "Key takeaways for buyers",
+    // LocationIndex page translations
+    loadingGuides: "Loading guides...",
+    home: "Home",
+    locations: "Locations",
+    expertGuide: "Expert Guide",
+    expertGuides: "Expert Guides",
+    propertyLifestyleGuides: "Property & Lifestyle Guides",
+    heroDescription: "Everything you need to know about living, investing, and buying property in {city}, Costa del Sol.",
+    minRead: "min read",
+    readGuide: "Read Guide",
+    intentLabels: {
+      'buying-property': "Buying Guide",
+      'best-areas-families': "Best Areas for Families",
+      'best-areas-investors': "Investment Areas",
+      'best-areas-expats': "Expat Guide",
+      'best-areas-retirees': "Retirement Guide",
+      'cost-of-living': "Cost of Living",
+      'cost-of-property': "Property Prices",
+      'investment-guide': "Investment Guide",
+      'relocation-guide': "Relocation Guide",
+    },
   },
   brochures: {
     ui: {

@@ -240,6 +240,27 @@ export const nl = {
     marketTrends: "Huidige trends en prijsinformatie",
     summaryRecommendations: "Samenvatting & Aanbevelingen",
     keyTakeaways: "Belangrijke punten voor kopers",
+    // LocationIndex page translations
+    loadingGuides: "Gidsen worden geladen...",
+    home: "Home",
+    locations: "Locaties",
+    expertGuide: "Expertgids",
+    expertGuides: "Expertgidsen",
+    propertyLifestyleGuides: "Vastgoed- & Lifestyle-gidsen",
+    heroDescription: "Alles wat u moet weten over wonen, investeren en vastgoed kopen in {city}, Costa del Sol.",
+    minRead: "min lezen",
+    readGuide: "Lees Gids",
+    intentLabels: {
+      'buying-property': "Koopgids",
+      'best-areas-families': "Beste Gebieden voor Gezinnen",
+      'best-areas-investors': "Investeringsgebieden",
+      'best-areas-expats': "Expat-gids",
+      'best-areas-retirees': "Pensioneringsgids",
+      'cost-of-living': "Kosten van Levensonderhoud",
+      'cost-of-property': "Vastgoedprijzen",
+      'investment-guide': "Investeringsgids",
+      'relocation-guide': "Verhuisgids",
+    },
   },
   brochures: {
     ui: {

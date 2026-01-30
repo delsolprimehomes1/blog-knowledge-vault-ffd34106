@@ -240,6 +240,27 @@ export const sv = {
     marketTrends: "Aktuella trender och prisdata",
     summaryRecommendations: "Sammanfattning & Rekommendationer",
     keyTakeaways: "Viktiga slutsatser för köpare",
+    // LocationIndex page translations
+    loadingGuides: "Laddar guider...",
+    home: "Hem",
+    locations: "Platser",
+    expertGuide: "Expertguide",
+    expertGuides: "Expertguider",
+    propertyLifestyleGuides: "Fastighets- & Livsstilsguider",
+    heroDescription: "Allt du behöver veta om att bo, investera och köpa fastighet i {city}, Costa del Sol.",
+    minRead: "min läsning",
+    readGuide: "Läs Guide",
+    intentLabels: {
+      'buying-property': "Köpguide",
+      'best-areas-families': "Bästa Områden för Familjer",
+      'best-areas-investors': "Investeringsområden",
+      'best-areas-expats': "Expat-guide",
+      'best-areas-retirees': "Pensionärsguide",
+      'cost-of-living': "Levnadskostnader",
+      'cost-of-property': "Fastighetspriser",
+      'investment-guide': "Investeringsguide",
+      'relocation-guide': "Flyttguide",
+    },
   },
   brochures: {
     ui: {

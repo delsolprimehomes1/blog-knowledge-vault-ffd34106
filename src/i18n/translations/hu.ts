@@ -240,6 +240,27 @@ export const hu = {
     marketTrends: "Aktuális trendek és áradatok",
     summaryRecommendations: "Összefoglaló & Ajánlások",
     keyTakeaways: "Kulcsfontosságú tanulságok vásárlók számára",
+    // LocationIndex page translations
+    loadingGuides: "Útmutatók betöltése...",
+    home: "Főoldal",
+    locations: "Helyszínek",
+    expertGuide: "Szakértői Útmutató",
+    expertGuides: "Szakértői Útmutatók",
+    propertyLifestyleGuides: "Ingatlan- & Életstílus Útmutatók",
+    heroDescription: "Minden, amit tudnia kell az életről, befektetésről és ingatlanvásárlásról {city}-ban, Costa del Solon.",
+    minRead: "perc olvasás",
+    readGuide: "Útmutató Olvasása",
+    intentLabels: {
+      'buying-property': "Vásárlási Útmutató",
+      'best-areas-families': "Legjobb Területek Családoknak",
+      'best-areas-investors': "Befektetési Területek",
+      'best-areas-expats': "Expat Útmutató",
+      'best-areas-retirees': "Nyugdíjas Útmutató",
+      'cost-of-living': "Megélhetési Költségek",
+      'cost-of-property': "Ingatlanárak",
+      'investment-guide': "Befektetési Útmutató",
+      'relocation-guide': "Költözési Útmutató",
+    },
   },
   brochures: {
     ui: {

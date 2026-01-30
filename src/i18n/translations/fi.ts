@@ -240,6 +240,27 @@ export const fi = {
     marketTrends: "Nykyiset trendit ja hintatiedot",
     summaryRecommendations: "Yhteenveto & Suositukset",
     keyTakeaways: "Keskeiset huomiot ostajille",
+    // LocationIndex page translations
+    loadingGuides: "Ladataan oppaita...",
+    home: "Etusivu",
+    locations: "Sijainnit",
+    expertGuide: "Asiantuntijaopas",
+    expertGuides: "Asiantuntijaoppaat",
+    propertyLifestyleGuides: "Kiinteistö- & Elämäntapaoppaat",
+    heroDescription: "Kaikki mitä sinun tarvitsee tietää asumisesta, sijoittamisesta ja kiinteistön ostamisesta {city}:ssa, Costa del Solilla.",
+    minRead: "min lukuaika",
+    readGuide: "Lue Opas",
+    intentLabels: {
+      'buying-property': "Osto-opas",
+      'best-areas-families': "Parhaat Alueet Perheille",
+      'best-areas-investors': "Sijoitusalueet",
+      'best-areas-expats': "Expat-opas",
+      'best-areas-retirees': "Eläkeläisopas",
+      'cost-of-living': "Elinkustannukset",
+      'cost-of-property': "Kiinteistöhinnat",
+      'investment-guide': "Sijoitusopas",
+      'relocation-guide': "Muutto-opas",
+    },
   },
   brochures: {
     ui: {

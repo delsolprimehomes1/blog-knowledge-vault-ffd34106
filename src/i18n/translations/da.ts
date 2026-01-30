@@ -240,6 +240,27 @@ export const da = {
     marketTrends: "Aktuelle tendenser og prisdata",
     summaryRecommendations: "Resumé & Anbefalinger",
     keyTakeaways: "Vigtige punkter for købere",
+    // LocationIndex page translations
+    loadingGuides: "Indlæser guider...",
+    home: "Hjem",
+    locations: "Lokationer",
+    expertGuide: "Ekspertguide",
+    expertGuides: "Ekspertguider",
+    propertyLifestyleGuides: "Ejendoms- & Livsstilsguider",
+    heroDescription: "Alt hvad du behøver at vide om at bo, investere og købe ejendom i {city}, Costa del Sol.",
+    minRead: "min læsetid",
+    readGuide: "Læs Guide",
+    intentLabels: {
+      'buying-property': "Købsguide",
+      'best-areas-families': "Bedste Områder for Familier",
+      'best-areas-investors': "Investeringsområder",
+      'best-areas-expats': "Expat-guide",
+      'best-areas-retirees': "Pensionistguide",
+      'cost-of-living': "Leveomkostninger",
+      'cost-of-property': "Ejendomspriser",
+      'investment-guide': "Investeringsguide",
+      'relocation-guide': "Flytteguide",
+    },
   },
   brochures: {
     ui: {
