@@ -246,7 +246,7 @@ export const BrochureOptInForm = forwardRef<HTMLElement, BrochureOptInFormProps>
 
             {/* Right Column - Form */}
             <div className="reveal-on-scroll" style={{ transitionDelay: '200ms' }}>
-              <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur-xl rounded-3xl p-8 md:p-10 shadow-2xl border border-prime-gold/10 space-y-6">
+              <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 md:p-10 shadow-2xl border border-prime-gold/10 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-sm font-medium">First Name *</Label>

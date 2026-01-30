@@ -70,7 +70,7 @@ export const LifestyleFeatures: React.FC<LifestyleFeaturesProps> = ({
                 className="group relative reveal-on-scroll"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="h-full p-8 rounded-2xl bg-white/80 dark:bg-white/5 backdrop-blur-xl border border-border/50 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-prime-gold/10 hover:border-prime-gold/30 transition-all duration-500 hover:-translate-y-1">
+                <div className="h-full p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl bg-white/80 dark:bg-white/5 backdrop-blur-xl border border-border/50 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-prime-gold/10 hover:border-prime-gold/30 transition-all duration-500 hover:-translate-y-1">
                   {/* Icon Container */}
                   <div className="mb-6 inline-flex p-4 rounded-2xl bg-gradient-to-br from-prime-gold/20 to-prime-gold/5 border border-prime-gold/20 group-hover:from-prime-gold group-hover:to-prime-gold/80 transition-all duration-500">
                     <Icon className="w-7 h-7 text-prime-gold group-hover:text-prime-950 transition-colors duration-300" />

@@ -133,7 +133,7 @@ export const InvestmentHighlights: React.FC<InvestmentHighlightsProps> = ({
         </div>
         
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
           {displayStats.map((stat, index) => {
             const Icon = ICONS[stat.icon] || TrendingUp;
             return (
@@ -154,7 +154,7 @@ export const InvestmentHighlights: React.FC<InvestmentHighlightsProps> = ({
                 </div>
                 
                 {/* Value */}
-                <div className="text-4xl md:text-5xl font-serif font-bold text-white mb-2 group-hover:text-prime-goldLight transition-colors">
+                <div className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white mb-2 group-hover:text-prime-goldLight transition-colors">
                   <AnimatedNumber 
                     value={stat.value} 
                     suffix={stat.suffix} 

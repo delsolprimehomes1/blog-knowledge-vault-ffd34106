@@ -97,10 +97,10 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
         </div>
       </div>
 
-      {/* Trust Signals Bar - Top */}
-      <div className={`absolute top-20 left-0 right-0 z-20 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+      {/* Trust Signals Bar - Top (hidden on mobile to avoid overlap) */}
+      <div className={`absolute top-24 left-0 right-0 z-20 transition-all duration-700 hidden md:block ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         <div className="container mx-auto px-4">
-          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
+          <div className="flex items-center justify-center gap-10">
             {TRUST_SIGNALS.map((signal, index) => (
               <div 
                 key={index} 
@@ -116,7 +116,7 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
       </div>
 
       {/* Breadcrumb */}
-      <div className={`absolute top-32 left-0 right-0 z-20 transition-all duration-700 delay-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute top-20 md:top-36 left-0 right-0 z-20 transition-all duration-700 delay-200 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
         <div className="container mx-auto px-4">
           <nav className="flex items-center gap-2 text-sm text-white/60">
             <Link to={`/${currentLanguage}`} className="hover:text-white transition-colors">
@@ -133,7 +133,7 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center pt-40 pb-32">
+      <div className="relative z-10 container mx-auto px-4 text-center pt-32 md:pt-48 pb-24 md:pb-32">
         {/* Eyebrow Badge */}
         <div className={`mb-8 transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-prime-gold/10 border border-prime-gold/30 rounded-full text-prime-goldLight text-sm font-nav tracking-wider uppercase backdrop-blur-sm">
@@ -143,7 +143,7 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
         </div>
 
         {/* Headline with Animated Reveal */}
-        <h1 className={`font-serif text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-6 leading-[1.1] tracking-tight transition-all duration-1000 delay-400 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <h1 className={`font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-6 leading-[1.1] tracking-tight transition-all duration-1000 delay-400 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <span className="block">{headline}</span>
         </h1>
 
@@ -196,11 +196,11 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
         )}
 
         {/* CTAs */}
-        <div className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-1000 delay-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full sm:w-auto max-w-md mx-auto sm:max-w-none transition-all duration-1000 delay-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <Button
             onClick={onViewBrochure}
             size="lg"
-            className="group bg-prime-gold hover:bg-prime-goldDark text-prime-950 font-nav font-semibold px-10 py-7 text-base shadow-2xl shadow-prime-gold/30 hover:shadow-prime-gold/50 transition-all duration-300 hover:-translate-y-1"
+            className="group bg-prime-gold hover:bg-prime-goldDark text-prime-950 font-nav font-semibold px-6 sm:px-10 py-5 sm:py-7 text-sm sm:text-base shadow-2xl shadow-prime-gold/30 hover:shadow-prime-gold/50 transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto"
           >
             <span>{ui.downloadBrochure || 'Download Brochure'}</span>
             <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />
@@ -210,11 +210,12 @@ export const BrochureHero: React.FC<BrochureHeroProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleWhatsAppClick}
+            className="w-full sm:w-auto"
           >
             <Button
               variant="outline"
               size="lg"
-              className="border-2 border-white/30 bg-white/5 text-white hover:bg-white hover:text-prime-950 backdrop-blur-sm font-nav font-semibold px-10 py-7 text-base transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto"
+              className="border-2 border-white/30 bg-white/5 text-white hover:bg-white hover:text-prime-950 backdrop-blur-sm font-nav font-semibold px-6 sm:px-10 py-5 sm:py-7 text-sm sm:text-base transition-all duration-300 hover:-translate-y-1 w-full sm:w-auto"
             >
               <MessageCircle className="mr-2" size={18} />
               <span>{ui.speakWithExpert || 'Speak With Expert'}</span>
