@@ -92,6 +92,53 @@ async function uploadToStorage(
 }
 
 /**
+ * Delete old image from Supabase Storage
+ */
+async function deleteOldImage(
+  oldImageUrl: string | null,
+  supabase: any,
+  bucket: string = 'article-images'
+): Promise<void> {
+  try {
+    if (!oldImageUrl) {
+      console.log('📭 No old image to delete');
+      return;
+    }
+
+    // Only delete if it's a Supabase storage URL (not external)
+    if (!oldImageUrl.includes('supabase') || !oldImageUrl.includes('/storage/')) {
+      console.log('⏭️ Old image is external, skipping deletion');
+      return;
+    }
+
+    // Extract filename from URL
+    // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{filename}
+    const urlParts = oldImageUrl.split('/');
+    const filename = urlParts[urlParts.length - 1];
+
+    if (!filename) {
+      console.log('⚠️ Could not extract filename from URL');
+      return;
+    }
+
+    console.log(`🗑️ Deleting old image: ${filename}`);
+    
+    const { error } = await supabase.storage
+      .from(bucket)
+      .remove([filename]);
+
+    if (error) {
+      console.error('⚠️ Failed to delete old image:', error.message);
+    } else {
+      console.log('✅ Old image deleted successfully');
+    }
+  } catch (error) {
+    // Don't throw - cleanup failure shouldn't break the regeneration
+    console.error('⚠️ Error during old image cleanup:', error);
+  }
+}
+
+/**
  * Generate localized alt text and caption for an image
  */
 async function generateLocalizedMetadata(
@@ -211,7 +258,7 @@ serve(async (req) => {
     // Step 1: Fetch the article with cluster_id and funnel_stage for image sharing
     const { data: article, error: fetchError } = await supabase
       .from('blog_articles')
-      .select('id, headline, meta_description, detailed_content, language, funnel_stage, cluster_theme, slug, cluster_id')
+      .select('id, headline, meta_description, detailed_content, language, funnel_stage, cluster_theme, slug, cluster_id, featured_image_url')
       .eq('id', articleId)
       .single();
 
@@ -220,6 +267,9 @@ serve(async (req) => {
     }
 
     console.log(`📝 Article: "${article.headline}" (${article.language})`);
+
+    // Capture old image URL for cleanup after successful regeneration
+    const oldImageUrl = article.featured_image_url;
 
     const languageName = LANGUAGE_NAMES[article.language] || 'English';
 
@@ -399,6 +449,11 @@ ${contentForAnalysis}`
 
     if (updateError) {
       throw new Error(`Failed to update article: ${updateError.message}`);
+    }
+
+    // Cleanup: Delete old image from storage (non-blocking, only if different from new)
+    if (oldImageUrl && oldImageUrl !== generatedImageUrl) {
+      await deleteOldImage(oldImageUrl, supabase, 'article-images');
     }
 
     console.log(`🎉 Successfully regenerated image for article: ${article.headline}`);
