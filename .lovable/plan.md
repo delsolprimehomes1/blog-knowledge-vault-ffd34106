@@ -1,56 +1,56 @@
 
-
-# Remove "Team obtains API License" Timeline Entry
+# Remove "2025 API License" Paragraph from About Page Content
 
 ## Location Found
 
-The timeline milestone is hardcoded in `src/components/about/OurStory.tsx`:
+The text is stored in the **database** in the `about_page_content` table, within the `our_story_content` markdown field:
 
-```typescript
-// Lines 24-27
-const milestones = [
-  { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
-  { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp },
-  { year: "2025", event: "Team obtains API License", icon: TrendingUp }  // ← REMOVE THIS
-];
+```markdown
+In **2025**, the team achieved a significant milestone by obtaining their 
+**API (Agente de la Propiedad Inmobiliaria) License**, the official Spanish 
+real estate qualification recognized by the Colegio Oficial.
 ```
 
 ## Solution
 
-Remove line 26 from the `milestones` array in `src/components/about/OurStory.tsx`.
+Update the database to remove the final paragraph from the `our_story_content` field.
 
 **Before:**
-```typescript
-const milestones = [
-  { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
-  { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp },
-  { year: "2025", event: "Team obtains API License", icon: TrendingUp }
-];
+```markdown
+## A Journey of Passion and Expertise
+
+What began as individual paths to Spain has become a unified mission...
+
+Steven Roberts first arrived in Spain in 1997...
+
+Cédric Van Hecke made the Costa del Sol his home in 1998...
+
+Hans Beeckman joined the team in 2020... His 2024 training in **Artificial Intelligence** has helped modernize our approach to property matching.
+
+In **2025**, the team achieved a significant milestone by obtaining their **API (Agente de la Propiedad Inmobiliaria) License**...
 ```
 
 **After:**
-```typescript
-const milestones = [
-  { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
-  { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp }
-];
+```markdown
+## A Journey of Passion and Expertise
+
+What began as individual paths to Spain has become a unified mission...
+
+Steven Roberts first arrived in Spain in 1997...
+
+Cédric Van Hecke made the Costa del Sol his home in 1998...
+
+Hans Beeckman joined the team in 2020... His 2024 training in **Artificial Intelligence** has helped modernize our approach to property matching.
 ```
 
 ---
 
-## File to Modify
+## Database Update Required
 
-| File | Change |
-|------|--------|
-| `src/components/about/OurStory.tsx` | Remove line 26 (2025 API License entry) |
+Execute SQL to update the `our_story_content` field in `about_page_content` where `slug = 'main'`, removing the 2025 API License paragraph.
 
 ---
 
 ## Result
 
-The About page timeline will show only:
-- **2016** - Steven founds Sentinel Estates
-- **2020** - Hans Beeckman joins the team
-
-The "2025 - Team obtains API License" entry will be removed from the visible timeline.
-
+The About page "Our Story" section will end with Hans Beeckman's AI training mention, and no longer display any reference to the 2025 API License achievement.
