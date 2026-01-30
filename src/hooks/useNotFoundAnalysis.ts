@@ -32,33 +32,57 @@ export interface AnalysisSummary {
   trulyMissing: number;
 }
 
+interface GoneUrl {
+  id: string;
+  url_path: string;
+  reason: string | null;
+  created_at: string;
+}
+
+// Helper function to fetch ALL gone_urls using batch pagination
+// Supabase limits queries to 1000 rows by default
+async function fetchAllGoneUrls(): Promise<GoneUrl[]> {
+  const allData: GoneUrl[] = [];
+  let offset = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("gone_urls")
+      .select("id, url_path, reason, created_at")
+      .range(offset, offset + batchSize - 1)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allData.push(...data);
+
+    if (data.length < batchSize) break;
+    offset += batchSize;
+  }
+
+  return allData;
+}
+
 // Fetch summary counts
 export function useNotFoundSummary() {
   return useQuery({
     queryKey: ["not-found-summary"],
     queryFn: async (): Promise<AnalysisSummary> => {
-      // Total count
+      // Total count using exact count (fast, no row limit)
       const { count: total } = await supabase
         .from("gone_urls")
         .select("*", { count: "exact", head: true });
 
-      // Malformed (date-appended) count
-      const { data: malformedData } = await supabase
-        .from("gone_urls")
-        .select("id")
-        .filter("url_path", "like", "%[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]");
-
-      // Since Supabase doesn't support regex in filters, we fetch and filter client-side for accurate count
-      const { data: allUrls } = await supabase
-        .from("gone_urls")
-        .select("url_path");
+      // Fetch ALL URLs to analyze (bypasses 1000-row limit)
+      const allUrls = await fetchAllGoneUrls();
 
       const datePattern = /[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-      const malformedCount = allUrls?.filter(u => datePattern.test(u.url_path)).length || 0;
+      const malformedCount = allUrls.filter(u => datePattern.test(u.url_path)).length;
 
-      // Language mismatch count - need to check against content tables
-      // This is an approximation - the full query is done in the tab
-      const languageMismatchCount = await countLanguageMismatches();
+      // Language mismatch count - uses the same fetched data
+      const languageMismatchCount = await countLanguageMismatches(allUrls);
 
       const trulyMissing = (total || 0) - malformedCount - languageMismatchCount;
 
@@ -73,14 +97,9 @@ export function useNotFoundSummary() {
   });
 }
 
-// Helper to count language mismatches
-async function countLanguageMismatches(): Promise<number> {
-  // Get all gone URLs that look like blog/qa paths
-  const { data: goneUrls } = await supabase
-    .from("gone_urls")
-    .select("id, url_path");
-
-  if (!goneUrls || goneUrls.length === 0) return 0;
+// Helper to count language mismatches - accepts pre-fetched data
+async function countLanguageMismatches(goneUrls: GoneUrl[]): Promise<number> {
+  if (goneUrls.length === 0) return 0;
 
   // Parse URLs to extract language and slug
   const parsed = goneUrls
@@ -111,12 +130,13 @@ async function countLanguageMismatches(): Promise<number> {
 
   let mismatchCount = 0;
 
-  // Check blog articles
+  // Check blog articles (batch fetch to handle large slug lists)
   if (blogSlugs.length > 0) {
+    const uniqueBlogSlugs = [...new Set(blogSlugs)];
     const { data: blogArticles } = await supabase
       .from("blog_articles")
       .select("slug, language")
-      .in("slug", blogSlugs)
+      .in("slug", uniqueBlogSlugs.slice(0, 500)) // Supabase IN limit
       .eq("status", "published");
 
     const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
@@ -131,10 +151,11 @@ async function countLanguageMismatches(): Promise<number> {
 
   // Check Q&A pages
   if (qaSlugs.length > 0) {
+    const uniqueQaSlugs = [...new Set(qaSlugs)];
     const { data: qaPages } = await supabase
       .from("qa_pages")
       .select("slug, language")
-      .in("slug", qaSlugs)
+      .in("slug", uniqueQaSlugs.slice(0, 500))
       .eq("status", "published");
 
     const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
@@ -150,32 +171,26 @@ async function countLanguageMismatches(): Promise<number> {
   return mismatchCount;
 }
 
-// Fetch malformed URLs (date pattern)
+// Fetch malformed URLs (date pattern) - fetches ALL rows
 export function useMalformedUrls() {
   return useQuery({
     queryKey: ["malformed-urls"],
     queryFn: async (): Promise<MalformedUrl[]> => {
-      const { data } = await supabase
-        .from("gone_urls")
-        .select("id, url_path, created_at")
-        .order("created_at", { ascending: false });
-
+      const allUrls = await fetchAllGoneUrls();
       const datePattern = /[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-      return (data || []).filter(u => datePattern.test(u.url_path));
+      return allUrls.filter(u => datePattern.test(u.url_path));
     },
   });
 }
 
-// Fetch language mismatches
+// Fetch language mismatches - fetches ALL rows
 export function useLanguageMismatches() {
   return useQuery({
     queryKey: ["language-mismatches"],
     queryFn: async (): Promise<LanguageMismatch[]> => {
-      const { data: goneUrls } = await supabase
-        .from("gone_urls")
-        .select("id, url_path");
+      const goneUrls = await fetchAllGoneUrls();
 
-      if (!goneUrls || goneUrls.length === 0) return [];
+      if (goneUrls.length === 0) return [];
 
       const parsed = goneUrls
         .map(u => {
@@ -199,8 +214,8 @@ export function useLanguageMismatches() {
 
       if (parsed.length === 0) return [];
 
-      const blogSlugs = parsed.filter(p => p.content_type === "blog").map(p => p.slug);
-      const qaSlugs = parsed.filter(p => p.content_type === "qa").map(p => p.slug);
+      const blogSlugs = [...new Set(parsed.filter(p => p.content_type === "blog").map(p => p.slug))];
+      const qaSlugs = [...new Set(parsed.filter(p => p.content_type === "qa").map(p => p.slug))];
 
       const results: LanguageMismatch[] = [];
 
@@ -209,7 +224,7 @@ export function useLanguageMismatches() {
         const { data: blogArticles } = await supabase
           .from("blog_articles")
           .select("slug, language")
-          .in("slug", blogSlugs)
+          .in("slug", blogSlugs.slice(0, 500))
           .eq("status", "published");
 
         const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
@@ -231,7 +246,7 @@ export function useLanguageMismatches() {
         const { data: qaPages } = await supabase
           .from("qa_pages")
           .select("slug, language")
-          .in("slug", qaSlugs)
+          .in("slug", qaSlugs.slice(0, 500))
           .eq("status", "published");
 
         const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
@@ -253,17 +268,14 @@ export function useLanguageMismatches() {
   });
 }
 
-// Fetch confirmed gone URLs (truly missing)
+// Fetch confirmed gone URLs (truly missing) - fetches ALL rows
 export function useConfirmedGoneUrls() {
   return useQuery({
     queryKey: ["confirmed-gone-urls"],
     queryFn: async (): Promise<ConfirmedGoneUrl[]> => {
-      const { data: goneUrls } = await supabase
-        .from("gone_urls")
-        .select("id, url_path, reason, created_at")
-        .order("created_at", { ascending: false });
+      const goneUrls = await fetchAllGoneUrls();
 
-      if (!goneUrls) return [];
+      if (goneUrls.length === 0) return [];
 
       const datePattern = /[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
       
@@ -286,8 +298,8 @@ export function useConfirmedGoneUrls() {
           slug: string;
         }>;
 
-      const blogSlugs = parsed.filter(p => p.content_type === "blog").map(p => p.slug);
-      const qaSlugs = parsed.filter(p => p.content_type === "qa").map(p => p.slug);
+      const blogSlugs = [...new Set(parsed.filter(p => p.content_type === "blog").map(p => p.slug))];
+      const qaSlugs = [...new Set(parsed.filter(p => p.content_type === "qa").map(p => p.slug))];
 
       const mismatchIds = new Set<string>();
 
@@ -295,7 +307,7 @@ export function useConfirmedGoneUrls() {
         const { data: blogArticles } = await supabase
           .from("blog_articles")
           .select("slug, language")
-          .in("slug", blogSlugs)
+          .in("slug", blogSlugs.slice(0, 500))
           .eq("status", "published");
 
         const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
@@ -312,7 +324,7 @@ export function useConfirmedGoneUrls() {
         const { data: qaPages } = await supabase
           .from("qa_pages")
           .select("slug, language")
-          .in("slug", qaSlugs)
+          .in("slug", qaSlugs.slice(0, 500))
           .eq("status", "published");
 
         const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
