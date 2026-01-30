@@ -315,7 +315,7 @@ export const buyersGuideFr = {
     subheadline: "Notre équipe multilingue a aidé des centaines d'acheteurs internationaux à trouver leur propriété idéale sur la Costa del Sol. Réservez une consultation gratuite pour discuter de vos besoins.",
     trustSignals: {
       api: "Accrédité API",
-      experience: "15+ Ans d'Expérience",
+      experience: "35+ Ans d'Expérience",
       buyers: "500+ Acheteurs Satisfaits"
     },
     phone: {

@@ -315,7 +315,7 @@ export const buyersGuideHu = {
     subheadline: "Többnyelvű csapatunk már több száz nemzetközi vásárlónak segített megtalálni tökéletes ingatlanát a Costa del Solon. Foglaljon ingyenes konzultációt igényei megbeszéléséhez.",
     trustSignals: {
       api: "API Akkreditált",
-      experience: "15+ Év Tapasztalat",
+      experience: "35+ Év Tapasztalat",
       buyers: "500+ Elégedett Vásárló"
     },
     phone: {

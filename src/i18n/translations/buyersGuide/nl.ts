@@ -315,7 +315,7 @@ export const buyersGuideNl = {
     subheadline: "Ons meertalige team heeft honderden internationale kopers geholpen hun perfecte woning aan de Costa del Sol te vinden. Boek een gratis consult om uw wensen te bespreken.",
     trustSignals: {
       api: "API Geaccrediteerd",
-      experience: "15+ Jaar Ervaring",
+      experience: "35+ Jaar Ervaring",
       buyers: "500+ Tevreden Kopers"
     },
     phone: {

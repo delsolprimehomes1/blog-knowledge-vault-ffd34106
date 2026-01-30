@@ -315,7 +315,7 @@ export const buyersGuideFi = {
     subheadline: "Monikielinen tiimimme on auttanut satoja kansainvälisiä ostajia löytämään täydellisen kiinteistönsä Costa del Solilta. Varaa ilmainen konsultaatio keskustellaksesi vaatimuksistasi.",
     trustSignals: {
       api: "API-akkreditoitu",
-      experience: "15+ Vuoden Kokemus",
+      experience: "35+ Vuoden Kokemus",
       buyers: "500+ Tyytyväistä Ostajaa"
     },
     phone: {

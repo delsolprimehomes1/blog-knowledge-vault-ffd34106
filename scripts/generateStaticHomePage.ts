@@ -43,7 +43,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'en_GB',
     heroHeadline: 'Find Your Perfect Home on the',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium real estate agency with 15+ years of expertise in Marbella, Estepona, Fuengirola, and the entire Costa del Sol. We guide international buyers through every step of purchasing their dream property in Spain.',
+    heroDescription: 'Premium real estate agency with 35+ years of expertise in Marbella, Estepona, Fuengirola, and the entire Costa del Sol. We guide international buyers through every step of purchasing their dream property in Spain.',
     speakableSummary: 'Del Sol Prime Homes is a luxury real estate agency on Spain\'s Costa del Sol. We help international buyers find and purchase properties in Marbella, Estepona, Fuengirola, Benalmádena, Mijas, and Sotogrande. Our expert team speaks English, Dutch, French, German, and more. Contact us at +34 630 03 90 90.',
   },
   de: {
@@ -52,7 +52,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'de_DE',
     heroHeadline: 'Finden Sie Ihr Traumhaus an der',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium-Immobilienagentur mit über 15 Jahren Erfahrung in Marbella, Estepona, Fuengirola und der gesamten Costa del Sol. Wir begleiten internationale Käufer bei jedem Schritt zum Kauf ihrer Traumimmobilie in Spanien.',
+    heroDescription: 'Premium-Immobilienagentur mit über 35 Jahren Erfahrung in Marbella, Estepona, Fuengirola und der gesamten Costa del Sol. Wir begleiten internationale Käufer bei jedem Schritt zum Kauf ihrer Traumimmobilie in Spanien.',
     speakableSummary: 'Del Sol Prime Homes ist eine Luxus-Immobilienagentur an Spaniens Costa del Sol. Wir helfen internationalen Käufern beim Kauf von Immobilien in Marbella, Estepona, Fuengirola, Benalmádena, Mijas und Sotogrande. Unser Expertenteam spricht Deutsch, Englisch, Niederländisch und mehr. Kontaktieren Sie uns unter +34 630 03 90 90.',
   },
   nl: {
@@ -61,7 +61,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'nl_NL',
     heroHeadline: 'Vind Uw Droomhuis aan de',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium vastgoedkantoor met 15+ jaar ervaring in Marbella, Estepona, Fuengirola en de hele Costa del Sol. Wij begeleiden internationale kopers bij elke stap van de aankoop van hun droomwoning in Spanje.',
+    heroDescription: 'Premium vastgoedkantoor met 35+ jaar ervaring in Marbella, Estepona, Fuengirola en de hele Costa del Sol. Wij begeleiden internationale kopers bij elke stap van de aankoop van hun droomwoning in Spanje.',
     speakableSummary: 'Del Sol Prime Homes is een luxe vastgoedkantoor aan de Spaanse Costa del Sol. Wij helpen internationale kopers bij het vinden en kopen van vastgoed in Marbella, Estepona, Fuengirola, Benalmádena, Mijas en Sotogrande. Ons team spreekt Nederlands, Engels, Frans, Duits en meer. Neem contact op via +34 630 03 90 90.',
   },
   fr: {
@@ -70,7 +70,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'fr_FR',
     heroHeadline: 'Trouvez Votre Maison de Rêve sur la',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Agence immobilière premium avec plus de 15 ans d\'expertise à Marbella, Estepona, Fuengirola et toute la Costa del Sol. Nous accompagnons les acheteurs internationaux à chaque étape de l\'achat de leur propriété de rêve en Espagne.',
+    heroDescription: 'Agence immobilière premium avec plus de 35 ans d\'expertise à Marbella, Estepona, Fuengirola et toute la Costa del Sol. Nous accompagnons les acheteurs internationaux à chaque étape de l\'achat de leur propriété de rêve en Espagne.',
     speakableSummary: 'Del Sol Prime Homes est une agence immobilière de luxe sur la Costa del Sol en Espagne. Nous aidons les acheteurs internationaux à trouver et acheter des propriétés à Marbella, Estepona, Fuengirola, Benalmádena, Mijas et Sotogrande. Notre équipe parle français, anglais, néerlandais et plus. Contactez-nous au +34 630 03 90 90.',
   },
   pl: {
@@ -79,7 +79,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'pl_PL',
     heroHeadline: 'Znajdź Swój Wymarzony Dom na',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium agencja nieruchomości z ponad 15-letnim doświadczeniem w Marbelli, Esteponie, Fuengiroli i całej Costa del Sol. Prowdzimy międzynarodowych nabywców przez każdy etap zakupu ich wymarzonej nieruchomości w Hiszpanii.',
+    heroDescription: 'Premium agencja nieruchomości z ponad 35-letnim doświadczeniem w Marbelli, Esteponie, Fuengiroli i całej Costa del Sol. Prowdzimy międzynarodowych nabywców przez każdy etap zakupu ich wymarzonej nieruchomości w Hiszpanii.',
     speakableSummary: 'Del Sol Prime Homes to luksusowa agencja nieruchomości na hiszpańskiej Costa del Sol. Pomagamy międzynarodowym nabywcom w znalezieniu i zakupie nieruchomości w Marbelli, Esteponie, Fuengiroli, Benalmádenie, Mijas i Sotogrande. Nasz zespół mówi po polsku, angielsku, niemiecku i więcej. Skontaktuj się z nami: +34 630 03 90 90.',
   },
   sv: {
@@ -88,7 +88,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'sv_SE',
     heroHeadline: 'Hitta Ditt Drömhem på',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium fastighetsbyrå med 15+ års expertis i Marbella, Estepona, Fuengirola och hela Costa del Sol. Vi vägleder internationella köpare genom varje steg i köpet av deras drömfastighet i Spanien.',
+    heroDescription: 'Premium fastighetsbyrå med 35+ års expertis i Marbella, Estepona, Fuengirola och hela Costa del Sol. Vi vägleder internationella köpare genom varje steg i köpet av deras drömfastighet i Spanien.',
     speakableSummary: 'Del Sol Prime Homes är en lyxig fastighetsbyrå på Spaniens Costa del Sol. Vi hjälper internationella köpare att hitta och köpa fastigheter i Marbella, Estepona, Fuengirola, Benalmádena, Mijas och Sotogrande. Vårt team talar svenska, engelska, tyska och mer. Kontakta oss på +34 630 03 90 90.',
   },
   da: {
@@ -97,7 +97,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'da_DK',
     heroHeadline: 'Find Dit Drømmehjem på',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium ejendomsmæglerbureau med 15+ års ekspertise i Marbella, Estepona, Fuengirola og hele Costa del Sol. Vi guider internationale købere gennem hvert trin i købet af deres drømmebolig i Spanien.',
+    heroDescription: 'Premium ejendomsmæglerbureau med 35+ års ekspertise i Marbella, Estepona, Fuengirola og hele Costa del Sol. Vi guider internationale købere gennem hvert trin i købet af deres drømmebolig i Spanien.',
     speakableSummary: 'Del Sol Prime Homes er et luksuriøst ejendomsmæglerbureau på Spaniens Costa del Sol. Vi hjælper internationale købere med at finde og købe ejendomme i Marbella, Estepona, Fuengirola, Benalmádena, Mijas og Sotogrande. Vores team taler dansk, engelsk, tysk og mere. Kontakt os på +34 630 03 90 90.',
   },
   hu: {
@@ -106,7 +106,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'hu_HU',
     heroHeadline: 'Találja Meg Álomotthonát a',
     heroHighlight: 'Costa del Sol-on',
-    heroDescription: 'Prémium ingatlaniroda több mint 15 éves tapasztalattal Marbellán, Esteponán, Fuengirolán és az egész Costa del Sol-on. Nemzetközi vásárlókat kísérünk végig álomingatlanuk megvásárlásának minden lépésén Spanyolországban.',
+    heroDescription: 'Prémium ingatlaniroda több mint 35 éves tapasztalattal Marbellán, Esteponán, Fuengirolán és az egész Costa del Sol-on. Nemzetközi vásárlókat kísérünk végig álomingatlanuk megvásárlásának minden lépésén Spanyolországban.',
     speakableSummary: 'A Del Sol Prime Homes egy luxus ingatlaniroda a spanyol Costa del Sol-on. Segítünk a nemzetközi vásárlóknak ingatlanokat találni és vásárolni Marbellán, Esteponán, Fuengirolán, Benalmádenában, Mijasban és Sotogrande-ban. Csapatunk beszél magyarul, angolul, németül és más nyelveken. Elérhetőség: +34 630 03 90 90.',
   },
   fi: {
@@ -115,7 +115,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'fi_FI',
     heroHeadline: 'Löydä Unelmiesi Koti',
     heroHighlight: 'Costa del Solilta',
-    heroDescription: 'Premium-kiinteistötoimisto yli 15 vuoden kokemuksella Marbellassa, Esteponassa, Fuengirolassa ja koko Costa del Solilla. Opastamme kansainvälisiä ostajia jokaisen vaiheen läpi unelmakiinteistönsä ostamisessa Espanjassa.',
+    heroDescription: 'Premium-kiinteistötoimisto yli 35 vuoden kokemuksella Marbellassa, Esteponassa, Fuengirolassa ja koko Costa del Solilla. Opastamme kansainvälisiä ostajia jokaisen vaiheen läpi unelmakiinteistönsä ostamisessa Espanjassa.',
     speakableSummary: 'Del Sol Prime Homes on luksuskiinteistötoimisto Espanjan Costa del Solilla. Autamme kansainvälisiä ostajia löytämään ja ostamaan kiinteistöjä Marbellasta, Esteponasta, Fuengirolasta, Benalmádenasta, Mijasista ja Sotograndesta. Tiimimme puhuu suomea, englantia, saksaa ja muita kieliä. Ota yhteyttä: +34 630 03 90 90.',
   },
   no: {
@@ -124,7 +124,7 @@ const HOMEPAGE_META: Record<Language, {
     ogLocale: 'nb_NO',
     heroHeadline: 'Finn Ditt Drømmehjem på',
     heroHighlight: 'Costa del Sol',
-    heroDescription: 'Premium eiendomsmeglerbyrå med 15+ års ekspertise i Marbella, Estepona, Fuengirola og hele Costa del Sol. Vi veileder internasjonale kjøpere gjennom hvert steg i kjøpet av drømmeeiendommen sin i Spania.',
+    heroDescription: 'Premium eiendomsmeglerbyrå med 35+ års ekspertise i Marbella, Estepona, Fuengirola og hele Costa del Sol. Vi veileder internasjonale kjøpere gjennom hvert steg i kjøpet av drømmeeiendommen sin i Spania.',
     speakableSummary: 'Del Sol Prime Homes er et luksuriøst eiendomsmeglerbyrå på Spanias Costa del Sol. Vi hjelper internasjonale kjøpere med å finne og kjøpe eiendommer i Marbella, Estepona, Fuengirola, Benalmádena, Mijas og Sotogrande. Vårt team snakker norsk, engelsk, tysk og mer. Kontakt oss på +34 630 03 90 90.',
   },
 };

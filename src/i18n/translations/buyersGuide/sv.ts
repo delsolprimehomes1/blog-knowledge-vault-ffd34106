@@ -146,7 +146,7 @@ export const buyersGuideSv = {
     headline: "Låt Oss Guida Dig",
     headlineHighlight: "Hem",
     subheadline: "Vårt flerspråkiga team har hjälpt hundratals internationella köpare hitta sin perfekta fastighet på Costa del Sol.",
-    trustSignals: { api: "API Ackrediterad", experience: "15+ Års Erfarenhet", buyers: "500+ Nöjda Köpare" },
+    trustSignals: { api: "API Ackrediterad", experience: "35+ Års Erfarenhet", buyers: "500+ Nöjda Köpare" },
     phone: { label: "Ring eller WhatsApp", number: "+34 630 03 90 90" },
     email: { label: "Maila oss", address: "info@delsolprimehomes.com" },
     testimonial: { quote: "Del Sol Prime Homes gjorde vår dröm om ett hem i Spanien till verklighet.", author: "Michael & Sarah Thompson" },

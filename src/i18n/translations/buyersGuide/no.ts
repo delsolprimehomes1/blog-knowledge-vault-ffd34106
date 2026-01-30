@@ -315,7 +315,7 @@ export const buyersGuideNo = {
     subheadline: "Vårt flerspråklige team har hjulpet hundrevis av internasjonale kjøpere med å finne sin perfekte eiendom på Costa del Sol. Book en gratis konsultasjon for å diskutere dine ønsker.",
     trustSignals: {
       api: "API-akkreditert",
-      experience: "15+ Års Erfaring",
+      experience: "35+ Års Erfaring",
       buyers: "500+ Fornøyde Kjøpere"
     },
     phone: {
