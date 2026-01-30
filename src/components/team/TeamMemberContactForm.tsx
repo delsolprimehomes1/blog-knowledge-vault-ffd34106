@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send, CheckCircle } from "lucide-react";
+import { registerCrmLead } from "@/utils/crm/registerCrmLead";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -21,6 +22,17 @@ type FormData = z.infer<typeof formSchema>;
 
 interface TeamMemberContactFormProps {
   memberName: string;
+}
+
+// Helper to parse full name into first and last name
+function parseFullName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(" ");
+  return { firstName, lastName };
 }
 
 export const TeamMemberContactForm = ({ memberName }: TeamMemberContactFormProps) => {
@@ -54,6 +66,24 @@ export const TeamMemberContactForm = ({ memberName }: TeamMemberContactFormProps
       }]);
 
       if (error) throw error;
+
+      // Register with CRM for proper lead routing and admin notifications
+      const { firstName, lastName } = parseFullName(data.name);
+      await registerCrmLead({
+        firstName,
+        lastName,
+        email: data.email,
+        phone: '', // No phone from this form
+        leadSource: 'Website Form',
+        leadSourceDetail: `team_member_contact_${memberName.toLowerCase().replace(/\s+/g, '_')}_${currentLanguage}`,
+        pageType: 'team_page',
+        pageUrl: window.location.href,
+        pageTitle: document.title,
+        language: currentLanguage,
+        referrer: document.referrer || undefined,
+        interest: `Contact request for team member: ${memberName}`,
+        message: data.message,
+      });
 
       // Track event
       if (typeof window !== 'undefined' && (window as any).gtag) {

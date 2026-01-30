@@ -508,6 +508,60 @@ serve(async (req) => {
 
     console.log("[register-crm-lead] Lead created:", lead.id);
 
+    // SEND ADMIN FORM SUBMISSION ALERT for ALL new leads
+    try {
+      // Get admin agents to notify
+      const { data: adminAgents } = await supabase
+        .from("crm_agents")
+        .select("id, email, first_name, last_name")
+        .eq("role", "admin")
+        .eq("is_active", true);
+
+      if (adminAgents?.length) {
+        // Build form-specific data for the alert email
+        const formData: Record<string, unknown> = {};
+        if (payload.budgetRange) formData.budget = payload.budgetRange;
+        if (payload.propertyType) formData.property_type = payload.propertyType;
+        if (payload.timeframe) formData.timeframe = payload.timeframe;
+        if (payload.locationPreference?.length) formData.locations = payload.locationPreference.join(', ');
+        if (payload.interest) formData.interest = payload.interest;
+        if (payload.message) formData.message = payload.message;
+        if (payload.propertyRef) formData.property_ref = payload.propertyRef;
+
+        // Derive form name from leadSourceDetail
+        const formName = payload.leadSourceDetail?.replace(/_/g, ' ').replace(/^(\w)/, (m) => m.toUpperCase()) || payload.leadSource || 'Website Form';
+
+        console.log(`[register-crm-lead] Sending form submission alert to ${adminAgents.length} admins`);
+        
+        await fetch(`${supabaseUrl}/functions/v1/send-lead-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            lead: {
+              ...lead,
+              source: payload.pageUrl,
+            },
+            agents: adminAgents,
+            claimWindowMinutes: 0,
+            notification_type: "form_submission_alert",
+            triggered_by: "register-crm-lead",
+            trigger_reason: `New form submission from ${formName}`,
+            form_name: formName,
+            form_data: formData,
+            utm_source: payload.pageUrl?.includes('utm_source') ? new URL(payload.pageUrl).searchParams.get('utm_source') : undefined,
+            utm_campaign: payload.pageUrl?.includes('utm_campaign') ? new URL(payload.pageUrl).searchParams.get('utm_campaign') : undefined,
+          }),
+        });
+        console.log("[register-crm-lead] Form submission admin alert sent");
+      }
+    } catch (alertError) {
+      console.error("[register-crm-lead] Error sending form submission alert:", alertError);
+      // Non-blocking - continue with lead routing
+    }
+
     // INCOMPLETE LEAD: Skip all routing - admin review required
     if (!contactComplete) {
       console.log(`[register-crm-lead] INCOMPLETE LEAD: ${lead.id} - No routing, admin review required`);

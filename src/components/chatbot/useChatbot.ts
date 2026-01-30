@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { registerCrmLead } from "@/utils/crm/registerCrmLead";
 
 export type ChatStep = "initial" | "property_type" | "budget" | "area" | "contact_form" | "complete";
 
@@ -147,6 +148,36 @@ export const useChatbot = (articleSlug: string, language: string): ChatbotHook =
       });
 
       if (error) throw error;
+
+      // Parse full name for CRM
+      const nameParts = data.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Build conversation summary for CRM message
+      const conversationSummary = [
+        collectedData.propertyType ? `Property Type: ${collectedData.propertyType}` : null,
+        collectedData.budget ? `Budget: ${collectedData.budget}` : null,
+        collectedData.area ? `Area: ${collectedData.area}` : null,
+      ].filter(Boolean).join(' | ');
+
+      // Register with CRM for proper lead routing and admin notifications
+      await registerCrmLead({
+        firstName,
+        lastName,
+        email: data.email,
+        phone: data.phone,
+        leadSource: 'Emma Chatbot',
+        leadSourceDetail: `chatbot_embedded_${articleSlug}_${language}`,
+        pageType: 'blog_article',
+        pageUrl: window.location.href,
+        pageTitle: document.title,
+        language: language,
+        referrer: document.referrer || undefined,
+        propertyType: collectedData.propertyType,
+        interest: conversationSummary || `Chatbot inquiry from ${articleSlug}`,
+        message: `Chatbot conversation completed. Budget: ${collectedData.budget || 'Not specified'}. ${conversationSummary}`,
+      });
 
       setCurrentStep("complete");
       addMessage(t.confirmation, true);
