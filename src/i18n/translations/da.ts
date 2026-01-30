@@ -320,6 +320,15 @@ export const da = {
       privacyRequiredDesc: "Accepter venligst privatlivspolitikken for at fortsætte.",
       somethingWentWrong: "Noget gik galt",
       tryAgainLater: "Prøv venligst igen senere.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Golf i Verdensklasse", description: "Over 70 mesterskabsbaner inden for 30 minutter" },
+        beach: { title: "Middelhavets Strande", description: "Krystalklart vand og gyldne sandkyster" },
+        dining: { title: "Michelin-restauranter", description: "Prisbelønnede restauranter og livlig kulinarisk scene" },
+        marina: { title: "Luksuriøse Marinaer", description: "Førsteklasses yachtklubber og nautisk livsstil" },
+        wellness: { title: "Wellness & Spa", description: "Verdensberømte wellness-resorts og termiske bade" },
+        shopping: { title: "Designer Shopping", description: "Butikker, gallerier og luksuriøse shoppingoplevelser" },
+      },
     },
     common: {
       exploreProperties: "Udforsk Ejendomme",

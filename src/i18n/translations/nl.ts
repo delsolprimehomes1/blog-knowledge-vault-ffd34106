@@ -320,6 +320,15 @@ export const nl = {
       privacyRequiredDesc: "Ga akkoord met het privacybeleid om door te gaan.",
       somethingWentWrong: "Er is iets misgegaan",
       tryAgainLater: "Probeer het later opnieuw.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Wereldklasse Golf", description: "Meer dan 70 kampioenschapsbanen binnen 30 minuten" },
+        beach: { title: "Mediterrane Stranden", description: "Kristalhelder water en gouden zandkustlijnen" },
+        dining: { title: "Michelin Restaurants", description: "Bekroonde restaurants en levendige culinaire scene" },
+        marina: { title: "Luxe Jachthavens", description: "Eersteklas jachtclubs en nautische levensstijl" },
+        wellness: { title: "Wellness & Spa", description: "Wereldberoemde wellnessresorts en thermale baden" },
+        shopping: { title: "Designer Shopping", description: "Boetieks, galerijen en luxe winkelervaringen" },
+      },
     },
     common: {
       exploreProperties: "Ontdek Woningen",

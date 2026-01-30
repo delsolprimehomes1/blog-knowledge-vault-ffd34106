@@ -23,6 +23,7 @@ export const LifestyleFeatures: React.FC<LifestyleFeaturesProps> = ({
 }) => {
   const { t } = useTranslation();
   const ui = (t.brochures as any)?.ui || {};
+  const lifestyleFeatures = ui.lifestyleFeatures || {};
 
   const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
     golf: Trophy, beach: Palmtree, dining: Utensils, marina: Sailboat,
@@ -31,12 +32,12 @@ export const LifestyleFeatures: React.FC<LifestyleFeaturesProps> = ({
   };
 
   const DEFAULT_FEATURES: LifestyleFeature[] = [
-    { icon: 'golf', title: 'World-Class Golf', description: 'Over 70 championship courses within 30 minutes' },
-    { icon: 'beach', title: 'Mediterranean Beaches', description: 'Crystal-clear waters and golden sand coastlines' },
-    { icon: 'dining', title: 'Michelin Dining', description: 'Award-winning restaurants and vibrant culinary scene' },
-    { icon: 'marina', title: 'Luxury Marinas', description: 'Premier yacht clubs and nautical lifestyle' },
-    { icon: 'wellness', title: 'Wellness & Spa', description: 'World-renowned wellness retreats and thermal spas' },
-    { icon: 'shopping', title: 'Designer Shopping', description: 'Boutiques, galleries, and luxury retail experiences' },
+    { icon: 'golf', title: lifestyleFeatures.golf?.title || 'World-Class Golf', description: lifestyleFeatures.golf?.description || 'Over 70 championship courses within 30 minutes' },
+    { icon: 'beach', title: lifestyleFeatures.beach?.title || 'Mediterranean Beaches', description: lifestyleFeatures.beach?.description || 'Crystal-clear waters and golden sand coastlines' },
+    { icon: 'dining', title: lifestyleFeatures.dining?.title || 'Michelin Dining', description: lifestyleFeatures.dining?.description || 'Award-winning restaurants and vibrant culinary scene' },
+    { icon: 'marina', title: lifestyleFeatures.marina?.title || 'Luxury Marinas', description: lifestyleFeatures.marina?.description || 'Premier yacht clubs and nautical lifestyle' },
+    { icon: 'wellness', title: lifestyleFeatures.wellness?.title || 'Wellness & Spa', description: lifestyleFeatures.wellness?.description || 'World-renowned wellness retreats and thermal spas' },
+    { icon: 'shopping', title: lifestyleFeatures.shopping?.title || 'Designer Shopping', description: lifestyleFeatures.shopping?.description || 'Boutiques, galleries, and luxury retail experiences' },
   ];
 
   const displayFeatures = features || DEFAULT_FEATURES;

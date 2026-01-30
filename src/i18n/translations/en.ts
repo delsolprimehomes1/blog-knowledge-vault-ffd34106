@@ -328,6 +328,15 @@ export const en = {
       privacyRequiredDesc: "Please agree to the privacy policy to continue.",
       somethingWentWrong: "Something went wrong",
       tryAgainLater: "Please try again later.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "World-Class Golf", description: "Over 70 championship courses within 30 minutes" },
+        beach: { title: "Mediterranean Beaches", description: "Crystal-clear waters and golden sand coastlines" },
+        dining: { title: "Michelin Dining", description: "Award-winning restaurants and vibrant culinary scene" },
+        marina: { title: "Luxury Marinas", description: "Premier yacht clubs and nautical lifestyle" },
+        wellness: { title: "Wellness & Spa", description: "World-renowned wellness retreats and thermal spas" },
+        shopping: { title: "Designer Shopping", description: "Boutiques, galleries, and luxury retail experiences" },
+      },
     },
     marbella: {
       hero: {

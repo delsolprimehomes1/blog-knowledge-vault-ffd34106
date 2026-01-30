@@ -320,6 +320,15 @@ export const sv = {
       privacyRequiredDesc: "Vänligen godkänn integritetspolicyn för att fortsätta.",
       somethingWentWrong: "Något gick fel",
       tryAgainLater: "Försök igen senare.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Golf i Världsklass", description: "Över 70 mästerskapsbanor inom 30 minuter" },
+        beach: { title: "Medelhavets Stränder", description: "Kristallklart vatten och gyllene sandstränder" },
+        dining: { title: "Michelin-restauranger", description: "Prisbelönta restauranger och livlig matscen" },
+        marina: { title: "Lyxiga Marinaer", description: "Förstklassiga yachtklubbar och nautisk livsstil" },
+        wellness: { title: "Wellness & Spa", description: "Världsberömda wellness-resorts och termalbad" },
+        shopping: { title: "Designershopping", description: "Butiker, gallerier och lyxiga shoppingupplevelser" },
+      },
     },
     common: {
       exploreProperties: "Utforska Fastigheter",

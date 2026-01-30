@@ -320,6 +320,15 @@ export const hu = {
       privacyRequiredDesc: "Kérjük, fogadja el az adatvédelmi szabályzatot a folytatáshoz.",
       somethingWentWrong: "Valami hiba történt",
       tryAgainLater: "Kérjük, próbálja újra később.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Világszínvonalú Golf", description: "Több mint 70 bajnoki pálya 30 percen belül" },
+        beach: { title: "Mediterrán Strandok", description: "Kristálytiszta vizek és aranyhomokos partok" },
+        dining: { title: "Michelin Éttermek", description: "Díjnyertes éttermek és élénk gasztronómiai színtér" },
+        marina: { title: "Luxus Kikötők", description: "Első osztályú jachtklubbok és tengeri életstílus" },
+        wellness: { title: "Wellness & Spa", description: "Világhírű wellness központok és termálfürdők" },
+        shopping: { title: "Designer Vásárlás", description: "Butikok, galériák és luxus vásárlási élmények" },
+      },
     },
     common: {
       exploreProperties: "Fedezd Fel az Ingatlanokat",

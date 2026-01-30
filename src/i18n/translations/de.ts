@@ -320,6 +320,15 @@ export const de = {
       privacyRequiredDesc: "Bitte stimmen Sie der Datenschutzrichtlinie zu, um fortzufahren.",
       somethingWentWrong: "Etwas ist schiefgelaufen",
       tryAgainLater: "Bitte versuchen Sie es später erneut.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Weltklasse-Golf", description: "Über 70 Meisterschaftsplätze in 30 Minuten Entfernung" },
+        beach: { title: "Mediterrane Strände", description: "Kristallklares Wasser und goldene Sandküsten" },
+        dining: { title: "Michelin-Restaurants", description: "Preisgekrönte Restaurants und lebhafte Kulinarik-Szene" },
+        marina: { title: "Luxus-Jachthäfen", description: "Erstklassige Yachtclubs und nautischer Lebensstil" },
+        wellness: { title: "Wellness & Spa", description: "Weltbekannte Wellness-Resorts und Thermalbäder" },
+        shopping: { title: "Designer-Shopping", description: "Boutiquen, Galerien und luxuriöse Einkaufserlebnisse" },
+      },
     },
     common: {
       exploreProperties: "Immobilien Erkunden",

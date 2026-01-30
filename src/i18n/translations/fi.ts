@@ -320,6 +320,15 @@ export const fi = {
       privacyRequiredDesc: "Hyväksy tietosuojakäytäntö jatkaaksesi.",
       somethingWentWrong: "Jokin meni pieleen",
       tryAgainLater: "Yritä myöhemmin uudelleen.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Maailmanluokan Golf", description: "Yli 70 mestaruuskenttää 30 minuutin sisällä" },
+        beach: { title: "Välimeren Rannat", description: "Kristallinkirkkaat vedet ja kultahiekkaiset rannikot" },
+        dining: { title: "Michelin-ravintolat", description: "Palkittuja ravintoloita ja elävä ruokakulttuuri" },
+        marina: { title: "Luksusvenesatamat", description: "Huippuluokan purjehdusklubit ja merenkulun elämäntyyli" },
+        wellness: { title: "Hyvinvointi & Kylpylä", description: "Maailmankuulut hyvinvointikeskukset ja termaalilähteet" },
+        shopping: { title: "Designerostokset", description: "Putiikkeja, gallerioita ja ylellisiä ostoskokemuksia" },
+      },
     },
     common: {
       exploreProperties: "Tutustu Kiinteistöihin",

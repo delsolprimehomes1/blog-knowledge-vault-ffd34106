@@ -320,6 +320,15 @@ export const fr = {
       privacyRequiredDesc: "Veuillez accepter la politique de confidentialité pour continuer.",
       somethingWentWrong: "Une erreur s'est produite",
       tryAgainLater: "Veuillez réessayer plus tard.",
+      // Lifestyle Features
+      lifestyleFeatures: {
+        golf: { title: "Golf de Classe Mondiale", description: "Plus de 70 parcours de championnat à 30 minutes" },
+        beach: { title: "Plages Méditerranéennes", description: "Eaux cristallines et côtes de sable doré" },
+        dining: { title: "Restaurants Michelin", description: "Restaurants primés et scène culinaire dynamique" },
+        marina: { title: "Marinas de Luxe", description: "Yacht clubs de premier plan et style de vie nautique" },
+        wellness: { title: "Bien-être & Spa", description: "Centres de bien-être de renommée mondiale et thermes" },
+        shopping: { title: "Shopping de Créateurs", description: "Boutiques, galeries et expériences de shopping de luxe" },
+      },
     },
     common: {
       exploreProperties: "Explorer les Propriétés",
