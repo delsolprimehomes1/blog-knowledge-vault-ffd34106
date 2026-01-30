@@ -35,7 +35,7 @@ export const Reviews: React.FC = () => {
 
       <div className="text-center reveal-on-scroll">
         <a 
-          href="https://www.google.com/maps/place/Del+Sol+Prime+Homes/@36.5433,-4.6289,17z"
+          href="https://www.google.com/search?sca_esv=ab4b4c8b17b2f68e&rlz=1C1FHFK_esES1176ES1176&sxsrf=ANbL-n6cwHuTgRtfDEJAzE8AcYPESuO9sA:1769744919200&kgmid=/g/11zj8zmh9b&q=DelSolPrimeHomes&shem=bdsle,ptotple,shrtsdl&shndl=30&source=sh/x/loc/uni/m1/1&kgs=3deac8e88e622d63&utm_source=bdsle,ptotple,shrtsdl,sh/x/loc/uni/m1/1"
           target="_blank"
           rel="noopener noreferrer"
         >
