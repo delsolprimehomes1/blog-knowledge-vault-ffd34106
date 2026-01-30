@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
@@ -13,6 +14,7 @@ import { AboutFAQ } from "@/components/about/AboutFAQ";
 import { AboutCTA } from "@/components/about/AboutCTA";
 import { type AboutPageContent } from "@/lib/aboutSchemaGenerator";
 import { COMPANY_FACTS } from "@/constants/company";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
@@ -35,6 +37,8 @@ const defaultContent: AboutPageContent = {
 };
 
 const About = () => {
+  const { lang = 'en' } = useParams<{ lang: string }>();
+  
   // Fetch content from database
   const { data: content, isLoading } = useQuery({
     queryKey: ["about-page-content"],
@@ -144,6 +148,7 @@ const About = () => {
         </main>
 
         <Footer />
+        <BlogEmmaChat language={lang} />
       </div>
     </>
   );

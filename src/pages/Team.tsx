@@ -5,6 +5,7 @@ import { Footer } from "@/components/home/Footer";
 import { TeamHero } from "@/components/team/TeamHero";
 import { TeamGrid } from "@/components/team/TeamGrid";
 import { useTranslation } from "@/i18n";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import { COMPANY_INFO } from "@/constants/company";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
@@ -66,6 +67,7 @@ const Team = () => {
         </main>
 
         <Footer />
+        <BlogEmmaChat language={lang || 'en'} />
       </div>
     </>
   );

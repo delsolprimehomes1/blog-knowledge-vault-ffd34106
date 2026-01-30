@@ -13,6 +13,7 @@ import { DigitalNomadVisa } from '@/components/buyers-guide/DigitalNomadVisa';
 import { BuyersGuideFAQ } from '@/components/buyers-guide/BuyersGuideFAQ';
 import { BuyersGuideCTA } from '@/components/buyers-guide/BuyersGuideCTA';
 import { useBuyersGuideTranslation } from '@/hooks/useBuyersGuideTranslation';
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import { Language, AVAILABLE_LANGUAGES } from '@/types/home';
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
@@ -60,6 +61,7 @@ const BuyersGuide: React.FC = () => {
         <BuyersGuideCTA />
       </main>
       <Footer />
+      <BlogEmmaChat language={lang} />
     </>
   );
 };

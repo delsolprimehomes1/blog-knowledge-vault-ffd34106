@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Scale } from "lucide-react";
 import { ComparisonFilterBar } from "@/components/comparison/ComparisonFilterBar";
 import { useMemo } from "react";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 export default function ComparisonIndex() {
   const { lang = 'en' } = useParams<{ lang: string }>();
@@ -160,6 +161,7 @@ export default function ComparisonIndex() {
       </main>
 
       <Footer />
+      <BlogEmmaChat language={lang} />
     </>
   );
 }

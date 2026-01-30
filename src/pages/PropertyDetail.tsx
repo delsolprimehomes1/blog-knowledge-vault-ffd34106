@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Property } from "@/types/property";
 import { Language, AVAILABLE_LANGUAGES } from "@/types/home";
 import { motion } from "framer-motion";
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 
 const PropertyDetail = () => {
   const { reference, lang } = useParams<{ reference: string; lang?: string }>();
@@ -287,6 +288,7 @@ const PropertyDetail = () => {
       <div className="h-20 sm:h-24 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
 
       <Footer />
+      <BlogEmmaChat language={currentLanguage} />
     </div>
   );
 };
