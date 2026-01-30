@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { LifestyleFeatures } from '@/components/brochures/LifestyleFeatures';
 
 import { BrochureOptInForm } from '@/components/brochures/BrochureOptInForm';
 import { CrossCityDiscovery } from '@/components/brochures/CrossCityDiscovery';
-import { BrochureChatbot } from '@/components/brochures/BrochureChatbot';
+import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import NotFound from './NotFound';
 import { Loader2, ArrowUp } from 'lucide-react';
 
@@ -76,8 +76,7 @@ const CityBrochure: React.FC = () => {
   // Extract both lang and citySlug from URL params
   const { lang, citySlug } = useParams<{ lang: string; citySlug: string }>();
   const formRef = useRef<HTMLElement>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showBackToTop, setShowBackToTop] = React.useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -108,7 +107,6 @@ const CityBrochure: React.FC = () => {
   });
 
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: 'smooth' });
-  const toggleChat = () => setChatOpen(!chatOpen);
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (isLoading) {
@@ -157,7 +155,6 @@ const CityBrochure: React.FC = () => {
             hero_subtitle: heroSubtitle 
           }}
           onViewBrochure={scrollToForm}
-          onChat={toggleChat}
         />
         <BrochureDescription description={description} cityName={city.name} />
         <InvestmentHighlights cityName={city.name} />
@@ -168,7 +165,7 @@ const CityBrochure: React.FC = () => {
       </main>
 
       <Footer />
-      <BrochureChatbot cityName={city.name} isOpen={chatOpen} onToggle={toggleChat} />
+      <BlogEmmaChat language={lang || 'en'} />
 
       {/* Back to Top Button */}
       <button
