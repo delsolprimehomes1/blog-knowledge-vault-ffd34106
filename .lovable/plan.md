@@ -1,135 +1,321 @@
 
-# Fix About Page to Use 100% Localized Content
 
-## Problem Identified
+# Full Localization of the Contact Page (10 Languages)
 
-Three sections are still showing English because they use **database content** instead of **i18n translations**:
+## Problem Analysis
 
-| Section | Issue | Screenshot Evidence |
-|---------|-------|---------------------|
-| Hero headline/subheadline | Props from database bypass i18n | "Your Trusted Partners in Costa del Sol Real Estate" |
-| Why Choose Us (markdown) | Database `why_choose_us_content` is English-only | "Why Clients Choose Us", "Local Expertise", "End-to-End Service" |
-| FAQ questions/answers | Database `faq_entities` is English-only | "Who founded Del Sol Prime Homes?", "Are your agents licensed?" |
+The Contact page (`/:lang/contact`) displays **100% English content** on all language versions because:
 
-The Finnish translations **already exist** in `src/i18n/translations/fi.ts` but components don't use them.
+1. **No `contact` translations exist** in any of the 10 translation files
+2. The page uses `getDefaultContactTranslations()` as fallback, which returns hardcoded English
+3. All components receive this English fallback via the `t` prop
+
+### Current Code Flow
+
+```text
+Contact.tsx
+    ↓
+const contactT = (t as any).contact || getDefaultContactTranslations();  ← Always hits fallback!
+    ↓
+<ContactHero t={contactT} />        ← English
+<ContactOptions t={contactT} />    ← English  
+<ContactForm t={contactT} />       ← English
+<OfficeInfo t={contactT} />        ← English
+<ContactFAQ t={contactT} />        ← English
+<EmmaCallout t={contactT} />       ← English
+```
+
+### Hardcoded English Strings Found
+
+| Component | Hardcoded English |
+|-----------|-------------------|
+| `ContactOptions.tsx` | "Fastest Response" badge (line 60) |
+| `OfficeInfo.tsx` | "Office Address" heading (line 84) |
+| `ContactForm.tsx` | "Privacy Policy" link text (line 367), toast messages (lines 97-98, 171-172) |
+| `EmmaCallout.tsx` | "AI-Powered" badge (line 40), "Chat with Emma" button (line 57) |
 
 ---
 
-## Solution: Prioritize i18n Over Database Content
+## Solution: Add Full `contact` Object to All 10 Languages
 
-### File 1: `src/components/about/AboutHero.tsx`
+### Translation Structure to Add
 
-**Current (lines 58-64):**
-- Uses `headline` and `subheadline` props directly from database
-
-**Fix:**
-- Add i18n keys for headline/subheadline
-- Use translation if available, fallback to props
+Each translation file needs a complete `contact` object:
 
 ```text
-// Add to hero type
-hero: {
-  headline?: string;
-  subheadline?: string;
-  ...existing keys
+contact: {
+  meta: {
+    title: "Contact Del Sol Prime Homes | Costa del Sol Real Estate",
+    description: "Get in touch with our expert real estate team..."
+  },
+  hero: {
+    headline: "Get in Touch",
+    subheadline: "We're here to help you find your perfect Costa del Sol property"
+  },
+  options: {
+    fastestResponse: "Fastest Response",  // NEW - badge text
+    whatsapp: {
+      title: "Chat on WhatsApp",
+      description: "Get instant responses from our team",
+      cta: "Open WhatsApp",
+      prefill: "Hi, I'm interested in Costa del Sol properties. Can you help me?"
+    },
+    email: {
+      title: "Send Us an Email",
+      description: "We'll respond within 24 hours",
+      cta: "Send Email"
+    },
+    phone: {
+      title: "Call Our Office",
+      description: "Speak directly with an advisor",
+      cta: "Call Now"
+    }
+  },
+  form: {
+    headline: "Send Us a Message",
+    subheadline: "Fill out the form and we'll get back to you shortly",
+    fields: {
+      fullName: "Full Name",
+      email: "Email Address",
+      phone: "Phone Number (Optional)",
+      language: "Preferred Language",
+      subject: "Subject",
+      message: "Your Message",
+      referral: "How did you hear about us? (Optional)",
+      privacy: "I agree to the Privacy Policy and consent to processing of my data.",
+      privacyLink: "Privacy Policy"  // NEW - for localized link text
+    },
+    subjects: {
+      general: "General Inquiry",
+      property: "Property Inquiry",
+      selling: "Selling My Property",
+      viewing: "Schedule a Viewing",
+      other: "Other"
+    },
+    referrals: {
+      google: "Google Search",
+      socialMedia: "Social Media",
+      referral: "Friend/Family Referral",
+      advertisement: "Online Advertisement",
+      other: "Other"
+    },
+    submit: "Send Message",
+    submitting: "Sending...",
+    validation: {
+      requiredFields: "Please fill in all required fields"  // NEW - toast message
+    },
+    error: {
+      title: "Something went wrong",
+      description: "Please try again or contact us via WhatsApp."
+    },
+    success: {
+      title: "Message Sent!",
+      description: "Thank you for contacting us. We'll respond within 24 hours."
+    }
+  },
+  office: {
+    headline: "Visit Our Office",
+    addressTitle: "Office Address",  // NEW - was hardcoded
+    hours: {
+      title: "Office Hours",
+      weekdays: "Monday - Friday",
+      saturday: "Saturday",
+      sunday: "Sunday",
+      closed: "Closed",
+      timezone: "Central European Time (CET)"
+    },
+    directions: "Get Directions"
+  },
+  faq: {
+    headline: "Frequently Asked Questions",
+    items: [
+      {
+        question: "How quickly will you respond?",
+        answer: "We aim to respond to all inquiries within 24 hours..."
+      },
+      {
+        question: "Do you speak my language?",
+        answer: "Yes! Our team speaks 10+ languages..."
+      },
+      {
+        question: "Can I schedule a video call?",
+        answer: "Absolutely! Contact us via WhatsApp or email..."
+      },
+      {
+        question: "What areas do you cover?",
+        answer: "We specialize in the entire Costa del Sol region..."
+      }
+    ]
+  },
+  emma: {
+    badge: "AI-Powered",  // NEW - was hardcoded
+    callout: "Prefer instant answers?",
+    cta: "Chat with Emma, our AI assistant",
+    buttonText: "Chat with Emma"  // NEW - button text was hardcoded
+  }
 }
-
-// In JSX
-<h1>{hero?.headline || headline}</h1>
-<p>{hero?.subheadline || subheadline}</p>
-```
-
-### File 2: `src/components/about/WhyChooseUs.tsx`
-
-**Current (lines 88-93):**
-- Renders `content` prop (English markdown from database) directly
-
-**Fix:**
-- Add `whyChooseContent` key to i18n with localized markdown
-- Use translation if available, hide markdown section if no localized version
-
-```text
-// In component
-const whyChooseContent = whyChoose?.content;
-
-// Only render markdown if translation exists, otherwise hide
-{whyChooseContent && (
-  <div dangerouslySetInnerHTML={{ __html: parseMarkdown(whyChooseContent) }} />
-)}
-```
-
-### File 3: `src/components/about/AboutFAQ.tsx`
-
-**Current (lines 50-63):**
-- Renders `faqs` prop (English from database) directly
-
-**Fix:**
-- Add `items` array to i18n FAQ section with localized questions/answers
-- Use translation if available, fallback to props
-
-```text
-// Add to faq type
-faq: {
-  heading: string;
-  subheading: string;
-  items?: Array<{ question: string; answer: string }>;
-}
-
-// In component
-const faqItems = faqSection?.items || faqs;
-```
-
----
-
-## Translation Updates (All 10 Languages)
-
-### Add to `aboutUs.hero`:
-```text
-headline: "Your Trusted Partners in Costa del Sol Real Estate"  // localized
-subheadline: "Three founders, 35+ years of expertise..."  // localized
-```
-
-### Add to `aboutUs.whyChoose`:
-```text
-content: "## Why Clients Choose Us\n\n### Local Expertise..."  // localized markdown
-```
-
-### Add to `aboutUs.faq`:
-```text
-items: [
-  { question: "Who founded Del Sol Prime Homes?", answer: "Del Sol Prime Homes was founded by..." },
-  { question: "Are your agents licensed?", answer: "Yes, all our agents hold the API license..." },
-  { question: "What languages do you speak?", answer: "Our multilingual team speaks..." },
-  { question: "How long have you been in the Costa del Sol?", answer: "Our founders have deep roots..." }
-]
 ```
 
 ---
 
 ## Files to Modify
 
+### Part 1: Translation Files (Add `contact` object)
+
+| File | Language |
+|------|----------|
+| `src/i18n/translations/en.ts` | English |
+| `src/i18n/translations/fi.ts` | Finnish |
+| `src/i18n/translations/nl.ts` | Dutch |
+| `src/i18n/translations/fr.ts` | French |
+| `src/i18n/translations/de.ts` | German |
+| `src/i18n/translations/pl.ts` | Polish |
+| `src/i18n/translations/da.ts` | Danish |
+| `src/i18n/translations/hu.ts` | Hungarian |
+| `src/i18n/translations/sv.ts` | Swedish |
+| `src/i18n/translations/no.ts` | Norwegian |
+
+### Part 2: Component Updates (Use new i18n keys)
+
 | File | Changes |
 |------|---------|
-| `src/i18n/translations/en.ts` | Add `hero.headline`, `hero.subheadline`, `whyChoose.content`, `faq.items` |
-| `src/i18n/translations/fi.ts` | Add Finnish translations for all new keys |
-| `src/i18n/translations/nl.ts` | Add Dutch translations |
-| `src/i18n/translations/fr.ts` | Add French translations |
-| `src/i18n/translations/de.ts` | Add German translations |
-| `src/i18n/translations/pl.ts` | Add Polish translations |
-| `src/i18n/translations/da.ts` | Add Danish translations |
-| `src/i18n/translations/hu.ts` | Add Hungarian translations |
-| `src/i18n/translations/sv.ts` | Add Swedish translations |
-| `src/i18n/translations/no.ts` | Add Norwegian translations |
-| `src/components/about/AboutHero.tsx` | Use `hero.headline` and `hero.subheadline` from i18n |
-| `src/components/about/WhyChooseUs.tsx` | Use `whyChoose.content` from i18n |
-| `src/components/about/AboutFAQ.tsx` | Use `faq.items` from i18n |
+| `src/components/contact/ContactOptions.tsx` | Replace hardcoded "Fastest Response" with `t.options.fastestResponse` |
+| `src/components/contact/OfficeInfo.tsx` | Replace hardcoded "Office Address" with `t.office.addressTitle` |
+| `src/components/contact/ContactForm.tsx` | Replace hardcoded "Privacy Policy" link and toast messages with i18n keys |
+| `src/components/contact/EmmaCallout.tsx` | Replace hardcoded "AI-Powered" and "Chat with Emma" button with i18n keys |
+
+### Part 3: Page Update
+
+| File | Changes |
+|------|---------|
+| `src/pages/Contact.tsx` | Update type interface, remove fallback reliance for non-English |
+
+---
+
+## Sample Translations (Finnish)
+
+```text
+contact: {
+  meta: {
+    title: "Ota Yhteyttä Del Sol Prime Homes | Costa del Sol Kiinteistöt",
+    description: "Ota yhteyttä asiantuntevaan kiinteistötiimimme..."
+  },
+  hero: {
+    headline: "Ota Yhteyttä",
+    subheadline: "Olemme täällä auttamassa sinua löytämään täydellisen Costa del Sol -kiinteistösi"
+  },
+  options: {
+    fastestResponse: "Nopein Vastaus",
+    whatsapp: {
+      title: "Keskustele WhatsAppissa",
+      description: "Saat välittömät vastaukset tiimiltämme",
+      cta: "Avaa WhatsApp",
+      prefill: "Hei, olen kiinnostunut Costa del Solin kiinteistöistä. Voitteko auttaa?"
+    },
+    email: {
+      title: "Lähetä Sähköpostia",
+      description: "Vastaamme 24 tunnin kuluessa",
+      cta: "Lähetä Sähköposti"
+    },
+    phone: {
+      title: "Soita Toimistoomme",
+      description: "Puhu suoraan neuvonantajan kanssa",
+      cta: "Soita Nyt"
+    }
+  },
+  form: {
+    headline: "Lähetä Viesti",
+    subheadline: "Täytä lomake ja otamme sinuun pian yhteyttä",
+    fields: {
+      fullName: "Koko Nimi",
+      email: "Sähköpostiosoite",
+      phone: "Puhelinnumero (Valinnainen)",
+      language: "Ensisijainen Kieli",
+      subject: "Aihe",
+      message: "Viestisi",
+      referral: "Miten kuulit meistä? (Valinnainen)",
+      privacy: "Hyväksyn tietosuojakäytännön ja suostun tietojeni käsittelyyn.",
+      privacyLink: "Tietosuojakäytäntö"
+    },
+    subjects: {
+      general: "Yleinen Tiedustelu",
+      property: "Kiinteistötiedustelu",
+      selling: "Kiinteistöni Myynti",
+      viewing: "Varaa Näyttö",
+      other: "Muu"
+    },
+    referrals: {
+      google: "Google-haku",
+      socialMedia: "Sosiaalinen Media",
+      referral: "Ystävän/Perheen Suositus",
+      advertisement: "Verkkomainos",
+      other: "Muu"
+    },
+    submit: "Lähetä Viesti",
+    submitting: "Lähetetään...",
+    validation: {
+      requiredFields: "Täytä kaikki pakolliset kentät"
+    },
+    error: {
+      title: "Jokin meni pieleen",
+      description: "Yritä uudelleen tai ota yhteyttä WhatsAppilla."
+    },
+    success: {
+      title: "Viesti Lähetetty!",
+      description: "Kiitos yhteydenotostasi. Vastaamme 24 tunnin kuluessa."
+    }
+  },
+  office: {
+    headline: "Käy Toimistollamme",
+    addressTitle: "Toimiston Osoite",
+    hours: {
+      title: "Aukioloajat",
+      weekdays: "Maanantai - Perjantai",
+      saturday: "Lauantai",
+      sunday: "Sunnuntai",
+      closed: "Suljettu",
+      timezone: "Keski-Euroopan Aika (CET)"
+    },
+    directions: "Hae Reittiohjeet"
+  },
+  faq: {
+    headline: "Usein Kysytyt Kysymykset",
+    items: [
+      {
+        question: "Kuinka nopeasti vastaatte?",
+        answer: "Pyrimme vastaamaan kaikkiin tiedusteluihin 24 tunnin kuluessa arkipäivisin. WhatsApp-viestit saavat yleensä nopeamman vastauksen."
+      },
+      {
+        question: "Puhutteko kieltäni?",
+        answer: "Kyllä! Tiimimme puhuu yli 10 kieltä, mukaan lukien englanti, hollanti, saksa, ranska, ruotsi, norja, tanska, suomi, puola ja unkari."
+      },
+      {
+        question: "Voinko varata videopuhelun?",
+        answer: "Ehdottomasti! Ota yhteyttä WhatsAppilla tai sähköpostilla sopiaksesi sopivan ajan videokonsultaatioon yhden kiinteistöasiantuntijamme kanssa."
+      },
+      {
+        question: "Mitä alueita katatte?",
+        answer: "Erikoistumme koko Costa del Solin alueeseen, Málagasta Sotograndeen, mukaan lukien Marbella, Estepona, Fuengirola, Benalmádena ja Mijas."
+      }
+    ]
+  },
+  emma: {
+    badge: "Tekoälykäyttöinen",
+    callout: "Haluatko välittömiä vastauksia?",
+    cta: "Keskustele Emman kanssa, tekoälyavustajamme",
+    buttonText: "Keskustele Emman kanssa"
+  }
+}
+```
 
 ---
 
 ## Expected Result
 
 After implementation:
-- `/fi/about` will show 100% Finnish content
-- All 10 language versions will display fully localized About pages
+- Visiting `/fi/contact` will show **100% Finnish** content
+- All 10 language versions will display fully localized Contact pages
+- Form labels, button text, FAQ items, office hours labels, and badges will all translate
 - No English "bleeding" on non-English pages
-- The database content serves as fallback for English only
+- Consistent with the project's 100% localization integrity standard
+
