@@ -1,140 +1,81 @@
 
-# Fix Reference Search in Property Finder
+# Match Retargeting Hero Typography to Landing Page
 
-## Problem
+## Overview
 
-When a user searches by property reference (e.g., "R4922596") using the Advanced Filters, the search returns ALL properties (6,933) instead of filtering to just that one property.
+Update the retargeting hero section (`RetargetingHero.tsx`) to match the landing page hero's typography, font sizes, and positioning for visual consistency across both page types.
 
-## Root Cause
+## Visual Reference Analysis
 
-The issue is in the `search-properties` edge function. Currently:
-
-1. The frontend correctly passes the reference parameter to the edge function
-2. The edge function passes the reference to the proxy `/search` endpoint
-3. **The proxy's `/search` endpoint ignores the reference parameter** - it only supports bulk property filtering, not single-property lookups
-
-The proxy server has a **separate endpoint** `/property/:reference` that works for reference lookups (confirmed by user: `curl http://localhost:3000/property/R4922596` works).
-
-## Solution
-
-Modify the `search-properties` edge function to detect when a reference is provided and use the `/property/:reference` endpoint instead of `/search`.
+From the landing page screenshot:
+- **H1 Headline**: Large serif font, bold, left-aligned on desktop, centered on mobile
+- **Font sizes**: Responsive sizing from mobile (`text-2xl`) up to desktop (`lg:text-[64px]`)
+- **Subheadline**: Lighter weight, smaller text, same alignment pattern
+- **Layout**: Content aligned left on large screens, centered on mobile/tablet
 
 ## Technical Changes
 
-### File: `supabase/functions/search-properties/index.ts`
+### File: `src/components/retargeting/RetargetingHero.tsx`
 
-**Change 1: Add a new function to call the property details endpoint**
+**Change 1: Update H1 headline classes (Line 67-68)**
 
-Reuse the existing pattern from `get-property-details` function to call `/property/:reference`:
+| Property | Current (Retargeting) | Target (Landing) |
+|----------|----------------------|------------------|
+| Font sizes | `text-[32px] md:text-[48px] lg:text-[56px]` | `text-2xl sm:text-3xl md:text-5xl lg:text-[64px]` |
+| Font weight | Not specified (default) | `font-bold` |
+| Text shadow | Complex inline style | `drop-shadow-xl` |
+| Alignment | Centered | `text-center lg:text-left` |
 
+**Change 2: Update subheadline classes (Line 82-83)**
+
+| Property | Current (Retargeting) | Target (Landing) |
+|----------|----------------------|------------------|
+| Font sizes | `text-lg md:text-xl` | `text-base sm:text-lg md:text-xl lg:text-2xl` |
+| Max width | `max-w-[700px]` | `max-w-2xl` |
+| Color | `text-white/90` | `text-white/95` |
+| Text shadow | Complex inline style | `drop-shadow-md` |
+| Alignment | Centered (mx-auto) | `text-center lg:text-left mx-auto lg:mx-0` |
+
+**Change 3: Update content container positioning (Line 61)**
+
+| Current | Target |
+|---------|--------|
+| `max-w-[900px] mx-auto px-6 text-center` | `container mx-auto px-5 sm:px-6 text-white` |
+
+Add inner wrapper matching landing:
 ```text
-// Add function to call proxy for single property by reference
-async function callProxyPropertyByReference(reference: string, langNum: number): Promise<any> {
-  const requestUrl = `${PROXY_BASE_URL}/property/${encodeURIComponent(reference)}?lang=${langNum}`;
-  
-  console.log('🔄 Calling Proxy Server (GET) - /property/:reference');
-  console.log('📤 Request URL:', requestUrl);
-  
-  const response = await fetch(requestUrl, { method: 'GET' });
-  
-  if (!response.ok) {
-    if (response.status === 404) {
-      return null; // Property not found
-    }
-    throw new Error(`Proxy error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  // Extract property from various response formats
-  return data.Property || data.property || (data.Reference ? data : null);
-}
+<div className="max-w-4xl mx-auto lg:mx-0">
 ```
 
-**Change 2: Update the main serve handler to check for reference first**
+**Change 4: Update CTA alignment (Line 96)**
 
-Before calling the general search, check if `filters.reference` is provided:
+| Current | Target |
+|---------|--------|
+| `flex-col items-center gap-4` | `flex-col items-center lg:items-start gap-3 sm:gap-6` |
 
-```text
-serve(async (req) => {
-  // ... CORS handling ...
-  
-  try {
-    const body = await req.json();
-    const { lang = 'en', page = 1, limit = 500, ...filters } = body;
-    const langNum = LANGUAGE_MAP[lang] || 1;
-    
-    // NEW: If reference is provided, use property lookup endpoint
-    if (filters.reference && filters.reference.trim()) {
-      console.log('🔍 Reference search detected, using /property/:reference endpoint');
-      const rawProperty = await callProxyPropertyByReference(filters.reference.trim(), langNum);
-      
-      if (rawProperty) {
-        // Verify it's a residential property
-        if (isResidentialProperty(rawProperty)) {
-          const property = normalizeProperty(rawProperty);
-          return new Response(JSON.stringify({
-            properties: [property],
-            total: 1,
-            page: 1,
-            pageSize: 1,
-            queryId: null,
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-      }
-      
-      // Reference not found or not residential
-      return new Response(JSON.stringify({
-        properties: [],
-        total: 0,
-        page: 1,
-        pageSize: 0,
-        queryId: null,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    
-    // Existing search logic continues here...
-  }
-});
-```
-
-## Flow Diagram
+## Summary of Class Changes
 
 ```text
-User enters "R4922596" in Reference field
-                    │
-                    ▼
-        PropertyFilters.handleSearch()
-        builds params: { reference: "R4922596", ... }
-                    │
-                    ▼
-        PropertyFinder.searchProperties()
-        calls edge function with body
-                    │
-                    ▼
-     search-properties edge function
-                    │
-          ┌─────────┴─────────┐
-          │                   │
-   reference provided?    No reference?
-          │                   │
-          ▼                   ▼
-   /property/R4922596     /search (bulk)
-          │                   │
-          ▼                   ▼
-     Return 1 property   Return all matches
+H1 headline:
+- FROM: font-serif text-[32px] md:text-[48px] lg:text-[56px] leading-tight text-white mb-6
+- TO:   font-serif text-2xl sm:text-3xl md:text-5xl lg:text-[64px] font-bold leading-tight text-white mb-4 sm:mb-6 drop-shadow-xl text-center lg:text-left
+
+Subheadline:
+- FROM: text-lg md:text-xl text-white/90 font-light mb-10 max-w-[700px] mx-auto leading-relaxed
+- TO:   text-base sm:text-lg md:text-xl lg:text-2xl text-white/95 font-light mb-8 sm:mb-10 leading-relaxed max-w-2xl text-center lg:text-left drop-shadow-md mx-auto lg:mx-0
 ```
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `supabase/functions/search-properties/index.ts` | Add reference lookup logic before general search |
+| File | Changes |
+|------|---------|
+| `src/components/retargeting/RetargetingHero.tsx` | Update typography, sizing, alignment to match landing page |
 
 ## Expected Result
 
-After the fix:
-- User types "R4922596" in the Reference field
-- Clicks Search
-- API calls `/property/R4922596` endpoint instead of `/search`
-- Returns exactly 1 property (or 0 if not found)
-- UI displays just that property
+After the changes:
+- Retargeting hero headline will be larger and bolder (matching 64px on desktop)
+- Text will align left on desktop screens (like the landing page)
+- Text will remain centered on mobile/tablet for better readability
+- Subheadline will have consistent sizing across breakpoints
+- Both page types will have a unified visual appearance
