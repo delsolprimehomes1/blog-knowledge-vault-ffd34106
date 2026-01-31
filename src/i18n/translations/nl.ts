@@ -444,6 +444,8 @@ export const nl = {
       contactUs: "Neem Contact Op"
     },
     hero: {
+      headline: "Uw Betrouwbare Partners in Costa del Sol Vastgoed",
+      subheadline: "Drie oprichters, 35+ jaar expertise en één missie: uw Spaanse droomwoning werkelijkheid maken.",
       breadcrumbHome: "Home",
       breadcrumbAbout: "Over Ons",
       statsYears: "Jaar Ervaring",
@@ -482,7 +484,8 @@ export const nl = {
         { title: "Responsieve Ondersteuning", description: "Beschikbaar wanneer u ons het meest nodig heeft" },
         { title: "Klant-Eerst Benadering", description: "Uw behoeften sturen elke beslissing" },
         { title: "Transparant Proces", description: "Geen verborgen kosten, geen verrassingen" }
-      ]
+      ],
+      content: "## Waarom Klanten Voor Ons Kiezen\n\nAls het gaat om het vinden van uw droomwoning aan de Costa del Sol, heeft u een partner nodig die zowel de markt als uw behoeften begrijpt.\n\n### Lokale Expertise\n\nOns team heeft meer dan 40 gecombineerde jaren gewoond en gewerkt aan de Costa del Sol. We kennen elke wijk, elk project en elke kans.\n\n### End-to-End Service\n\nVan uw eerste aanvraag tot het moment dat u uw sleutels ontvangt, zijn we er bij elke stap."
     },
     credentials: {
       heading: "Onze Referenties",
@@ -497,7 +500,13 @@ export const nl = {
     },
     faq: {
       heading: "Veelgestelde Vragen",
-      subheading: "Veelvoorkomende vragen over Del Sol Prime Homes"
+      subheading: "Veelvoorkomende vragen over Del Sol Prime Homes",
+      items: [
+        { question: "Wie heeft Del Sol Prime Homes opgericht?", answer: "Del Sol Prime Homes is opgericht door Steven Roberts, Cédric Van Hecke en Hans Beeckman — drie ervaren vastgoedprofessionals met 35+ jaar gecombineerde ervaring aan de Costa del Sol." },
+        { question: "Zijn uw makelaars gediplomeerd?", answer: "Ja, al onze makelaars hebben de API-licentie (Agente de la Propiedad Inmobiliaria), het officiële Spaanse vastgoedcertificaat dat professionele standaarden en wettelijke naleving garandeert." },
+        { question: "Welke talen spreekt u?", answer: "Ons meertalige team biedt volledige begeleiding in het Engels, Nederlands, Frans, Duits, Fins, Pools, Deens, Hongaars, Zweeds en Noors." },
+        { question: "Hoe lang bent u al aan de Costa del Sol?", answer: "Onze oprichters hebben diepe wortels aan de Costa del Sol, de eerste arriveerde in 1997. Samen brengen we 35+ jaar lokale ervaring." }
+      ]
     },
     ctaSection: {
       heading: "Klaar om Uw Droomwoning te Vinden?",

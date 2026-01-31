@@ -406,6 +406,8 @@ export const fi = {
     meta: { title: "Tietoja Del Sol Prime Homesista | Costa del Sol Kiinteistöasiantuntijat", description: "Tutustu asiantuntijatiimiimme, jolla on yli 35 vuoden kokemus kansainvälisten ostajien auttamisesta löytämään kiinteistöjä Costa del Solilta." },
     cta: { meetTeam: "Tapaa Tiimimme", contactUs: "Ota Yhteyttä" },
     hero: {
+      headline: "Luotettava Kumppanisi Costa del Solin Kiinteistömarkkinoilla",
+      subheadline: "Kolme perustajaa, 35+ vuoden asiantuntemus ja yksi missio: tehdä espanjalaisesta unelma-asunnostasi totta.",
       breadcrumbHome: "Etusivu",
       breadcrumbAbout: "Tietoa Meistä",
       statsYears: "Vuoden Kokemus",
@@ -444,7 +446,8 @@ export const fi = {
         { title: "Reagoiva Tuki", description: "Saatavilla kun meitä eniten tarvitset" },
         { title: "Asiakas-Ensin Lähestymistapa", description: "Tarpeesi ohjaavat jokaista päätöstä" },
         { title: "Läpinäkyvä Prosessi", description: "Ei piilokustannuksia, ei yllätyksiä" }
-      ]
+      ],
+      content: "## Miksi Asiakkaat Valitsevat Meidät\n\nKun etsit unelma-asuntoasi Costa del Solilta, tarvitset kumppanin, joka ymmärtää sekä markkinat että tarpeesi.\n\n### Paikallinen Asiantuntemus\n\nTiimimme on viettänyt yli 40 vuotta yhteensä asuen ja työskennellen Costa del Solilla. Tunnemme jokaisen kaupunginosan, jokaisen kehityshankkeen ja jokaisen mahdollisuuden.\n\n### Kokonaisvaltainen Palvelu\n\nEnsimmäisestä yhteydenotostasi avainten luovutukseen asti olemme mukanasi joka askeleella."
     },
     credentials: {
       heading: "Pätevyytemme",
@@ -459,7 +462,13 @@ export const fi = {
     },
     faq: {
       heading: "Usein Kysytyt Kysymykset",
-      subheading: "Yleisiä kysymyksiä Del Sol Prime Homesista"
+      subheading: "Yleisiä kysymyksiä Del Sol Prime Homesista",
+      items: [
+        { question: "Kuka perusti Del Sol Prime Homesin?", answer: "Del Sol Prime Homesin perustivat Steven Roberts, Cédric Van Hecke ja Hans Beeckman — kolme kokenutta kiinteistöalan ammattilaista, joilla on yhteensä 35+ vuoden kokemus Costa del Solilta." },
+        { question: "Ovatko agenttinne lisensoituja?", answer: "Kyllä, kaikilla agenteillamme on API-lisenssi (Agente de la Propiedad Inmobiliaria), virallinen espanjalainen kiinteistöalan pätevyys, joka takaa ammattimaiset standardit ja lain noudattamisen." },
+        { question: "Mitä kieliä puhutte?", answer: "Monikielinen tiimimme tarjoaa täyden opastuksen englanniksi, hollanniksi, ranskaksi, saksaksi, suomeksi, puolaksi, tanskaksi, unkariksi, ruotsiksi ja norjaksi." },
+        { question: "Kuinka kauan olette olleet Costa del Solilla?", answer: "Perustajillamme on syvät juuret Costa del Solilla, varhaisin saapui vuonna 1997. Yhdessä tuomme 35+ vuoden paikallisen kokemuksen." }
+      ]
     },
     ctaSection: {
       heading: "Valmis Löytämään Unelmiesi Kiinteistön?",

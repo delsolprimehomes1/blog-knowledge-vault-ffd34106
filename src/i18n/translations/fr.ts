@@ -444,6 +444,8 @@ export const fr = {
       contactUs: "Contactez-Nous"
     },
     hero: {
+      headline: "Vos Partenaires de Confiance pour l'Immobilier Costa del Sol",
+      subheadline: "Trois fondateurs, 35+ ans d'expertise et une mission : réaliser vos rêves immobiliers espagnols.",
       breadcrumbHome: "Accueil",
       breadcrumbAbout: "À Propos",
       statsYears: "Années d'Expérience",
@@ -482,7 +484,8 @@ export const fr = {
         { title: "Support Réactif", description: "Disponible quand vous avez le plus besoin de nous" },
         { title: "Approche Client-Premier", description: "Vos besoins guident chaque décision" },
         { title: "Processus Transparent", description: "Pas de frais cachés, pas de surprises" }
-      ]
+      ],
+      content: "## Pourquoi Les Clients Nous Choisissent\n\nLorsqu'il s'agit de trouver la propriété de vos rêves sur la Costa del Sol, vous avez besoin d'un partenaire qui comprend à la fois le marché et vos besoins.\n\n### Expertise Locale\n\nNotre équipe a passé plus de 40 années combinées à vivre et travailler sur la Costa del Sol. Nous connaissons chaque quartier, chaque projet et chaque opportunité.\n\n### Service Complet\n\nDe votre première demande au moment où vous recevez vos clés, nous sommes à vos côtés à chaque étape."
     },
     credentials: {
       heading: "Nos Accréditations",
@@ -497,7 +500,13 @@ export const fr = {
     },
     faq: {
       heading: "Questions Fréquemment Posées",
-      subheading: "Questions courantes sur Del Sol Prime Homes"
+      subheading: "Questions courantes sur Del Sol Prime Homes",
+      items: [
+        { question: "Qui a fondé Del Sol Prime Homes?", answer: "Del Sol Prime Homes a été fondé par Steven Roberts, Cédric Van Hecke et Hans Beeckman — trois professionnels de l'immobilier expérimentés avec 35+ ans d'expérience combinée sur la Costa del Sol." },
+        { question: "Vos agents sont-ils agréés?", answer: "Oui, tous nos agents détiennent la licence API (Agente de la Propiedad Inmobiliaria), le certificat immobilier espagnol officiel garantissant des normes professionnelles et la conformité légale." },
+        { question: "Quelles langues parlez-vous?", answer: "Notre équipe multilingue offre un accompagnement complet en anglais, néerlandais, français, allemand, finnois, polonais, danois, hongrois, suédois et norvégien." },
+        { question: "Depuis combien de temps êtes-vous sur la Costa del Sol?", answer: "Nos fondateurs ont des racines profondes sur la Costa del Sol, le premier étant arrivé en 1997. Ensemble, nous apportons plus de 35 ans d'expérience locale." }
+      ]
     },
     ctaSection: {
       heading: "Prêt à Trouver Votre Propriété de Rêve?",

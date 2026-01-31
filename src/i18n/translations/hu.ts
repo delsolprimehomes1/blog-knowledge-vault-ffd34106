@@ -406,6 +406,8 @@ export const hu = {
     meta: { title: "A Del Sol Prime Homes-ról | Costa del Sol Ingatlanszakértők", description: "Ismerje meg szakértő csapatunkat, több mint 35 év tapasztalattal a nemzetközi vásárlók támogatásában ingatlankeresés során a Costa del Solon." },
     cta: { meetTeam: "Ismerje Meg Csapatunkat", contactUs: "Kapcsolat" },
     hero: {
+      headline: "Megbízható Partnered a Costa del Sol Ingatlanpiacon",
+      subheadline: "Három alapító, 35+ év szakértelem és egy küldetés: spanyol ingatlanálmaid valóra váltása.",
       breadcrumbHome: "Főoldal",
       breadcrumbAbout: "Rólunk",
       statsYears: "Év Tapasztalat",
@@ -444,7 +446,8 @@ export const hu = {
         { title: "Rugalmas Támogatás", description: "Elérhető, amikor a legnagyobb szüksége van ránk" },
         { title: "Ügyfél-Első Megközelítés", description: "Az Ön igényei vezérlik minden döntést" },
         { title: "Átlátható Folyamat", description: "Nincs rejtett díj, nincs meglepetés" }
-      ]
+      ],
+      content: "## Miért Választanak Minket az Ügyfelek\n\nAmikor álmai ingatlanát keresi a Costa del Solon, olyan partnerre van szüksége, aki érti a piacot és az Ön igényeit is.\n\n### Helyi Szakértelem\n\nCsapatunk több mint 40 évet töltött együttesen a Costa del Solon élve és dolgozva. Ismerjük minden környéket, minden projektet és minden lehetőséget.\n\n### Teljes Körű Szolgáltatás\n\nAz első megkeresésétől a kulcsok átvételéig minden lépésnél Önnel vagyunk."
     },
     credentials: {
       heading: "Képesítéseink",
@@ -459,7 +462,13 @@ export const hu = {
     },
     faq: {
       heading: "Gyakran Ismételt Kérdések",
-      subheading: "Gyakori kérdések a Del Sol Prime Homes-ról"
+      subheading: "Gyakori kérdések a Del Sol Prime Homes-ról",
+      items: [
+        { question: "Ki alapította a Del Sol Prime Homes-t?", answer: "A Del Sol Prime Homes-t Steven Roberts, Cédric Van Hecke és Hans Beeckman alapította — három tapasztalt ingatlanszakértő, akik 35+ év együttes tapasztalattal rendelkeznek a Costa del Solon." },
+        { question: "Az ügynökeik engedélyesek?", answer: "Igen, minden ügynökünk rendelkezik API-engedéllyel (Agente de la Propiedad Inmobiliaria), a hivatalos spanyol ingatlan-tanúsítvánnyal, amely garantálja a szakmai színvonalat és a jogi megfelelőséget." },
+        { question: "Milyen nyelveken beszélnek?", answer: "Többnyelvű csapatunk teljes körű útmutatást nyújt angolul, hollandul, franciául, németül, finnül, lengyelül, dánul, magyarul, svédül és norvégul." },
+        { question: "Mióta vannak a Costa del Solon?", answer: "Alapítóinknak mély gyökereik vannak a Costa del Solon, az első 1997-ben érkezett. Együtt 35+ év helyi tapasztalatot hozunk." }
+      ]
     },
     ctaSection: {
       heading: "Készen Áll Álmai Ingatlanának Megtalálására?",

@@ -406,6 +406,8 @@ export const no = {
     meta: { title: "Om Del Sol Prime Homes | Costa del Sol Eiendomseksperter", description: "Bli kjent med vårt ekspertteam med 35+ års erfaring med å hjelpe internasjonale kjøpere finne eiendom på Costa del Sol." },
     cta: { meetTeam: "Møt Vårt Team", contactUs: "Kontakt Oss" },
     hero: {
+      headline: "Din Pålitelige Partner for Costa del Sol Eiendom",
+      subheadline: "Tre grunnleggere, 35+ års ekspertise og ett oppdrag: å gjøre dine spanske eiendomsdrømmer til virkelighet.",
       breadcrumbHome: "Hjem",
       breadcrumbAbout: "Om Oss",
       statsYears: "Års Erfaring",
@@ -444,7 +446,8 @@ export const no = {
         { title: "Responsiv Støtte", description: "Tilgjengelig når du trenger oss mest" },
         { title: "Kunde-Først Tilnærming", description: "Dine behov driver enhver beslutning" },
         { title: "Transparent Prosess", description: "Ingen skjulte gebyrer, ingen overraskelser" }
-      ]
+      ],
+      content: "## Hvorfor Kunder Velger Oss\n\nNår det gjelder å finne drømmeeiendommen din på Costa del Sol, trenger du en partner som forstår både markedet og dine behov.\n\n### Lokal Ekspertise\n\nTeamet vårt har tilbrakt over 40 kombinerte år med å bo og arbeide på Costa del Sol. Vi kjenner hvert nabolag, hvert prosjekt og enhver mulighet.\n\n### Ende-til-Ende Service\n\nFra din første henvendelse til det øyeblikket du mottar nøklene dine, er vi med deg på hvert trinn."
     },
     credentials: {
       heading: "Våre Kvalifikasjoner",
@@ -459,7 +462,13 @@ export const no = {
     },
     faq: {
       heading: "Ofte Stilte Spørsmål",
-      subheading: "Vanlige spørsmål om Del Sol Prime Homes"
+      subheading: "Vanlige spørsmål om Del Sol Prime Homes",
+      items: [
+        { question: "Hvem grunnla Del Sol Prime Homes?", answer: "Del Sol Prime Homes ble grunnlagt av Steven Roberts, Cédric Van Hecke og Hans Beeckman — tre erfarne eiendomsprofesjonelle med 35+ års kombinert erfaring på Costa del Sol." },
+        { question: "Er agentene deres lisensiert?", answer: "Ja, alle våre agenter har API-lisens (Agente de la Propiedad Inmobiliaria), det offisielle spanske eiendomssertifikatet som sikrer profesjonelle standarder og juridisk overholdelse." },
+        { question: "Hvilke språk snakker dere?", answer: "Vårt flerspråklige team tilbyr fullstendig veiledning på engelsk, nederlandsk, fransk, tysk, finsk, polsk, dansk, ungarsk, svensk og norsk." },
+        { question: "Hvor lenge har dere vært på Costa del Sol?", answer: "Grunnleggerne våre har dype røtter på Costa del Sol, den første ankom i 1997. Sammen bidrar vi med 35+ års lokal erfaring." }
+      ]
     },
     ctaSection: {
       heading: "Klar for å Finne Din Drømmeeiendom?",

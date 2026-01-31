@@ -20,9 +20,12 @@ interface AboutFAQProps {
 export const AboutFAQ = ({ faqs }: AboutFAQProps) => {
   const { t } = useTranslation();
   const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
-  const faqSection = aboutUs?.faq as { heading?: string; subheading?: string } | undefined;
+  const faqSection = aboutUs?.faq as { heading?: string; subheading?: string; items?: FAQ[] } | undefined;
 
-  if (!faqs || faqs.length === 0) return null;
+  // Use i18n items first, then fallback to database props
+  const faqItems = faqSection?.items || faqs;
+
+  if (!faqItems || faqItems.length === 0) return null;
 
   return (
     <section className="py-20 bg-prime-50" aria-labelledby="faq-heading">
@@ -47,7 +50,7 @@ export const AboutFAQ = ({ faqs }: AboutFAQProps) => {
           </div>
 
           <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
+            {faqItems.map((faq, index) => (
               <AccordionItem
                 key={index}
                 value={`faq-${index}`}

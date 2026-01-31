@@ -16,7 +16,7 @@ interface Feature {
 export const WhyChooseUs = ({ content }: WhyChooseUsProps) => {
   const { t } = useTranslation();
   const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
-  const whyChoose = aboutUs?.whyChoose as { heading?: string; subheading?: string; features?: Feature[] } | undefined;
+  const whyChoose = aboutUs?.whyChoose as { heading?: string; subheading?: string; features?: Feature[]; content?: string } | undefined;
 
   const parseMarkdown = (markdown: string): string => {
     try {
@@ -84,13 +84,15 @@ export const WhyChooseUs = ({ content }: WhyChooseUsProps) => {
             })}
           </div>
 
-          {/* Markdown content */}
-          <div className="max-w-3xl mx-auto">
-            <div 
-              className="prose prose-lg max-w-none [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_h4]:text-white [&_p]:text-white [&_li]:text-white [&_strong]:text-white [&_a]:text-prime-gold [&_a:hover]:text-prime-gold/80 [&_h2]:text-2xl [&_h3]:text-xl [&_h2]:font-serif [&_h3]:font-serif [&_ul]:list-disc [&_ul]:ml-6"
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-            />
-          </div>
+          {/* Markdown content - use i18n first, then database fallback */}
+          {(whyChoose?.content || content) && (
+            <div className="max-w-3xl mx-auto">
+              <div 
+                className="prose prose-lg max-w-none [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_h4]:text-white [&_p]:text-white [&_li]:text-white [&_strong]:text-white [&_a]:text-prime-gold [&_a:hover]:text-prime-gold/80 [&_h2]:text-2xl [&_h3]:text-xl [&_h2]:font-serif [&_h3]:font-serif [&_ul]:list-disc [&_ul]:ml-6"
+                dangerouslySetInnerHTML={{ __html: parseMarkdown(whyChoose?.content || content) }}
+              />
+            </div>
+          )}
         </motion.div>
       </div>
     </section>

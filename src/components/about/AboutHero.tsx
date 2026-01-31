@@ -19,7 +19,7 @@ export const AboutHero = ({
 }: AboutHeroProps) => {
   const { t, currentLanguage } = useTranslation();
   const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
-  const hero = aboutUs?.hero as { breadcrumbHome?: string; breadcrumbAbout?: string; statsYears?: string; statsClients?: string; statsSatisfaction?: string } | undefined;
+  const hero = aboutUs?.hero as { headline?: string; subheadline?: string; breadcrumbHome?: string; breadcrumbAbout?: string; statsYears?: string; statsClients?: string; statsSatisfaction?: string } | undefined;
 
   const stats = [
     { icon: Award, value: `${yearsInBusiness}+`, label: hero?.statsYears || "Years Experience" },
@@ -56,11 +56,11 @@ export const AboutHero = ({
 
           {/* H1 - Main heading for SEO */}
           <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            {headline}
+            {hero?.headline || headline}
           </h1>
           
           <p className="text-lg md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-            {subheadline}
+            {hero?.subheadline || subheadline}
           </p>
 
           {/* Stats */}

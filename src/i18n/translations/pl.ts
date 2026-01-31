@@ -406,6 +406,8 @@ export const pl = {
     meta: { title: "O Del Sol Prime Homes | Eksperci Nieruchomości Costa del Sol", description: "Poznaj nasz zespół ekspertów z ponad 35-letnim doświadczeniem w pomaganiu międzynarodowym nabywcom w znalezieniu nieruchomości na Costa del Sol." },
     cta: { meetTeam: "Poznaj Nasz Zespół", contactUs: "Skontaktuj się" },
     hero: {
+      headline: "Twój Zaufany Partner na Rynku Nieruchomości Costa del Sol",
+      subheadline: "Trzech założycieli, 35+ lat doświadczenia i jedna misja: urzeczywistnienie Twoich hiszpańskich marzeń o nieruchomości.",
       breadcrumbHome: "Strona Główna",
       breadcrumbAbout: "O Nas",
       statsYears: "Lat Doświadczenia",
@@ -444,7 +446,8 @@ export const pl = {
         { title: "Responsywne Wsparcie", description: "Dostępni, gdy najbardziej nas potrzebujesz" },
         { title: "Podejście Klient-Pierwszy", description: "Twoje potrzeby napędzają każdą decyzję" },
         { title: "Przejrzysty Proces", description: "Brak ukrytych opłat, brak niespodzianek" }
-      ]
+      ],
+      content: "## Dlaczego Klienci Nas Wybierają\n\nGdy szukasz wymarzonej nieruchomości na Costa del Sol, potrzebujesz partnera, który rozumie zarówno rynek, jak i Twoje potrzeby.\n\n### Lokalna Ekspertyza\n\nNasz zespół spędził ponad 40 lat łącznie mieszkając i pracując na Costa del Sol. Znamy każdą dzielnicę, każdy projekt i każdą okazję.\n\n### Kompleksowa Obsługa\n\nOd pierwszego zapytania do momentu otrzymania kluczy jesteśmy z Tobą na każdym kroku."
     },
     credentials: {
       heading: "Nasze Kwalifikacje",
@@ -459,7 +462,13 @@ export const pl = {
     },
     faq: {
       heading: "Często Zadawane Pytania",
-      subheading: "Częste pytania o Del Sol Prime Homes"
+      subheading: "Częste pytania o Del Sol Prime Homes",
+      items: [
+        { question: "Kto założył Del Sol Prime Homes?", answer: "Del Sol Prime Homes zostało założone przez Stevena Robertsa, Cédrica Van Hecke i Hansa Beeckmana — trzech doświadczonych specjalistów od nieruchomości z ponad 35-letnim łącznym doświadczeniem na Costa del Sol." },
+        { question: "Czy Wasi agenci są licencjonowani?", answer: "Tak, wszyscy nasi agenci posiadają licencję API (Agente de la Propiedad Inmobiliaria), oficjalny hiszpański certyfikat nieruchomości gwarantujący profesjonalne standardy i zgodność z prawem." },
+        { question: "Jakimi językami mówicie?", answer: "Nasz wielojęzyczny zespół oferuje pełne wsparcie po angielsku, holendersku, francusku, niemiecku, fińsku, polsku, duńsku, węgiersku, szwedzku i norwesku." },
+        { question: "Jak długo jesteście na Costa del Sol?", answer: "Nasi założyciele mają głębokie korzenie na Costa del Sol, pierwszy z nich przybył w 1997 roku. Razem wnosimy ponad 35 lat lokalnego doświadczenia." }
+      ]
     },
     ctaSection: {
       heading: "Gotowy, by Znaleźć Nieruchomość Marzeń?",

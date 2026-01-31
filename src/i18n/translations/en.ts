@@ -432,6 +432,8 @@ export const en = {
       contactUs: "Contact Us"
     },
     hero: {
+      headline: "Your Trusted Partners in Costa del Sol Real Estate",
+      subheadline: "Three founders, 35+ years of expertise, and one mission: making your Spanish property dreams a reality.",
       breadcrumbHome: "Home",
       breadcrumbAbout: "About Us",
       statsYears: "Years Experience",
@@ -470,7 +472,8 @@ export const en = {
         { title: "Responsive Support", description: "Available when you need us most" },
         { title: "Client-First Approach", description: "Your needs drive every decision" },
         { title: "Transparent Process", description: "No hidden fees, no surprises" }
-      ]
+      ],
+      content: "## Why Clients Choose Us\n\nWhen it comes to finding your dream property on the Costa del Sol, you need a partner who understands both the market and your needs.\n\n### Local Expertise\n\nOur team has spent over 40 combined years living and working on the Costa del Sol. We know every neighborhood, every development, and every opportunity.\n\n### End-to-End Service\n\nFrom your first inquiry to the moment you receive your keys, we're with you every step of the way."
     },
     credentials: {
       heading: "Our Credentials",
@@ -485,7 +488,13 @@ export const en = {
     },
     faq: {
       heading: "Frequently Asked Questions",
-      subheading: "Common questions about Del Sol Prime Homes"
+      subheading: "Common questions about Del Sol Prime Homes",
+      items: [
+        { question: "Who founded Del Sol Prime Homes?", answer: "Del Sol Prime Homes was founded by Steven Roberts, Cédric Van Hecke, and Hans Beeckman — three experienced real estate professionals with 35+ combined years on the Costa del Sol." },
+        { question: "Are your agents licensed?", answer: "Yes, all our agents hold the API (Agente de la Propiedad Inmobiliaria) license, the official Spanish real estate credential ensuring professional standards and legal compliance." },
+        { question: "What languages do you speak?", answer: "Our multilingual team offers full guidance in English, Dutch, French, German, Finnish, Polish, Danish, Hungarian, Swedish, and Norwegian." },
+        { question: "How long have you been in the Costa del Sol?", answer: "Our founders have deep roots in the Costa del Sol, with the earliest arriving in 1997. Together we bring 35+ years of combined local experience." }
+      ]
     },
     ctaSection: {
       heading: "Ready to Find Your Dream Property?",
