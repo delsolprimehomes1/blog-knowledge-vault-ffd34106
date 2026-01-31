@@ -62,6 +62,9 @@ export const propertyFinderFi = {
   pagination: {
     previous: "Edellinen",
     next: "Seuraava",
-    page: "Sivu"
+    page: "Sivu",
+    loadMore: "Lataa Lisää Kiinteistöjä",
+    remaining: "jäljellä",
+    showingAll: "Näytetään kaikki"
   }
 };

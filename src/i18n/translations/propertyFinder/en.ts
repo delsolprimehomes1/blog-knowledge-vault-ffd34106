@@ -62,6 +62,9 @@ export const propertyFinderEn = {
   pagination: {
     previous: "Previous",
     next: "Next",
-    page: "Page"
+    page: "Page",
+    loadMore: "Load More Properties",
+    remaining: "remaining",
+    showingAll: "Showing all"
   }
 };

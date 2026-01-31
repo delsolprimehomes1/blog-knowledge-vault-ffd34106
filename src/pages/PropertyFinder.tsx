@@ -8,7 +8,7 @@ import { PropertyFilters } from "@/components/property/PropertyFilters";
 import { PropertyFinderHreflangTags } from "@/components/PropertyHreflangTags";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Grid3x3, List, MapPin, ChevronLeft, ChevronRight, Building2, TrendingUp, Shield, ArrowUpDown } from "lucide-react";
+import { Grid3x3, List, MapPin, Building2, TrendingUp, Shield, ArrowUpDown } from "lucide-react";
 import { COMPANY_DISPLAY } from "@/constants/company";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,9 +24,12 @@ const PropertyFinder = () => {
   const { t, currentLanguage } = usePropertyFinderTranslation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState("newest");
 
   const validLangCodes = AVAILABLE_LANGUAGES.map(l => l.code as string);
@@ -70,9 +73,13 @@ const PropertyFinder = () => {
       if (data.property) {
         setProperties([data.property]);
         setTotal(1);
+        setHasMore(false);
+        setCurrentQueryId(null);
       } else {
         setProperties(data.properties || []);
         setTotal(data.total || 0);
+        setHasMore((data.properties?.length || 0) < (data.total || 0));
+        setCurrentQueryId(data.queryId || null);
       }
       setPage(pageNum);
 
@@ -104,10 +111,41 @@ const PropertyFinder = () => {
     searchProperties(params, 1);
   };
 
-  const handlePageChange = (newPage: number) => {
-    const params = getInitialParams();
-    searchProperties(params, newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const loadMoreProperties = async () => {
+    if (!hasMore || isLoadingMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const params = getInitialParams();
+      const nextPage = page + 1;
+      
+      const { data, error } = await supabase.functions.invoke("search-properties", {
+        body: {
+          ...params,
+          page: nextPage,
+          queryId: currentQueryId,
+          lang: validCurrentLanguage,
+        },
+      });
+      
+      if (error) throw error;
+      
+      // APPEND to existing properties
+      const newProperties = data.properties || [];
+      setProperties(prev => [...prev, ...newProperties]);
+      setPage(nextPage);
+      setHasMore(properties.length + newProperties.length < total);
+      if (data.queryId) setCurrentQueryId(data.queryId);
+    } catch (error) {
+      console.error("Error loading more properties:", error);
+      toast({
+        title: "Load more failed",
+        description: "Could not load more properties. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   useEffect(() => {
@@ -394,8 +432,8 @@ const PropertyFinder = () => {
               ))}
             </div>
 
-            {/* Premium Pagination */}
-            {total > 20 && (
+            {/* Load More Button */}
+            {hasMore && !isLoading && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -403,60 +441,32 @@ const PropertyFinder = () => {
                 className="flex flex-col items-center gap-4 mt-12"
               >
                 <p className="text-sm text-muted-foreground">
-                  {t.results.showing} {(page - 1) * 20 + 1} - {Math.min(page * 20, total)} {t.results.of} {total.toLocaleString()} {t.results.properties}
+                  {t.results.showing} {properties.length} {t.results.of} {total.toLocaleString()} {t.results.properties}
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page === 1}
-                    className="rounded-xl px-5 py-2 border-border/50 hover:border-primary hover:bg-primary/5 transition-all duration-300 disabled:opacity-50"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    {t.pagination.previous}
-                  </Button>
-                  
-                  <div className="flex items-center gap-1 px-2">
-                    {[...Array(Math.min(5, Math.ceil(total / 20)))].map((_, i) => {
-                      const pageNum = i + 1;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-10 h-10 rounded-xl font-medium transition-all duration-300 ${
-                            page === pageNum
-                              ? "bg-gradient-to-r from-primary to-amber-600 text-primary-foreground shadow-lg shadow-primary/25"
-                              : "bg-white border border-border/50 text-foreground hover:border-primary hover:bg-primary/5"
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    {Math.ceil(total / 20) > 5 && (
-                      <>
-                        <span className="text-muted-foreground px-2">...</span>
-                        <button
-                          onClick={() => handlePageChange(Math.ceil(total / 20))}
-                          className="w-10 h-10 rounded-xl font-medium bg-white border border-border/50 text-foreground hover:border-primary hover:bg-primary/5 transition-all duration-300"
-                        >
-                          {Math.ceil(total / 20)}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= Math.ceil(total / 20)}
-                    className="rounded-xl px-5 py-2 border-border/50 hover:border-primary hover:bg-primary/5 transition-all duration-300 disabled:opacity-50"
-                  >
-                    {t.pagination.next}
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
+                <Button
+                  onClick={loadMoreProperties}
+                  disabled={isLoadingMore}
+                  className="rounded-xl px-8 py-3 bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
+                >
+                  {isLoadingMore ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      {t.filters.loading}
+                    </span>
+                  ) : (
+                    `${t.pagination.loadMore} (${(total - properties.length).toLocaleString()} ${t.pagination.remaining})`
+                  )}
+                </Button>
               </motion.div>
+            )}
+
+            {/* All Loaded State */}
+            {!hasMore && properties.length > 0 && (
+              <div className="text-center mt-12">
+                <p className="text-sm text-muted-foreground">
+                  ✓ {t.pagination.showingAll} {properties.length.toLocaleString()} {t.results.properties}
+                </p>
+              </div>
             )}
           </>
         )}

@@ -62,6 +62,9 @@ export const propertyFinderPl = {
   pagination: {
     previous: "Poprzednia",
     next: "Następna",
-    page: "Strona"
+    page: "Strona",
+    loadMore: "Załaduj Więcej Nieruchomości",
+    remaining: "pozostało",
+    showingAll: "Wyświetlanie wszystkich"
   }
 };

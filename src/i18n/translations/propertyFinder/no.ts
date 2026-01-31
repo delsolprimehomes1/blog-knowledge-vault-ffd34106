@@ -62,6 +62,9 @@ export const propertyFinderNo = {
   pagination: {
     previous: "Forrige",
     next: "Neste",
-    page: "Side"
+    page: "Side",
+    loadMore: "Last Flere Eiendommer",
+    remaining: "gjenstår",
+    showingAll: "Viser alle"
   }
 };

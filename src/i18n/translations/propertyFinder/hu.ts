@@ -62,6 +62,9 @@ export const propertyFinderHu = {
   pagination: {
     previous: "Előző",
     next: "Következő",
-    page: "Oldal"
+    page: "Oldal",
+    loadMore: "További Ingatlanok Betöltése",
+    remaining: "maradt",
+    showingAll: "Összes megjelenítése"
   }
 };

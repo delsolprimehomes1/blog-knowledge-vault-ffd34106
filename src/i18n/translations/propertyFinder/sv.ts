@@ -62,6 +62,9 @@ export const propertyFinderSv = {
   pagination: {
     previous: "Föregående",
     next: "Nästa",
-    page: "Sida"
+    page: "Sida",
+    loadMore: "Ladda Fler Fastigheter",
+    remaining: "kvar",
+    showingAll: "Visar alla"
   }
 };

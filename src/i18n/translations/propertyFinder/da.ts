@@ -62,6 +62,9 @@ export const propertyFinderDa = {
   pagination: {
     previous: "Forrige",
     next: "Næste",
-    page: "Side"
+    page: "Side",
+    loadMore: "Indlæs Flere Ejendomme",
+    remaining: "tilbage",
+    showingAll: "Viser alle"
   }
 };

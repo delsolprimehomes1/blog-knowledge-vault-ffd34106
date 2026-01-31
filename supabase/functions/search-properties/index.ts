@@ -149,6 +149,7 @@ async function callProxySearch(filters: any, langNum: number, limit: number, pag
   return {
     properties: data.Property || data.properties || [],
     total: data.QueryInfo?.PropertyCount || data.total || 0,
+    queryId: data.QueryInfo?.QueryId || null,
   };
 }
 
@@ -175,11 +176,13 @@ serve(async (req) => {
 
     let rawProperties: any[] = [];
     let total = 0;
+    let queryId: string | null = null;
 
     // Call proxy server
     const result = await callProxySearch(effectiveFilters, langNum, limit, page);
     rawProperties = result.properties;
     total = result.total;
+    queryId = result.queryId;
     
     // Filter to residential only and normalize
     const residentialProperties = rawProperties.filter(isResidentialProperty);
@@ -193,6 +196,7 @@ serve(async (req) => {
         total: total, // Use QueryInfo.PropertyCount from API, not filtered array length
         page,
         pageSize: limit,
+        queryId: queryId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
