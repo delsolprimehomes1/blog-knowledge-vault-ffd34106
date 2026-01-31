@@ -1,87 +1,179 @@
 
-# Update Property Search Price Defaults
+# Fix Property Pagination - Show All 421 Properties
 
-## Current Issue
-The URL shows `priceMin=500000&newDevs=only` from a previous session. These URL parameters override any defaults since `getInitialParams()` reads from URL search params.
+## Problem Analysis
 
-## Required Changes
+The property search has mismatched pagination:
+- **Edge Function**: Requests `pageSize: 500` from the API
+- **Frontend UI**: Displays pagination assuming 20 items per page
+- **Result**: Only showing the first batch of properties, no way to see all 421
 
-### 1. Update PRICE_OPTIONS in PropertyFilters.tsx (lines 19-33)
+The current pagination buttons exist but are broken because:
+1. They calculate pages based on 20-item pages
+2. Clicking "Next" triggers a new API call that **replaces** all properties instead of **appending**
+3. The API is already returning all properties in one 500-item page, but they're all being displayed
 
-**Current:**
+After reviewing the code, the actual issue is that the frontend is displaying all properties from the response array. The pagination is purely visual but broken. Users should be able to see all 421 properties either by:
+- Option A: "Load More" button (progressive loading)
+- Option B: Display all properties at once (simple fix)
+
+Since we're already fetching up to 500 properties per request and the API total is 421, we can display all at once.
+
+---
+
+## Changes Overview
+
+### 1. Edge Function: Return QueryId for Multi-Page Support
+
+**File**: `supabase/functions/search-properties/index.ts`
+
+Capture and return `QueryId` from API response for future pagination:
+
 ```javascript
-const PRICE_OPTIONS = [
-  { label: "Any", value: "" },
-  { label: "€50,000", value: "50000" },
-  { label: "€100,000", value: "100000" },
-  { label: "€150,000", value: "150000" },
-  { label: "€200,000", value: "200000" },
-  { label: "€250,000", value: "250000" },
-  { label: "€300,000", value: "300000" },
-  { label: "€400,000", value: "400000" },
-  { label: "€500,000", value: "500000" },
-  { label: "€750,000", value: "750000" },
-  { label: "€1,000,000", value: "1000000" },
-  { label: "€2,000,000", value: "2000000" },
-  { label: "€5,000,000", value: "5000000" },
-];
-```
+// In callProxySearch function, also return queryId
+return {
+  properties: data.Property || data.properties || [],
+  total: data.QueryInfo?.PropertyCount || data.total || 0,
+  queryId: data.QueryInfo?.QueryId || null,
+};
 
-**Updated:**
-```javascript
-const PRICE_OPTIONS = [
-  { label: "Any", value: "" },
-  { label: "€100,000", value: "100000" },
-  { label: "€180,000", value: "180000" },
-  { label: "€250,000", value: "250000" },
-  { label: "€300,000", value: "300000" },
-  { label: "€400,000", value: "400000" },
-  { label: "€500,000", value: "500000" },
-  { label: "€750,000", value: "750000" },
-  { label: "€1,000,000", value: "1000000" },
-  { label: "€2,000,000", value: "2000000" },
-  { label: "€3,000,000", value: "3000000" },
-  { label: "€5,000,000", value: "5000000" },
-  { label: "€10,000,000", value: "10000000" },
-];
+// In response, include queryId
+return new Response(
+  JSON.stringify({
+    properties,
+    total: total,
+    page,
+    pageSize: limit,
+    queryId: queryId,
+  }),
+  ...
+);
 ```
 
 ---
 
-### 2. Update PRICE_OPTIONS in QuickSearch.tsx (lines 10-24)
+### 2. Frontend: Implement "Load More" Button
 
-Same changes as above - add €180,000 and €10,000,000 options, update the range.
+**File**: `src/pages/PropertyFinder.tsx`
+
+Replace the broken page-based pagination with a "Load More" button that appends results:
+
+#### State Changes:
+```javascript
+const [properties, setProperties] = useState<Property[]>([]);
+const [isLoadingMore, setIsLoadingMore] = useState(false);
+const [hasMore, setHasMore] = useState(false);
+const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
+```
+
+#### New loadMore Function:
+```javascript
+const loadMoreProperties = async () => {
+  if (!hasMore || isLoadingMore) return;
+  
+  setIsLoadingMore(true);
+  try {
+    const params = getInitialParams();
+    const nextPage = page + 1;
+    
+    const { data, error } = await supabase.functions.invoke("search-properties", {
+      body: {
+        ...params,
+        page: nextPage,
+        queryId: currentQueryId,
+        lang: validCurrentLanguage,
+      },
+    });
+    
+    if (error) throw error;
+    
+    // APPEND to existing properties
+    setProperties(prev => [...prev, ...(data.properties || [])]);
+    setPage(nextPage);
+    setHasMore(properties.length + data.properties.length < total);
+  } catch (error) {
+    console.error("Error loading more properties:", error);
+  } finally {
+    setIsLoadingMore(false);
+  }
+};
+```
+
+#### Update searchProperties to Set hasMore:
+```javascript
+const searchProperties = async (params: PropertySearchParams, pageNum: number = 1) => {
+  // ... existing code ...
+  
+  // After setting properties:
+  setHasMore(data.properties.length < data.total);
+  setCurrentQueryId(data.queryId || null);
+};
+```
 
 ---
 
-### 3. Edge Function: Apply Default Price Range (search-properties/index.ts)
+### 3. Replace Pagination UI with "Load More" Button
 
-Add default prices at the API level when not specified by user:
+**File**: `src/pages/PropertyFinder.tsx`
 
-**Current (lines 116-119):**
-```javascript
-if (filters.location) proxyParams.location = filters.location;
-if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
-if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
-if (filters.priceMax) proxyParams.maxPrice = String(filters.priceMax);
-```
+Replace the pagination section (lines 397-460) with:
 
-**Updated:**
-```javascript
-if (filters.location) proxyParams.location = filters.location;
-if (filters.sublocation) proxyParams.sublocation = filters.sublocation;
-// Default price range: €180,000 - €10,000,000
-proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '180000';
-proxyParams.maxPrice = filters.priceMax ? String(filters.priceMax) : '10000000';
+```jsx
+{/* Load More Button */}
+{hasMore && !isLoading && (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3 }}
+    className="flex flex-col items-center gap-4 mt-12"
+  >
+    <p className="text-sm text-muted-foreground">
+      {t.results.showing} {properties.length} {t.results.of} {total.toLocaleString()} {t.results.properties}
+    </p>
+    <Button
+      onClick={loadMoreProperties}
+      disabled={isLoadingMore}
+      className="rounded-xl px-8 py-3 bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
+    >
+      {isLoadingMore ? (
+        <span className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          Loading...
+        </span>
+      ) : (
+        `Load More Properties (${total - properties.length} remaining)`
+      )}
+    </Button>
+  </motion.div>
+)}
+
+{/* All Loaded State */}
+{!hasMore && properties.length > 0 && (
+  <div className="text-center mt-12">
+    <p className="text-sm text-muted-foreground">
+      ✓ Showing all {properties.length.toLocaleString()} {t.results.properties}
+    </p>
+  </div>
+)}
 ```
 
 ---
 
-### 4. Clear Cached URL State
+### 4. Add Translation Keys for Load More
 
-The user must navigate to a clean URL to clear the old parameters:
-- Navigate to `/en/properties` (without query params)
-- Or click "Clear All" / "Reset" button in filters
+**File**: `src/i18n/translations/propertyFinder/en.ts` (and all language files)
+
+Add to `pagination` section:
+```javascript
+pagination: {
+  previous: "Previous",
+  next: "Next",
+  page: "Page",
+  loadMore: "Load More Properties",
+  remaining: "remaining",
+  showingAll: "Showing all"
+}
+```
 
 ---
 
@@ -89,13 +181,17 @@ The user must navigate to a clean URL to clear the old parameters:
 
 | File | Change |
 |------|--------|
-| `PropertyFilters.tsx` | Add €180K and €10M options; remove €50K, €150K, €200K |
-| `QuickSearch.tsx` | Same PRICE_OPTIONS update |
-| `search-properties/index.ts` | Default minPrice=180000, maxPrice=10000000 |
+| `search-properties/index.ts` | Return queryId for pagination continuity |
+| `PropertyFinder.tsx` | Add Load More logic, replace page navigation |
+| `src/i18n/translations/propertyFinder/*.ts` | Add loadMore translation keys |
+
+---
 
 ## Expected Behavior After Changes
 
-1. **Default search** (no filters): €180,000 - €10,000,000
-2. **Price dropdown**: Shows €180K as a key option, goes up to €10M
-3. **API request**: Always includes `minPrice=180000&maxPrice=10000000` unless user specifies different values
-4. **Property count**: Should increase to match API's full residential inventory within price range
+1. **Initial load** shows first batch of properties (up to 500)
+2. **"Load More" button** appears if total > loaded count
+3. Clicking "Load More" **appends** more properties to the list
+4. **Progress indicator** shows "Showing X of Y properties"
+5. When all loaded, shows "Showing all 421 properties"
+6. Users can now access all 421 available properties
