@@ -35,7 +35,7 @@ function normalizeProperty(raw: any) {
   return {
     reference: raw.Reference || '',
     price: parseInt(raw.Price) || 0,
-    priceMax: raw.PriceMax ? parseInt(raw.PriceMax) : undefined,
+    priceMax: raw.PriceTo ? parseInt(raw.PriceTo) : undefined,
     currency: raw.Currency || 'EUR',
     location: raw.Location || '',
     province: raw.Province || '',
