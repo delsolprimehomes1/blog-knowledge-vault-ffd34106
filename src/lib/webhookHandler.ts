@@ -90,7 +90,7 @@ export function detectPageType(pathname: string): string {
   if (pathWithoutLang.startsWith('/buyers-guide')) return 'buyers_guide';
   if (pathWithoutLang.startsWith('/glossary')) return 'glossary';
   if (pathWithoutLang.startsWith('/contact')) return 'contact_page';
-  if (pathWithoutLang.startsWith('/properties/')) return 'property_detail';
+  if (pathWithoutLang.startsWith('/property/')) return 'property_detail';
   if (pathWithoutLang.startsWith('/compare')) return 'comparison_page';
   if (pathWithoutLang.startsWith('/landing')) return 'landing_page';
   

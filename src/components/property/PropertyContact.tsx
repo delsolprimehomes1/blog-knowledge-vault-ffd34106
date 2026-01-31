@@ -227,7 +227,9 @@ export const PropertyContact = ({ reference, price, propertyType }: PropertyCont
             <Button 
               variant="outline" 
               className="h-10 md:h-12 text-sm font-medium rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all"
-              onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
+              onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat', {
+                detail: { propertyRef: reference, propertyPrice: price, propertyType }
+              }))}
             >
               <Calendar className="w-4 h-4 mr-1.5 md:mr-2" />
               Schedule
@@ -287,7 +289,9 @@ export const PropertyContactMobile = ({ reference, price }: { reference: string;
         <div className="flex flex-1 gap-2 sm:gap-3">
           <Button 
             className="flex-1 h-12 sm:h-14 font-semibold rounded-xl text-sm sm:text-base touch-manipulation"
-            onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
+            onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat', {
+              detail: { propertyRef: reference, propertyPrice: price }
+            }))}
           >
             <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
             Inquire

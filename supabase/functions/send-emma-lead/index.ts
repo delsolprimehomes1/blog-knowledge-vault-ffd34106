@@ -72,6 +72,10 @@ interface LeadPayload {
     lead_segment: string;
     initial_lead_score: number;
     conversation_duration: string;
+    // Property context fields
+    property_ref?: string | null;
+    property_type?: string | null;
+    property_price?: string | null;
   };
   conversation_id?: string;
   // NEW: Complete conversation transcript
@@ -190,7 +194,7 @@ async function registerInCRM(
   supabaseKey: string,
   payload: LeadPayload
 ): Promise<{ success: boolean; leadId?: string; error?: string }> {
-  const crmPayload = {
+const crmPayload = {
     // Contact info
     firstName: payload.contact_info.first_name,
     lastName: payload.contact_info.last_name,
@@ -225,6 +229,13 @@ async function registerInCRM(
       : (payload.property_criteria?.property_type || ''),
     propertyPurpose: payload.property_criteria?.property_purpose || '',
     timeframe: payload.property_criteria?.timeframe || '',
+    
+    // Property context from page (for leads from property detail pages)
+    propertyRef: payload.page_context?.property_ref || null,
+    // Format interest for agent visibility - shows which property user was viewing
+    interest: payload.page_context?.property_ref 
+      ? `Property ${payload.page_context.property_ref}` 
+      : undefined,
   };
 
   console.log('📤 Registering Emma lead in CRM:', crmPayload.firstName, crmPayload.lastName);

@@ -17,10 +17,17 @@ interface Message {
     timestamp: Date;
 }
 
+interface PropertyContext {
+    propertyRef?: string;
+    propertyPrice?: string;
+    propertyType?: string;
+}
+
 interface EmmaChatProps {
     isOpen: boolean;
     onClose: () => void;
     language: string; // CRITICAL: Emma MUST speak this language
+    propertyContext?: PropertyContext | null; // Context passed from property pages
 }
 
 interface ChatResponse {
@@ -88,7 +95,7 @@ const invokeWithRetry = async <T,>(
     return { data: null, error: lastError };
 };
 
-const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
+const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language, propertyContext }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -107,6 +114,9 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
         pageTitle: string;
         referrer: string;
         openedAt: number;
+        propertyRef?: string;
+        propertyPrice?: string;
+        propertyType?: string;
     } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -162,14 +172,25 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
             const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             setConversationId(convId);
 
-            // Capture page context when Emma opens
+            // Extract property ref from URL if on property page and not passed via props
+            const extractPropertyRefFromUrl = (): string | null => {
+                const match = window.location.pathname.match(/\/property\/([A-Z0-9]+)/i);
+                return match ? match[1] : null;
+            };
+
+            // Capture page context when Emma opens (including property context)
+            const urlPropertyRef = extractPropertyRefFromUrl();
             setEmmaOpenedContext({
                 pageType: detectPageType(window.location.pathname),
                 language: detectLanguage(window.location.pathname),
                 pageUrl: window.location.href,
                 pageTitle: document.title,
                 referrer: document.referrer || 'Direct',
-                openedAt: Date.now()
+                openedAt: Date.now(),
+                // Use passed propertyContext first, fallback to URL extraction
+                propertyRef: propertyContext?.propertyRef || urlPropertyRef || undefined,
+                propertyPrice: propertyContext?.propertyPrice || undefined,
+                propertyType: propertyContext?.propertyType || undefined
             });
 
             // Add initial greeting in CORRECT language
@@ -183,8 +204,11 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
 
             console.log(`🌍 Emma initialized in ${language.toUpperCase()} language`);
             console.log(`📍 Emma opened on: ${detectPageType(window.location.pathname)} (${detectLanguage(window.location.pathname)})`);
+            if (propertyContext?.propertyRef || urlPropertyRef) {
+                console.log(`🏠 Property context: ref=${propertyContext?.propertyRef || urlPropertyRef}, price=${propertyContext?.propertyPrice}, type=${propertyContext?.propertyType}`);
+            }
         }
-    }, [isOpen, language]);
+    }, [isOpen, language, propertyContext]);
 
     useEffect(() => {
         scrollToBottom();
@@ -1271,7 +1295,7 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     conversation_status: conversationStatus,
                     exit_point: exitPoint
                 },
-                // COMPLETE: Page context with all 10 fields for GHL
+                // COMPLETE: Page context with all fields for GHL + property ref
                 page_context: {
                     page_type: pageContext.pageType,
                     page_url: pageContext.pageUrl,
@@ -1279,13 +1303,19 @@ const EmmaChat: React.FC<EmmaChatProps> = ({ isOpen, onClose, language }) => {
                     referrer: pageContext.referrer,
                     language: pageContext.language,
                     lead_source: 'Emma Chatbot',
-                    lead_source_detail: `emma_chat_${pageContext.language}`,
+                    lead_source_detail: pageContext.propertyRef 
+                        ? `emma_property_${pageContext.propertyRef}_${pageContext.language}`
+                        : `emma_chat_${pageContext.language}`,
                     lead_segment: calculateLeadSegment(
                         fields.timeframe || 'Not sure',
                         fields.purpose || fields.property_purpose || 'General'
                     ),
                     initial_lead_score: fields.intake_complete ? 25 : (fields.phone || fields.phone_number ? 20 : 15),
-                    conversation_duration: conversationDuration
+                    conversation_duration: conversationDuration,
+                    // Property context fields for CRM
+                    property_ref: pageContext.propertyRef || null,
+                    property_type: pageContext.propertyType || null,
+                    property_price: pageContext.propertyPrice || null
                 },
                 // NEW: Complete conversation transcript (all messages)
                 conversation_transcript: conversationTranscript

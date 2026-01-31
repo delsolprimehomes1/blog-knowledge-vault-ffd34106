@@ -8,10 +8,25 @@ interface BlogEmmaChatProps {
 
 const BlogEmmaChat: React.FC<BlogEmmaChatProps> = ({ language }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [propertyContext, setPropertyContext] = useState<{
+    propertyRef?: string;
+    propertyPrice?: string;
+    propertyType?: string;
+  } | null>(null);
   
   // Listen for external open triggers (from CTA buttons, etc.)
   useEffect(() => {
-    const handleOpenChatbot = () => {
+    const handleOpenChatbot = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      // Capture property context if passed from property page
+      if (customEvent.detail) {
+        setPropertyContext({
+          propertyRef: customEvent.detail.propertyRef,
+          propertyPrice: customEvent.detail.propertyPrice,
+          propertyType: customEvent.detail.propertyType
+        });
+        console.log('📍 BlogEmmaChat: Property context received:', customEvent.detail);
+      }
       setIsOpen(true);
     };
     
@@ -55,8 +70,12 @@ const BlogEmmaChat: React.FC<BlogEmmaChatProps> = ({ language }) => {
       {/* Emma Chat Component - Same as landing pages */}
       <EmmaChat 
         isOpen={isOpen} 
-        onClose={() => setIsOpen(false)} 
-        language={language} 
+        onClose={() => {
+          setIsOpen(false);
+          setPropertyContext(null); // Clear context on close
+        }} 
+        language={language}
+        propertyContext={propertyContext}
       />
     </>
   );
