@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Check, MessageCircle } from "lucide-react";
+import { Volume2, VolumeX, Check, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 import { getWelcomeBackVideoUrl, RETARGETING_VIDEO_THUMBNAIL } from "@/config/retargetingWelcomeBackVideos";
@@ -13,7 +13,7 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
   const t = getRetargetingTranslations(language);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
   const videoUrl = getWelcomeBackVideoUrl(language);
 
@@ -35,18 +35,16 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
     playVideo();
   }, []);
 
-  const togglePlayPause = () => {
+  const toggleSound = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    setHasInteracted(true);
-
-    if (video.paused) {
-      video.play();
-      setIsPlaying(true);
+    if (video.muted) {
+      video.muted = false;
+      setIsMuted(false);
     } else {
-      video.pause();
-      setIsPlaying(false);
+      video.muted = true;
+      setIsMuted(true);
     }
   };
 
@@ -96,48 +94,31 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
             preload="auto"
           />
 
-          {/* Modern Creative Play Button Overlay */}
+          {/* Sound Toggle Button - Bottom Right Corner */}
           <button
-            onClick={togglePlayPause}
-            className="absolute inset-0 flex items-center justify-center cursor-pointer group"
+            onClick={toggleSound}
+            className="absolute bottom-4 right-4 z-10 flex items-center gap-2 
+              bg-white/90 backdrop-blur-md rounded-full 
+              px-4 py-2.5 shadow-lg
+              hover:bg-white hover:scale-105
+              transition-all duration-300 ease-out
+              border border-white/50"
           >
-            {/* Visible until user interacts or when paused */}
-            <div className={`relative transition-all duration-500 ${isPlaying && hasInteracted ? 'opacity-0 scale-75' : 'opacity-100 scale-100'}`}>
-              
-              {/* Outer pulsing ring */}
-              <motion.div
-                animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute w-24 h-24 md:w-32 md:h-32 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 rounded-full bg-white/30"
-              />
-              
-              {/* Secondary glow ring */}
-              <motion.div
-                animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.1, 0.3] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                className="absolute w-28 h-28 md:w-36 md:h-36 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 rounded-full bg-landing-gold/20"
-              />
-              
-              {/* Main play button with frosted glass effect */}
-              <div className="relative w-20 h-20 md:w-28 md:h-28 rounded-full 
-                bg-gradient-to-br from-white/95 via-white/90 to-white/80 
-                backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.25)] 
-                flex items-center justify-center 
-                group-hover:scale-110 group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.35)]
-                transition-all duration-300 ease-out
-                border border-white/50"
-              >
-                {/* Inner gradient accent */}
-                <div className="absolute inset-1 rounded-full bg-gradient-to-br from-landing-gold/10 to-transparent" />
-                
-                {/* Play/Pause icon */}
-                {isPlaying ? (
-                  <Pause className="w-8 h-8 md:w-10 md:h-10 text-landing-navy relative z-10" />
-                ) : (
-                  <Play className="w-8 h-8 md:w-10 md:h-10 text-landing-navy ml-1 relative z-10" />
-                )}
-              </div>
-            </div>
+            {isMuted ? (
+              <>
+                <VolumeX className="w-5 h-5 text-landing-navy" />
+                <span className="text-sm font-medium text-landing-navy">
+                  {t.videoUnmuteButton || "Click for sound"}
+                </span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-5 h-5 text-landing-gold" />
+                <span className="text-sm font-medium text-landing-navy">
+                  {t.videoMuteButton || "Sound on"}
+                </span>
+              </>
+            )}
           </button>
         </motion.div>
 
