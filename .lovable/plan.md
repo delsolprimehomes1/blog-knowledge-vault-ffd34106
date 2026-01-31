@@ -1,93 +1,140 @@
 
-# Fix Desktop Navigation Dropdown Positioning
+# Fix Reference Search in Property Finder
 
-## Problem Identified
+## Problem
 
-The navigation dropdown menus are appearing offset to the right instead of directly below the selected menu item. This happens due to two issues in the current implementation:
+When a user searches by property reference (e.g., "R4922596") using the Advanced Filters, the search returns ALL properties (6,933) instead of filtering to just that one property.
 
-1. **Shared Layout Animation**: The `layoutId="active"` prop causes Framer Motion to animate the dropdown container between menu items, creating a "sliding" effect that makes the menu appear to jump to the right
-2. **Centering Miscalculation**: The current approach centers the dropdown relative to the menu item text, but with variable-width dropdown content, this causes visual misalignment
+## Root Cause
+
+The issue is in the `search-properties` edge function. Currently:
+
+1. The frontend correctly passes the reference parameter to the edge function
+2. The edge function passes the reference to the proxy `/search` endpoint
+3. **The proxy's `/search` endpoint ignores the reference parameter** - it only supports bulk property filtering, not single-property lookups
+
+The proxy server has a **separate endpoint** `/property/:reference` that works for reference lookups (confirmed by user: `curl http://localhost:3000/property/R4922596` works).
 
 ## Solution
 
-Remove the problematic `layoutId` animation and adjust the positioning to keep dropdowns directly below their trigger items, making navigation smoother and more intuitive.
+Modify the `search-properties` edge function to detect when a reference is provided and use the `/property/:reference` endpoint instead of `/search`.
 
 ## Technical Changes
 
-### File: `src/components/ui/navbar-menu.tsx`
+### File: `supabase/functions/search-properties/index.ts`
 
-**Change 1: Remove `layoutId` from dropdown container (Line 45-48)**
+**Change 1: Add a new function to call the property details endpoint**
 
-The `layoutId="active"` causes the dropdown to animate/slide between positions when switching menu items. Removing it ensures each dropdown appears independently below its trigger.
+Reuse the existing pattern from `get-property-details` function to call `/property/:reference`:
 
 ```text
-Before:
-<motion.div
-  transition={transition}
-  layoutId="active"    <-- REMOVE THIS
-  className="bg-white rounded-2xl..."
->
-
-After:
-<motion.div
-  transition={transition}
-  className="bg-white rounded-2xl..."
->
+// Add function to call proxy for single property by reference
+async function callProxyPropertyByReference(reference: string, langNum: number): Promise<any> {
+  const requestUrl = `${PROXY_BASE_URL}/property/${encodeURIComponent(reference)}?lang=${langNum}`;
+  
+  console.log('🔄 Calling Proxy Server (GET) - /property/:reference');
+  console.log('📤 Request URL:', requestUrl);
+  
+  const response = await fetch(requestUrl, { method: 'GET' });
+  
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null; // Property not found
+    }
+    throw new Error(`Proxy error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  // Extract property from various response formats
+  return data.Property || data.property || (data.Reference ? data : null);
+}
 ```
 
-**Change 2: Keep dropdown anchored to left edge instead of center (Line 41)**
+**Change 2: Update the main serve handler to check for reference first**
 
-Currently uses `left-1/2 -translate-x-1/2` which centers the dropdown. For the Explore menu (which is wide), this causes overflow to the right. Change to anchor from the left edge for consistent positioning.
+Before calling the general search, check if `filters.reference` is provided:
 
 ```text
-Before:
-className="absolute top-full left-1/2 -translate-x-1/2 z-[60]"
-
-After:
-className="absolute top-full left-0 z-[60]"
+serve(async (req) => {
+  // ... CORS handling ...
+  
+  try {
+    const body = await req.json();
+    const { lang = 'en', page = 1, limit = 500, ...filters } = body;
+    const langNum = LANGUAGE_MAP[lang] || 1;
+    
+    // NEW: If reference is provided, use property lookup endpoint
+    if (filters.reference && filters.reference.trim()) {
+      console.log('🔍 Reference search detected, using /property/:reference endpoint');
+      const rawProperty = await callProxyPropertyByReference(filters.reference.trim(), langNum);
+      
+      if (rawProperty) {
+        // Verify it's a residential property
+        if (isResidentialProperty(rawProperty)) {
+          const property = normalizeProperty(rawProperty);
+          return new Response(JSON.stringify({
+            properties: [property],
+            total: 1,
+            page: 1,
+            pageSize: 1,
+            queryId: null,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+      
+      // Reference not found or not residential
+      return new Response(JSON.stringify({
+        properties: [],
+        total: 0,
+        page: 1,
+        pageSize: 0,
+        queryId: null,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    
+    // Existing search logic continues here...
+  }
+});
 ```
 
-**Note**: This anchors dropdowns to the left edge of each menu item, which works well for all menus. An alternative is to use `left-1/2 -translate-x-1/4` for a slight left offset, but left-aligned is more predictable.
-
-## Visual Comparison
+## Flow Diagram
 
 ```text
-BEFORE (Current Behavior):
-+-------+-------+---------+-------+
-|Explore| Learn | Compare | About |
-+-------+-------+---------+-------+
-              |
-              v
-        +--------------+
-        | Dropdown     |  <-- Appears offset to right
-        | slides when  |
-        | switching    |
-        +--------------+
-
-
-AFTER (Fixed Behavior):
-+-------+-------+---------+-------+
-|Explore| Learn | Compare | About |
-+-------+-------+---------+-------+
-|               |
-v               v
-+---------+  +------+
-| Explore |  | Learn|  <-- Each appears directly below
-| dropdown|  | menu |
-+---------+  +------+
+User enters "R4922596" in Reference field
+                    │
+                    ▼
+        PropertyFilters.handleSearch()
+        builds params: { reference: "R4922596", ... }
+                    │
+                    ▼
+        PropertyFinder.searchProperties()
+        calls edge function with body
+                    │
+                    ▼
+     search-properties edge function
+                    │
+          ┌─────────┴─────────┐
+          │                   │
+   reference provided?    No reference?
+          │                   │
+          ▼                   ▼
+   /property/R4922596     /search (bulk)
+          │                   │
+          ▼                   ▼
+     Return 1 property   Return all matches
 ```
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/ui/navbar-menu.tsx` | Remove `layoutId`, adjust positioning |
+| `supabase/functions/search-properties/index.ts` | Add reference lookup logic before general search |
 
 ## Expected Result
 
-After this fix:
-- Hovering "Explore" shows dropdown directly below "Explore"
-- Hovering "Learn" shows dropdown directly below "Learn"
-- No sliding/jumping animation between dropdowns
-- Dropdowns stay visible when moving mouse down to select options
-- The invisible "bridge" element (already present) maintains hover continuity
+After the fix:
+- User types "R4922596" in the Reference field
+- Clicks Search
+- API calls `/property/R4922596` endpoint instead of `/search`
+- Returns exactly 1 property (or 0 if not found)
+- UI displays just that property
