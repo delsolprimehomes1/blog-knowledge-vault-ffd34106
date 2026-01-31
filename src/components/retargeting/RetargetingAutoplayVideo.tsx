@@ -101,12 +101,16 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
           {/* Sound Toggle Button - Bottom Right Corner */}
           <button
             onClick={toggleSound}
-            className="absolute bottom-4 right-4 z-10 flex items-center gap-2 
-              bg-white/90 backdrop-blur-md rounded-full 
-              px-4 py-2.5 shadow-lg
+            className={`absolute z-10 flex items-center justify-center
+              bg-white/90 backdrop-blur-md rounded-full shadow-lg
               hover:bg-white hover:scale-105
               transition-all duration-300 ease-out
-              border border-white/50"
+              border border-white/50
+              ${isMuted 
+                ? 'bottom-4 right-4 px-4 py-2.5 gap-2'
+                : 'bottom-4 left-4 w-8 h-8'
+              }`}
+            aria-label={isMuted ? "Enable sound" : "Mute sound"}
           >
             {isMuted ? (
               <>
@@ -116,12 +120,7 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
                 </span>
               </>
             ) : (
-              <>
-                <Volume2 className="w-5 h-5 text-landing-gold" />
-                <span className="text-sm font-medium text-landing-navy">
-                  {t.videoMuteButton || "Sound on"}
-                </span>
-              </>
+              <Volume2 className="w-4 h-4 text-landing-gold" />
             )}
           </button>
         </motion.div>
