@@ -15,6 +15,7 @@ import { AboutCTA } from "@/components/about/AboutCTA";
 import { type AboutPageContent } from "@/lib/aboutSchemaGenerator";
 import { COMPANY_FACTS } from "@/constants/company";
 import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
+import { useTranslation } from "@/i18n";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
@@ -38,6 +39,9 @@ const defaultContent: AboutPageContent = {
 
 const About = () => {
   const { lang = 'en' } = useParams<{ lang: string }>();
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const credentialsFromI18n = (aboutUs?.credentials as { items?: Array<{ name: string; description: string }> })?.items || [];
   
   // Fetch content from database
   const { data: content, isLoading } = useQuery({
@@ -131,12 +135,11 @@ const About = () => {
 
           {/* Credentials & Citations - GEO */}
           <Credentials
-            credentials={pageContent.founders.length > 0 ? [
-              { name: "API Licensed", description: "Registered with Agentes de la Propiedad Inmobiliaria", icon: "shield-check" },
-              { name: "RICS Affiliated", description: "Royal Institution of Chartered Surveyors standards", icon: "award" },
-              { name: "AML Compliant", description: "Full Anti-Money Laundering compliance", icon: "file-check" },
-              { name: "GDPR Certified", description: "EU data protection standards", icon: "lock" }
-            ] : []}
+            credentials={credentialsFromI18n.length > 0 ? credentialsFromI18n.map((item, index) => ({
+              name: item.name,
+              description: item.description,
+              icon: ["shield-check", "award", "file-check", "lock"][index] || "shield-check"
+            })) : []}
             citations={pageContent.citations}
           />
 

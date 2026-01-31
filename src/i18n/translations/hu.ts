@@ -554,12 +554,16 @@ export const hu = {
     },
     mission: {
       heading: "Küldetésünk",
-      summaryLabel: "Rólunk"
+      summaryLabel: "Rólunk",
+      content: "Hisszük, hogy mindenki megérdemli a szakértői útmutatást élete egyik legnagyobb befektetésénél. Küldetésünk átlátható, személyre szabott ingatlanszolgáltatások nyújtása, amelyek az Ön érdekeit helyezik előtérbe.",
+      speakableContent: "A Del Sol Prime Homes vezető ingatlanügynökség a Costa del Solon, amelyet tapasztalt szakemberek alapítottak több mint 35 év együttes tapasztalattal, segítve a nemzetközi vásárlókat álmaik ingatlanjának megtalálásában Marbellában, Esteponában és a Costa del Solon."
     },
     story: {
       heading: "Történetünk",
       subheading: "Három egyéni útból egy közös küldetésig",
       timelineHeading: "Utunk",
+      narrativeHeading: "A Szenvedély és Szakértelem Útja",
+      narrativeContent: "## A Szenvedély és Szakértelem Útja\n\nTörténetünk három személlyel kezdődik, akik beleszerettek a Costa del Solba és otthonukká tették.\n\n**Steven Roberts** 1997-ben érkezett Spanyolországba, a mediterrán életstílus vonzásában. Az évek során mély szakértelmet épített fel az új fejlesztések és a nemzetközi vásárlók tanácsadása terén.\n\n**Cédric Van Hecke** 1998-ban költözött a Costa del Solra. API-akkreditációja és jogi szakértelme felbecsülhetetlenné teszi őt a spanyol ingatlantransakciókon való navigálásban.\n\n**Hans Beeckman** 2020-ban csatlakozott küldetésünkhöz, friss energiát és többnyelvű képességeket hozva sokszínű nemzetközi ügyfélkörünk kiszolgálásához.\n\nEgyütt több mint 35 év tapasztalatot egyesítünk, hogy páratlan útmutatást nyújtsunk az Ön ingatlan-útján.",
       timeline: [
         { year: "1997", event: "Steven Roberts megérkezik Spanyolországba" },
         { year: "1998", event: "Cédric Van Hecke a Costa del Solra költözik" },

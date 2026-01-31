@@ -10,7 +10,11 @@ interface MissionStatementProps {
 export const MissionStatement = ({ mission, speakableSummary }: MissionStatementProps) => {
   const { t } = useTranslation();
   const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
-  const missionSection = aboutUs?.mission as { heading?: string; summaryLabel?: string } | undefined;
+  const missionSection = aboutUs?.mission as { heading?: string; summaryLabel?: string; content?: string; speakableContent?: string } | undefined;
+
+  // Use i18n translations first, fall back to database props
+  const displayMission = missionSection?.content || mission;
+  const displaySpeakable = missionSection?.speakableContent || speakableSummary;
 
   return (
     <section className="py-20 bg-white" aria-labelledby="mission-heading">
@@ -34,7 +38,7 @@ export const MissionStatement = ({ mission, speakableSummary }: MissionStatement
           {/* Mission statement - prominent for AI parsing */}
           <div className="mission-statement bg-gradient-to-r from-prime-50 to-prime-100/50 border-l-4 border-prime-gold rounded-r-xl p-8 md:p-10 mb-10">
             <p className="text-lg md:text-xl text-prime-800 leading-relaxed font-medium italic">
-              "{mission}"
+              "{displayMission}"
             </p>
           </div>
 
@@ -44,7 +48,7 @@ export const MissionStatement = ({ mission, speakableSummary }: MissionStatement
               {missionSection?.summaryLabel || "About Us"}
             </p>
             <p className="text-base md:text-lg text-slate-700 leading-relaxed">
-              {speakableSummary}
+              {displaySpeakable}
             </p>
           </div>
         </motion.div>

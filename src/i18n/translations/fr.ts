@@ -592,12 +592,16 @@ export const fr = {
     },
     mission: {
       heading: "Notre Mission",
-      summaryLabel: "À Propos de Nous"
+      summaryLabel: "À Propos de Nous",
+      content: "Nous croyons que chacun mérite des conseils d'experts pour l'un des plus grands investissements de sa vie. Notre mission est de fournir des services immobiliers transparents et personnalisés qui placent vos intérêts en premier.",
+      speakableContent: "Del Sol Prime Homes est une agence immobilière de premier plan sur la Costa del Sol, fondée par des professionnels expérimentés avec plus de 35 ans d'expérience combinée pour aider les acheteurs internationaux à trouver leur propriété de rêve à Marbella, Estepona et sur la Costa del Sol."
     },
     story: {
       heading: "Notre Histoire",
       subheading: "De trois parcours individuels à une mission partagée",
       timelineHeading: "Notre Parcours",
+      narrativeHeading: "Un Voyage de Passion et d'Expertise",
+      narrativeContent: "## Un Voyage de Passion et d'Expertise\n\nNotre histoire commence avec trois personnes qui sont tombées amoureuses de la Costa del Sol et en ont fait leur maison.\n\n**Steven Roberts** est arrivé en Espagne en 1997, attiré par le style de vie méditerranéen. Au fil des années, il a développé une expertise approfondie dans les nouveaux développements et l'accompagnement des acheteurs internationaux.\n\n**Cédric Van Hecke** a déménagé sur la Costa del Sol en 1998. Son accréditation API et son expertise juridique le rendent inestimable pour naviguer dans les transactions immobilières espagnoles.\n\n**Hans Beeckman** a rejoint notre mission en 2020, apportant une énergie nouvelle et des compétences multilingues pour servir notre clientèle internationale diversifiée.\n\nEnsemble, nous combinons plus de 35 ans d'expérience pour vous offrir un accompagnement inégalé dans votre parcours immobilier.",
       timeline: [
         { year: "1997", event: "Steven Roberts arrive en Espagne" },
         { year: "1998", event: "Cédric Van Hecke déménage à la Costa del Sol" },

@@ -592,12 +592,16 @@ export const de = {
     },
     mission: {
       heading: "Unsere Mission",
-      summaryLabel: "Über Uns"
+      summaryLabel: "Über Uns",
+      content: "Wir glauben, dass jeder eine fachkundige Beratung verdient, wenn er eine der größten Investitionen seines Lebens tätigt. Unsere Mission ist es, transparente, personalisierte Immobiliendienstleistungen anzubieten, die Ihre Interessen in den Vordergrund stellen.",
+      speakableContent: "Del Sol Prime Homes ist eine erstklassige Immobilienagentur an der Costa del Sol, gegründet von erfahrenen Fachleuten mit über 35 Jahren gemeinsamer Erfahrung bei der Unterstützung internationaler Käufer bei der Suche nach ihrer Traumimmobilie in Marbella, Estepona und an der Costa del Sol."
     },
     story: {
       heading: "Unsere Geschichte",
       subheading: "Von drei individuellen Wegen zu einer gemeinsamen Mission",
       timelineHeading: "Unsere Reise",
+      narrativeHeading: "Eine Reise der Leidenschaft und Expertise",
+      narrativeContent: "## Eine Reise der Leidenschaft und Expertise\n\nUnsere Geschichte beginnt mit drei Personen, die sich in die Costa del Sol verliebten und sie zu ihrem Zuhause machten.\n\n**Steven Roberts** kam 1997 nach Spanien, angezogen vom mediterranen Lebensstil. Im Laufe der Jahre baute er tiefe Expertise in Neubauprojekten und internationaler Käuferberatung auf.\n\n**Cédric Van Hecke** zog 1998 an die Costa del Sol. Seine API-Akkreditierung und juristische Expertise machen ihn unverzichtbar für die Navigation durch spanische Immobilientransaktionen.\n\n**Hans Beeckman** schloss sich unserer Mission 2020 an und bringt frische Energie und mehrsprachige Fähigkeiten mit, um unsere vielfältige internationale Klientel zu bedienen.\n\nGemeinsam vereinen wir über 35 Jahre Erfahrung, um Ihnen unvergleichliche Beratung auf Ihrer Immobilienreise zu bieten.",
       timeline: [
         { year: "1997", event: "Steven Roberts kommt in Spanien an" },
         { year: "1998", event: "Cédric Van Hecke zieht an die Costa del Sol" },

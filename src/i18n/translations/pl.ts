@@ -554,12 +554,16 @@ export const pl = {
     },
     mission: {
       heading: "Nasza Misja",
-      summaryLabel: "O Nas"
+      summaryLabel: "O Nas",
+      content: "Wierzymy, że każdy zasługuje na fachowe doradztwo przy jednej z największych inwestycji w życiu. Naszą misją jest świadczenie przejrzystych, spersonalizowanych usług nieruchomościowych, które stawiają Twoje interesy na pierwszym miejscu.",
+      speakableContent: "Del Sol Prime Homes to wiodąca agencja nieruchomości na Costa del Sol, założona przez doświadczonych profesjonalistów z ponad 35-letnim łącznym doświadczeniem w pomaganiu międzynarodowym nabywcom w znalezieniu wymarzonej nieruchomości w Marbelli, Esteponie i na Costa del Sol."
     },
     story: {
       heading: "Nasza Historia",
       subheading: "Od trzech indywidualnych podróży do jednej wspólnej misji",
       timelineHeading: "Nasza Podróż",
+      narrativeHeading: "Podróż Pasji i Ekspertyzy",
+      narrativeContent: "## Podróż Pasji i Ekspertyzy\n\nNasza historia zaczyna się od trzech osób, które zakochały się w Costa del Sol i uczyniły ją swoim domem.\n\n**Steven Roberts** przybył do Hiszpanii w 1997 roku, przyciągnięty śródziemnomorskim stylem życia. Przez lata zbudował głęboką wiedzę w zakresie nowych inwestycji i doradztwa dla międzynarodowych nabywców.\n\n**Cédric Van Hecke** przeprowadził się na Costa del Sol w 1998 roku. Jego akredytacja API i ekspertyza prawna czynią go nieocenionym w nawigacji po hiszpańskich transakcjach nieruchomościowych.\n\n**Hans Beeckman** dołączył do naszej misji w 2020 roku, wnosząc świeżą energię i wielojęzyczne umiejętności do obsługi naszej zróżnicowanej międzynarodowej klienteli.\n\nRazem łączymy ponad 35 lat doświadczenia, aby zapewnić Ci niezrównaną pomoc w Twojej podróży po rynku nieruchomości.",
       timeline: [
         { year: "1997", event: "Steven Roberts przybywa do Hiszpanii" },
         { year: "1998", event: "Cédric Van Hecke przeprowadza się na Costa del Sol" },

@@ -554,12 +554,16 @@ export const no = {
     },
     mission: {
       heading: "Vårt Oppdrag",
-      summaryLabel: "Om Oss"
+      summaryLabel: "Om Oss",
+      content: "Vi tror at alle fortjener ekspertveiledning når de gjør en av livets største investeringer. Vårt oppdrag er å tilby transparente, personlige eiendomstjenester som setter dine interesser først.",
+      speakableContent: "Del Sol Prime Homes er et ledende eiendomsmeglerfirma på Costa del Sol, grunnlagt av erfarne fagfolk med over 35 års kombinert erfaring med å hjelpe internasjonale kjøpere finne drømmeeiendommen sin i Marbella, Estepona og Costa del Sol."
     },
     story: {
       heading: "Vår Historie",
       subheading: "Fra tre individuelle reiser til ett felles oppdrag",
       timelineHeading: "Vår Reise",
+      narrativeHeading: "En Reise av Lidenskap og Ekspertise",
+      narrativeContent: "## En Reise av Lidenskap og Ekspertise\n\nVår historie begynner med tre personer som ble forelsket i Costa del Sol og gjorde det til sitt hjem.\n\n**Steven Roberts** ankom Spania i 1997, tiltrukket av den mediterrane livsstilen. Gjennom årene bygde han dyp ekspertise innen nybygg og internasjonal kjøperrådgivning.\n\n**Cédric Van Hecke** flyttet til Costa del Sol i 1998. Hans API-akkreditering og juridiske ekspertise gjør ham uvurderlig for å navigere i spanske eiendomstransaksjoner.\n\n**Hans Beeckman** sluttet seg til vårt oppdrag i 2020 og bringer frisk energi og flerspråklige ferdigheter for å betjene vår mangfoldige internasjonale kundekrets.\n\nSammen kombinerer vi over 35 års erfaring for å gi deg uovertruffen veiledning på din eiendomsreise.",
       timeline: [
         { year: "1997", event: "Steven Roberts ankommer Spania" },
         { year: "1998", event: "Cédric Van Hecke flytter til Costa del Sol" },

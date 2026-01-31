@@ -554,12 +554,16 @@ export const fi = {
     },
     mission: {
       heading: "Missiomme",
-      summaryLabel: "Tietoa Meistä"
+      summaryLabel: "Tietoa Meistä",
+      content: "Uskomme, että jokainen ansaitsee asiantuntija-apua tehdessään yhden elämänsä suurimmista sijoituksista. Missiomme on tarjota läpinäkyviä, yksilöllisiä kiinteistöpalveluita, jotka asettavat sinun etusi etusijalle.",
+      speakableContent: "Del Sol Prime Homes on johtava kiinteistönvälitystoimisto Costa del Solilla. Sen ovat perustaneet kokeneet ammattilaiset, joilla on yhteensä yli 35 vuoden kokemus kansainvälisten ostajien auttamisesta unelmakotinsa löytämisessä Marbellasta, Esteponasta ja Costa del Solilta."
     },
     story: {
       heading: "Tarinamme",
       subheading: "Kolmesta yksilöllisestä matkasta yhteen jaettuun missioon",
       timelineHeading: "Matkamme",
+      narrativeHeading: "Intohimon ja Asiantuntemuksen Matka",
+      narrativeContent: "## Intohimon ja Asiantuntemuksen Matka\n\nTarinamme alkaa kolmesta henkilöstä, jotka rakastuivat Costa del Soliin ja tekivät siitä kotinsa.\n\n**Steven Roberts** saapui Espanjaan vuonna 1997, houkuteltuna Välimeren elämäntyylistä. Vuosien varrella hän rakensi syvän asiantuntemuksen uudiskohteista ja kansainvälisten ostajien opastamisesta.\n\n**Cédric Van Hecke** muutti Costa del Solille vuonna 1998. Hänen API-pätevyytensä ja juridinen asiantuntemuksensa tekevät hänestä korvaamattoman espanjalaisten kiinteistökauppojen hoitamisessa.\n\n**Hans Beeckman** liittyi missioomme vuonna 2020 tuoden tuoretta energiaa ja monikielisiä valmiuksia palvelemaan monipuolista kansainvälistä asiakaskuntaamme.\n\nYhdessä tuomme yli 35 vuoden kokemuksen tarjotaksemme sinulle vertaansa vailla olevaa opastusta kiinteistömatkallasi.",
       timeline: [
         { year: "1997", event: "Steven Roberts saapuu Espanjaan" },
         { year: "1998", event: "Cédric Van Hecke muuttaa Costa del Solille" },

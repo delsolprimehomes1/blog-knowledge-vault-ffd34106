@@ -580,12 +580,16 @@ export const en = {
     },
     mission: {
       heading: "Our Mission",
-      summaryLabel: "About Us"
+      summaryLabel: "About Us",
+      content: "We believe everyone deserves expert guidance when making one of life's biggest investments. Our mission is to provide transparent, personalized real estate services that put your interests first.",
+      speakableContent: "Del Sol Prime Homes is a premier real estate agency on the Costa del Sol, founded by experienced professionals with over 35 years of combined experience helping international buyers find their dream properties in Marbella, Estepona, and the Costa del Sol."
     },
     story: {
       heading: "Our Story",
       subheading: "From three individual journeys to one shared mission",
       timelineHeading: "Our Journey",
+      narrativeHeading: "A Journey of Passion and Expertise",
+      narrativeContent: "## A Journey of Passion and Expertise\n\nOur story begins with three individuals who fell in love with the Costa del Sol and made it their home.\n\n**Steven Roberts** arrived in Spain in 1997, drawn by the Mediterranean lifestyle. Over the years, he built deep expertise in new developments and international buyer guidance.\n\n**Cédric Van Hecke** relocated to the Costa del Sol in 1998. His API credentials and legal expertise make him invaluable for navigating Spanish property transactions.\n\n**Hans Beeckman** joined our mission in 2020, bringing fresh energy and multilingual capabilities to serve our diverse international clientele.\n\nTogether, we combine over 35 years of experience to offer you unmatched guidance on your property journey.",
       timeline: [
         { year: "1997", event: "Steven Roberts arrives in Spain" },
         { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol" },

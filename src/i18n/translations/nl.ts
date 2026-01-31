@@ -592,12 +592,16 @@ export const nl = {
     },
     mission: {
       heading: "Onze Missie",
-      summaryLabel: "Over Ons"
+      summaryLabel: "Over Ons",
+      content: "Wij geloven dat iedereen deskundige begeleiding verdient bij het maken van een van de grootste investeringen in het leven. Onze missie is om transparante, gepersonaliseerde vastgoeddiensten te bieden die uw belangen voorop stellen.",
+      speakableContent: "Del Sol Prime Homes is een toonaangevend vastgoedkantoor aan de Costa del Sol, opgericht door ervaren professionals met meer dan 35 jaar gecombineerde ervaring in het helpen van internationale kopers bij het vinden van hun droomwoning in Marbella, Estepona en de Costa del Sol."
     },
     story: {
       heading: "Ons Verhaal",
       subheading: "Van drie individuele reizen naar één gedeelde missie",
       timelineHeading: "Onze Reis",
+      narrativeHeading: "Een Reis van Passie en Expertise",
+      narrativeContent: "## Een Reis van Passie en Expertise\n\nOns verhaal begint met drie personen die verliefd werden op de Costa del Sol en er hun thuis van maakten.\n\n**Steven Roberts** arriveerde in 1997 in Spanje, aangetrokken door de mediterrane levensstijl. Door de jaren heen bouwde hij diepgaande expertise op in nieuwbouwprojecten en internationale koperbegeleiding.\n\n**Cédric Van Hecke** verhuisde in 1998 naar de Costa del Sol. Zijn API-accreditatie en juridische expertise maken hem onmisbaar voor het navigeren door Spaanse vastgoedtransacties.\n\n**Hans Beeckman** sloot zich in 2020 aan bij onze missie en brengt frisse energie en meertalige vaardigheden mee om onze diverse internationale clientèle te bedienen.\n\nSamen combineren we meer dan 35 jaar ervaring om u ongeëvenaarde begeleiding te bieden op uw vastgoedreis.",
       timeline: [
         { year: "1997", event: "Steven Roberts arriveert in Spanje" },
         { year: "1998", event: "Cédric Van Hecke verhuist naar Costa del Sol" },

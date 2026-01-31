@@ -16,7 +16,10 @@ interface TimelineItem {
 export const OurStory = ({ content }: OurStoryProps) => {
   const { t } = useTranslation();
   const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
-  const story = aboutUs?.story as { heading?: string; subheading?: string; timelineHeading?: string; timeline?: TimelineItem[] } | undefined;
+  const story = aboutUs?.story as { heading?: string; subheading?: string; timelineHeading?: string; timeline?: TimelineItem[]; narrativeHeading?: string; narrativeContent?: string } | undefined;
+
+  // Use i18n translations first, fall back to database props
+  const narrativeContent = story?.narrativeContent || content;
 
   // Parse markdown to HTML
   const parseMarkdown = (markdown: string): string => {
@@ -94,7 +97,7 @@ export const OurStory = ({ content }: OurStoryProps) => {
             {/* Markdown content */}
             <div 
               className="prose prose-lg prose-slate prose-headings:font-serif prose-headings:text-prime-900 prose-h2:text-2xl prose-h3:text-xl prose-a:text-prime-gold prose-strong:text-prime-800 max-w-none"
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(narrativeContent) }}
             />
           </div>
         </motion.div>
