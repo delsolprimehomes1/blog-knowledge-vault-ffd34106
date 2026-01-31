@@ -48,6 +48,35 @@ const PropertyFinder = () => {
     newDevs: searchParams.get("newDevs") === "only" ? "only" : undefined,
   });
 
+  // Filter properties by displayed price to handle new development price ranges
+  const filterPropertiesByDisplayedPrice = (
+    propertiesToFilter: Property[], 
+    filters: { priceMin?: number; priceMax?: number }
+  ) => {
+    return propertiesToFilter.filter(property => {
+      const minPrice = property.price; // Starting/displayed price
+      const maxPrice = property.priceMax || property.price; // Highest price in range
+      
+      // If user set a minimum price filter
+      if (filters.priceMin) {
+        // For developments with price ranges: at least one unit must be >= priceMin
+        if (maxPrice < filters.priceMin) {
+          return false;
+        }
+      }
+      
+      // If user set a maximum price filter
+      if (filters.priceMax) {
+        // The starting price must be <= priceMax
+        if (minPrice > filters.priceMax) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  };
+
   const searchProperties = async (params: PropertySearchParams, pageNum: number = 1) => {
     setIsLoading(true);
     try {
@@ -76,9 +105,15 @@ const PropertyFinder = () => {
         setHasMore(false);
         setCurrentQueryId(null);
       } else {
-        setProperties(data.properties || []);
+        // Apply frontend price filtering for new development price ranges
+        const rawProperties = data.properties || [];
+        const filteredProperties = filterPropertiesByDisplayedPrice(rawProperties, {
+          priceMin: params.priceMin,
+          priceMax: params.priceMax,
+        });
+        setProperties(filteredProperties);
         setTotal(data.total || 0);
-        setHasMore((data.properties?.length || 0) < (data.total || 0));
+        setHasMore(filteredProperties.length < (data.total || 0));
         setCurrentQueryId(data.queryId || null);
       }
       setPage(pageNum);
@@ -130,11 +165,15 @@ const PropertyFinder = () => {
       
       if (error) throw error;
       
-      // APPEND to existing properties
-      const newProperties = data.properties || [];
-      setProperties(prev => [...prev, ...newProperties]);
+      // APPEND to existing properties with price filtering
+      const rawProperties = data.properties || [];
+      const filteredNewProperties = filterPropertiesByDisplayedPrice(rawProperties, {
+        priceMin: params.priceMin,
+        priceMax: params.priceMax,
+      });
+      setProperties(prev => [...prev, ...filteredNewProperties]);
       setPage(nextPage);
-      setHasMore(properties.length + newProperties.length < total);
+      setHasMore(properties.length + filteredNewProperties.length < total);
       if (data.queryId) setCurrentQueryId(data.queryId);
     } catch (error) {
       console.error("Error loading more properties:", error);
