@@ -48,33 +48,169 @@ const PropertyFinder = () => {
     newDevs: searchParams.get("newDevs") === "only" ? "only" : undefined,
   });
 
-  // Filter properties by displayed price to handle new development price ranges
-  const filterPropertiesByDisplayedPrice = (
-    propertiesToFilter: Property[], 
+  // ============ Price Range Parsing & Filtering Helpers ============
+
+  /**
+   * Parse a monetary value to number. Handles formats like:
+   * 215000, €215,000, €215.000, "215000.00", etc.
+   */
+  const parseMoney = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && !isNaN(value)) return value;
+    if (typeof value !== 'string') return undefined;
+    
+    // Remove currency symbols and whitespace
+    let cleaned = value.replace(/[€$£\s]/g, '');
+    
+    // Handle European format (1.234.567,89) vs US format (1,234,567.89)
+    // If we have both . and , check which is the decimal separator
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      // European: 1.234.567,89 -> dots are thousands, comma is decimal
+      // US: 1,234,567.89 -> commas are thousands, dot is decimal
+      const lastDot = cleaned.lastIndexOf('.');
+      const lastComma = cleaned.lastIndexOf(',');
+      if (lastComma > lastDot) {
+        // European format: remove dots, replace comma with dot
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      } else {
+        // US format: just remove commas
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes(',')) {
+      // Could be European decimal (215,00) or thousands (215,000)
+      const parts = cleaned.split(',');
+      if (parts.length === 2 && parts[1].length === 2) {
+        // Likely European decimal: 215,00
+        cleaned = cleaned.replace(',', '.');
+      } else {
+        // Thousands separator: 215,000
+        cleaned = cleaned.replace(/,/g, '');
+      }
+    } else if (cleaned.includes('.')) {
+      // Could be decimal or thousands separator
+      const parts = cleaned.split('.');
+      // If last part is exactly 3 digits, likely thousands separator (Spanish: 215.000)
+      if (parts.length > 1 && parts[parts.length - 1].length === 3 && parts.length > 2) {
+        cleaned = cleaned.replace(/\./g, '');
+      }
+      // Otherwise keep as-is (normal decimal like 215000.00)
+    }
+    
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? undefined : num;
+  };
+
+  /**
+   * Extract price range from description text using regex patterns.
+   * Handles patterns like:
+   * - "Prices from €215,000 to €558,000"
+   * - "€ 215,000 - € 558,000"
+   * - "215000 - 558000"
+   * - "From 215.000 € to 558.000 €"
+   */
+  const extractPriceRangeFromText = (text: string): { min?: number; max?: number } => {
+    if (!text) return {};
+    
+    // Patterns to match price ranges in various formats
+    const patterns = [
+      // "Prices from €215,000 to €558,000" or "Precios desde €215.000 hasta €558.000"
+      /(?:prices?\s+)?(?:from|desde|ab|à partir de|van)\s*[€$£]?\s*([\d.,]+)\s*[€$£]?\s*(?:to|hasta|bis|à|tot|-)\s*[€$£]?\s*([\d.,]+)\s*[€$£]?/i,
+      
+      // "€ 215,000 - € 558,000" or "€215.000 - €558.000"
+      /[€$£]\s*([\d.,]+)\s*[-–]\s*[€$£]\s*([\d.,]+)/i,
+      
+      // "215,000 € - 558,000 €" (price before currency)
+      /([\d.,]+)\s*[€$£]\s*[-–]\s*([\d.,]+)\s*[€$£]/i,
+      
+      // "215000 - 558000" (plain numbers with dash)
+      /\b([\d]{5,})\s*[-–]\s*([\d]{5,})\b/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const min = parseMoney(match[1]);
+        const max = parseMoney(match[2]);
+        if (min !== undefined && max !== undefined && max > min) {
+          return { min, max };
+        }
+      }
+    }
+    
+    return {};
+  };
+
+  /**
+   * Get the price range for a property, inferring from description if needed.
+   * Priority:
+   * 1) property.price + property.priceMax (if both present)
+   * 2) Parse from property.description
+   * 3) Fallback: max = min
+   */
+  const getPropertyPriceRange = (property: Property): { min: number; max: number } => {
+    const baseMin = property.price;
+    
+    // If we have an explicit priceMax, use it
+    if (property.priceMax && property.priceMax > baseMin) {
+      return { min: baseMin, max: property.priceMax };
+    }
+    
+    // Try to extract from description
+    const descriptionRange = extractPriceRangeFromText(property.description || '');
+    if (descriptionRange.max && descriptionRange.max > baseMin) {
+      return { 
+        min: descriptionRange.min && descriptionRange.min >= baseMin ? descriptionRange.min : baseMin,
+        max: descriptionRange.max 
+      };
+    }
+    
+    // Fallback: max = min (conservative)
+    return { min: baseMin, max: baseMin };
+  };
+
+  /**
+   * Normalize and filter properties by price range with overlap logic.
+   * 
+   * For each property:
+   * 1. Infer full price range (min, max)
+   * 2. Check if it overlaps with user's filter range
+   * 3. Compute display intersection (adjust displayed price to match filter)
+   * 4. Return property with adjusted price/priceMax for listing display
+   */
+  const normalizeAndFilterByPriceRange = (
+    propertiesToFilter: Property[],
     filters: { priceMin?: number; priceMax?: number }
-  ) => {
-    return propertiesToFilter.filter(property => {
-      const minPrice = property.price; // Starting/displayed price
-      const maxPrice = property.priceMax || property.price; // Highest price in range
-      
-      // If user set a minimum price filter
-      if (filters.priceMin) {
-        // For developments with price ranges: at least one unit must be >= priceMin
-        if (maxPrice < filters.priceMin) {
-          return false;
+  ): Property[] => {
+    return propertiesToFilter
+      .map(property => {
+        const range = getPropertyPriceRange(property);
+        
+        // Check overlap with filter
+        // Exclude if no overlap:
+        // - filterMin is set and propertyMax < filterMin → no units meet minimum
+        // - filterMax is set and propertyMin > filterMax → cheapest unit exceeds budget
+        if (filters.priceMin && range.max < filters.priceMin) {
+          return null; // No units in this development meet the minimum price
         }
-      }
-      
-      // If user set a maximum price filter
-      if (filters.priceMax) {
-        // The starting price must be <= priceMax
-        if (minPrice > filters.priceMax) {
-          return false;
+        if (filters.priceMax && range.min > filters.priceMax) {
+          return null; // Even the cheapest unit exceeds the budget
         }
-      }
-      
-      return true;
-    });
+        
+        // Compute display intersection range
+        const displayMin = filters.priceMin 
+          ? Math.max(range.min, filters.priceMin) 
+          : range.min;
+        const displayMax = filters.priceMax 
+          ? Math.min(range.max, filters.priceMax) 
+          : range.max;
+        
+        // Return property with adjusted display prices
+        return {
+          ...property,
+          price: displayMin,
+          priceMax: displayMax > displayMin ? displayMax : undefined,
+        } as Property;
+      })
+      .filter((p): p is Property => p !== null);
   };
 
   const searchProperties = async (params: PropertySearchParams, pageNum: number = 1) => {
@@ -107,7 +243,7 @@ const PropertyFinder = () => {
       } else {
         // Apply frontend price filtering for new development price ranges
         const rawProperties = data.properties || [];
-        const filteredProperties = filterPropertiesByDisplayedPrice(rawProperties, {
+        const filteredProperties = normalizeAndFilterByPriceRange(rawProperties, {
           priceMin: params.priceMin,
           priceMax: params.priceMax,
         });
@@ -167,13 +303,17 @@ const PropertyFinder = () => {
       
       // APPEND to existing properties with price filtering
       const rawProperties = data.properties || [];
-      const filteredNewProperties = filterPropertiesByDisplayedPrice(rawProperties, {
+      const filteredNewProperties = normalizeAndFilterByPriceRange(rawProperties, {
         priceMin: params.priceMin,
         priceMax: params.priceMax,
       });
-      setProperties(prev => [...prev, ...filteredNewProperties]);
+      setProperties(prev => {
+        const updated = [...prev, ...filteredNewProperties];
+        // Use functional update to avoid stale state
+        setHasMore(updated.length < total);
+        return updated;
+      });
       setPage(nextPage);
-      setHasMore(properties.length + filteredNewProperties.length < total);
       if (data.queryId) setCurrentQueryId(data.queryId);
     } catch (error) {
       console.error("Error loading more properties:", error);
