@@ -1,96 +1,151 @@
 
-Goal  
-Make “New Development” properties with price ranges behave correctly with a minPrice filter. Example: range 215,000–558,000 should still appear when user searches minPrice=500,000, because the range maximum is >= 500,000. Right now the frontend is excluding them because `property.priceMax` is often missing in search results.
 
-What’s happening now (root cause)  
-- The backend search response is returning properties like R5074729 with:
-  - `price: 215000`
-  - no `priceMax` field (so it becomes `undefined`)
-- The frontend filter currently does:
-  - `maxPrice = property.priceMax || property.price`
-  - so maxPrice becomes 215,000
-  - then it hides the property for minPrice=500,000 (incorrect, because the real max is 558,000)
-- In the search response, the only reliable place to infer the range is often the description text (e.g., “Prices from €215,000 to €558,000”) or sometimes a “min-max” formatted string.
+# Fix Default Property Filter: New Developments First
 
-Solution approach (frontend-only, as requested)  
-1) Infer a price range (min + max) on the frontend for every returned property, even if `priceMax` is missing.  
-2) Use the inferred max for the minPrice check: show a property if inferredMax >= minPrice.  
-3) When a property matches only because of its max (i.e., its displayed “from” is below the user’s min), adjust the displayed price in the card list to reflect the user’s range, so the UI no longer shows confusing “From €215k” in a €500k+ search.
+## Problem Summary
 
-Key behavior we’ll implement  
-Given:
-- Property range: [propertyMin, propertyMax]
-- User filter: [filterMin, filterMax]
+Currently, the Property Finder page loads with a default "Sales" filter showing all resales + new developments mixed together. The requirement is:
 
-We’ll:
-- Exclude if no overlap:
-  - if filterMin is set and propertyMax < filterMin → exclude
-  - if filterMax is set and propertyMin > filterMax → exclude
-- Otherwise include, and compute a “display range intersection”:
-  - displayMin = filterMin ? max(propertyMin, filterMin) : propertyMin
-  - displayMax = filterMax ? min(propertyMax, filterMax) : propertyMax
-- Store the list results using:
-  - `price = displayMin`
-  - `priceMax = displayMax` (only if displayMax > displayMin; otherwise leave undefined or equal)
+1. **Default to "New Developments Only"** when the page loads
+2. **Add "All Properties" option** so users can switch between:
+   - New Developments (default)
+   - Resales
+   - All Properties
+3. **Show cheapest new developments first** (~€180k-€200k) when no filters applied
 
-This means:
-- Search minPrice=500k, property 215k–558k will show and display as ~“From €500,000” (and internally still links to the correct detail page which fetches full details separately).
+## Current Flow Analysis
 
-Implementation details  
-A) Add robust number parsing helpers in `src/pages/PropertyFinder.tsx`  
-- `parseMoney(value: unknown): number | undefined`
-  - Handles: `215000`, `€215,000`, `215.000`, `215000.00`, etc.
-- `extractPriceRangeFromText(description: string): { min?: number; max?: number }`
-  - Regex patterns for:
-    - “Prices from €215,000 to €558,000”
-    - “€ 215,000 - € 558,000”
-    - “215000 - 558000”
-- `getPropertyPriceRange(property: Property): { min: number; max: number }`
-  - Priority:
-    1) `property.price` + `property.priceMax` (if present)
-    2) parse `property.price` if it is a range string (defensive)
-    3) parse from `property.description`
-    4) fallback: max = min
+| Component | Current Behavior | Required Behavior |
+|-----------|------------------|-------------------|
+| `PropertyFinder.tsx` | `newDevs: undefined` by default | `newDevs: "only"` by default |
+| `PropertyFilters.tsx` | Status defaults to "sales" | Status defaults to "new-developments" |
+| `QuickSearch.tsx` | Status defaults to "sales" | Status defaults to "new-developments" |
+| Status Options | Only "Sales" and "New Developments" | Add "All Properties" option |
 
-B) Replace the current `filterPropertiesByDisplayedPrice` with a normalize+filter function  
-- New function conceptually:
-  - `normalizeAndFilterByPriceRange(properties, filters) => Property[]`
-- For each property:
-  - infer `{min,max}`
-  - apply overlap logic vs filters
-  - compute display intersection range
-  - return property with adjusted `price`/`priceMax` for listing
+## Changes Required
 
-C) Apply the new normalize+filter function in both:
-- `searchProperties()` (initial search)
-- `loadMoreProperties()` (pagination append)
+### 1. PropertyFinder.tsx - Set Default newDevs Parameter
 
-D) (Small but important) Fix `hasMore` calculation to avoid stale state in `loadMoreProperties`  
-Currently `setHasMore(properties.length + filteredNewProperties.length < total)` can use stale `properties`.  
-We’ll compute next length from the functional `setProperties(prev => ...)` update so `hasMore` is accurate.
+**File**: `src/pages/PropertyFinder.tsx`
 
-Files to change  
-- `src/pages/PropertyFinder.tsx`
-  - Add helpers + replace filtering logic with “infer range + overlap + display intersection”
-  - Use the new logic in initial search and load-more flows
+Update `getInitialParams()` to default to new developments when no URL parameter exists:
 
-How we’ll test (end-to-end)  
-1) Visit: `/en/properties?transactionType=sale&priceMin=500000`  
-   - Confirm results appear (not empty).  
-   - Confirm at least some New Development cards show prices at/above €500k (e.g., “From €500,000”), not “From €215,000”.  
-2) Test with min+max: `/en/properties?transactionType=sale&priceMin=500000&priceMax=750000`  
-   - Confirm overlapping developments appear and display within the filter window (e.g., “From €500,000”).  
-3) Click into a property detail page  
-   - Confirm the detail page still shows the full official range (e.g., “€215,000 - €558,000”) since it fetches details separately.  
-4) Load More  
-   - Confirm “Load More” still works and continues appending results correctly under the same filter.
+```typescript
+const getInitialParams = (): PropertySearchParams => ({
+  // ... existing params
+  newDevs: searchParams.get("newDevs") === "only" ? "only" 
+         : searchParams.get("newDevs") === "" ? undefined  // User explicitly chose "All"
+         : "only", // Default to new developments
+});
+```
 
-Risks / edge cases handled  
-- If we cannot infer a max price at all (no `priceMax`, no parsable description), then we’ll behave conservatively:
-  - treat max = min; such a property will be excluded if min < filterMin
-- Different description languages: we’ll keep regex flexible (“Prices from”, currency symbols, dash ranges). If localization causes misses, we can extend patterns after we see examples.
+Also update the URL parameter handling to include newDevs in the default search.
 
-Acceptance criteria  
-- A New Development with real range 215k–558k is shown for minPrice=500k searches.
-- It is not hidden by frontend filtering.
-- The displayed price in search results is aligned with the user’s filter (no more “From €215k” shown in €500k+ searches).
+### 2. PropertyFilters.tsx - Update Status Options and Default
+
+**File**: `src/components/property/PropertyFilters.tsx`
+
+Add "All Properties" option and change default:
+
+```typescript
+// Add third status option
+const STATUS_OPTIONS = [
+  { label: t.filters.newDevelopments, value: "new-developments" },
+  { label: t.filters.resales, value: "resales" },
+  { label: t.filters.allProperties, value: "all" },
+];
+
+// Default to new-developments
+const [status, setStatus] = useState(
+  initialParams.newDevs === "only" ? "new-developments" 
+  : initialParams.newDevs === "" ? "all"
+  : "new-developments" // Default
+);
+
+// Update handleSearch to handle all three cases
+if (status === "new-developments") params.newDevs = "only";
+else if (status === "resales") params.newDevs = ""; // Explicitly no new devs
+else params.newDevs = undefined; // All properties
+```
+
+### 3. QuickSearch.tsx - Update Status Default
+
+**File**: `src/components/home/sections/QuickSearch.tsx`
+
+Update the home page quick search to match:
+
+```typescript
+const STATUS_OPTIONS = [
+  { label: "New Developments", value: "new-developments" },
+  { label: "Resales", value: "resales" },
+  { label: "All Properties", value: "all" },
+];
+
+// Change default from "sales" to "new-developments"
+const [status, setStatus] = useState("new-developments");
+
+// Update handleSearch for three cases
+if (status === "new-developments") params.append("newDevs", "only");
+else if (status === "resales") params.append("newDevs", "");
+// "all" - don't append anything
+```
+
+### 4. Add Translations for New Options
+
+**Files**: All translation files in `src/i18n/translations/propertyFinder/`
+
+Add new translation keys:
+
+```typescript
+filters: {
+  // ... existing
+  sales: "Sales",           // Keep for backward compatibility
+  resales: "Resales",       // NEW
+  newDevelopments: "New Developments",
+  allProperties: "All Properties",  // NEW
+}
+```
+
+### 5. Edge Function - Handle Resales-Only Filter
+
+**File**: `supabase/functions/search-properties/index.ts`
+
+Currently the backend only handles `newDevs === 'only'`. For "Resales Only", we may need to explicitly exclude new developments:
+
+```typescript
+// Handle different newDevs modes
+if (filters.newDevs === 'only') {
+  proxyParams.newDevelopment = 'true';
+} else if (filters.newDevs === '') {
+  // Resales only - exclude new developments
+  proxyParams.newDevelopment = 'false';
+}
+// else: all properties (don't pass newDevelopment param)
+```
+
+Note: This depends on how the proxy server/API handles the parameter. If the API doesn't support excluding new developments, the "Resales" option would show the same as "All Properties".
+
+## Implementation Summary
+
+| File | Change |
+|------|--------|
+| `PropertyFinder.tsx` | Default `newDevs` to `"only"` in `getInitialParams()` |
+| `PropertyFilters.tsx` | Add "All Properties" option, default to "new-developments" |
+| `QuickSearch.tsx` | Add "All Properties" option, default to "new-developments" |
+| Translation files (10) | Add `resales` and `allProperties` keys |
+| `search-properties/index.ts` | Handle resales-only filter if API supports it |
+
+## Expected Behavior After Changes
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| Page load (no params) | Shows all sales mixed | Shows only new developments |
+| User selects "Resales" | N/A | Shows only resale properties |
+| User selects "All Properties" | N/A | Shows both resales and new developments |
+| URL: `?newDevs=only` | New developments | New developments |
+| URL: no newDevs param | All sales | New developments (default) |
+
+## Price Ordering
+
+The backend already returns properties sorted by price ascending when no specific sort is requested, so the cheapest new developments (~€180k-€200k) will appear first automatically with the default €180k minimum price filter.
+
