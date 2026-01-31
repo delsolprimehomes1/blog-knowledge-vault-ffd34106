@@ -95,6 +95,33 @@ export const no = {
       range4: "€1,5M+",
     },
     submit: "Åpne Den Fullstendige Eiendomssøkeren",
+    propertySearch: {
+      labels: {
+        reference: "Referanse",
+        location: "Plassering",
+        propertyType: "Eiendomstype",
+        bedrooms: "Soverom",
+        minPrice: "Min. Pris",
+        maxPrice: "Max. Pris",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "f.eks. R5014453",
+        anyLocation: "Hvilken Som Helst",
+        anyType: "Hvilken Som Helst",
+        any: "Alle",
+        loading: "Laster...",
+      },
+      status: {
+        newDevelopments: "Nybygg",
+        resales: "Videresalg",
+        allProperties: "Alle Eiendommer",
+      },
+      buttons: {
+        search: "Søk Eiendommer",
+        clearAll: "Tøm Alt",
+      },
+    },
   },
   miniAbout: {
     headline: "Ekspertise Du Kan",

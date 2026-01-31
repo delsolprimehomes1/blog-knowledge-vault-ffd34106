@@ -95,6 +95,33 @@ export const nl = {
       range4: "€1,5M+",
     },
     submit: "Open de Volledige Woningzoeker",
+    propertySearch: {
+      labels: {
+        reference: "Referentie",
+        location: "Locatie",
+        propertyType: "Type Woning",
+        bedrooms: "Slaapkamers",
+        minPrice: "Min. Prijs",
+        maxPrice: "Max. Prijs",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "bijv. R5014453",
+        anyLocation: "Elke Locatie",
+        anyType: "Elk Type",
+        any: "Alle",
+        loading: "Laden...",
+      },
+      status: {
+        newDevelopments: "Nieuwbouw",
+        resales: "Bestaande Woningen",
+        allProperties: "Alle Woningen",
+      },
+      buttons: {
+        search: "Zoek Woningen",
+        clearAll: "Alles Wissen",
+      },
+    },
   },
   miniAbout: {
     headline: "Expertise die U Kunt",

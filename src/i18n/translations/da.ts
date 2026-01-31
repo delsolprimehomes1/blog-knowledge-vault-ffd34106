@@ -95,6 +95,33 @@ export const da = {
       range4: "€1,5M+",
     },
     submit: "Åbn den Fulde Ejendomssøger",
+    propertySearch: {
+      labels: {
+        reference: "Reference",
+        location: "Placering",
+        propertyType: "Ejendomstype",
+        bedrooms: "Soveværelser",
+        minPrice: "Min. Pris",
+        maxPrice: "Max. Pris",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "f.eks. R5014453",
+        anyLocation: "Enhver Placering",
+        anyType: "Enhver Type",
+        any: "Alle",
+        loading: "Indlæser...",
+      },
+      status: {
+        newDevelopments: "Nybyggerier",
+        resales: "Videresalg",
+        allProperties: "Alle Ejendomme",
+      },
+      buttons: {
+        search: "Søg Ejendomme",
+        clearAll: "Ryd Alt",
+      },
+    },
   },
   miniAbout: {
     headline: "Ekspertise Du Kan",

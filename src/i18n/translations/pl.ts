@@ -95,6 +95,33 @@ export const pl = {
       range4: "€1,5M+",
     },
     submit: "Otwórz Pełny Wyszukiwacz Nieruchomości",
+    propertySearch: {
+      labels: {
+        reference: "Referencja",
+        location: "Lokalizacja",
+        propertyType: "Typ Nieruchomości",
+        bedrooms: "Sypialnie",
+        minPrice: "Min. Cena",
+        maxPrice: "Max. Cena",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "np. R5014453",
+        anyLocation: "Dowolna Lokalizacja",
+        anyType: "Dowolny Typ",
+        any: "Wszystkie",
+        loading: "Ładowanie...",
+      },
+      status: {
+        newDevelopments: "Nowe Inwestycje",
+        resales: "Odsprzedaż",
+        allProperties: "Wszystkie Nieruchomości",
+      },
+      buttons: {
+        search: "Szukaj Nieruchomości",
+        clearAll: "Wyczyść Wszystko",
+      },
+    },
   },
   miniAbout: {
     headline: "Ekspertyza, Której Możesz",

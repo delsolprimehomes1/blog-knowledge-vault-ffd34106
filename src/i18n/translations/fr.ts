@@ -95,6 +95,33 @@ export const fr = {
       range4: "€1,5M+",
     },
     submit: "Ouvrir le Chercheur de Propriétés Complet",
+    propertySearch: {
+      labels: {
+        reference: "Référence",
+        location: "Emplacement",
+        propertyType: "Type de Bien",
+        bedrooms: "Chambres",
+        minPrice: "Prix Min.",
+        maxPrice: "Prix Max.",
+        status: "Statut",
+      },
+      placeholders: {
+        reference: "ex. R5014453",
+        anyLocation: "Tout Emplacement",
+        anyType: "Tout Type",
+        any: "Tous",
+        loading: "Chargement...",
+      },
+      status: {
+        newDevelopments: "Programmes Neufs",
+        resales: "Reventes",
+        allProperties: "Toutes les Propriétés",
+      },
+      buttons: {
+        search: "Rechercher",
+        clearAll: "Tout Effacer",
+      },
+    },
   },
   miniAbout: {
     headline: "Expertise en Laquelle Vous Pouvez Avoir",

@@ -95,6 +95,33 @@ export const en = {
       range4: "€1.5M+",
     },
     submit: "Open the Full Property Finder",
+    propertySearch: {
+      labels: {
+        reference: "Reference",
+        location: "Location",
+        propertyType: "Property Type",
+        bedrooms: "Bedrooms",
+        minPrice: "Min. Price",
+        maxPrice: "Max. Price",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "e.g. R5014453",
+        anyLocation: "Any Location",
+        anyType: "Any Type",
+        any: "Any",
+        loading: "Loading...",
+      },
+      status: {
+        newDevelopments: "New Developments",
+        resales: "Resales",
+        allProperties: "All Properties",
+      },
+      buttons: {
+        search: "Search Properties",
+        clearAll: "Clear All",
+      },
+    },
   },
   miniAbout: {
     headline: "Expertise You Can",

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLocations } from '@/hooks/useLocations';
 import { usePropertyTypes } from '@/hooks/usePropertyTypes';
+import { useTranslation } from '@/i18n';
 
 const PRICE_OPTIONS = [
   { label: "Any", value: "" },
@@ -33,16 +34,21 @@ const BEDROOM_OPTIONS = [
   { label: "6+", value: "6" },
 ];
 
-const STATUS_OPTIONS = [
-  { label: "New Developments", value: "new-developments" },
-  { label: "Resales", value: "resales" },
-  { label: "All Properties", value: "all" },
-];
-
 export const QuickSearch: React.FC = () => {
   const navigate = useNavigate();
+  const { t, currentLanguage } = useTranslation();
   const { locations, loading: locationsLoading } = useLocations();
   const { flattenedTypes, loading: typesLoading } = usePropertyTypes();
+  
+  // Get translations for property search
+  const ps = t.quickSearch.propertySearch;
+  
+  // Build status options from translations
+  const statusOptions = [
+    { label: ps.status.newDevelopments, value: "new-developments" },
+    { label: ps.status.resales, value: "resales" },
+    { label: ps.status.allProperties, value: "all" },
+  ];
 
   const [reference, setReference] = useState("");
   const [location, setLocation] = useState("");
@@ -72,7 +78,7 @@ export const QuickSearch: React.FC = () => {
       params.append("newDevs", "all");
     }
 
-    navigate(`/en/properties?${params.toString()}`);
+    navigate(`/${currentLanguage}/properties?${params.toString()}`);
   };
 
   const handleReset = () => {
@@ -119,9 +125,9 @@ export const QuickSearch: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Reference */}
               <div className="space-y-2">
-                <label className={labelStyles}>Reference</label>
+                <label className={labelStyles}>{ps.labels.reference}</label>
                 <Input
-                  placeholder="e.g. R5014453"
+                  placeholder={ps.placeholders.reference}
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                   className={inputStyles}
@@ -130,20 +136,20 @@ export const QuickSearch: React.FC = () => {
 
               {/* Location */}
               <div className="space-y-2">
-                <label className={labelStyles}>Location</label>
+                <label className={labelStyles}>{ps.labels.location}</label>
                 <Select value={location} onValueChange={setLocation}>
                   <SelectTrigger className={selectTriggerStyles}>
                     {locationsLoading ? (
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading...
+                        {ps.placeholders.loading}
                       </span>
                     ) : (
-                      <SelectValue placeholder="Any Location" />
+                      <SelectValue placeholder={ps.placeholders.anyLocation} />
                     )}
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 rounded-xl">
-                    <SelectItem value="any">Any Location</SelectItem>
+                    <SelectItem value="any">{ps.placeholders.anyLocation}</SelectItem>
                     {locations.map((loc) => (
                       <SelectItem key={loc.value} value={loc.value}>
                         {loc.label}
@@ -155,20 +161,20 @@ export const QuickSearch: React.FC = () => {
 
               {/* Property Type */}
               <div className="space-y-2">
-                <label className={labelStyles}>Property Type</label>
+                <label className={labelStyles}>{ps.labels.propertyType}</label>
                 <Select value={propertyType} onValueChange={setPropertyType}>
                   <SelectTrigger className={selectTriggerStyles}>
                     {typesLoading ? (
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading...
+                        {ps.placeholders.loading}
                       </span>
                     ) : (
-                      <SelectValue placeholder="Any Type" />
+                      <SelectValue placeholder={ps.placeholders.anyType} />
                     )}
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 max-h-80 rounded-xl">
-                    <SelectItem value="any">Any Type</SelectItem>
+                    <SelectItem value="any">{ps.placeholders.anyType}</SelectItem>
                     {flattenedTypes.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
@@ -180,14 +186,14 @@ export const QuickSearch: React.FC = () => {
 
               {/* Search Button */}
               <div className="space-y-2">
-                <label className={`${labelStyles} invisible`}>Search</label>
+                <label className={`${labelStyles} invisible`}>{ps.buttons.search}</label>
                 <Button
                   onClick={handleSearch}
                   disabled={isLoading}
                   className="w-full h-12 bg-gradient-to-r from-prime-gold to-prime-goldLight text-prime-900 font-semibold rounded-xl shadow-lg shadow-prime-gold/30 hover:shadow-xl hover:shadow-prime-gold/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 border-0"
                 >
                   <Search className="w-5 h-5 mr-2" />
-                  Search Properties
+                  {ps.buttons.search}
                 </Button>
               </div>
             </div>
@@ -196,15 +202,15 @@ export const QuickSearch: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {/* Bedrooms */}
               <div className="space-y-2">
-                <label className={labelStyles}>Bedrooms</label>
+                <label className={labelStyles}>{ps.labels.bedrooms}</label>
                 <Select value={bedrooms} onValueChange={setBedrooms}>
                   <SelectTrigger className={selectTriggerStyles}>
-                    <SelectValue placeholder="Any" />
+                    <SelectValue placeholder={ps.placeholders.any} />
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 rounded-xl">
                     {BEDROOM_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value || "any"} value={opt.value || "any"}>
-                        {opt.label}
+                        {opt.value ? opt.label : ps.placeholders.any}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -213,15 +219,15 @@ export const QuickSearch: React.FC = () => {
 
               {/* Min Price */}
               <div className="space-y-2">
-                <label className={labelStyles}>Min. Price</label>
+                <label className={labelStyles}>{ps.labels.minPrice}</label>
                 <Select value={priceMin} onValueChange={setPriceMin}>
                   <SelectTrigger className={selectTriggerStyles}>
-                    <SelectValue placeholder="Any" />
+                    <SelectValue placeholder={ps.placeholders.any} />
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 rounded-xl">
                     {PRICE_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value || "any-min"} value={opt.value || "any"}>
-                        {opt.label}
+                        {opt.value ? opt.label : ps.placeholders.any}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -230,15 +236,15 @@ export const QuickSearch: React.FC = () => {
 
               {/* Max Price */}
               <div className="space-y-2">
-                <label className={labelStyles}>Max. Price</label>
+                <label className={labelStyles}>{ps.labels.maxPrice}</label>
                 <Select value={priceMax} onValueChange={setPriceMax}>
                   <SelectTrigger className={selectTriggerStyles}>
-                    <SelectValue placeholder="Any" />
+                    <SelectValue placeholder={ps.placeholders.any} />
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 rounded-xl">
                     {PRICE_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value || "any-max"} value={opt.value || "any"}>
-                        {opt.label}
+                        {opt.value ? opt.label : ps.placeholders.any}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -247,13 +253,13 @@ export const QuickSearch: React.FC = () => {
 
               {/* Status */}
               <div className="space-y-2">
-                <label className={labelStyles}>Status</label>
+                <label className={labelStyles}>{ps.labels.status}</label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className={selectTriggerStyles}>
-                    <SelectValue placeholder="Sales" />
+                    <SelectValue placeholder={ps.status.newDevelopments} />
                   </SelectTrigger>
                   <SelectContent className="bg-white/95 backdrop-blur-xl border-white/60 shadow-xl z-50 rounded-xl">
-                    {STATUS_OPTIONS.map((opt) => (
+                    {statusOptions.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
@@ -264,14 +270,14 @@ export const QuickSearch: React.FC = () => {
 
               {/* Reset Button */}
               <div className="space-y-2">
-                <label className={`${labelStyles} invisible`}>Reset</label>
+                <label className={`${labelStyles} invisible`}>{ps.buttons.clearAll}</label>
                 <Button
                   variant="ghost"
                   onClick={handleReset}
                   className="w-full h-12 text-slate-500 hover:text-prime-gold hover:bg-prime-gold/10 rounded-xl border border-slate-200/50 hover:border-prime-gold/30 transition-all duration-300"
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
-                  Clear All
+                  {ps.buttons.clearAll}
                 </Button>
               </div>
             </div>

@@ -95,6 +95,33 @@ export const de = {
       range4: "€1,5M+",
     },
     submit: "Vollständigen Immobiliensucher Öffnen",
+    propertySearch: {
+      labels: {
+        reference: "Referenz",
+        location: "Standort",
+        propertyType: "Immobilientyp",
+        bedrooms: "Schlafzimmer",
+        minPrice: "Min. Preis",
+        maxPrice: "Max. Preis",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "z.B. R5014453",
+        anyLocation: "Beliebiger Standort",
+        anyType: "Beliebiger Typ",
+        any: "Beliebig",
+        loading: "Wird geladen...",
+      },
+      status: {
+        newDevelopments: "Neubauprojekte",
+        resales: "Wiederverkäufe",
+        allProperties: "Alle Immobilien",
+      },
+      buttons: {
+        search: "Immobilien Suchen",
+        clearAll: "Alles Löschen",
+      },
+    },
   },
   miniAbout: {
     headline: "Expertise, Der Sie",

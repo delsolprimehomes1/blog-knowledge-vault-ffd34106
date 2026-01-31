@@ -95,6 +95,33 @@ export const sv = {
       range4: "€1,5M+",
     },
     submit: "Öppna Den Fullständiga Fastighetssökaren",
+    propertySearch: {
+      labels: {
+        reference: "Referens",
+        location: "Plats",
+        propertyType: "Fastighetstyp",
+        bedrooms: "Sovrum",
+        minPrice: "Min. Pris",
+        maxPrice: "Max. Pris",
+        status: "Status",
+      },
+      placeholders: {
+        reference: "t.ex. R5014453",
+        anyLocation: "Valfri Plats",
+        anyType: "Valfri Typ",
+        any: "Alla",
+        loading: "Laddar...",
+      },
+      status: {
+        newDevelopments: "Nybyggnationer",
+        resales: "Återförsäljning",
+        allProperties: "Alla Fastigheter",
+      },
+      buttons: {
+        search: "Sök Fastigheter",
+        clearAll: "Rensa Allt",
+      },
+    },
   },
   miniAbout: {
     headline: "Expertis Du Kan",

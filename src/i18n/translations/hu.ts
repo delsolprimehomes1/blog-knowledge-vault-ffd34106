@@ -95,6 +95,33 @@ export const hu = {
       range4: "€1,5M+",
     },
     submit: "Nyisd Meg a Teljes Ingatlankereső",
+    propertySearch: {
+      labels: {
+        reference: "Referencia",
+        location: "Helyszín",
+        propertyType: "Ingatlantípus",
+        bedrooms: "Hálószobák",
+        minPrice: "Min. Ár",
+        maxPrice: "Max. Ár",
+        status: "Állapot",
+      },
+      placeholders: {
+        reference: "pl. R5014453",
+        anyLocation: "Bármilyen Helyszín",
+        anyType: "Bármilyen Típus",
+        any: "Összes",
+        loading: "Betöltés...",
+      },
+      status: {
+        newDevelopments: "Új Építésű",
+        resales: "Viszonteladás",
+        allProperties: "Összes Ingatlan",
+      },
+      buttons: {
+        search: "Ingatlanok Keresése",
+        clearAll: "Összes Törlése",
+      },
+    },
   },
   miniAbout: {
     headline: "Szakértelem, Amiben",

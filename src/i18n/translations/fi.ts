@@ -95,6 +95,33 @@ export const fi = {
       range4: "€1,5M+",
     },
     submit: "Avaa Täydellinen Kiinteistöhakija",
+    propertySearch: {
+      labels: {
+        reference: "Viite",
+        location: "Sijainti",
+        propertyType: "Kiinteistötyyppi",
+        bedrooms: "Makuuhuoneet",
+        minPrice: "Min. Hinta",
+        maxPrice: "Max. Hinta",
+        status: "Tila",
+      },
+      placeholders: {
+        reference: "esim. R5014453",
+        anyLocation: "Mikä tahansa sijainti",
+        anyType: "Mikä tahansa tyyppi",
+        any: "Mikä tahansa",
+        loading: "Ladataan...",
+      },
+      status: {
+        newDevelopments: "Uudiskohteet",
+        resales: "Jälleenmyynti",
+        allProperties: "Kaikki kiinteistöt",
+      },
+      buttons: {
+        search: "Hae Kiinteistöjä",
+        clearAll: "Tyhjennä Kaikki",
+      },
+    },
   },
   miniAbout: {
     headline: "Asiantuntemusta, Johon Voit",
