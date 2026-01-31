@@ -10,7 +10,7 @@ export const RETARGETING_VIDEO_THUMBNAIL = retargetingVideoThumbnail;
  * These videos play in a modal when users click "Watch Video" on /{lang}/welcome-back pages.
  */
 export const RETARGETING_WELCOME_BACK_VIDEOS: Record<string, string> = {
-  en: '', // Pending - component will gracefully hide button
+  en: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/697548eb59a77b4486da126b.mp4',
   nl: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/69754915c1fa0c27e56bed08.mp4',
   de: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/697548ebd4fb90e7cab25cba.mp4',
   fr: 'https://storage.googleapis.com/msgsndr/281Nzx90nVL8424QY4Af/media/697548eb59a77b05d5da126c.mp4',

@@ -40,9 +40,13 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
     if (!video) return;
 
     if (video.muted) {
+      // Unmuting - restart video from beginning
+      video.currentTime = 0;
       video.muted = false;
       setIsMuted(false);
+      video.play();
     } else {
+      // Muting - just mute, don't restart
       video.muted = true;
       setIsMuted(true);
     }
