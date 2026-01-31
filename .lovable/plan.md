@@ -1,250 +1,206 @@
 
-# Full Localization of Home Page Property Search Tool
 
-## Problem Identified
+# Property Lead Capture & Emma Integration Audit and Fix
 
-The QuickSearch property finder tool on the home page (`src/components/home/sections/QuickSearch.tsx`) displays **100% English content** regardless of the selected language:
+## Current Status Assessment
 
-| Element | Current (Hardcoded English) | Should Be (German Example) |
-|---------|----------------------------|---------------------------|
-| Reference label | "Reference" | "Referenz" |
-| Location label | "Location" | "Standort" |
-| Property Type label | "Property Type" | "Immobilientyp" |
-| Bedrooms label | "Bedrooms" | "Schlafzimmer" |
-| Min. Price label | "Min. Price" | "Min. Preis" |
-| Max. Price label | "Max. Price" | "Max. Preis" |
-| Status label | "Status" | "Status" |
-| Reference placeholder | "e.g. R5014453" | "z.B. R5014453" |
-| Any Location | "Any Location" | "Beliebiger Standort" |
-| Any Type | "Any Type" | "Beliebiger Typ" |
-| Any | "Any" | "Beliebig" |
-| Loading... | "Loading..." | "Wird geladen..." |
-| New Developments | "New Developments" | "Neubauprojekte" |
-| Resales | "Resales" | "Wiederverkäufe" |
-| All Properties | "All Properties" | "Alle Immobilien" |
-| Search Properties | "Search Properties" | "Immobilien Suchen" |
-| Clear All | "Clear All" | "Alles Löschen" |
+### What Works Correctly ✅
+1. **Send Inquiry Form** (`PropertyContact.tsx`):
+   - Captures property reference, price, and type from props
+   - Sends to `register-crm-lead` edge function
+   - Triggers round-robin routing
+   - Admin notifications sent
+   - CRM receives complete property context
+
+2. **CRM Lead Registration** (`register-crm-lead/index.ts`):
+   - Properly stores `property_ref`, `interest`, and `property_type`
+   - Calculates lead score and segment
+   - Handles night hold logic
+   - Triggers round-robin broadcast
+   - Sends admin alerts
+
+### Issues Found ❌
+
+#### Issue 1: Wrong Page Type Detection
+**File:** `src/lib/webhookHandler.ts` (line 93)
+```typescript
+// CURRENT (WRONG):
+if (pathWithoutLang.startsWith('/properties/')) return 'property_detail';
+
+// ACTUAL ROUTE:
+/:lang/property/:reference  (e.g., /en/property/R5073766)
+```
+**Impact:** Emma reports `page_type: "other"` instead of `"property_detail"` when opened from property pages.
+
+#### Issue 2: No Property Reference Extraction
+**File:** `src/components/landing/EmmaChat.tsx`
+
+When Emma opens on a property detail page, the URL contains the property reference (e.g., `/en/property/R5073766`), but this reference is NOT extracted and included in the CRM lead payload.
+
+**Current behavior:**
+- `page_url` is captured but not parsed
+- `property_ref` field is always null/undefined for Emma leads from property pages
+
+#### Issue 3: No Property Context in Emma Event
+**File:** `src/components/property/PropertyContact.tsx` (line 230)
+```typescript
+// CURRENT: No context passed
+onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
+
+// NEEDED: Pass property context
+onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat', {
+  detail: { propertyRef: reference, propertyPrice: price, propertyType }
+}))}
+```
 
 ---
 
-## Solution: Expand quickSearch i18n Object
+## Implementation Plan
 
-### New Translation Structure
+### Step 1: Fix Page Type Detection
+**File:** `src/lib/webhookHandler.ts`
 
-Add a `propertySearch` subsection to the existing `quickSearch` object in all 10 translation files:
+Change line 93 from:
+```typescript
+if (pathWithoutLang.startsWith('/properties/')) return 'property_detail';
+```
+To:
+```typescript
+if (pathWithoutLang.startsWith('/property/')) return 'property_detail';
+```
 
-```text
-quickSearch: {
-  // ... existing keys (headline, description, labels, etc.)
+### Step 2: Pass Property Context to Emma
+**File:** `src/components/property/PropertyContact.tsx`
+
+Update the Schedule button and mobile Inquire button to pass property details:
+
+```typescript
+// Desktop Schedule button (line 230)
+onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat', {
+  detail: { propertyRef: reference, propertyPrice: price, propertyType }
+}))}
+
+// Mobile Inquire button (line 290)
+onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat', {
+  detail: { propertyRef: reference, propertyPrice: price }
+}))}
+```
+
+### Step 3: Capture Property Context in Emma
+**File:** `src/components/landing/EmmaChat.tsx`
+
+**3a. Add property context state:**
+```typescript
+const [propertyContext, setPropertyContext] = useState<{
+  propertyRef?: string;
+  propertyPrice?: string;
+  propertyType?: string;
+} | null>(null);
+```
+
+**3b. Listen for property context in openEmmaChat event:**
+
+Update the event listener in the component where `openEmmaChat` is handled (either in EmmaChat or BlogEmmaChat):
+
+```typescript
+useEffect(() => {
+  const handleOpenEmma = (e: CustomEvent) => {
+    if (e.detail) {
+      setPropertyContext({
+        propertyRef: e.detail.propertyRef,
+        propertyPrice: e.detail.propertyPrice,
+        propertyType: e.detail.propertyType
+      });
+    }
+    setIsOpen(true);
+  };
   
-  propertySearch: {
-    labels: {
-      reference: "Reference",
-      location: "Location",
-      propertyType: "Property Type",
-      bedrooms: "Bedrooms",
-      minPrice: "Min. Price",
-      maxPrice: "Max. Price",
-      status: "Status",
-    },
-    placeholders: {
-      reference: "e.g. R5014453",
-      anyLocation: "Any Location",
-      anyType: "Any Type",
-      any: "Any",
-      loading: "Loading...",
-    },
-    status: {
-      newDevelopments: "New Developments",
-      resales: "Resales",
-      allProperties: "All Properties",
-    },
-    buttons: {
-      search: "Search Properties",
-      clearAll: "Clear All",
-    },
-  },
+  window.addEventListener('openEmmaChat', handleOpenEmma as EventListener);
+  return () => window.removeEventListener('openEmmaChat', handleOpenEmma as EventListener);
+}, []);
+```
+
+**3c. Fallback: Extract property reference from URL if not passed:**
+```typescript
+// In initialization effect (when Emma opens)
+const extractPropertyRefFromUrl = (): string | null => {
+  const match = window.location.pathname.match(/\/property\/([A-Z0-9]+)/i);
+  return match ? match[1] : null;
+};
+
+// When setting emmaOpenedContext, add:
+const urlPropertyRef = extractPropertyRefFromUrl();
+setEmmaOpenedContext({
+  pageType: detectPageType(window.location.pathname),
+  // ... existing fields ...
+  propertyRef: urlPropertyRef || undefined
+});
+```
+
+**3d. Include property context in lead payload:**
+
+Update `sendToGHLWebhook` function to include property context:
+
+```typescript
+page_context: {
+  page_type: pageContext.pageType,
+  page_url: pageContext.pageUrl,
+  // ... existing fields ...
+  property_ref: propertyContext?.propertyRef || pageContext.propertyRef || null,
+  property_type: propertyContext?.propertyType || null,
+  property_price: propertyContext?.propertyPrice || null,
 }
+```
+
+### Step 4: Update Edge Function to Handle Property Context
+**File:** `supabase/functions/send-emma-lead/index.ts`
+
+Add property fields to the CRM payload:
+
+```typescript
+const crmPayload = {
+  // ... existing fields ...
+  propertyRef: payload.page_context?.property_ref || null,
+  propertyType: payload.page_context?.property_type || null,
+  // Format interest for agent visibility
+  interest: payload.page_context?.property_ref 
+    ? `Property ${payload.page_context.property_ref}` 
+    : undefined,
+};
 ```
 
 ---
 
 ## Files to Modify
 
-### Part 1: Translation Files (Add `propertySearch` to `quickSearch`)
-
-| File | Language |
-|------|----------|
-| `src/i18n/translations/en.ts` | English |
-| `src/i18n/translations/de.ts` | German |
-| `src/i18n/translations/fi.ts` | Finnish |
-| `src/i18n/translations/nl.ts` | Dutch |
-| `src/i18n/translations/fr.ts` | French |
-| `src/i18n/translations/pl.ts` | Polish |
-| `src/i18n/translations/da.ts` | Danish |
-| `src/i18n/translations/hu.ts` | Hungarian |
-| `src/i18n/translations/sv.ts` | Swedish |
-| `src/i18n/translations/no.ts` | Norwegian |
-
-### Part 2: Component Update
-
 | File | Changes |
 |------|---------|
-| `src/components/home/sections/QuickSearch.tsx` | Import `useTranslation`, replace all hardcoded strings with i18n keys |
+| `src/lib/webhookHandler.ts` | Fix path pattern from `/properties/` to `/property/` |
+| `src/components/property/PropertyContact.tsx` | Pass property context in openEmmaChat event |
+| `src/components/blog-article/BlogEmmaChat.tsx` | Listen for property context from event |
+| `src/components/landing/EmmaChat.tsx` | Extract property ref from URL, include in payload |
+| `supabase/functions/send-emma-lead/index.ts` | Pass property context to CRM registration |
 
 ---
 
-## Sample Translations
+## Expected Result After Fix
 
-### English (en.ts)
-```text
-propertySearch: {
-  labels: {
-    reference: "Reference",
-    location: "Location",
-    propertyType: "Property Type",
-    bedrooms: "Bedrooms",
-    minPrice: "Min. Price",
-    maxPrice: "Max. Price",
-    status: "Status",
-  },
-  placeholders: {
-    reference: "e.g. R5014453",
-    anyLocation: "Any Location",
-    anyType: "Any Type",
-    any: "Any",
-    loading: "Loading...",
-  },
-  status: {
-    newDevelopments: "New Developments",
-    resales: "Resales",
-    allProperties: "All Properties",
-  },
-  buttons: {
-    search: "Search Properties",
-    clearAll: "Clear All",
-  },
-}
-```
+When a user on `/en/property/R5073766` clicks "Schedule" or "Inquire":
 
-### German (de.ts)
-```text
-propertySearch: {
-  labels: {
-    reference: "Referenz",
-    location: "Standort",
-    propertyType: "Immobilientyp",
-    bedrooms: "Schlafzimmer",
-    minPrice: "Min. Preis",
-    maxPrice: "Max. Preis",
-    status: "Status",
-  },
-  placeholders: {
-    reference: "z.B. R5014453",
-    anyLocation: "Beliebiger Standort",
-    anyType: "Beliebiger Typ",
-    any: "Beliebig",
-    loading: "Wird geladen...",
-  },
-  status: {
-    newDevelopments: "Neubauprojekte",
-    resales: "Wiederverkäufe",
-    allProperties: "Alle Immobilien",
-  },
-  buttons: {
-    search: "Immobilien Suchen",
-    clearAll: "Alles Löschen",
-  },
-}
-```
-
-### Finnish (fi.ts)
-```text
-propertySearch: {
-  labels: {
-    reference: "Viite",
-    location: "Sijainti",
-    propertyType: "Kiinteistötyyppi",
-    bedrooms: "Makuuhuoneet",
-    minPrice: "Min. Hinta",
-    maxPrice: "Max. Hinta",
-    status: "Tila",
-  },
-  placeholders: {
-    reference: "esim. R5014453",
-    anyLocation: "Mikä tahansa sijainti",
-    anyType: "Mikä tahansa tyyppi",
-    any: "Mikä tahansa",
-    loading: "Ladataan...",
-  },
-  status: {
-    newDevelopments: "Uudiskohteet",
-    resales: "Jälleenmyynti",
-    allProperties: "Kaikki kiinteistöt",
-  },
-  buttons: {
-    search: "Hae Kiinteistöjä",
-    clearAll: "Tyhjennä Kaikki",
-  },
-}
-```
+1. Emma opens with property context (`propertyRef: "R5073766"`)
+2. Emma correctly identifies `page_type: "property_detail"`
+3. Lead sent to CRM includes:
+   - `property_ref: "R5073766"`
+   - `interest: "Property R5073766"`
+   - `page_type: "property_detail"`
+4. Admin and claiming agent see which specific property the user was viewing
+5. Round-robin routing works as expected with complete context
 
 ---
 
-## Component Changes
+## Technical Notes
 
-### QuickSearch.tsx Updates
+- Property reference extraction uses regex: `/\/property\/([A-Z0-9]+)/i`
+- Fallback extraction ensures leads are tracked even if event detail is missing
+- Changes are backward compatible - existing Emma conversations continue working
 
-**Import translation hook:**
-```tsx
-import { useTranslation } from '@/i18n';
-```
-
-**Get translations:**
-```tsx
-const { t, currentLanguage } = useTranslation();
-const ps = t.quickSearch.propertySearch;
-```
-
-**Replace hardcoded strings:**
-```tsx
-// Labels
-<label>{ps.labels.reference}</label>
-<label>{ps.labels.location}</label>
-<label>{ps.labels.propertyType}</label>
-
-// Placeholders
-<Input placeholder={ps.placeholders.reference} ... />
-<SelectValue placeholder={ps.placeholders.anyLocation} />
-
-// Status options - convert from static array to dynamic
-const statusOptions = [
-  { label: ps.status.newDevelopments, value: "new-developments" },
-  { label: ps.status.resales, value: "resales" },
-  { label: ps.status.allProperties, value: "all" },
-];
-
-// Buttons
-<Button>{ps.buttons.search}</Button>
-<Button>{ps.buttons.clearAll}</Button>
-```
-
-**Fix navigation to use current language:**
-```tsx
-// Current (hardcoded /en/)
-navigate(`/en/properties?${params.toString()}`);
-
-// Fixed (uses current language)
-navigate(`/${currentLanguage}/properties?${params.toString()}`);
-```
-
----
-
-## Expected Result
-
-After implementation:
-- Property search tool on `/de/` will show 100% German labels and text
-- Property search tool on `/fi/` will show 100% Finnish labels and text
-- All 10 language versions will display fully localized search tools
-- Navigation will correctly go to the language-specific property finder page
-- No English "bleeding" on non-English home pages
