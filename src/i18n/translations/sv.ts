@@ -404,6 +404,71 @@ export const sv = {
   },
   aboutUs: {
     meta: { title: "Om Del Sol Prime Homes | Costa del Sol Fastighetsexperter", description: "Lär känna vårt expertteam med 35+ års erfarenhet av att hjälpa internationella köpare hitta fastigheter på Costa del Sol." },
-    cta: { meetTeam: "Möt Vårt Team", contactUs: "Kontakta Oss" }
+    cta: { meetTeam: "Möt Vårt Team", contactUs: "Kontakta Oss" },
+    hero: {
+      breadcrumbHome: "Hem",
+      breadcrumbAbout: "Om Oss",
+      statsYears: "Års Erfarenhet",
+      statsClients: "Nöjda Kunder",
+      statsSatisfaction: "Nöjdhetsgrad"
+    },
+    mission: {
+      heading: "Vårt Uppdrag",
+      summaryLabel: "Om Oss"
+    },
+    story: {
+      heading: "Vår Historia",
+      subheading: "Från tre individuella resor till ett gemensamt uppdrag",
+      timelineHeading: "Vår Resa",
+      timeline: [
+        { year: "1997", event: "Steven Roberts anländer till Spanien" },
+        { year: "1998", event: "Cédric Van Hecke flyttar till Costa del Sol" },
+        { year: "2016", event: "Steven grundar Sentinel Estates" },
+        { year: "2020", event: "Hans Beeckman ansluter sig till teamet" }
+      ]
+    },
+    founders: {
+      badge: "Expertteam",
+      heading: "Möt Grundarna",
+      subheading: "Tre erfarna proffs förenade av en passion för att hjälpa kunder hitta sitt perfekta spanska hem",
+      specialization: "Specialisering",
+      viewProfile: "Visa Profil"
+    },
+    whyChoose: {
+      heading: "Varför Välja Oss",
+      subheading: "Vi hjälper dig inte bara att hitta en fastighet — vi hjälper dig att hitta ett hem",
+      features: [
+        { title: "Lokal Expertis", description: "40+ kombinerade år av att bo på Costa del Sol" },
+        { title: "Heltäckande Service", description: "Från fastighetssökning till efterförsäljningsstöd" },
+        { title: "Licensierad & Certifierad", description: "API-registrerad och fullt kompatibel" },
+        { title: "Responsivt Stöd", description: "Tillgänglig när du behöver oss mest" },
+        { title: "Kund-Först Inställning", description: "Dina behov styr varje beslut" },
+        { title: "Transparent Process", description: "Inga dolda avgifter, inga överraskningar" }
+      ]
+    },
+    credentials: {
+      heading: "Våra Kvalifikationer",
+      subheading: "Licensierad, certifierad och engagerad i de högsta professionella standarderna",
+      citationsLabel: "Verifierad av Officiella Källor",
+      items: [
+        { name: "API Licensierad", description: "Registrerad hos Agentes de la Propiedad Inmobiliaria" },
+        { name: "RICS Ansluten", description: "Royal Institution of Chartered Surveyors standarder" },
+        { name: "AML Kompatibel", description: "Full efterlevnad av anti-penningtvätt" },
+        { name: "GDPR Certifierad", description: "EU-standarder för dataskydd" }
+      ]
+    },
+    faq: {
+      heading: "Vanliga Frågor",
+      subheading: "Vanliga frågor om Del Sol Prime Homes"
+    },
+    ctaSection: {
+      heading: "Redo att Hitta Din Drömfastighet?",
+      subheading: "Låt oss börja din Costa del Sol resa tillsammans. Vårt team är redo att hjälpa dig varje steg på vägen.",
+      chatWithEmma: "Chatta med Emma",
+      callUs: "Ring Oss",
+      emailUs: "Maila Oss",
+      visitUs: "Besök Oss",
+      location: "Marbella, Spanien"
+    }
   }
 };

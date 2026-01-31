@@ -2,12 +2,22 @@ import { motion } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { History, Lightbulb, TrendingUp } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface OurStoryProps {
   content: string;
 }
 
+interface TimelineItem {
+  year: string;
+  event: string;
+}
+
 export const OurStory = ({ content }: OurStoryProps) => {
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const story = aboutUs?.story as { heading?: string; subheading?: string; timelineHeading?: string; timeline?: TimelineItem[] } | undefined;
+
   // Parse markdown to HTML
   const parseMarkdown = (markdown: string): string => {
     try {
@@ -18,12 +28,15 @@ export const OurStory = ({ content }: OurStoryProps) => {
     }
   };
 
-  const timelineItems = [
-    { year: "1997", event: "Steven Roberts arrives in Spain", icon: History },
-    { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol", icon: History },
-    { year: "2016", event: "Steven founds Sentinel Estates", icon: Lightbulb },
-    { year: "2020", event: "Hans Beeckman joins the team", icon: TrendingUp }
+  const defaultTimeline = [
+    { year: "1997", event: "Steven Roberts arrives in Spain" },
+    { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol" },
+    { year: "2016", event: "Steven founds Sentinel Estates" },
+    { year: "2020", event: "Hans Beeckman joins the team" }
   ];
+
+  const timelineItems = story?.timeline || defaultTimeline;
+  const icons = [History, History, Lightbulb, TrendingUp];
 
   return (
     <section className="py-20 bg-prime-50" aria-labelledby="story-heading">
@@ -36,10 +49,10 @@ export const OurStory = ({ content }: OurStoryProps) => {
         >
           <div className="text-center mb-16">
             <h2 id="story-heading" className="font-serif text-3xl md:text-4xl font-bold text-prime-900 mb-4">
-              Our Story
+              {story?.heading || "Our Story"}
             </h2>
             <p className="text-slate-600 max-w-2xl mx-auto">
-              From three individual journeys to one shared mission
+              {story?.subheading || "From three individual journeys to one shared mission"}
             </p>
           </div>
 
@@ -47,31 +60,34 @@ export const OurStory = ({ content }: OurStoryProps) => {
             {/* Timeline */}
             <div className="space-y-8">
               <h3 className="font-serif text-2xl font-bold text-prime-900 mb-6">
-                Our Journey
+                {story?.timelineHeading || "Our Journey"}
               </h3>
               
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-prime-gold/30" />
                 
-                {timelineItems.map((item, index) => (
-                  <motion.div
-                    key={item.year}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.15 }}
-                    className="relative flex gap-6 pb-8 last:pb-0"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-prime-gold flex items-center justify-center shrink-0 z-10 shadow-lg">
-                      <item.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="pt-2">
-                      <span className="text-prime-gold font-bold text-lg">{item.year}</span>
-                      <p className="text-prime-800 mt-1">{item.event}</p>
-                    </div>
-                  </motion.div>
-                ))}
+                {timelineItems.map((item, index) => {
+                  const IconComponent = icons[index] || History;
+                  return (
+                    <motion.div
+                      key={item.year}
+                      initial={{ opacity: 0, x: -20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: index * 0.15 }}
+                      className="relative flex gap-6 pb-8 last:pb-0"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-prime-gold flex items-center justify-center shrink-0 z-10 shadow-lg">
+                        <IconComponent className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="pt-2">
+                        <span className="text-prime-gold font-bold text-lg">{item.year}</span>
+                        <p className="text-prime-800 mt-1">{item.event}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
 

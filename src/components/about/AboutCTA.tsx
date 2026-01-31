@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Phone, Mail, MapPin, Users } from "lucide-react";
+import { Phone, Mail, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useTranslation } from "@/i18n";
 
 export const AboutCTA = () => {
   const { t, currentLanguage } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const ctaSection = aboutUs?.ctaSection as { heading?: string; subheading?: string; chatWithEmma?: string; callUs?: string; emailUs?: string; visitUs?: string; location?: string } | undefined;
+  const cta = aboutUs?.cta as { meetTeam?: string } | undefined;
   
   return (
     <section className="py-20 bg-gradient-to-br from-prime-900 via-prime-800 to-prime-900 text-white relative overflow-hidden">
@@ -24,10 +27,10 @@ export const AboutCTA = () => {
           className="max-w-4xl mx-auto text-center"
         >
           <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-            Ready to Find Your Dream Property?
+            {ctaSection?.heading || "Ready to Find Your Dream Property?"}
           </h2>
           <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
-            Let's start your Costa del Sol journey together. Our team is ready to help you every step of the way.
+            {ctaSection?.subheading || "Let's start your Costa del Sol journey together. Our team is ready to help you every step of the way."}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -38,7 +41,7 @@ export const AboutCTA = () => {
             >
               <Link to={`/${currentLanguage}/team`}>
                 <Users className="w-4 h-4 mr-2" />
-                {t.aboutUs?.cta?.meetTeam || "Meet Our Team"}
+                {cta?.meetTeam || "Meet Our Team"}
               </Link>
             </Button>
             <Button 
@@ -48,7 +51,7 @@ export const AboutCTA = () => {
               onClick={() => window.dispatchEvent(new CustomEvent('openEmmaChat'))}
             >
               <Phone className="w-4 h-4 mr-2" />
-              Chat with Emma
+              {ctaSection?.chatWithEmma || "Chat with Emma"}
             </Button>
           </div>
 
@@ -58,22 +61,22 @@ export const AboutCTA = () => {
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
                 <Phone className="w-5 h-5 text-prime-gold" />
               </div>
-              <span className="text-sm text-slate-400 mb-1">Call Us</span>
+              <span className="text-sm text-slate-400 mb-1">{ctaSection?.callUs || "Call Us"}</span>
               <span className="font-medium">+34 630 03 90 90</span>
             </div>
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
                 <Mail className="w-5 h-5 text-prime-gold" />
               </div>
-              <span className="text-sm text-slate-400 mb-1">Email Us</span>
+              <span className="text-sm text-slate-400 mb-1">{ctaSection?.emailUs || "Email Us"}</span>
               <span className="font-medium">info@delsolprimehomes.com</span>
             </div>
             <div className="flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
                 <MapPin className="w-5 h-5 text-prime-gold" />
               </div>
-              <span className="text-sm text-slate-400 mb-1">Visit Us</span>
-              <span className="font-medium">Marbella, Spain</span>
+              <span className="text-sm text-slate-400 mb-1">{ctaSection?.visitUs || "Visit Us"}</span>
+              <span className="font-medium">{ctaSection?.location || "Marbella, Spain"}</span>
             </div>
           </div>
         </motion.div>

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Target } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface MissionStatementProps {
   mission: string;
@@ -7,6 +8,10 @@ interface MissionStatementProps {
 }
 
 export const MissionStatement = ({ mission, speakableSummary }: MissionStatementProps) => {
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const missionSection = aboutUs?.mission as { heading?: string; summaryLabel?: string } | undefined;
+
   return (
     <section className="py-20 bg-white" aria-labelledby="mission-heading">
       <div className="container mx-auto px-4 md:px-6">
@@ -22,7 +27,7 @@ export const MissionStatement = ({ mission, speakableSummary }: MissionStatement
               <Target className="w-8 h-8 text-prime-gold" />
             </div>
             <h2 id="mission-heading" className="font-serif text-3xl md:text-4xl font-bold text-prime-900 mb-4">
-              Our Mission
+              {missionSection?.heading || "Our Mission"}
             </h2>
           </div>
 
@@ -36,7 +41,7 @@ export const MissionStatement = ({ mission, speakableSummary }: MissionStatement
           {/* Speakable summary - optimized for voice assistants */}
           <div className="speakable-summary bg-slate-50 rounded-xl p-6 md:p-8">
             <p className="text-sm uppercase tracking-wider text-prime-gold font-semibold mb-3">
-              About Us
+              {missionSection?.summaryLabel || "About Us"}
             </p>
             <p className="text-base md:text-lg text-slate-700 leading-relaxed">
               {speakableSummary}

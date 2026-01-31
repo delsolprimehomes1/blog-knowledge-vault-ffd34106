@@ -430,6 +430,71 @@ export const en = {
     cta: {
       meetTeam: "Meet Our Team",
       contactUs: "Contact Us"
+    },
+    hero: {
+      breadcrumbHome: "Home",
+      breadcrumbAbout: "About Us",
+      statsYears: "Years Experience",
+      statsClients: "Happy Clients",
+      statsSatisfaction: "Satisfaction Rate"
+    },
+    mission: {
+      heading: "Our Mission",
+      summaryLabel: "About Us"
+    },
+    story: {
+      heading: "Our Story",
+      subheading: "From three individual journeys to one shared mission",
+      timelineHeading: "Our Journey",
+      timeline: [
+        { year: "1997", event: "Steven Roberts arrives in Spain" },
+        { year: "1998", event: "Cédric Van Hecke relocates to Costa del Sol" },
+        { year: "2016", event: "Steven founds Sentinel Estates" },
+        { year: "2020", event: "Hans Beeckman joins the team" }
+      ]
+    },
+    founders: {
+      badge: "Expert Team",
+      heading: "Meet The Founders",
+      subheading: "Three experienced professionals united by a passion for helping clients find their perfect Spanish home",
+      specialization: "Specialization",
+      viewProfile: "View Profile"
+    },
+    whyChoose: {
+      heading: "Why Choose Us",
+      subheading: "We don't just help you find a property—we help you find a home",
+      features: [
+        { title: "Local Expertise", description: "40+ combined years living on the Costa del Sol" },
+        { title: "End-to-End Service", description: "From property search to after-sales support" },
+        { title: "Licensed & Certified", description: "API registered and fully compliant" },
+        { title: "Responsive Support", description: "Available when you need us most" },
+        { title: "Client-First Approach", description: "Your needs drive every decision" },
+        { title: "Transparent Process", description: "No hidden fees, no surprises" }
+      ]
+    },
+    credentials: {
+      heading: "Our Credentials",
+      subheading: "Licensed, certified, and committed to the highest professional standards",
+      citationsLabel: "Verified By Official Sources",
+      items: [
+        { name: "API Licensed", description: "Registered with Agentes de la Propiedad Inmobiliaria" },
+        { name: "RICS Affiliated", description: "Royal Institution of Chartered Surveyors standards" },
+        { name: "AML Compliant", description: "Full Anti-Money Laundering compliance" },
+        { name: "GDPR Certified", description: "EU data protection standards" }
+      ]
+    },
+    faq: {
+      heading: "Frequently Asked Questions",
+      subheading: "Common questions about Del Sol Prime Homes"
+    },
+    ctaSection: {
+      heading: "Ready to Find Your Dream Property?",
+      subheading: "Let's start your Costa del Sol journey together. Our team is ready to help you every step of the way.",
+      chatWithEmma: "Chat with Emma",
+      callUs: "Call Us",
+      emailUs: "Email Us",
+      visitUs: "Visit Us",
+      location: "Marbella, Spain"
     }
   }
 };

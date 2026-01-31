@@ -404,6 +404,71 @@ export const fi = {
   },
   aboutUs: {
     meta: { title: "Tietoja Del Sol Prime Homesista | Costa del Sol Kiinteistöasiantuntijat", description: "Tutustu asiantuntijatiimiimme, jolla on yli 35 vuoden kokemus kansainvälisten ostajien auttamisesta löytämään kiinteistöjä Costa del Solilta." },
-    cta: { meetTeam: "Tapaa Tiimimme", contactUs: "Ota Yhteyttä" }
+    cta: { meetTeam: "Tapaa Tiimimme", contactUs: "Ota Yhteyttä" },
+    hero: {
+      breadcrumbHome: "Etusivu",
+      breadcrumbAbout: "Tietoa Meistä",
+      statsYears: "Vuoden Kokemus",
+      statsClients: "Tyytyväistä Asiakasta",
+      statsSatisfaction: "Tyytyväisyysaste"
+    },
+    mission: {
+      heading: "Missiomme",
+      summaryLabel: "Tietoa Meistä"
+    },
+    story: {
+      heading: "Tarinamme",
+      subheading: "Kolmesta yksilöllisestä matkasta yhteen jaettuun missioon",
+      timelineHeading: "Matkamme",
+      timeline: [
+        { year: "1997", event: "Steven Roberts saapuu Espanjaan" },
+        { year: "1998", event: "Cédric Van Hecke muuttaa Costa del Solille" },
+        { year: "2016", event: "Steven perustaa Sentinel Estatesin" },
+        { year: "2020", event: "Hans Beeckman liittyy tiimiin" }
+      ]
+    },
+    founders: {
+      badge: "Asiantuntijatiimi",
+      heading: "Tapaa Perustajat",
+      subheading: "Kolme kokenutta ammattilaista, joita yhdistää intohimo auttaa asiakkaita löytämään täydellinen espanjalainen kotinsa",
+      specialization: "Erikoisala",
+      viewProfile: "Näytä Profiili"
+    },
+    whyChoose: {
+      heading: "Miksi Valita Meidät",
+      subheading: "Emme vain auta löytämään kiinteistöä — autamme löytämään kodin",
+      features: [
+        { title: "Paikallinen Asiantuntemus", description: "40+ vuotta yhteensä asumista Costa del Solilla" },
+        { title: "Kokonaisvaltainen Palvelu", description: "Kiinteistöhausta myynnin jälkeiseen tukeen" },
+        { title: "Lisensoitu & Sertifioitu", description: "API-rekisteröity ja täysin vaatimusten mukainen" },
+        { title: "Reagoiva Tuki", description: "Saatavilla kun meitä eniten tarvitset" },
+        { title: "Asiakas-Ensin Lähestymistapa", description: "Tarpeesi ohjaavat jokaista päätöstä" },
+        { title: "Läpinäkyvä Prosessi", description: "Ei piilokustannuksia, ei yllätyksiä" }
+      ]
+    },
+    credentials: {
+      heading: "Pätevyytemme",
+      subheading: "Lisensoitu, sertifioitu ja sitoutunut korkeimpiin ammatillisiin standardeihin",
+      citationsLabel: "Vahvistettu Virallisista Lähteistä",
+      items: [
+        { name: "API Lisensoitu", description: "Rekisteröity Agentes de la Propiedad Inmobiliariassa" },
+        { name: "RICS Affilioitu", description: "Royal Institution of Chartered Surveyors -standardit" },
+        { name: "AML Vaatimusten Mukainen", description: "Täysi rahanpesun vastainen noudattaminen" },
+        { name: "GDPR Sertifioitu", description: "EU:n tietosuojastandardit" }
+      ]
+    },
+    faq: {
+      heading: "Usein Kysytyt Kysymykset",
+      subheading: "Yleisiä kysymyksiä Del Sol Prime Homesista"
+    },
+    ctaSection: {
+      heading: "Valmis Löytämään Unelmiesi Kiinteistön?",
+      subheading: "Aloitetaan yhdessä Costa del Sol -matkasi. Tiimimme on valmis auttamaan sinua jokaisessa vaiheessa.",
+      chatWithEmma: "Keskustele Emman Kanssa",
+      callUs: "Soita Meille",
+      emailUs: "Lähetä Sähköpostia",
+      visitUs: "Vieraile Luonamme",
+      location: "Marbella, Espanja"
+    }
   }
 };

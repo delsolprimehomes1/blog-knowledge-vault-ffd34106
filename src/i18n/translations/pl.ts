@@ -404,6 +404,71 @@ export const pl = {
   },
   aboutUs: {
     meta: { title: "O Del Sol Prime Homes | Eksperci Nieruchomości Costa del Sol", description: "Poznaj nasz zespół ekspertów z ponad 35-letnim doświadczeniem w pomaganiu międzynarodowym nabywcom w znalezieniu nieruchomości na Costa del Sol." },
-    cta: { meetTeam: "Poznaj Nasz Zespół", contactUs: "Skontaktuj się" }
+    cta: { meetTeam: "Poznaj Nasz Zespół", contactUs: "Skontaktuj się" },
+    hero: {
+      breadcrumbHome: "Strona Główna",
+      breadcrumbAbout: "O Nas",
+      statsYears: "Lat Doświadczenia",
+      statsClients: "Zadowolonych Klientów",
+      statsSatisfaction: "Wskaźnik Satysfakcji"
+    },
+    mission: {
+      heading: "Nasza Misja",
+      summaryLabel: "O Nas"
+    },
+    story: {
+      heading: "Nasza Historia",
+      subheading: "Od trzech indywidualnych podróży do jednej wspólnej misji",
+      timelineHeading: "Nasza Podróż",
+      timeline: [
+        { year: "1997", event: "Steven Roberts przybywa do Hiszpanii" },
+        { year: "1998", event: "Cédric Van Hecke przeprowadza się na Costa del Sol" },
+        { year: "2016", event: "Steven zakłada Sentinel Estates" },
+        { year: "2020", event: "Hans Beeckman dołącza do zespołu" }
+      ]
+    },
+    founders: {
+      badge: "Zespół Ekspertów",
+      heading: "Poznaj Założycieli",
+      subheading: "Trzech doświadczonych profesjonalistów zjednoczonych pasją pomagania klientom w znalezieniu ich idealnego hiszpańskiego domu",
+      specialization: "Specjalizacja",
+      viewProfile: "Zobacz Profil"
+    },
+    whyChoose: {
+      heading: "Dlaczego My",
+      subheading: "Nie tylko pomagamy znaleźć nieruchomość — pomagamy znaleźć dom",
+      features: [
+        { title: "Lokalna Ekspertyza", description: "40+ lat łącznie życia na Costa del Sol" },
+        { title: "Kompleksowa Obsługa", description: "Od poszukiwania nieruchomości po wsparcie posprzedażowe" },
+        { title: "Licencjonowani & Certyfikowani", description: "Zarejestrowani w API i w pełni zgodni z przepisami" },
+        { title: "Responsywne Wsparcie", description: "Dostępni, gdy najbardziej nas potrzebujesz" },
+        { title: "Podejście Klient-Pierwszy", description: "Twoje potrzeby napędzają każdą decyzję" },
+        { title: "Przejrzysty Proces", description: "Brak ukrytych opłat, brak niespodzianek" }
+      ]
+    },
+    credentials: {
+      heading: "Nasze Kwalifikacje",
+      subheading: "Licencjonowani, certyfikowani i zobowiązani do najwyższych standardów zawodowych",
+      citationsLabel: "Zweryfikowane przez Oficjalne Źródła",
+      items: [
+        { name: "Licencja API", description: "Zarejestrowany w Agentes de la Propiedad Inmobiliaria" },
+        { name: "Afiliacja RICS", description: "Standardy Royal Institution of Chartered Surveyors" },
+        { name: "Zgodność z AML", description: "Pełna zgodność z przepisami o przeciwdziałaniu praniu pieniędzy" },
+        { name: "Certyfikat RODO", description: "Standardy ochrony danych UE" }
+      ]
+    },
+    faq: {
+      heading: "Często Zadawane Pytania",
+      subheading: "Częste pytania o Del Sol Prime Homes"
+    },
+    ctaSection: {
+      heading: "Gotowy, by Znaleźć Nieruchomość Marzeń?",
+      subheading: "Rozpocznijmy razem Twoją podróż po Costa del Sol. Nasz zespół jest gotowy, by pomóc Ci na każdym kroku.",
+      chatWithEmma: "Czatuj z Emmą",
+      callUs: "Zadzwoń do Nas",
+      emailUs: "Napisz do Nas",
+      visitUs: "Odwiedź Nas",
+      location: "Marbella, Hiszpania"
+    }
   }
 };

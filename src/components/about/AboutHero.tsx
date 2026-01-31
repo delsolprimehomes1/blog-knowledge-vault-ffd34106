@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { MapPin, Users, Award } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface AboutHeroProps {
   headline: string;
@@ -16,10 +17,14 @@ export const AboutHero = ({
   propertiesSold,
   clientSatisfaction
 }: AboutHeroProps) => {
+  const { t, currentLanguage } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const hero = aboutUs?.hero as { breadcrumbHome?: string; breadcrumbAbout?: string; statsYears?: string; statsClients?: string; statsSatisfaction?: string } | undefined;
+
   const stats = [
-    { icon: Award, value: `${yearsInBusiness}+`, label: "Years Experience" },
-    { icon: Users, value: `${propertiesSold}+`, label: "Happy Clients" },
-    { icon: MapPin, value: `${clientSatisfaction}%`, label: "Satisfaction Rate" }
+    { icon: Award, value: `${yearsInBusiness}+`, label: hero?.statsYears || "Years Experience" },
+    { icon: Users, value: `${propertiesSold}+`, label: hero?.statsClients || "Happy Clients" },
+    { icon: MapPin, value: `${clientSatisfaction}%`, label: hero?.statsSatisfaction || "Satisfaction Rate" }
   ];
 
   return (
@@ -43,9 +48,9 @@ export const AboutHero = ({
           {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="mb-8">
             <ol className="flex items-center justify-center gap-2 text-sm text-slate-400">
-              <li><a href="/" className="hover:text-prime-gold transition-colors">Home</a></li>
+              <li><a href={`/${currentLanguage}`} className="hover:text-prime-gold transition-colors">{hero?.breadcrumbHome || "Home"}</a></li>
               <li className="text-slate-600">/</li>
-              <li className="text-prime-gold">About Us</li>
+              <li className="text-prime-gold">{hero?.breadcrumbAbout || "About Us"}</li>
             </ol>
           </nav>
 

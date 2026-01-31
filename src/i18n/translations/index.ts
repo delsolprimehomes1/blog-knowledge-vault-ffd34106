@@ -15,7 +15,7 @@ type TranslationBase = Omit<typeof en, 'brochures' | 'whyChooseUs' | 'team' | 'a
   brochures: Record<string, unknown>;
   whyChooseUs?: typeof en.whyChooseUs;
   team?: typeof en.team;
-  aboutUs?: typeof en.aboutUs;
+  aboutUs?: Record<string, unknown>;
 };
 
 export const translations: Record<Language, TranslationBase> = {

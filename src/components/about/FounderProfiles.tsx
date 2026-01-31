@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TeamMemberModal } from "@/components/team/TeamMemberModal";
+import { useTranslation } from "@/i18n";
 
 interface Founder {
   name: string;
@@ -46,6 +47,9 @@ const transformFounderToTeamMember = (founder: Founder) => ({
 
 export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
   const [selectedFounder, setSelectedFounder] = useState<Founder | null>(null);
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const foundersSection = aboutUs?.founders as { badge?: string; heading?: string; subheading?: string; specialization?: string; viewProfile?: string } | undefined;
 
   if (!founders || founders.length === 0) return null;
 
@@ -69,13 +73,13 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-4 bg-prime-gold/10 text-prime-gold border-0">
               <Shield className="w-3 h-3 mr-1" />
-              Expert Team
+              {foundersSection?.badge || "Expert Team"}
             </Badge>
             <h2 id="founders-heading" className="font-serif text-3xl md:text-4xl font-bold text-prime-900 mb-4">
-              Meet The Founders
+              {foundersSection?.heading || "Meet The Founders"}
             </h2>
             <p className="text-slate-600 max-w-2xl mx-auto">
-              Three experienced professionals united by a passion for helping clients find their perfect Spanish home
+              {foundersSection?.subheading || "Three experienced professionals united by a passion for helping clients find their perfect Spanish home"}
             </p>
           </div>
 
@@ -128,7 +132,7 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
 
                     {/* Specialization */}
                     <div className="mb-4">
-                      <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Specialization</span>
+                      <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">{foundersSection?.specialization || "Specialization"}</span>
                       <p className="text-prime-800 font-medium text-sm mt-1">{founder.specialization}</p>
                     </div>
 
@@ -159,7 +163,7 @@ export const FounderProfiles = ({ founders }: FounderProfilesProps) => {
                     >
                       <a href={founder.linkedin_url} target="_blank" rel="noopener noreferrer">
                         <Linkedin className="w-4 h-4 mr-2" />
-                        View Profile
+                        {foundersSection?.viewProfile || "View Profile"}
                       </a>
                     </Button>
                   </CardContent>

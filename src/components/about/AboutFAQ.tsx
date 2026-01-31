@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useTranslation } from "@/i18n";
 
 interface FAQ {
   question: string;
@@ -17,6 +18,10 @@ interface AboutFAQProps {
 }
 
 export const AboutFAQ = ({ faqs }: AboutFAQProps) => {
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const faqSection = aboutUs?.faq as { heading?: string; subheading?: string } | undefined;
+
   if (!faqs || faqs.length === 0) return null;
 
   return (
@@ -34,10 +39,10 @@ export const AboutFAQ = ({ faqs }: AboutFAQProps) => {
               <HelpCircle className="w-7 h-7 text-prime-gold" />
             </div>
             <h2 id="faq-heading" className="font-serif text-3xl md:text-4xl font-bold text-prime-900 mb-4">
-              Frequently Asked Questions
+              {faqSection?.heading || "Frequently Asked Questions"}
             </h2>
             <p className="text-slate-600">
-              Common questions about Del Sol Prime Homes
+              {faqSection?.subheading || "Common questions about Del Sol Prime Homes"}
             </p>
           </div>
 

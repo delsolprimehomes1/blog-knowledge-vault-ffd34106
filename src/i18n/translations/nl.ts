@@ -442,6 +442,71 @@ export const nl = {
     cta: {
       meetTeam: "Ontmoet Ons Team",
       contactUs: "Neem Contact Op"
+    },
+    hero: {
+      breadcrumbHome: "Home",
+      breadcrumbAbout: "Over Ons",
+      statsYears: "Jaar Ervaring",
+      statsClients: "Tevreden Klanten",
+      statsSatisfaction: "Tevredenheidspercentage"
+    },
+    mission: {
+      heading: "Onze Missie",
+      summaryLabel: "Over Ons"
+    },
+    story: {
+      heading: "Ons Verhaal",
+      subheading: "Van drie individuele reizen naar één gedeelde missie",
+      timelineHeading: "Onze Reis",
+      timeline: [
+        { year: "1997", event: "Steven Roberts arriveert in Spanje" },
+        { year: "1998", event: "Cédric Van Hecke verhuist naar Costa del Sol" },
+        { year: "2016", event: "Steven richt Sentinel Estates op" },
+        { year: "2020", event: "Hans Beeckman sluit zich aan bij het team" }
+      ]
+    },
+    founders: {
+      badge: "Expertteam",
+      heading: "Maak Kennis met de Oprichters",
+      subheading: "Drie ervaren professionals verenigd door een passie om klanten te helpen hun perfecte Spaanse huis te vinden",
+      specialization: "Specialisatie",
+      viewProfile: "Bekijk Profiel"
+    },
+    whyChoose: {
+      heading: "Waarom Voor Ons Kiezen",
+      subheading: "We helpen u niet alleen een woning te vinden — we helpen u een thuis te vinden",
+      features: [
+        { title: "Lokale Expertise", description: "40+ jaar gecombineerd wonen aan de Costa del Sol" },
+        { title: "End-to-End Service", description: "Van woningzoektocht tot after-sales ondersteuning" },
+        { title: "Gediplomeerd & Gecertificeerd", description: "API-geregistreerd en volledig conform" },
+        { title: "Responsieve Ondersteuning", description: "Beschikbaar wanneer u ons het meest nodig heeft" },
+        { title: "Klant-Eerst Benadering", description: "Uw behoeften sturen elke beslissing" },
+        { title: "Transparant Proces", description: "Geen verborgen kosten, geen verrassingen" }
+      ]
+    },
+    credentials: {
+      heading: "Onze Referenties",
+      subheading: "Gediplomeerd, gecertificeerd en toegewijd aan de hoogste professionele standaarden",
+      citationsLabel: "Geverifieerd door Officiële Bronnen",
+      items: [
+        { name: "API Gediplomeerd", description: "Geregistreerd bij Agentes de la Propiedad Inmobiliaria" },
+        { name: "RICS Geaffilieerd", description: "Normen van Royal Institution of Chartered Surveyors" },
+        { name: "AML Conform", description: "Volledige Anti-Witwas naleving" },
+        { name: "AVG Gecertificeerd", description: "EU-gegevensbeschermingsstandaarden" }
+      ]
+    },
+    faq: {
+      heading: "Veelgestelde Vragen",
+      subheading: "Veelvoorkomende vragen over Del Sol Prime Homes"
+    },
+    ctaSection: {
+      heading: "Klaar om Uw Droomwoning te Vinden?",
+      subheading: "Laten we samen uw Costa del Sol reis beginnen. Ons team staat klaar om u bij elke stap te helpen.",
+      chatWithEmma: "Chat met Emma",
+      callUs: "Bel Ons",
+      emailUs: "E-mail Ons",
+      visitUs: "Bezoek Ons",
+      location: "Marbella, Spanje"
     }
   }
 };

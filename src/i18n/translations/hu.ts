@@ -404,6 +404,71 @@ export const hu = {
   },
   aboutUs: {
     meta: { title: "A Del Sol Prime Homes-ról | Costa del Sol Ingatlanszakértők", description: "Ismerje meg szakértő csapatunkat, több mint 35 év tapasztalattal a nemzetközi vásárlók támogatásában ingatlankeresés során a Costa del Solon." },
-    cta: { meetTeam: "Ismerje Meg Csapatunkat", contactUs: "Kapcsolat" }
+    cta: { meetTeam: "Ismerje Meg Csapatunkat", contactUs: "Kapcsolat" },
+    hero: {
+      breadcrumbHome: "Főoldal",
+      breadcrumbAbout: "Rólunk",
+      statsYears: "Év Tapasztalat",
+      statsClients: "Elégedett Ügyfél",
+      statsSatisfaction: "Elégedettségi Arány"
+    },
+    mission: {
+      heading: "Küldetésünk",
+      summaryLabel: "Rólunk"
+    },
+    story: {
+      heading: "Történetünk",
+      subheading: "Három egyéni útból egy közös küldetésig",
+      timelineHeading: "Utunk",
+      timeline: [
+        { year: "1997", event: "Steven Roberts megérkezik Spanyolországba" },
+        { year: "1998", event: "Cédric Van Hecke a Costa del Solra költözik" },
+        { year: "2016", event: "Steven megalapítja a Sentinel Estates-t" },
+        { year: "2020", event: "Hans Beeckman csatlakozik a csapathoz" }
+      ]
+    },
+    founders: {
+      badge: "Szakértő Csapat",
+      heading: "Ismerje Meg Az Alapítókat",
+      subheading: "Három tapasztalt szakember, akiket az ügyfelek tökéletes spanyol otthonának megtalálása iránti szenvedély egyesít",
+      specialization: "Specializáció",
+      viewProfile: "Profil Megtekintése"
+    },
+    whyChoose: {
+      heading: "Miért Válasszon Minket",
+      subheading: "Nem csak ingatlant keresünk — otthont találunk",
+      features: [
+        { title: "Helyi Szakértelem", description: "40+ év együttes élettapasztalat a Costa del Solon" },
+        { title: "Teljes Körű Szolgáltatás", description: "Ingatlankeresésétől az értékesítés utáni támogatásig" },
+        { title: "Engedélyes & Tanúsított", description: "API-regisztrált és teljes mértékben megfelelő" },
+        { title: "Rugalmas Támogatás", description: "Elérhető, amikor a legnagyobb szüksége van ránk" },
+        { title: "Ügyfél-Első Megközelítés", description: "Az Ön igényei vezérlik minden döntést" },
+        { title: "Átlátható Folyamat", description: "Nincs rejtett díj, nincs meglepetés" }
+      ]
+    },
+    credentials: {
+      heading: "Képesítéseink",
+      subheading: "Engedélyezett, tanúsított és elkötelezett a legmagasabb szakmai standardok mellett",
+      citationsLabel: "Hivatalos Források által Igazolva",
+      items: [
+        { name: "API Engedélyes", description: "Regisztrálva az Agentes de la Propiedad Inmobiliariánál" },
+        { name: "RICS Tagsággal", description: "Royal Institution of Chartered Surveyors standardok" },
+        { name: "AML Megfelelő", description: "Teljes pénzmosás elleni megfelelőség" },
+        { name: "GDPR Tanúsított", description: "EU adatvédelmi standardok" }
+      ]
+    },
+    faq: {
+      heading: "Gyakran Ismételt Kérdések",
+      subheading: "Gyakori kérdések a Del Sol Prime Homes-ról"
+    },
+    ctaSection: {
+      heading: "Készen Áll Álmai Ingatlanának Megtalálására?",
+      subheading: "Kezdjük el együtt a Costa del Sol utazását. Csapatunk készen áll, hogy minden lépésnél segítsen.",
+      chatWithEmma: "Csevegés Emmával",
+      callUs: "Hívjon Minket",
+      emailUs: "Írjon Nekünk",
+      visitUs: "Látogasson Meg",
+      location: "Marbella, Spanyolország"
+    }
   }
 };

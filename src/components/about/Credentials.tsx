@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ShieldCheck, Award, FileCheck, Lock } from "lucide-react";
+import { useTranslation } from "@/i18n";
 
 interface Credential {
   name: string;
@@ -26,6 +27,10 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export const Credentials = ({ credentials, citations }: CredentialsProps) => {
+  const { t } = useTranslation();
+  const aboutUs = t.aboutUs as Record<string, unknown> | undefined;
+  const credentialsSection = aboutUs?.credentials as { heading?: string; subheading?: string; citationsLabel?: string } | undefined;
+
   return (
     <section className="py-20 bg-white" aria-labelledby="credentials-heading">
       <div className="container mx-auto px-4 md:px-6">
@@ -37,10 +42,10 @@ export const Credentials = ({ credentials, citations }: CredentialsProps) => {
         >
           <div className="text-center mb-16">
             <h2 id="credentials-heading" className="font-serif text-3xl md:text-4xl font-bold text-prime-900 mb-4">
-              Our Credentials
+              {credentialsSection?.heading || "Our Credentials"}
             </h2>
             <p className="text-slate-600 max-w-2xl mx-auto">
-              Licensed, certified, and committed to the highest professional standards
+              {credentialsSection?.subheading || "Licensed, certified, and committed to the highest professional standards"}
             </p>
           </div>
 
@@ -73,7 +78,7 @@ export const Credentials = ({ credentials, citations }: CredentialsProps) => {
           {citations && citations.length > 0 && (
             <div className="max-w-3xl mx-auto">
               <h3 className="text-sm uppercase tracking-wider text-slate-500 font-semibold mb-4 text-center">
-                Verified By Official Sources
+                {credentialsSection?.citationsLabel || "Verified By Official Sources"}
               </h3>
               <div className="bg-slate-50 rounded-xl p-6">
                 <ul className="space-y-4">
