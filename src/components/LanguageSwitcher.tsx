@@ -33,7 +33,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
   if (variant === 'compact') {
     return (
       <Select value={currentLanguage} onValueChange={handleChange}>
-        <SelectTrigger className={`w-[70px] ${className}`}>
+        <SelectTrigger className={`w-[70px] bg-transparent ${className}`}>
           <SelectValue>
             {currentLangInfo?.flag} {currentLanguage.toUpperCase()}
           </SelectValue>
@@ -52,7 +52,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
   if (variant === 'icon') {
     return (
       <Select value={currentLanguage} onValueChange={handleChange}>
-        <SelectTrigger className={`w-[50px] ${className}`}>
+        <SelectTrigger className={`w-[50px] bg-transparent ${className}`}>
           <SelectValue>
             {currentLangInfo?.flag}
           </SelectValue>
@@ -70,7 +70,7 @@ export const LanguageSwitcher = ({ variant = 'default', className = '' }: Langua
 
   return (
     <Select value={currentLanguage} onValueChange={handleChange}>
-      <SelectTrigger className={`w-[160px] ${className}`}>
+      <SelectTrigger className={`w-[160px] bg-transparent ${className}`}>
         <SelectValue>
           {currentLangInfo?.flag} {currentLangInfo?.nativeName}
         </SelectValue>

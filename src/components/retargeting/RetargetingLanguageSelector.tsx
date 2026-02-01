@@ -9,6 +9,20 @@ interface RetargetingLanguageSelectorProps {
   scrolled?: boolean;
 }
 
+const languageFlags: Record<string, string> = {
+  en: "🇬🇧",
+  nl: "🇳🇱",
+  de: "🇩🇪",
+  fr: "🇫🇷",
+  es: "🇪🇸",
+  pl: "🇵🇱",
+  sv: "🇸🇪",
+  da: "🇩🇰",
+  hu: "🇭🇺",
+  fi: "🇫🇮",
+  no: "🇳🇴",
+};
+
 const languageNames: Record<string, string> = {
   en: "English",
   nl: "Nederlands",
@@ -60,7 +74,7 @@ export const RetargetingLanguageSelector = ({
         }`}
         aria-label="Select language"
       >
-        <Globe size={16} />
+        <span className="text-base">{languageFlags[currentLang]}</span>
         <span className="uppercase">{currentLang}</span>
         <ChevronDown
           size={14}
@@ -82,12 +96,13 @@ export const RetargetingLanguageSelector = ({
                 <button
                   key={route.lang}
                   onClick={() => handleLanguageChange(route.lang)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                  className={`flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm transition-colors ${
                     currentLang === route.lang
                       ? "bg-landing-gold/10 text-landing-gold font-medium"
                       : "text-landing-navy hover:bg-gray-50"
                   }`}
                 >
+                  <span>{languageFlags[route.lang]}</span>
                   {languageNames[route.lang] || route.lang.toUpperCase()}
                 </button>
               ))}

@@ -1,11 +1,23 @@
 import React from 'react';
 import { LanguageCode, SUPPORTED_LANGUAGES } from '@/utils/landing/languageDetection';
 import { trackEvent } from '@/utils/landing/analytics';
-import { Globe } from 'lucide-react';
 
 interface LanguageSelectorProps {
     currentLang: LanguageCode;
 }
+
+const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
+    en: '🇬🇧',
+    nl: '🇳🇱',
+    fr: '🇫🇷',
+    de: '🇩🇪',
+    fi: '🇫🇮',
+    pl: '🇵🇱',
+    da: '🇩🇰',
+    hu: '🇭🇺',
+    sv: '🇸🇪',
+    no: '🇳🇴'
+};
 
 const LANGUAGE_NAMES: Record<LanguageCode, string> = {
     en: 'English',
@@ -37,7 +49,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({ currentLang }) => {
     return (
         <div className="relative group z-50">
             <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-landing-navy opacity-70 hover:opacity-100 transition-opacity">
-                <Globe size={18} />
+                <span className="text-base">{LANGUAGE_FLAGS[currentLang]}</span>
                 <span className="uppercase">{currentLang}</span>
             </button>
 
@@ -47,9 +59,10 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({ currentLang }) => {
                         <button
                             key={lang}
                             onClick={() => handleLanguageChange(lang)}
-                            className={`block w-full text-left px-5 py-2.5 text-sm hover:bg-gray-50 transition-colors ${currentLang === lang ? 'font-bold text-landing-gold' : 'text-landing-navy'
+                            className={`flex items-center gap-2 w-full text-left px-5 py-2.5 text-sm hover:bg-gray-50 transition-colors ${currentLang === lang ? 'font-bold text-landing-gold' : 'text-landing-navy'
                                 }`}
                         >
+                            <span>{LANGUAGE_FLAGS[lang]}</span>
                             {LANGUAGE_NAMES[lang]}
                         </button>
                     ))}
