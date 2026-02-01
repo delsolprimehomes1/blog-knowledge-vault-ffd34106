@@ -1057,7 +1057,7 @@ const FOUNDERS_SCHEMAS = [
     "@id": `${BASE_URL}/#steven-roberts`,
     "name": "Steven Roberts",
     "jobTitle": "Managing Director",
-    "sameAs": "https://www.linkedin.com/in/steven-roberts-delsolprimehomes/",
+    "sameAs": "https://www.linkedin.com/company/delsolprimehomes/",
     "worksFor": { "@id": `${BASE_URL}/#organization` }
   },
   {
@@ -1065,7 +1065,7 @@ const FOUNDERS_SCHEMAS = [
     "@id": `${BASE_URL}/#hans-beeckman`,
     "name": "Hans Beeckman",
     "jobTitle": "Sales Director",
-    "sameAs": "https://www.linkedin.com/in/hans-beeckman-delsolprimehomes/",
+    "sameAs": "https://www.linkedin.com/in/hansbeeckman/",
     "worksFor": { "@id": `${BASE_URL}/#organization` }
   },
   {
@@ -1073,7 +1073,7 @@ const FOUNDERS_SCHEMAS = [
     "@id": `${BASE_URL}/#cedric-van-hecke`,
     "name": "Cédric Van Hecke",
     "jobTitle": "Marketing Director",
-    "sameAs": "https://www.linkedin.com/in/cedric-van-hecke-delsolprimehomes/",
+    "sameAs": "https://www.linkedin.com/company/delsolprimehomes/",
     "worksFor": { "@id": `${BASE_URL}/#organization` }
   }
 ]
