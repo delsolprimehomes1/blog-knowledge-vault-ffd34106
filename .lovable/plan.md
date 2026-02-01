@@ -1,127 +1,86 @@
 
-# Translate Navbar with Language Selector
+# Add Flags to All Language Selectors
 
 ## Overview
-Currently the header/navbar displays all menu items in English regardless of the selected language. When a user switches to German (or any other language), only page content translates - the navigation remains in English.
+Three language selector components currently have inconsistent styling - two lack flag emojis entirely, and one may have contrast issues on dark backgrounds.
 
-## Current State
-The `Header.tsx` component contains 20+ hardcoded English strings:
+## Issues to Fix
 
-| Category | Hardcoded Strings |
-|----------|-------------------|
-| Menu Titles | "Explore", "Learn", "Compare", "About" |
-| Explore Items | "Property Finder", "City Brochures", "Location Guides" |
-| Learn Items | "Blog & Insights", "Q&A Center", "Property Glossary", "Buyer's Guide" |
-| Compare Items | "Comparison Index", "City vs City" |
-| About Items | "About Us", "Our Team", "Contact" |
-| City Descriptions | "Luxury living on the Golden Mile", "Charming old town & beaches", etc. |
-| Mobile Labels | "Language" |
-
-## Solution
-
-### 1. Expand Translation Files
-Add a new `header` translation object to all 10 language files in `src/i18n/translations/`:
-
-```text
-en.ts, de.ts, nl.ts, fr.ts, pl.ts, sv.ts, da.ts, fi.ts, hu.ts, no.ts
-```
-
-New structure:
-```typescript
-header: {
-  menus: {
-    explore: "Explore",
-    learn: "Learn",
-    compare: "Compare",
-    about: "About",
-  },
-  items: {
-    propertyFinder: "Property Finder",
-    cityBrochures: "City Brochures",
-    locationGuides: "Location Guides",
-    blogInsights: "Blog & Insights",
-    qaCenter: "Q&A Center",
-    propertyGlossary: "Property Glossary",
-    buyersGuide: "Buyer's Guide",
-    comparisonIndex: "Comparison Index",
-    cityVsCity: "City vs City",
-    aboutUs: "About Us",
-    ourTeam: "Our Team",
-    contact: "Contact",
-  },
-  cities: {
-    marbella: "Luxury living on the Golden Mile",
-    estepona: "Charming old town & beaches",
-    malaga: "Culture, cuisine & coastline",
-    sotogrande: "Exclusive marina lifestyle",
-  },
-  language: "Language",
-}
-```
-
-### 2. Update Header Component
-Modify `src/components/home/Header.tsx` to use translated strings:
-
-**Before:**
-```tsx
-<MenuItem setActive={setActive} active={active} item="Explore">
-```
-
-**After:**
-```tsx
-<MenuItem setActive={setActive} active={active} item={t.header.menus.explore}>
-```
-
-Apply this pattern to:
-- All 4 menu titles (desktop and mobile)
-- All 12 menu item links
-- All 4 city descriptions in the featured dropdown
-- The mobile "Language" label
-
-### 3. Translation Values by Language
-
-| Key | EN | DE | NL | FR |
-|-----|-----|-----|-----|-----|
-| **menus.explore** | Explore | Erkunden | Verkennen | Explorer |
-| **menus.learn** | Learn | Lernen | Leren | Apprendre |
-| **menus.compare** | Compare | Vergleichen | Vergelijken | Comparer |
-| **menus.about** | About | Über Uns | Over Ons | À Propos |
-| **items.propertyFinder** | Property Finder | Immobiliensuche | Woningzoeker | Recherche Immobilière |
-| **items.cityBrochures** | City Brochures | Stadtbroschüren | Stadsbrochures | Brochures de Ville |
-| **items.locationGuides** | Location Guides | Standortführer | Locatiegidsen | Guides de Localisation |
-| **items.blogInsights** | Blog & Insights | Blog & Einblicke | Blog & Inzichten | Blog & Conseils |
-| **items.qaCenter** | Q&A Center | Q&A Zentrum | Q&A Centrum | Centre Q&R |
-| **items.propertyGlossary** | Property Glossary | Immobilienglossar | Vastgoedwoordenlijst | Glossaire Immobilier |
-| **items.buyersGuide** | Buyer's Guide | Käuferleitfaden | Koopgids | Guide Acheteur |
-| **items.comparisonIndex** | Comparison Index | Vergleichsindex | Vergelijkingsindex | Index Comparatif |
-| **items.cityVsCity** | City vs City | Stadt vs Stadt | Stad vs Stad | Ville vs Ville |
-| **items.aboutUs** | About Us | Über Uns | Over Ons | À Propos |
-| **items.ourTeam** | Our Team | Unser Team | Ons Team | Notre Équipe |
-| **items.contact** | Contact | Kontakt | Contact | Contact |
-| **language** | Language | Sprache | Taal | Langue |
-
-The same pattern applies to all 10 languages (EN, DE, NL, FR, PL, SV, DA, FI, HU, NO).
+| Component | Current State | Fix Needed |
+|-----------|--------------|------------|
+| `LanguageSelector` (Landing) | Globe icon + text names only | Add flag emojis |
+| `RetargetingLanguageSelector` | Globe icon + lang code, text names only | Add flag emojis |
+| `LanguageSwitcher` (Header) | Flags show but potential white bg on dark header | Ensure transparent bg on dark headers |
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/i18n/translations/en.ts` | Add `header` object |
-| `src/i18n/translations/de.ts` | Add German `header` translations |
-| `src/i18n/translations/nl.ts` | Add Dutch `header` translations |
-| `src/i18n/translations/fr.ts` | Add French `header` translations |
-| `src/i18n/translations/pl.ts` | Add Polish `header` translations |
-| `src/i18n/translations/sv.ts` | Add Swedish `header` translations |
-| `src/i18n/translations/da.ts` | Add Danish `header` translations |
-| `src/i18n/translations/fi.ts` | Add Finnish `header` translations |
-| `src/i18n/translations/hu.ts` | Add Hungarian `header` translations |
-| `src/i18n/translations/no.ts` | Add Norwegian `header` translations |
-| `src/components/home/Header.tsx` | Replace 20+ hardcoded strings with `t.header.*` |
+### 1. `src/components/landing/LanguageSelector.tsx`
+Add a `LANGUAGE_FLAGS` map and display flag emojis alongside language names in both the trigger button and dropdown.
 
-## Expected Result
-After implementation:
-- Selecting German shows: "Erkunden", "Lernen", "Vergleichen", "Über Uns"
-- All dropdown items translate to the selected language
-- City descriptions in the Explore dropdown are localized
-- Mobile menu sections and "Sprache" label translate
-- No English "bleeding" in the navigation on any translated page
+**Changes:**
+- Add flag emoji constant mapping
+- Update button to show flag + code (matching other selectors)
+- Update dropdown items to show flag + language name
+
+### 2. `src/components/retargeting/RetargetingLanguageSelector.tsx`
+Add flag emojis to match the visual consistency of main site selectors.
+
+**Changes:**
+- Add `languageFlags` record with emoji mappings
+- Update button to show flag + code instead of Globe icon
+- Update dropdown items to show flag + language name
+
+### 3. `src/components/LanguageSwitcher.tsx`
+Ensure the Select trigger uses transparent background when on dark headers.
+
+**Changes:**
+- Pass through className to SelectTrigger properly for `bg-transparent` override when needed
+- Already receives `border-white/30 text-white` from Header.tsx but may need explicit `bg-transparent`
+
+## Technical Details
+
+### Flag Mapping (to be added to Landing & Retargeting selectors):
+```typescript
+const LANGUAGE_FLAGS: Record<string, string> = {
+  en: '🇬🇧',
+  nl: '🇳🇱',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+  fi: '🇫🇮',
+  pl: '🇵🇱',
+  da: '🇩🇰',
+  hu: '🇭🇺',
+  sv: '🇸🇪',
+  no: '🇳🇴',
+  es: '🇪🇸', // Retargeting also supports Spanish
+};
+```
+
+### Updated Button Display:
+```tsx
+// Before (Landing):
+<Globe size={18} />
+<span className="uppercase">{currentLang}</span>
+
+// After (Landing):
+<span>{LANGUAGE_FLAGS[currentLang]}</span>
+<span className="uppercase">{currentLang}</span>
+```
+
+### Updated Dropdown Items:
+```tsx
+// Before (Landing):
+{LANGUAGE_NAMES[lang]}
+
+// After (Landing):
+<span className="flex items-center gap-2">
+  <span>{LANGUAGE_FLAGS[lang]}</span>
+  {LANGUAGE_NAMES[lang]}
+</span>
+```
+
+## Result After Implementation
+- All language selectors across the site will show flag emojis consistently
+- Users can quickly identify languages visually
+- The landing and retargeting pages will match the main site's visual language
+- No "white button on dark background" visibility issues
