@@ -177,7 +177,7 @@ export const RetargetingProjects = ({ language = "en" }: RetargetingProjectsProp
                 {/* Content */}
                 <div className="p-5 md:p-6">
                   <h3 className="text-lg font-medium text-landing-navy mb-2 line-clamp-1">
-                    {property.internal_name}
+                    {property.category === 'apartment' ? t.cardTitleApartment : t.cardTitleVilla}
                   </h3>
                   
                   {/* Location */}

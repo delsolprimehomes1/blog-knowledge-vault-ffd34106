@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { registerCrmLead } from "@/utils/crm/registerCrmLead";
 import { getLandingFormTranslations } from "@/lib/landingFormTranslations";
+import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name is too short").max(100),
@@ -39,6 +40,7 @@ interface RetargetingPropertyModalProps {
     internal_name: string;
     location: string;
     price_eur: number | null;
+    category: string | null;
   } | null;
   language?: string;
 }
@@ -63,6 +65,7 @@ export const RetargetingPropertyModal = ({
   language = "en",
 }: RetargetingPropertyModalProps) => {
   const t = getLandingFormTranslations(language);
+  const rt = getRetargetingTranslations(language);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [phoneValue, setPhoneValue] = useState<string>("");
@@ -213,7 +216,7 @@ export const RetargetingPropertyModal = ({
                 {/* Property Info Box */}
                 <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
                   <h3 className="font-semibold text-gray-900 text-base mb-1">
-                    {property.internal_name}
+                    {property.category === 'apartment' ? rt.cardTitleApartment : rt.cardTitleVilla}
                   </h3>
                   <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-3">
                     <MapPin size={14} />

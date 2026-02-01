@@ -113,6 +113,8 @@ export const retargetingTranslations = {
     // PROPERTY TYPE LABELS
     propertyTypeApartment: "Apartment",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "New Luxury Apartments",
+    cardTitleVilla: "Exclusive Villas",
   },
   
   nl: {
@@ -204,6 +206,8 @@ export const retargetingTranslations = {
     footerTerms: "Servicevoorwaarden",
     propertyTypeApartment: "Appartement",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nieuwe Luxe Appartementen",
+    cardTitleVilla: "Exclusieve Villa's",
   },
   
   de: {
@@ -295,6 +299,8 @@ export const retargetingTranslations = {
     footerTerms: "Nutzungsbedingungen",
     propertyTypeApartment: "Apartment",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Neue Luxuswohnungen",
+    cardTitleVilla: "Exklusive Villen",
   },
   
   fr: {
@@ -386,6 +392,8 @@ export const retargetingTranslations = {
     footerTerms: "Conditions d'utilisation",
     propertyTypeApartment: "Appartement",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nouveaux Appartements de Luxe",
+    cardTitleVilla: "Villas Exclusives",
   },
   
   es: {
@@ -477,6 +485,8 @@ export const retargetingTranslations = {
     footerTerms: "Términos de servicio",
     propertyTypeApartment: "Apartamento",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nuevos Apartamentos de Lujo",
+    cardTitleVilla: "Villas Exclusivas",
   },
   
   pl: {
@@ -568,6 +578,8 @@ export const retargetingTranslations = {
     footerTerms: "Warunki korzystania",
     propertyTypeApartment: "Apartament",
     propertyTypeVilla: "Willa",
+    cardTitleApartment: "Nowe Luksusowe Apartamenty",
+    cardTitleVilla: "Ekskluzywne Wille",
   },
   
   sv: {
@@ -659,6 +671,8 @@ export const retargetingTranslations = {
     footerTerms: "Användarvillkor",
     propertyTypeApartment: "Lägenhet",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nya Lyxlägenheter",
+    cardTitleVilla: "Exklusiva Villor",
   },
   
   da: {
@@ -750,6 +764,8 @@ export const retargetingTranslations = {
     footerTerms: "Servicevilkår",
     propertyTypeApartment: "Lejlighed",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nye Luksuslejligheder",
+    cardTitleVilla: "Eksklusive Villaer",
   },
   
   hu: {
@@ -841,6 +857,8 @@ export const retargetingTranslations = {
     footerTerms: "Szolgáltatási feltételek",
     propertyTypeApartment: "Apartman",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Új Luxus Apartmanok",
+    cardTitleVilla: "Exkluzív Villák",
   },
   
   fi: {
@@ -932,6 +950,8 @@ export const retargetingTranslations = {
     footerTerms: "Käyttöehdot",
     propertyTypeApartment: "Huoneisto",
     propertyTypeVilla: "Huvila",
+    cardTitleApartment: "Uudet Luksushuoneistot",
+    cardTitleVilla: "Yksinomaiset Huvilat",
   },
   
   no: {
@@ -1023,6 +1043,8 @@ export const retargetingTranslations = {
     footerTerms: "Tjenestevilkår",
     propertyTypeApartment: "Leilighet",
     propertyTypeVilla: "Villa",
+    cardTitleApartment: "Nye Luksusleiligheter",
+    cardTitleVilla: "Eksklusive Villaer",
   },
 };
 
