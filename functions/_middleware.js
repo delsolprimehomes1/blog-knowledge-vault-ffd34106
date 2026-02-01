@@ -15,17 +15,14 @@ const LANGUAGES = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 const LANG_PATTERN = LANGUAGES.join('|');
 
 // SEO content routes that need edge function SSR
-// NOTE: Blog articles are NOT included - they are pre-rendered as static HTML files
-// during build (3,271 pages) and served directly by Cloudflare for full branding
+// NOTE: All content pages (blog, QA, compare, locations) are now pre-rendered
+// as static HTML files during build. The middleware should NOT intercept them.
+// Static files contain full branding + all SEO metadata (hreflang, canonical, schemas).
+// Edge function is ONLY for truly dynamic routes or fallback scenarios.
 const SEO_ROUTE_PATTERNS = [
-  // Location Hub (must be BEFORE location pages pattern) - e.g., /en/locations
+  // Location Hub ONLY - the hub index pages need edge function for dynamic city listing
+  // Individual location pages (/{lang}/locations/{city}/{topic}) are served as static files
   new RegExp(`^/(${LANG_PATTERN})/locations/?$`),
-  // Q&A pages - use edge function SSR
-  new RegExp(`^/(${LANG_PATTERN})/qa/[^/]+$`),
-  // Comparison pages - use edge function SSR
-  new RegExp(`^/(${LANG_PATTERN})/compare/[^/]+$`),
-  // Location pages (city index and topic pages) - use edge function SSR
-  new RegExp(`^/(${LANG_PATTERN})/locations/[^/]+(/[^/]+)?$`),
 ];
 
 // Check if path needs SEO edge function

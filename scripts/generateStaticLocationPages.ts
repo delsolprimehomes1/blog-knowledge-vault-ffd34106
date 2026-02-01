@@ -701,7 +701,8 @@ export async function generateStaticLocationPages(distDir: string) {
     for (const location of locations) {
       try {
         const html = generateStaticHTML(location as any, productionAssets);
-        const filePath = join(distDir, 'locations', location.city_slug, location.topic_slug, 'index.html');
+        // Include language prefix in path so Cloudflare can match /{lang}/locations/{city}/{topic}/
+        const filePath = join(distDir, location.language, 'locations', location.city_slug, location.topic_slug, 'index.html');
         
         mkdirSync(dirname(filePath), { recursive: true });
         writeFileSync(filePath, html, 'utf-8');
