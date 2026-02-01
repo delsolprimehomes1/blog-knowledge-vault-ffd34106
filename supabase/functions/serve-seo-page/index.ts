@@ -241,6 +241,13 @@ interface PageMetadata {
   qa_entities?: any[]
   content_type: 'qa' | 'blog' | 'compare' | 'locations'
   quick_comparison_table?: any[] // For comparison pages
+  // SSR content fields
+  detailed_content?: string      // Blog articles
+  answer_main?: string           // Q&A pages
+  final_verdict?: string         // Comparison pages
+  location_overview?: string     // Location pages
+  read_time?: number             // For blogs
+  author_bio?: string            // Author info
 }
 
 interface HreflangSibling {
@@ -276,6 +283,8 @@ async function fetchQAMetadata(supabase: any, slug: string, lang: string): Promi
     hreflang_group_id: data.hreflang_group_id,
     qa_entities: data.related_qas,
     content_type: 'qa',
+    // SSR content
+    answer_main: data.answer_main,
   }
 }
 
@@ -306,6 +315,10 @@ async function fetchBlogMetadata(supabase: any, slug: string, lang: string): Pro
     hreflang_group_id: data.hreflang_group_id,
     qa_entities: data.qa_entities,
     content_type: 'blog',
+    // SSR content
+    detailed_content: data.detailed_content,
+    read_time: data.read_time,
+    author_bio: data.author_bio_localized,
   }
 }
 
@@ -337,6 +350,8 @@ async function fetchComparisonMetadata(supabase: any, slug: string, lang: string
     qa_entities: data.qa_entities,
     content_type: 'compare',
     quick_comparison_table: data.quick_comparison_table,
+    // SSR content
+    final_verdict: data.final_verdict,
   }
 }
 
@@ -445,6 +460,8 @@ async function fetchLocationMetadata(supabase: any, slug: string, lang: string):
       hreflang_group_id: data.hreflang_group_id,
       qa_entities: data.qa_entities,
       content_type: 'locations',
+      // SSR content
+      location_overview: data.location_overview,
     }
   }
 }
@@ -1258,32 +1275,257 @@ function escapeHtml(text: string | null | undefined): string {
     .replace(/'/g, '&#039;')
 }
 
-function generateFullHtml(metadata: PageMetadata, hreflangTags: string, baseHtml: string): string {
+/**
+ * Generate SSR styles for server-rendered content
+ */
+function generateSSRStyles(): string {
+  return `
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.7;
+        color: #374151;
+        background: #f9fafb;
+      }
+      
+      /* Header */
+      .site-header { background: white; border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
+      .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+      .logo { height: 40px; width: auto; }
+      .nav-links { display: flex; gap: 1.5rem; }
+      .nav-links a { color: #6b7280; text-decoration: none; font-weight: 500; }
+      .nav-links a:hover { color: #c9a227; }
+      
+      /* Article */
+      .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+      .article-header { margin-bottom: 2rem; }
+      h1 { font-size: 2.5rem; font-weight: 800; color: #1f2937; line-height: 1.2; margin-bottom: 1rem; }
+      .article-meta { color: #6b7280; font-size: 0.875rem; display: flex; gap: 1rem; }
+      
+      /* Featured Image */
+      .featured-image { margin: 2rem 0; border-radius: 12px; overflow: hidden; }
+      .featured-image img { width: 100%; height: auto; display: block; }
+      
+      /* Speakable Summary */
+      .speakable-summary { 
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        padding: 1.5rem; 
+        border-radius: 8px; 
+        margin: 2rem 0;
+        border-left: 4px solid #c9a227;
+      }
+      .speakable-summary p { font-size: 1.1rem; color: #92400e; font-weight: 500; }
+      
+      /* Content */
+      .article-content { font-size: 1.1rem; }
+      .article-content h2 { font-size: 1.75rem; color: #1f2937; margin: 2.5rem 0 1rem; }
+      .article-content h3 { font-size: 1.35rem; color: #374151; margin: 2rem 0 0.75rem; }
+      .article-content p { margin: 1rem 0; }
+      .article-content ul, .article-content ol { margin: 1rem 0; padding-left: 1.5rem; }
+      .article-content li { margin: 0.5rem 0; }
+      .article-content a { color: #c9a227; text-decoration: underline; }
+      .article-content blockquote { 
+        border-left: 4px solid #c9a227; 
+        padding-left: 1rem; 
+        margin: 1.5rem 0; 
+        font-style: italic; 
+        color: #6b7280; 
+      }
+      .article-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; }
+      
+      /* FAQ Section */
+      .faq-section { margin: 3rem 0; padding: 2rem; background: #f3f4f6; border-radius: 12px; }
+      .faq-section h2 { margin-bottom: 1.5rem; }
+      .faq-item { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
+      .faq-item summary { font-weight: 600; cursor: pointer; color: #1f2937; }
+      .faq-item p { margin-top: 0.75rem; color: #4b5563; }
+      
+      /* CTA */
+      .cta-section { 
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        color: white;
+        padding: 2.5rem;
+        border-radius: 12px;
+        margin: 3rem 0;
+        text-align: center;
+      }
+      .cta-section h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+      .cta-section p { margin-bottom: 1.5rem; opacity: 0.9; }
+      .cta-button { 
+        display: inline-block;
+        background: linear-gradient(135deg, #c9a227 0%, #b8941f 100%);
+        color: white;
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .cta-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(201,162,39,0.35); }
+      
+      /* Footer */
+      .site-footer { background: #1f2937; color: #9ca3af; padding: 2rem 0; margin-top: 4rem; }
+      .footer-content { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+      .footer-nav a { color: #9ca3af; text-decoration: none; margin-left: 1.5rem; }
+      .footer-nav a:hover { color: #c9a227; }
+      
+      /* Responsive */
+      @media (max-width: 768px) {
+        h1 { font-size: 1.75rem; }
+        .nav-links { display: none; }
+        .cta-section { padding: 1.5rem; }
+        .footer-content { flex-direction: column; gap: 1rem; text-align: center; }
+        .footer-nav a { margin: 0 0.75rem; }
+      }
+    </style>
+  `
+}
+
+/**
+ * Generate the article body HTML for SSR
+ */
+function generateArticleBody(metadata: PageMetadata): string {
+  const lang = metadata.language
+  const langPrefix = `/${lang}`
+  
+  // Format date for display
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return date.toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'nl' ? 'nl-NL' : lang === 'fr' ? 'fr-FR' : 'en-GB', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    })
+  }
+  
+  // Generate FAQ section if qa_entities exist
+  const faqSection = metadata.qa_entities?.length ? `
+    <section class="faq-section">
+      <h2>Frequently Asked Questions</h2>
+      ${metadata.qa_entities.map((faq: any) => `
+        <details class="faq-item">
+          <summary>${escapeHtml(faq.question)}</summary>
+          <p>${escapeHtml(faq.answer)}</p>
+        </details>
+      `).join('')}
+    </section>
+  ` : ''
+  
+  // Main content based on content type
+  let mainContent = ''
+  
+  if (metadata.content_type === 'blog' && metadata.detailed_content) {
+    mainContent = metadata.detailed_content
+  } else if (metadata.content_type === 'qa' && metadata.answer_main) {
+    mainContent = metadata.answer_main
+  } else if (metadata.content_type === 'compare' && metadata.final_verdict) {
+    mainContent = metadata.final_verdict
+  } else if (metadata.content_type === 'locations' && metadata.location_overview) {
+    mainContent = metadata.location_overview
+  }
+  
+  // CTA text based on language
+  const ctaTexts: Record<string, { title: string; text: string; button: string }> = {
+    en: { title: "Ready to Find Your Dream Property in Costa del Sol?", text: "Contact Del Sol Prime Homes for expert guidance on luxury real estate.", button: "Get in Touch" },
+    nl: { title: "Klaar om Uw Droomwoning aan de Costa del Sol te Vinden?", text: "Neem contact op met Del Sol Prime Homes voor deskundige begeleiding.", button: "Neem Contact Op" },
+    de: { title: "Bereit, Ihre Traumimmobilie an der Costa del Sol zu Finden?", text: "Kontaktieren Sie Del Sol Prime Homes für kompetente Beratung.", button: "Kontakt Aufnehmen" },
+    fr: { title: "Prêt à Trouver Votre Propriété de Rêve sur la Costa del Sol?", text: "Contactez Del Sol Prime Homes pour des conseils d'experts.", button: "Nous Contacter" },
+  }
+  const cta = ctaTexts[lang] || ctaTexts.en
+  
+  return `
+    <header class="site-header">
+      <nav class="nav-container">
+        <a href="${langPrefix}/" class="logo-link">
+          <img src="${BASE_URL}/assets/logo-new.png" alt="Del Sol Prime Homes" class="logo">
+        </a>
+        <div class="nav-links">
+          <a href="${langPrefix}/properties">Properties</a>
+          <a href="${langPrefix}/blog">Blog</a>
+          <a href="${langPrefix}/contact">Contact</a>
+        </div>
+      </nav>
+    </header>
+    
+    <main class="article-container">
+      <article itemscope itemtype="https://schema.org/BlogPosting">
+        <header class="article-header">
+          <h1 itemprop="headline">${escapeHtml(metadata.headline)}</h1>
+          ${metadata.date_published ? `
+            <div class="article-meta">
+              <time datetime="${metadata.date_published}" itemprop="datePublished">
+                ${formatDate(metadata.date_published)}
+              </time>
+              ${metadata.read_time ? `<span class="read-time">${metadata.read_time} min read</span>` : ''}
+            </div>
+          ` : ''}
+        </header>
+        
+        ${metadata.featured_image_url ? `
+          <figure class="featured-image">
+            <img 
+              src="${metadata.featured_image_url}" 
+              alt="${escapeHtml(metadata.featured_image_alt || metadata.headline)}"
+              itemprop="image"
+              loading="eager"
+            >
+          </figure>
+        ` : ''}
+        
+        ${metadata.speakable_answer ? `
+          <div class="speakable-summary speakable-answer" itemprop="description">
+            <p>${escapeHtml(metadata.speakable_answer)}</p>
+          </div>
+        ` : ''}
+        
+        <div class="article-content" itemprop="articleBody">
+          ${mainContent || '<p>Content loading...</p>'}
+        </div>
+        
+        ${faqSection}
+        
+        <div class="cta-section">
+          <h3>${cta.title}</h3>
+          <p>${cta.text}</p>
+          <a href="${langPrefix}/contact" class="cta-button">${cta.button}</a>
+        </div>
+      </article>
+    </main>
+    
+    <footer class="site-footer">
+      <div class="footer-content">
+        <p>&copy; ${new Date().getFullYear()} Del Sol Prime Homes. All rights reserved.</p>
+        <nav class="footer-nav">
+          <a href="${langPrefix}/privacy">Privacy</a>
+          <a href="${langPrefix}/terms">Terms</a>
+        </nav>
+      </div>
+    </footer>
+  `
+}
+
+function generateFullHtml(metadata: PageMetadata, hreflangTags: string, _baseHtml: string): string {
   const locale = LOCALE_MAP[metadata.language] || 'en_GB'
   const escapedTitle = escapeHtml(metadata.meta_title || metadata.headline || 'Del Sol Prime Homes')
   const escapedDescription = escapeHtml(metadata.meta_description || '')
   
   // Generate schemas based on content type
-  // CRITICAL: Blog pages should ONLY have BlogPosting + BreadcrumbList (no standalone Organization/WebSite)
-  // Organization is already embedded within BlogPosting.publisher - no need for separate schema
   const qaSchema = metadata.content_type === 'qa' ? generateQAPageSchema(metadata) : ''
   const blogPostingSchema = generateBlogPostingSchema(metadata)
   const articleSchema = generateArticleSchema(metadata)
   const breadcrumbSchema = generateBreadcrumbSchema(metadata)
-  
-  // REMOVED: Standalone Organization schema was causing Google to think blog pages = homepage
-  // The publisher field within BlogPosting/Article schemas provides sufficient Organization context
-  // const orgSchema = generateOrganizationSchema() -- DO NOT USE ON CONTENT PAGES
-  
-  // Generate speakable schema for all page types with speakable content
   const speakableSchema = metadata.speakable_answer ? generateSpeakableSchema(metadata) : ''
-  
-  // Generate comparison table schema for comparison pages
   const comparisonTableSchema = generateComparisonTableSchema(metadata, metadata.quick_comparison_table || [])
 
-  // Build the complete head section (no charset/viewport - those are in index.html)
+  // Generate SSR styles and body content
+  const ssrStyles = generateSSRStyles()
+  const articleBody = generateArticleBody(metadata)
+
   const headContent = `
-  <!-- Primary Meta Tags (dynamic, not in index.html) -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Primary Meta Tags -->
   <title>${escapedTitle}</title>
   <meta name="title" content="${escapedTitle}" />
   <meta name="description" content="${escapedDescription}" />
@@ -1315,21 +1557,26 @@ ${hreflangTags}
   ${metadata.date_published ? `<meta property="article:published_time" content="${metadata.date_published}" />` : ''}
   ${metadata.date_modified ? `<meta property="article:modified_time" content="${metadata.date_modified}" />` : ''}
   
-  <!-- Schema.org JSON-LD (content-type specific - NO standalone Organization schema) -->
+  <!-- Schema.org JSON-LD -->
   ${qaSchema}
   ${blogPostingSchema}
   ${articleSchema}
   ${breadcrumbSchema}
   ${speakableSchema}
   ${comparisonTableSchema}
+  
+  <!-- SSR Styles -->
+  ${ssrStyles}
 `
 
-  // Replace the entire head section and html lang attribute
-  let html = baseHtml
-    .replace(/<html[^>]*>/, `<html lang="${metadata.language}">`)
-    .replace(/<head>[\s\S]*?<\/head>/, `<head>${headContent}</head>`)
-
-  return html
+  // Build complete HTML with full SSR body content
+  return `<!DOCTYPE html>
+<html lang="${metadata.language}">
+<head>${headContent}</head>
+<body>
+  ${articleBody}
+</body>
+</html>`
 }
 
 // Localized messages for 410 page
@@ -1858,38 +2105,19 @@ async function handleRequest(req: Request): Promise<Response> {
   const siblings = await fetchHreflangSiblings(supabase, metadata.hreflang_group_id || '', contentType)
   const hreflangTags = generateHreflangTags(siblings, metadata.language, contentType)
 
-  // Return just the metadata and generated tags (for debugging/API use)
+  // Return full SSR HTML or JSON based on query param
   const returnHtml = url.searchParams.get('html') === 'true'
   
   if (returnHtml) {
-    // Use inline HTML template instead of fetching external HTML (avoids fetch errors)
-    const baseHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-</head>
-<body>
-<div id="root"></div>
-<noscript>You need to enable JavaScript to run this app.</noscript>
-<script>
-  // Client-side hydration will take over
-  window.__SSR_METADATA__ = ${JSON.stringify({
-    language: metadata.language,
-    title: metadata.meta_title,
-    canonical: metadata.canonical_url
-  })};
-</script>
-</body>
-</html>`
-    
-    // Generate full HTML with injected metadata
-    const fullHtml = generateFullHtml(metadata, hreflangTags, baseHtml)
+    // Generate full SSR HTML with actual content (not empty React shell)
+    const fullHtml = generateFullHtml(metadata, hreflangTags, '')
     
     const response = new Response(fullHtml, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
-        'X-SEO-Source': 'edge-function',
+        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+        'X-SEO-Source': 'edge-function-ssr',
         'X-Content-Language': metadata.language,
       }
     })
