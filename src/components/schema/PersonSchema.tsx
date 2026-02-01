@@ -18,7 +18,7 @@ const PersonSchema: React.FC<PersonSchemaProps> = ({ context }) => {
         "description": "Expert in Costa del Sol luxury real estate with over 35 years of experience helping international clients find their dream properties in Southern Spain.",
         "image": photoUrl,
         "sameAs": [
-            "https://www.linkedin.com/in/hans-beeckman-delsolprimehomes/"
+            "https://www.linkedin.com/in/hansbeeckman/"
         ],
         "worksFor": {
             "@type": "Organization",
