@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { Author, QAEntity } from '@/types/blog';
 import { translations } from '@/i18n/translations';
 import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
+import { LanguageMismatchNotFound } from '@/components/LanguageMismatchNotFound';
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
@@ -141,11 +142,35 @@ export default function QAPage() {
     );
   }
 
-  // If Q&A exists but in wrong language folder, redirect to correct language
-  // This prevents "Q&A Not Found" errors when users land on mismatched URLs
+  // Smart language mismatch handling:
+  // 1. If translation exists for requested language → redirect to correct URL  
+  // 2. If no translation → show branded 404 with alternatives
   if (qaPage && (qaPage as any)._needsRedirect && qaPage.language !== lang) {
-    console.log(`[QAPage] Redirecting from /${lang}/qa/${slug} to /${qaPage.language}/qa/${slug}`);
-    return <Navigate to={`/${qaPage.language}/qa/${slug}`} replace />;
+    const qaTranslations = qaPage.translations as Record<string, string> | null;
+    
+    // Check if the requested language has a translation
+    const correctSlug = qaTranslations?.[lang];
+    
+    if (correctSlug) {
+      // Translation exists → redirect to correct localized URL
+      console.log(`[QAPage] Redirecting from /${lang}/qa/${slug} to /${lang}/qa/${correctSlug}`);
+      return <Navigate to={`/${lang}/qa/${correctSlug}`} replace />;
+    }
+    
+    // No translation → show helpful 404 with language alternatives
+    return (
+      <>
+        <Header variant="solid" />
+        <LanguageMismatchNotFound
+          requestedLang={lang}
+          actualLang={qaPage.language}
+          slug={slug}
+          translations={qaTranslations}
+          contentType="qa"
+        />
+        <Footer />
+      </>
+    );
   }
 
   if (error || !qaPage) {

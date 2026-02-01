@@ -26,6 +26,7 @@ import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import PersonSchema from '@/components/schema/PersonSchema';
 import ArticleSchema from '@/components/schema/ArticleSchema';
 import AuthorByline from '@/components/blog-article/AuthorByline';
+import { LanguageMismatchNotFound } from "@/components/LanguageMismatchNotFound";
 
 const BlogArticle = () => {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
@@ -60,22 +61,36 @@ const BlogArticle = () => {
     staleTime: 15 * 60 * 1000, // 15 minutes - articles don't change often
   });
 
-  // If URL language doesn't match article's actual language, show 404 (no cross-language redirect)
-  // This prevents redirect chains that confuse search engines
+  // Smart language mismatch handling:
+  // 1. If translation exists for requested language → redirect to correct URL
+  // 2. If no translation → show branded 404 with alternatives
   if (article && article.language !== lang) {
+    const translations = article.translations as Record<string, string | { id: string; slug: string }> | null;
+    
+    // Helper to extract slug from translation value (handles both string and object formats)
+    const getSlugFromTranslation = (value: string | { id: string; slug: string } | undefined): string | null => {
+      if (!value) return null;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object' && 'slug' in value) return value.slug;
+      return null;
+    };
+    
+    const correctSlug = translations ? getSlugFromTranslation(translations[lang]) : null;
+    
+    if (correctSlug) {
+      // Translation exists → 301-style redirect to correct localized URL
+      return <Navigate to={`/${lang}/blog/${correctSlug}`} replace />;
+    }
+    
+    // No translation available → show helpful 404 with language alternatives
     return (
-      <>
-        <Helmet>
-          <meta name="robots" content="noindex, nofollow" />
-          <title>Article Not Found | Del Sol Prime Homes</title>
-        </Helmet>
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
-            <p className="text-muted-foreground">This article is not available in this language.</p>
-          </div>
-        </div>
-      </>
+      <LanguageMismatchNotFound
+        requestedLang={lang}
+        actualLang={article.language}
+        slug={slug || ''}
+        translations={translations}
+        contentType="blog"
+      />
     );
   }
 

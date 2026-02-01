@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { markdownToHtml } from "@/lib/markdownToHtml";
 import { ArrowRight, ArrowLeft, BookOpen, Layers, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LanguageMismatchNotFound } from "@/components/LanguageMismatchNotFound";
 
 const BASE_URL = "https://www.delsolprimehomes.com";
 
@@ -79,29 +80,31 @@ export default function ComparisonPage() {
     );
   }
 
-  // Language mismatch - return noindex page instead of redirect (SEO-safe pattern)
+  // Smart language mismatch handling:
+  // 1. If translation exists for requested language → redirect to correct URL
+  // 2. If no translation → show branded 404 with alternatives
   if (comparison.language !== lang) {
+    const compTranslations = (comparison as any).translations as Record<string, string> | null;
+    
+    // Check if the requested language has a translation
+    const correctSlug = compTranslations?.[lang];
+    
+    if (correctSlug) {
+      // Translation exists → redirect to correct localized URL
+      return <Navigate to={`/${lang}/compare/${correctSlug}`} replace />;
+    }
+    
+    // No translation → show helpful 404 with language alternatives
     return (
       <>
-        <Helmet>
-          <meta name="robots" content="noindex, nofollow" />
-          <title>Comparison Not Available | Del Sol Prime Homes</title>
-        </Helmet>
         <Header />
-        <main className="min-h-screen flex flex-col items-center justify-center bg-background">
-          <div className="container mx-auto px-4 py-16 text-center">
-            <h1 className="text-3xl font-bold mb-4">Comparison Not Available</h1>
-            <p className="text-muted-foreground mb-8">
-              This comparison is not available in this language.
-            </p>
-            <Button asChild>
-              <Link to={`/${lang}/compare`}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Comparisons
-              </Link>
-            </Button>
-          </div>
-        </main>
+        <LanguageMismatchNotFound
+          requestedLang={lang}
+          actualLang={comparison.language || 'en'}
+          slug={slug || ''}
+          translations={compTranslations}
+          contentType="compare"
+        />
         <Footer />
       </>
     );

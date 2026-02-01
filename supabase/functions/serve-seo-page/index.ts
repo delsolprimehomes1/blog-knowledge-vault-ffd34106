@@ -250,118 +250,212 @@ interface PageMetadata {
   author_bio?: string            // Author info
 }
 
+// Result type for metadata with potential redirect (language mismatch handling)
+interface MetadataResult {
+  metadata: PageMetadata | null
+  redirect?: { to: string; reason: string }
+}
+
 interface HreflangSibling {
   language: string
   slug: string
   canonical_url: string
 }
 
-async function fetchQAMetadata(supabase: any, slug: string, lang: string): Promise<PageMetadata | null> {
-  const { data, error } = await supabase
+/**
+ * Helper to extract slug string from translations JSONB
+ * The translations column can contain either:
+ * - Simple strings: { "en": "slug-here" }
+ * - Objects: { "en": { "id": "uuid", "slug": "slug-here" } }
+ */
+function getSlugFromTranslation(value: any): string | null {
+  if (!value) return null
+  if (typeof value === 'string') return value
+  if (typeof value === 'object' && 'slug' in value) return value.slug
+  return null
+}
+
+async function fetchQAMetadata(supabase: any, slug: string, lang: string): Promise<MetadataResult> {
+  // First try: exact match (slug + language)
+  const { data: exactMatch, error: exactError } = await supabase
     .from('qa_pages')
     .select('*')
     .eq('slug', slug)
+    .eq('language', lang)
     .eq('status', 'published')
     .maybeSingle()
 
-  if (error || !data) {
-    console.error('Error fetching QA page:', error)
-    return null
+  if (exactMatch) {
+    return {
+      metadata: {
+        language: exactMatch.language || lang,
+        meta_title: exactMatch.meta_title || exactMatch.title || '',
+        meta_description: exactMatch.meta_description || '',
+        canonical_url: exactMatch.canonical_url || `${BASE_URL}/${exactMatch.language}/qa/${slug}`,
+        headline: exactMatch.question_main || exactMatch.title || '',
+        speakable_answer: exactMatch.answer_main || exactMatch.speakable_answer || '',
+        featured_image_url: exactMatch.featured_image_url,
+        featured_image_alt: exactMatch.featured_image_alt,
+        date_published: exactMatch.date_published,
+        date_modified: exactMatch.date_modified,
+        hreflang_group_id: exactMatch.hreflang_group_id,
+        qa_entities: exactMatch.related_qas,
+        content_type: 'qa',
+        answer_main: exactMatch.answer_main,
+      }
+    }
   }
 
-  return {
-    language: data.language || lang,
-    meta_title: data.meta_title || data.title || '',
-    meta_description: data.meta_description || '',
-    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/qa/${slug}`,
-    headline: data.question_main || data.title || '',
-    speakable_answer: data.answer_main || data.speakable_answer || '',
-    featured_image_url: data.featured_image_url,
-    featured_image_alt: data.featured_image_alt,
-    date_published: data.date_published,
-    date_modified: data.date_modified,
-    hreflang_group_id: data.hreflang_group_id,
-    qa_entities: data.related_qas,
-    content_type: 'qa',
-    // SSR content
-    answer_main: data.answer_main,
+  // Second try: find by slug alone (language mismatch case)
+  const { data: anyLangMatch, error: anyError } = await supabase
+    .from('qa_pages')
+    .select('language, translations, slug')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle()
+
+  if (anyLangMatch) {
+    // Check if translation exists for requested language
+    const correctSlug = getSlugFromTranslation(anyLangMatch.translations?.[lang])
+    if (correctSlug) {
+      console.log(`[QA] Language mismatch: redirecting /${lang}/qa/${slug} → /${lang}/qa/${correctSlug}`)
+      return {
+        metadata: null,
+        redirect: {
+          to: `/${lang}/qa/${correctSlug}`,
+          reason: `language_mismatch:${anyLangMatch.language}->${lang}`
+        }
+      }
+    }
   }
+
+  console.error('Error fetching QA page:', exactError || anyError)
+  return { metadata: null }
 }
 
-async function fetchBlogMetadata(supabase: any, slug: string, lang: string): Promise<PageMetadata | null> {
-  const { data, error } = await supabase
+async function fetchBlogMetadata(supabase: any, slug: string, lang: string): Promise<MetadataResult> {
+  // First try: exact match (slug + language)
+  const { data: exactMatch, error: exactError } = await supabase
     .from('blog_articles')
     .select('*')
     .eq('slug', slug)
+    .eq('language', lang)
     .eq('status', 'published')
     .maybeSingle()
 
-  if (error || !data) {
-    console.error('Error fetching blog article:', error)
-    return null
+  if (exactMatch) {
+    return {
+      metadata: {
+        language: exactMatch.language || lang,
+        meta_title: exactMatch.meta_title,
+        meta_description: exactMatch.meta_description,
+        canonical_url: exactMatch.canonical_url || `${BASE_URL}/${exactMatch.language}/blog/${slug}`,
+        headline: exactMatch.headline,
+        speakable_answer: exactMatch.speakable_answer,
+        featured_image_url: exactMatch.featured_image_url,
+        featured_image_alt: exactMatch.featured_image_alt,
+        date_published: exactMatch.date_published,
+        date_modified: exactMatch.date_modified,
+        hreflang_group_id: exactMatch.hreflang_group_id,
+        qa_entities: exactMatch.qa_entities,
+        content_type: 'blog',
+        detailed_content: exactMatch.detailed_content,
+        read_time: exactMatch.read_time,
+        author_bio: exactMatch.author_bio_localized,
+      }
+    }
   }
 
-  return {
-    language: data.language || lang,
-    meta_title: data.meta_title,
-    meta_description: data.meta_description,
-    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/blog/${slug}`,
-    headline: data.headline,
-    speakable_answer: data.speakable_answer,
-    featured_image_url: data.featured_image_url,
-    featured_image_alt: data.featured_image_alt,
-    date_published: data.date_published,
-    date_modified: data.date_modified,
-    hreflang_group_id: data.hreflang_group_id,
-    qa_entities: data.qa_entities,
-    content_type: 'blog',
-    // SSR content
-    detailed_content: data.detailed_content,
-    read_time: data.read_time,
-    author_bio: data.author_bio_localized,
-  }
-}
-
-async function fetchComparisonMetadata(supabase: any, slug: string, lang: string): Promise<PageMetadata | null> {
-  const { data, error } = await supabase
-    .from('comparison_pages')
-    .select('*')
+  // Second try: find by slug alone (language mismatch case)
+  const { data: anyLangMatch, error: anyError } = await supabase
+    .from('blog_articles')
+    .select('language, translations, slug')
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle()
 
-  if (error || !data) {
-    console.error('Error fetching comparison page:', error)
-    return null
+  if (anyLangMatch) {
+    // Check if translation exists for requested language
+    const correctSlug = getSlugFromTranslation(anyLangMatch.translations?.[lang])
+    if (correctSlug) {
+      console.log(`[Blog] Language mismatch: redirecting /${lang}/blog/${slug} → /${lang}/blog/${correctSlug}`)
+      return {
+        metadata: null,
+        redirect: {
+          to: `/${lang}/blog/${correctSlug}`,
+          reason: `language_mismatch:${anyLangMatch.language}->${lang}`
+        }
+      }
+    }
   }
 
-  return {
-    language: data.language || lang,
-    meta_title: data.meta_title,
-    meta_description: data.meta_description,
-    canonical_url: data.canonical_url || `${BASE_URL}/${data.language}/compare/${slug}`,
-    headline: data.headline,
-    speakable_answer: data.speakable_answer,
-    featured_image_url: data.featured_image_url,
-    featured_image_alt: data.featured_image_alt,
-    date_published: data.date_published,
-    date_modified: data.date_modified,
-    hreflang_group_id: data.hreflang_group_id,
-    qa_entities: data.qa_entities,
-    content_type: 'compare',
-    quick_comparison_table: data.quick_comparison_table,
-    // SSR content
-    final_verdict: data.final_verdict,
+  console.error('Error fetching blog article:', exactError || anyError)
+  return { metadata: null }
+}
+
+async function fetchComparisonMetadata(supabase: any, slug: string, lang: string): Promise<MetadataResult> {
+  // First try: exact match (slug + language)
+  const { data: exactMatch, error: exactError } = await supabase
+    .from('comparison_pages')
+    .select('*')
+    .eq('slug', slug)
+    .eq('language', lang)
+    .eq('status', 'published')
+    .maybeSingle()
+
+  if (exactMatch) {
+    return {
+      metadata: {
+        language: exactMatch.language || lang,
+        meta_title: exactMatch.meta_title,
+        meta_description: exactMatch.meta_description,
+        canonical_url: exactMatch.canonical_url || `${BASE_URL}/${exactMatch.language}/compare/${slug}`,
+        headline: exactMatch.headline,
+        speakable_answer: exactMatch.speakable_answer,
+        featured_image_url: exactMatch.featured_image_url,
+        featured_image_alt: exactMatch.featured_image_alt,
+        date_published: exactMatch.date_published,
+        date_modified: exactMatch.date_modified,
+        hreflang_group_id: exactMatch.hreflang_group_id,
+        qa_entities: exactMatch.qa_entities,
+        content_type: 'compare',
+        quick_comparison_table: exactMatch.quick_comparison_table,
+        final_verdict: exactMatch.final_verdict,
+      }
+    }
   }
+
+  // Second try: find by slug alone (language mismatch case)
+  const { data: anyLangMatch, error: anyError } = await supabase
+    .from('comparison_pages')
+    .select('language, translations, slug')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle()
+
+  if (anyLangMatch) {
+    // Check if translation exists for requested language
+    const correctSlug = getSlugFromTranslation(anyLangMatch.translations?.[lang])
+    if (correctSlug) {
+      console.log(`[Compare] Language mismatch: redirecting /${lang}/compare/${slug} → /${lang}/compare/${correctSlug}`)
+      return {
+        metadata: null,
+        redirect: {
+          to: `/${lang}/compare/${correctSlug}`,
+          reason: `language_mismatch:${anyLangMatch.language}->${lang}`
+        }
+      }
+    }
+  }
+
+  console.error('Error fetching comparison page:', exactError || anyError)
+  return { metadata: null }
 }
 
-// Result type for location metadata with potential redirect
-interface LocationResult {
-  metadata: PageMetadata | null
-  redirect?: { to: string; reason: string }
-}
+// Note: LocationResult is now replaced by MetadataResult for consistency
+// The fetchLocationMetadata function already returns MetadataResult-compatible structure
 
-async function fetchLocationMetadata(supabase: any, slug: string, lang: string): Promise<LocationResult> {
+async function fetchLocationMetadata(supabase: any, slug: string, lang: string): Promise<MetadataResult> {
   // Location pages have compound slugs: city_slug/topic_slug
   // The slug parameter will be "city-slug/topic-slug" or just the topic_slug if parsed separately
   const slugParts = slug.split('/')
@@ -2236,34 +2330,46 @@ async function handleRequest(req: Request): Promise<Response> {
   let redirectInfo: { to: string; reason: string } | undefined
   
   switch (contentType) {
-    case 'qa':
-      metadata = await fetchQAMetadata(supabase, slug, lang)
+    case 'qa': {
+      const qaResult = await fetchQAMetadata(supabase, slug, lang)
+      metadata = qaResult.metadata
+      redirectInfo = qaResult.redirect
       break
-    case 'blog':
-      metadata = await fetchBlogMetadata(supabase, slug, lang)
+    }
+    case 'blog': {
+      const blogResult = await fetchBlogMetadata(supabase, slug, lang)
+      metadata = blogResult.metadata
+      redirectInfo = blogResult.redirect
       break
-    case 'compare':
-      metadata = await fetchComparisonMetadata(supabase, slug, lang)
+    }
+    case 'compare': {
+      const compareResult = await fetchComparisonMetadata(supabase, slug, lang)
+      metadata = compareResult.metadata
+      redirectInfo = compareResult.redirect
       break
-    case 'locations':
+    }
+    case 'locations': {
       const locationResult = await fetchLocationMetadata(supabase, slug, lang)
       metadata = locationResult.metadata
       redirectInfo = locationResult.redirect
       break
+    }
   }
 
-  // If location page exists but in wrong language, return redirect info
+  // Language mismatch with valid translation → 301 Permanent Redirect
   if (redirectInfo) {
-    console.log(`[SEO] Language mismatch - redirecting to: ${redirectInfo.to}`)
-    return new Response(
-      JSON.stringify({ 
-        error: 'language_mismatch', 
-        redirectTo: redirectInfo.to,
-        reason: redirectInfo.reason,
-        path 
-      }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const redirectUrl = `${BASE_URL}${redirectInfo.to}`
+    console.log(`[SEO] Language mismatch - 301 redirecting to: ${redirectUrl} (${redirectInfo.reason})`)
+    
+    return new Response(null, {
+      status: 301,
+      headers: {
+        ...corsHeaders,
+        'Location': redirectUrl,
+        'X-Redirect-Reason': redirectInfo.reason,
+        'Cache-Control': 'public, max-age=31536000', // Cache 301 for 1 year
+      }
+    })
   }
 
   // ============================================================
