@@ -1281,102 +1281,355 @@ function escapeHtml(text: string | null | undefined): string {
 function generateSSRStyles(): string {
   return `
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { 
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        line-height: 1.7;
-        color: #374151;
-        background: #f9fafb;
+      /* Del Sol Prime Homes Brand Design System */
+      :root {
+        --prime-gold: 43 74% 49%;
+        --prime-gold-dark: 43 74% 40%;
+        --prime-950: 220 20% 10%;
+        --foreground: 220 20% 10%;
+        --muted-foreground: 220 10% 45%;
+        --background: 0 0% 100%;
+        --card-bg: 0 0% 98%;
+        --border: 220 13% 91%;
       }
       
-      /* Header */
-      .site-header { background: white; border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
-      .nav-container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-      .logo { height: 40px; width: auto; }
-      .nav-links { display: flex; gap: 1.5rem; }
-      .nav-links a { color: #6b7280; text-decoration: none; font-weight: 500; }
-      .nav-links a:hover { color: #c9a227; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
       
-      /* Article */
-      .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+      body { 
+        font-family: 'Lato', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.7;
+        color: hsl(var(--foreground));
+        background: hsl(var(--background));
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-weight: 600;
+        color: hsl(var(--prime-950));
+      }
+      
+      /* Header - Sticky with Brand Shadow */
+      .site-header { 
+        background: hsl(var(--background)); 
+        border-bottom: 1px solid hsl(var(--border)); 
+        padding: 1rem 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .nav-container { 
+        max-width: 1280px; 
+        margin: 0 auto; 
+        padding: 0 1.5rem; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+      }
+      .logo { height: 44px; width: auto; }
+      .logo-link { display: flex; align-items: center; }
+      .nav-links { display: flex; gap: 2rem; list-style: none; }
+      .nav-links a { 
+        color: hsl(var(--muted-foreground)); 
+        text-decoration: none; 
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: color 0.2s ease;
+      }
+      .nav-links a:hover { color: hsl(var(--prime-gold)); }
+      
+      /* Article Container */
+      .article-container { 
+        max-width: 800px; 
+        margin: 0 auto; 
+        padding: clamp(1.5rem, 5vw, 3rem) 1.5rem; 
+      }
       .article-header { margin-bottom: 2rem; }
-      h1 { font-size: 2.5rem; font-weight: 800; color: #1f2937; line-height: 1.2; margin-bottom: 1rem; }
-      .article-meta { color: #6b7280; font-size: 0.875rem; display: flex; gap: 1rem; }
+      
+      h1 { 
+        font-size: clamp(1.75rem, 4vw, 2.75rem); 
+        font-weight: 700; 
+        line-height: 1.15; 
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+      }
+      
+      .article-meta { 
+        color: hsl(var(--muted-foreground)); 
+        font-size: 0.875rem; 
+        display: flex; 
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .read-time { 
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .read-time::before {
+        content: '•';
+        margin-right: 0.5rem;
+      }
       
       /* Featured Image */
-      .featured-image { margin: 2rem 0; border-radius: 12px; overflow: hidden; }
-      .featured-image img { width: 100%; height: auto; display: block; }
+      .featured-image { 
+        margin: 2rem 0; 
+        border-radius: 16px; 
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .featured-image img { 
+        width: 100%; 
+        height: auto; 
+        display: block;
+        aspect-ratio: 16/9;
+        object-fit: cover;
+      }
       
-      /* Speakable Summary */
+      /* Speakable Summary Box - Brand Gold Gradient */
       .speakable-summary { 
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        padding: 1.5rem; 
-        border-radius: 8px; 
+        background: linear-gradient(135deg, hsl(48 100% 96%) 0%, hsl(48 96% 89%) 100%);
+        padding: 1.75rem; 
+        border-radius: 12px; 
         margin: 2rem 0;
-        border-left: 4px solid #c9a227;
+        border-left: 5px solid hsl(var(--prime-gold));
+        position: relative;
+        box-shadow: 0 2px 12px rgba(201, 162, 39, 0.1);
       }
-      .speakable-summary p { font-size: 1.1rem; color: #92400e; font-weight: 500; }
+      .speakable-summary::before {
+        content: 'Quick Answer';
+        display: block;
+        font-family: 'Lato', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: hsl(var(--prime-gold-dark));
+        margin-bottom: 0.75rem;
+      }
+      .speakable-summary p { 
+        font-size: 1.1rem; 
+        line-height: 1.75;
+        color: hsl(35 60% 20%); 
+        font-weight: 500; 
+      }
       
-      /* Content */
-      .article-content { font-size: 1.1rem; }
-      .article-content h2 { font-size: 1.75rem; color: #1f2937; margin: 2.5rem 0 1rem; }
-      .article-content h3 { font-size: 1.35rem; color: #374151; margin: 2rem 0 0.75rem; }
-      .article-content p { margin: 1rem 0; }
-      .article-content ul, .article-content ol { margin: 1rem 0; padding-left: 1.5rem; }
-      .article-content li { margin: 0.5rem 0; }
-      .article-content a { color: #c9a227; text-decoration: underline; }
-      .article-content blockquote { 
-        border-left: 4px solid #c9a227; 
-        padding-left: 1rem; 
-        margin: 1.5rem 0; 
-        font-style: italic; 
-        color: #6b7280; 
+      /* Content Styling */
+      .article-content { 
+        font-size: clamp(1rem, 2vw, 1.125rem);
+        line-height: 1.8;
       }
-      .article-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; }
+      .article-content h2 { 
+        font-size: clamp(1.5rem, 3vw, 1.875rem); 
+        margin: 3rem 0 1.25rem;
+        padding-top: 1rem;
+      }
+      .article-content h3 { 
+        font-size: clamp(1.25rem, 2.5vw, 1.5rem); 
+        margin: 2.5rem 0 1rem; 
+      }
+      .article-content p { margin: 1.25rem 0; }
+      .article-content ul, .article-content ol { 
+        margin: 1.25rem 0; 
+        padding-left: 1.75rem; 
+      }
+      .article-content li { 
+        margin: 0.625rem 0;
+        padding-left: 0.25rem;
+      }
+      .article-content a { 
+        color: hsl(var(--prime-gold-dark)); 
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        transition: color 0.2s ease;
+      }
+      .article-content a:hover {
+        color: hsl(var(--prime-gold));
+      }
+      .article-content blockquote { 
+        border-left: 4px solid hsl(var(--prime-gold)); 
+        padding: 1rem 1.5rem; 
+        margin: 2rem 0; 
+        font-style: italic;
+        background: hsl(var(--card-bg));
+        border-radius: 0 8px 8px 0;
+        color: hsl(var(--muted-foreground)); 
+      }
+      .article-content img { 
+        max-width: 100%; 
+        height: auto; 
+        border-radius: 12px; 
+        margin: 2rem 0;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      }
+      .article-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 2rem 0;
+        font-size: 0.95rem;
+      }
+      .article-content th {
+        background: hsl(var(--prime-950));
+        color: white;
+        padding: 0.875rem 1rem;
+        text-align: left;
+        font-weight: 600;
+      }
+      .article-content td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid hsl(var(--border));
+      }
+      .article-content tr:nth-child(even) td {
+        background: hsl(var(--card-bg));
+      }
       
       /* FAQ Section */
-      .faq-section { margin: 3rem 0; padding: 2rem; background: #f3f4f6; border-radius: 12px; }
-      .faq-section h2 { margin-bottom: 1.5rem; }
-      .faq-item { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
-      .faq-item summary { font-weight: 600; cursor: pointer; color: #1f2937; }
-      .faq-item p { margin-top: 0.75rem; color: #4b5563; }
+      .faq-section { 
+        margin: 3rem 0; 
+        padding: 2rem; 
+        background: hsl(var(--card-bg)); 
+        border-radius: 16px;
+        border: 1px solid hsl(var(--border));
+      }
+      .faq-section h2 { 
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+      }
+      .faq-item { 
+        background: hsl(var(--background));
+        border: 1px solid hsl(var(--border));
+        border-left: 4px solid hsl(var(--prime-gold));
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+      }
+      .faq-item summary { 
+        font-weight: 600; 
+        cursor: pointer; 
+        color: hsl(var(--prime-950));
+        padding: 1rem 1.25rem;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .faq-item summary::-webkit-details-marker { display: none; }
+      .faq-item summary::after {
+        content: '+';
+        font-size: 1.25rem;
+        color: hsl(var(--prime-gold));
+        font-weight: 400;
+      }
+      .faq-item[open] summary::after { content: '−'; }
+      .faq-item p { 
+        padding: 0 1.25rem 1rem;
+        color: hsl(var(--muted-foreground));
+        line-height: 1.7;
+      }
       
-      /* CTA */
+      /* CTA Section */
       .cta-section { 
-        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        background: linear-gradient(135deg, hsl(var(--prime-950)) 0%, hsl(220 25% 15%) 100%);
         color: white;
-        padding: 2.5rem;
-        border-radius: 12px;
+        padding: clamp(2rem, 5vw, 3rem);
+        border-radius: 16px;
         margin: 3rem 0;
         text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
       }
-      .cta-section h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
-      .cta-section p { margin-bottom: 1.5rem; opacity: 0.9; }
+      .cta-section h3 { 
+        font-size: clamp(1.25rem, 3vw, 1.625rem); 
+        margin-bottom: 0.875rem;
+        color: white;
+      }
+      .cta-section p { 
+        margin-bottom: 1.5rem; 
+        opacity: 0.9;
+        font-size: 1.05rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .cta-button { 
         display: inline-block;
-        background: linear-gradient(135deg, #c9a227 0%, #b8941f 100%);
-        color: white;
-        padding: 0.875rem 2rem;
+        background: linear-gradient(135deg, hsl(var(--prime-gold)) 0%, hsl(var(--prime-gold-dark)) 100%);
+        color: hsl(var(--prime-950));
+        padding: 1rem 2.5rem;
         border-radius: 8px;
         text-decoration: none;
-        font-weight: 600;
-        transition: transform 0.2s, box-shadow 0.2s;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 16px rgba(201, 162, 39, 0.25);
       }
-      .cta-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(201,162,39,0.35); }
+      .cta-button:hover { 
+        transform: translateY(-3px); 
+        box-shadow: 0 8px 24px rgba(201, 162, 39, 0.35);
+      }
       
       /* Footer */
-      .site-footer { background: #1f2937; color: #9ca3af; padding: 2rem 0; margin-top: 4rem; }
-      .footer-content { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-      .footer-nav a { color: #9ca3af; text-decoration: none; margin-left: 1.5rem; }
-      .footer-nav a:hover { color: #c9a227; }
+      .site-footer { 
+        background: hsl(var(--prime-950)); 
+        color: hsl(220 10% 65%); 
+        padding: 2.5rem 0; 
+        margin-top: 4rem;
+        border-top: 4px solid hsl(var(--prime-gold));
+      }
+      .footer-content { 
+        max-width: 1280px; 
+        margin: 0 auto; 
+        padding: 0 1.5rem; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .footer-content p {
+        font-size: 0.875rem;
+      }
+      .footer-nav { display: flex; gap: 1.5rem; }
+      .footer-nav a { 
+        color: hsl(220 10% 65%); 
+        text-decoration: none;
+        font-size: 0.875rem;
+        transition: color 0.2s ease;
+      }
+      .footer-nav a:hover { color: hsl(var(--prime-gold)); }
       
-      /* Responsive */
+      /* Location/Area Cards */
+      .area-card {
+        background: hsl(var(--background));
+        border: 1px solid hsl(var(--border));
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        transition: box-shadow 0.2s ease;
+      }
+      .area-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      }
+      
+      /* Responsive Design */
       @media (max-width: 768px) {
-        h1 { font-size: 1.75rem; }
         .nav-links { display: none; }
-        .cta-section { padding: 1.5rem; }
-        .footer-content { flex-direction: column; gap: 1rem; text-align: center; }
-        .footer-nav a { margin: 0 0.75rem; }
+        .cta-section { padding: 1.75rem; }
+        .footer-content { 
+          flex-direction: column; 
+          text-align: center; 
+        }
+        .footer-nav { justify-content: center; }
+        .speakable-summary { padding: 1.25rem; }
+        .faq-section { padding: 1.5rem; }
+      }
+      
+      /* Print Styles */
+      @media print {
+        .site-header, .site-footer, .cta-section { display: none; }
+        .article-container { max-width: 100%; padding: 0; }
       }
     </style>
   `
@@ -1433,22 +1686,38 @@ function generateArticleBody(metadata: PageMetadata): string {
   }
   const cta = ctaTexts[lang] || ctaTexts.en
   
+  // Nav labels based on language
+  const navTexts: Record<string, { properties: string; blog: string; contact: string; locations: string }> = {
+    en: { properties: 'Properties', blog: 'Blog', contact: 'Contact', locations: 'Locations' },
+    nl: { properties: 'Vastgoed', blog: 'Blog', contact: 'Contact', locations: 'Locaties' },
+    de: { properties: 'Immobilien', blog: 'Blog', contact: 'Kontakt', locations: 'Standorte' },
+    fr: { properties: 'Propriétés', blog: 'Blog', contact: 'Contact', locations: 'Emplacements' },
+    sv: { properties: 'Fastigheter', blog: 'Blogg', contact: 'Kontakt', locations: 'Platser' },
+    no: { properties: 'Eiendommer', blog: 'Blogg', contact: 'Kontakt', locations: 'Steder' },
+    da: { properties: 'Ejendomme', blog: 'Blog', contact: 'Kontakt', locations: 'Steder' },
+    fi: { properties: 'Kiinteistöt', blog: 'Blogi', contact: 'Yhteystiedot', locations: 'Sijainnit' },
+    pl: { properties: 'Nieruchomości', blog: 'Blog', contact: 'Kontakt', locations: 'Lokalizacje' },
+    hu: { properties: 'Ingatlanok', blog: 'Blog', contact: 'Kapcsolat', locations: 'Helyszínek' },
+  }
+  const nav = navTexts[lang] || navTexts.en
+
   return `
     <header class="site-header">
       <nav class="nav-container">
         <a href="${langPrefix}/" class="logo-link">
-          <img src="${BASE_URL}/assets/logo-new.png" alt="Del Sol Prime Homes" class="logo">
+          <img src="https://ghhzfxtchlwmwibtkuds.supabase.co/storage/v1/object/public/site-assets/logo.png" alt="Del Sol Prime Homes" class="logo">
         </a>
         <div class="nav-links">
-          <a href="${langPrefix}/properties">Properties</a>
-          <a href="${langPrefix}/blog">Blog</a>
-          <a href="${langPrefix}/contact">Contact</a>
+          <a href="${langPrefix}/properties">${nav.properties}</a>
+          <a href="${langPrefix}/locations">${nav.locations}</a>
+          <a href="${langPrefix}/blog">${nav.blog}</a>
+          <a href="${langPrefix}/contact">${nav.contact}</a>
         </div>
       </nav>
     </header>
     
     <main class="article-container">
-      <article itemscope itemtype="https://schema.org/BlogPosting">
+      <article itemscope itemtype="https://schema.org/${metadata.content_type === 'qa' ? 'QAPage' : 'BlogPosting'}">
         <header class="article-header">
           <h1 itemprop="headline">${escapeHtml(metadata.headline)}</h1>
           ${metadata.date_published ? `
@@ -1468,12 +1737,13 @@ function generateArticleBody(metadata: PageMetadata): string {
               alt="${escapeHtml(metadata.featured_image_alt || metadata.headline)}"
               itemprop="image"
               loading="eager"
+              fetchpriority="high"
             >
           </figure>
         ` : ''}
         
         ${metadata.speakable_answer ? `
-          <div class="speakable-summary speakable-answer" itemprop="description">
+          <div class="speakable-summary speakable-answer" id="speakable-summary" itemprop="description">
             <p>${escapeHtml(metadata.speakable_answer)}</p>
           </div>
         ` : ''}
@@ -1498,6 +1768,7 @@ function generateArticleBody(metadata: PageMetadata): string {
         <nav class="footer-nav">
           <a href="${langPrefix}/privacy">Privacy</a>
           <a href="${langPrefix}/terms">Terms</a>
+          <a href="${langPrefix}/contact">${nav.contact}</a>
         </nav>
       </div>
     </footer>
@@ -1524,6 +1795,11 @@ function generateFullHtml(metadata: PageMetadata, hreflangTags: string, _baseHtm
   const headContent = `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Google Fonts: Playfair Display + Lato -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Primary Meta Tags -->
   <title>${escapedTitle}</title>
