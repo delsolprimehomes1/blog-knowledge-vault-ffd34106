@@ -359,3 +359,6 @@ verify_jwt = false
 
 [functions.generate-retargeting-visual]
 verify_jwt = false
+
+[functions.backfill-citations-bulk]
+verify_jwt = false
