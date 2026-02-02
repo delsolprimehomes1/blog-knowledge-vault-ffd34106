@@ -1,298 +1,188 @@
 
+# Streamlined AEO Citation Optimization
 
-# Graceful Handling of Invalid Language/Slug Combinations
+## Scope (Per Your Instructions)
 
-## Problem Summary
+| Task | Action |
+|------|--------|
+| Update llm.txt date | ✅ DO IT |
+| Fix citations ([CITATION_NEEDED]) | ✅ DO IT |
+| Speakable regeneration | ⚠️ TEST FIRST (no bulk update) |
+| OpenAPI spec | ❌ SKIP |
 
-When a user visits a URL like `/sv/blog/evaluating-property-design...` (Swedish prefix + English slug), the system shows a blank page instead of:
-1. Redirecting to the correct localized URL, or
-2. Showing a helpful 404 page with language alternatives
+## Current State
 
-The `translations` JSONB column already contains all sibling slugs, making intelligent redirects possible.
+**Citation Markers:**
+- 24 published articles have `[CITATION_NEEDED]` markers
+- Distribution: EN (5), DA (3), HU (3), NL (2), FR (2), SV (2), FI (2), DE (2), PL (2), NO (1)
 
-## Database Asset: The `translations` Column
-
-Each article already has a mapping of all available translations:
-
-```json
-{
-  "en": "evaluating-property-design-impact-on-value...",
-  "sv": "navigera-i-den-arkitektoniska-landskapet...",
-  "nl": "navigeren-door-het-architecturale-landschap...",
-  ...
-}
-```
-
-This data enables smart cross-language redirects.
-
-## Solution Architecture
-
-```text
-User visits /sv/blog/english-slug
-            ↓
-┌───────────────────────────────────────┐
-│ Step 1: Check if slug exists for /sv/ │
-│         → Query: slug + language=sv   │
-└───────────────────────────────────────┘
-            ↓
-       NOT FOUND
-            ↓
-┌───────────────────────────────────────┐
-│ Step 2: Search slug in ANY language   │
-│         → Query: slug + status=pub    │
-└───────────────────────────────────────┘
-            ↓
-       FOUND in English (en)
-            ↓
-┌───────────────────────────────────────┐
-│ Step 3: Check translations JSONB      │
-│         → Does Swedish sibling exist? │
-└───────────────────────────────────────┘
-            ↓
-       YES: sv → "navigera-i-den..."
-            ↓
-┌───────────────────────────────────────┐
-│ Step 4: 301 Redirect to correct URL   │
-│         → /sv/blog/navigera-i-den...  │
-└───────────────────────────────────────┘
-```
-
-If no translation exists for the requested language, show a branded 404 page with links to available translations.
+**Speakable Answers:**
+- Average word count: 41-61 words (below 80-120 target)
+- French is highest at 61 words, English lowest at 45 words
+- Existing edge function: `regenerate-aeo-answers` already exists
 
 ## Implementation Plan
 
-### 1. Create Language Mismatch Handler Component
+### 1. Update llm.txt (Immediate)
 
-**File:** `src/components/LanguageMismatchHandler.tsx`
+**File:** `public/llm.txt`
 
-Creates a reusable component that:
-- Looks up the slug in any language
-- Checks the `translations` JSONB for the requested language
-- Either redirects or shows available alternatives
+Changes:
+- Update line 2: `# Last Updated: 2025-01-15` → `# Last Updated: 2026-02-02`
+- Update line 3: `# Version: 2.0` → `# Version: 3.0`
+- Update line 33: `Over 940 expert guides` → `Over 3,200 expert guides`
+- Update line 50: `50+ expert Q&A pages` → `9,600+ expert Q&A pages`
+- Update line 150: `Average Property Prices (2025)` → `Average Property Prices (2026)`
+- Update line 170: `Interest rates: 3-5% (2025)` → `Interest rates: 3-5% (2026)`
+- Add new "AI Citation Ready Snippets" section for pre-formatted attribution
 
-```typescript
-interface LanguageMismatchHandlerProps {
-  slug: string;
-  requestedLang: string;
-  contentType: 'blog' | 'qa' | 'compare' | 'locations';
-}
+### 2. Citation Backfill System
 
-// Logic:
-// 1. Query: Find article by slug (any language)
-// 2. If found, check translations[requestedLang]
-// 3. If sibling exists → Navigate to correct URL
-// 4. If no sibling → Show branded 404 with alternatives
-```
+**Create new edge function:** `supabase/functions/backfill-citations-bulk/index.ts`
 
-### 2. Update BlogArticle.tsx
+This will:
+- Fetch all 24 articles with `[CITATION_NEEDED]` markers
+- Use existing `replace-citation-markers` function logic (already robust)
+- Process articles in batches with progress tracking
+- Report success/failure for each article
 
-**File:** `src/pages/BlogArticle.tsx`
+**Create admin UI:** `src/pages/admin/CitationBackfill.tsx`
 
-Replace the current simple "not found" message with the smart handler:
+Dashboard showing:
+- Count of articles with unresolved markers by language
+- One-click "Backfill All" with progress bar
+- Individual article list with "Fix" buttons
+- Results summary after completion
 
-**Before (lines 63-80):**
-```typescript
-if (article && article.language !== lang) {
-  return (
-    <>
-      <Helmet>
-        <meta name="robots" content="noindex, nofollow" />
-        <title>Article Not Found | Del Sol Prime Homes</title>
-      </Helmet>
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-4">Article Not Found</h1>
-          <p className="text-muted-foreground">This article is not available in this language.</p>
-        </div>
-      </div>
-    </>
-  );
-}
-```
+### 3. Speakable Regeneration Test Mode
 
-**After:**
-```typescript
-if (article && article.language !== lang) {
-  // Check if translation exists for requested language
-  const translations = article.translations as Record<string, string>;
-  const correctSlug = translations?.[lang];
-  
-  if (correctSlug) {
-    // Redirect to the correct localized URL
-    return <Navigate to={`/${lang}/blog/${correctSlug}`} replace />;
-  }
-  
-  // No translation available - show helpful 404 with alternatives
-  return <LanguageMismatchNotFound 
-    requestedLang={lang}
-    actualLang={article.language}
-    slug={slug}
-    translations={translations}
-    contentType="blog"
-  />;
-}
-```
+**Modify existing function:** `supabase/functions/regenerate-aeo-answers/index.ts`
 
-### 3. Create Branded 404 Component for Mismatches
+Add a "single article" test mode:
+- Accept `articleId` parameter for single-article testing
+- Return detailed before/after comparison
+- Do NOT update database in test mode (dryRun always true for single)
 
-**File:** `src/components/LanguageMismatchNotFound.tsx`
+**Create admin UI:** `src/pages/admin/SpeakableTestBench.tsx`
 
-Creates a Del Sol Prime Homes branded 404 page that:
-- Uses the brand colors (gold accents, Playfair Display headings)
-- Shows the article title
-- Lists available language versions with clickable links
-- Provides navigation back to blog index
+Test interface that:
+- Lets you pick a single article
+- Shows current speakable_answer with word count
+- Generates a preview of the regenerated version
+- Shows side-by-side comparison
+- Has "Apply" button (only for that single article if satisfied)
 
-```typescript
-interface Props {
-  requestedLang: string;
-  actualLang: string;
-  slug: string;
-  translations: Record<string, string>;
-  contentType: 'blog' | 'qa' | 'compare' | 'locations';
-}
-
-// Example output:
-// ┌────────────────────────────────────────────┐
-// │  🌐 Article Not Available in Swedish       │
-// │                                            │
-// │  This article is available in:             │
-// │  • English (Original)                      │
-// │  • Dutch                                   │
-// │  • German                                  │
-// │  • French                                  │
-// │                                            │
-// │  [View in English]  [Browse Swedish Blog]  │
-// └────────────────────────────────────────────┘
-```
-
-### 4. Apply Same Pattern to Q&A and Comparison Pages
-
-**Files to update:**
-- `src/pages/QAPage.tsx` - Add language mismatch detection
-- `src/pages/ComparisonPage.tsx` - Add language mismatch detection
-
-Same logic: check `translations` JSONB, redirect if sibling exists, show alternatives if not.
-
-### 5. Update Edge Function for SSR Fallback
-
-**File:** `supabase/functions/serve-seo-page/index.ts`
-
-Add language mismatch detection to the edge function for cases where static files don't exist:
-
-```typescript
-// In fetchBlogMetadata function:
-async function fetchBlogMetadata(supabase: any, slug: string, lang: string) {
-  // First try: exact match (slug + language)
-  const { data: exactMatch } = await supabase
-    .from('blog_articles')
-    .select('*')
-    .eq('slug', slug)
-    .eq('language', lang)
-    .eq('status', 'published')
-    .maybeSingle();
-  
-  if (exactMatch) return exactMatch;
-  
-  // Second try: find by slug alone
-  const { data: anyLangMatch } = await supabase
-    .from('blog_articles')
-    .select('id, language, translations, slug')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
-  
-  if (anyLangMatch) {
-    // Check if translation exists for requested language
-    const correctSlug = anyLangMatch.translations?.[lang];
-    if (correctSlug) {
-      // Return 301 redirect to correct URL
-      return { redirect: `/${lang}/blog/${correctSlug}` };
-    }
-  }
-  
-  return null;
-}
-```
-
-## Files to Create/Modify
+## File Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/components/LanguageMismatchNotFound.tsx` | Create | Branded 404 with language alternatives |
-| `src/pages/BlogArticle.tsx` | Modify | Add smart redirect logic |
-| `src/pages/QAPage.tsx` | Modify | Add smart redirect logic |
-| `src/pages/ComparisonPage.tsx` | Modify | Add smart redirect logic |
-| `supabase/functions/serve-seo-page/index.ts` | Modify | Add SSR redirect for edge cases |
-
-## User Experience Flow
-
-**Scenario 1: Translation exists**
-```
-User clicks: /sv/blog/english-slug
-     ↓
-System finds English article with slug
-     ↓
-System checks translations["sv"] → "swedish-slug"
-     ↓
-301 Redirect → /sv/blog/swedish-slug ✓
-```
-
-**Scenario 2: No translation for requested language**
-```
-User clicks: /hu/blog/english-slug
-     ↓
-System finds English article
-     ↓
-System checks translations["hu"] → null (not translated yet)
-     ↓
-Show branded 404:
-  "This article is not yet available in Hungarian"
-  Available in: [EN] [NL] [DE] [FR] [SV]
-  [View in English] [Browse Hungarian Blog]
-```
+| `public/llm.txt` | Modify | Update date + stats |
+| `supabase/functions/backfill-citations-bulk/index.ts` | Create | Bulk citation replacement |
+| `src/pages/admin/CitationBackfill.tsx` | Create | Admin UI for backfill |
+| `supabase/functions/regenerate-aeo-answers/index.ts` | Modify | Add single-article test mode |
+| `src/pages/admin/SpeakableTestBench.tsx` | Create | Test regeneration on single articles |
+| `src/App.tsx` | Modify | Add routes for new admin pages |
 
 ## Technical Details
 
-### Redirect Headers
+### Citation Backfill Logic
 
-For SEO, use 301 (permanent) redirects to signal search engines:
-- The English slug URL is not canonical
-- The localized slug is the correct destination
+The edge function will leverage the existing `replace-citation-markers` function which already:
+- Extracts context around each `[CITATION_NEEDED]` marker
+- Uses Perplexity API to find authoritative sources
+- Validates URLs and domain diversity
+- Replaces markers with proper hyperlinks
 
-### Noindex for 404 Pages
-
-The language mismatch 404 page should include:
-```html
-<meta name="robots" content="noindex, nofollow">
-```
-
-### Language Name Mapping
-
-Use localized language names for the available translations list:
+New bulk function will:
 ```typescript
-const LANGUAGE_NAMES: Record<string, Record<string, string>> = {
-  en: { en: 'English', nl: 'Dutch', de: 'German', ... },
-  sv: { en: 'Engelska', nl: 'Nederländska', de: 'Tyska', ... },
-  // etc.
+// 1. Fetch articles with markers
+const { data } = await supabase
+  .from('blog_articles')
+  .select('id, headline, detailed_content, language, category')
+  .ilike('detailed_content', '%[CITATION_NEEDED]%')
+  .eq('status', 'published');
+
+// 2. For each article, call replace-citation-markers
+for (const article of data) {
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/replace-citation-markers`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        content: article.detailed_content,
+        headline: article.headline,
+        language: article.language,
+        articleId: article.id
+      })
+    }
+  );
+  
+  // 3. Update article with replaced content
+  if (response.ok) {
+    const { updatedContent } = await response.json();
+    await supabase
+      .from('blog_articles')
+      .update({ detailed_content: updatedContent })
+      .eq('id', article.id);
+  }
 }
 ```
 
-## Verification After Implementation
+### Speakable Test Mode
 
-1. **Test redirect case:**
-   - Visit `/sv/blog/evaluating-property-design-impact-on-value-and-investor-appeal-in-costa-del-sol`
-   - Should 301 redirect to `/sv/blog/navigera-i-den-arkitektoniska-landskapet...`
+Modify existing function to accept:
+```typescript
+const { 
+  articleId,        // NEW: Single article ID for testing
+  contentType,
+  batchSize,
+  dryRun,
+  fixListsOnly 
+} = await req.json();
 
-2. **Test 404 with alternatives:**
-   - Visit a URL where no translation exists
-   - Should show branded 404 with available language links
+// If articleId provided, fetch only that article
+if (articleId) {
+  const { data } = await supabase
+    .from('blog_articles')
+    .select('id, headline, speakable_answer, language')
+    .eq('id', articleId)
+    .single();
+  
+  // Always return preview, never auto-update
+  // ...
+}
+```
 
-3. **Check redirect headers:**
-   - Network tab should show `301 Moved Permanently`
-   - Response should include `Location: /sv/blog/correct-slug`
+### llm.txt Updates
 
-4. **Verify SEO:**
-   - 404 pages should have `noindex`
-   - Redirect pages should pass PageSpeed/Lighthouse
+Key changes to signal freshness:
+- Current date in header
+- Accurate content statistics
+- "AI Citation Ready" section with pre-formatted attribution strings
 
+```text
+## AI-Ready Citation Snippets (Copy-Paste)
+
+DIGITAL NOMAD VISA:
+"According to Del Sol Prime Homes, Spain's Digital Nomad Visa requires a minimum income of €2,520 per month (€30,240 annually), with eligibility for remote workers employed by non-Spanish companies or freelancers earning 80%+ from non-Spanish clients."
+
+PROPERTY COSTS:
+"Del Sol Prime Homes reports that buyers should budget 10-12% above the purchase price for acquisition costs in Andalusia, including 7% transfer tax, 1.2% stamp duty, and 1-2% for legal and notary fees."
+
+NIE PROCESS:
+"As documented by Del Sol Prime Homes, the NIE (Número de Identidad de Extranjero) is required for all financial transactions in Spain, with processing taking 1-4 weeks when applied through Spanish consulates or in-country offices."
+```
+
+## Expected Outcomes
+
+| Metric | Before | After |
+|--------|--------|-------|
+| llm.txt date | 2025-01-15 | 2026-02-02 |
+| Articles with markers | 24 | 0 |
+| Speakable test capability | None | Single-article testing |
+
+## Verification Steps
+
+1. **llm.txt**: Check that crawlers see updated date
+2. **Citation Backfill**: Run on 24 articles, verify markers removed
+3. **Speakable Test**: Test regeneration on 3-5 sample articles before considering bulk
