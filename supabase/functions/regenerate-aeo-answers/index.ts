@@ -114,6 +114,7 @@ serve(async (req) => {
       batchSize = 10,
       dryRun = true,
       fixListsOnly = true, // Only fix answers with list patterns
+      articleId = null, // NEW: Single article ID for testing
     } = await req.json();
 
     const supabase = createClient(
@@ -122,6 +123,88 @@ serve(async (req) => {
     );
     
     const apiKey = Deno.env.get('LOVABLE_API_KEY')!;
+
+    // SINGLE ARTICLE TEST MODE
+    if (articleId) {
+      console.log(`[AEO Fix] Single article test mode: ${articleId}`);
+      
+      const table = contentType === 'qa_pages' ? 'qa_pages' : 'blog_articles';
+      
+      let article: any;
+      
+      if (contentType === 'qa_pages') {
+        const { data, error } = await supabase
+          .from('qa_pages')
+          .select('id, question_main, speakable_answer, language')
+          .eq('id', articleId)
+          .single();
+        if (error || !data) throw new Error(`Article not found: ${articleId}`);
+        article = { ...data, headline: data.question_main };
+      } else {
+        const { data, error } = await supabase
+          .from('blog_articles')
+          .select('id, headline, speakable_answer, language')
+          .eq('id', articleId)
+          .single();
+        if (error || !data) throw new Error(`Article not found: ${articleId}`);
+        article = data;
+      }
+      
+      const question = article.headline || 'Unknown';
+      const currentAnswer = article.speakable_answer || '';
+      const language = article.language || 'en';
+      
+      const newAnswer = await regenerateAnswer(question, currentAnswer, language, apiKey);
+      
+      if (!newAnswer) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Regeneration failed - no valid answer generated'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // For single article mode with dryRun=false, actually update
+      if (!dryRun) {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update({ speakable_answer: newAnswer })
+          .eq('id', articleId);
+        
+        if (updateError) {
+          throw new Error(`Update failed: ${updateError.message}`);
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        articleId,
+        dryRun,
+        results: {
+          processed: 1,
+          fixed: dryRun ? 0 : 1,
+          details: [{
+            id: articleId,
+            question: question.substring(0, 60),
+            language,
+            status: dryRun ? 'preview' : 'fixed',
+            before: {
+              text: currentAnswer,
+              words: countWords(currentAnswer),
+              hasList: hasBadFormatting(currentAnswer),
+            },
+            after: {
+              text: newAnswer,
+              words: countWords(newAnswer),
+              hasList: hasBadFormatting(newAnswer),
+            },
+          }]
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     console.log(`[AEO Fix] Starting for ${contentType}, batchSize=${batchSize}, dryRun=${dryRun}`);
 
