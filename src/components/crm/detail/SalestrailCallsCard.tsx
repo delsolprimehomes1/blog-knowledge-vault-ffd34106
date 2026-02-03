@@ -13,7 +13,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { useSalestrailCalls, SalestrailCall } from "@/hooks/useSalestrailCalls";
 import { CallRecordingPlayer } from "./CallRecordingPlayer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -94,7 +94,7 @@ function CallItem({ call }: { call: SalestrailCall }) {
 
             {/* Timestamp */}
             <p className="text-xs text-muted-foreground mt-1">
-              {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
+              {format(new Date(call.created_at), "MMM d, yyyy 'at' h:mm a")} · {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
             </p>
           </div>
         </div>
