@@ -1,138 +1,133 @@
 
 
-# Add Contact Timer to Lead Claiming
+# Update Salestrail Webhook to Clear Contact Timer
 
 ## Overview
 
-Update the `claim-lead` edge function to automatically start the 5-minute contact window timer (Stage 2 SLA) when an agent successfully claims a lead, completing the dual-stage SLA tracking system.
+Extend the salestrail-webhook edge function to clear the contact timer when a call is successfully logged, completing the dual-stage SLA tracking integration.
 
 ---
 
-## Current Flow
+## Current State
 
-```text
-1. Agent claims lead via RPC claim_lead()
-2. Notification marked as read
-3. Other agents notified
-4. Full lead data returned
-```
+The SLA update section (lines 179-196) currently:
+- Sets `first_contact_at` when lead has no prior contact
+- Sets `first_action_completed: true`
+- Sets `last_contact_at`
 
-## New Flow
-
-```text
-1. Agent claims lead via RPC claim_lead()
-2. ✅ NEW: Start 5-minute contact timer
-3. ✅ NEW: Clear claim timer (no longer needed)
-4. ✅ NEW: Log activity for audit trail
-5. Notification marked as read
-6. Other agents notified
-7. Full lead data returned
-```
+**Missing**: Clearing the Stage 2 contact timer fields from the new dual-stage SLA system.
 
 ---
 
 ## Changes Required
 
-### File: `supabase/functions/claim-lead/index.ts`
+### File: `supabase/functions/salestrail-webhook/index.ts`
 
-### Location: After successful claim (line 56), before notification handling
+### Change 1: Extend SLA Update (lines 182-188)
 
-### New Code Block
+Add contact timer clearing to the existing update:
 
 ```typescript
-// NEW: Start contact window timer (5 minutes for first contact)
-const now = new Date();
-const contactWindowExpiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
-
-const { error: timerError } = await supabase
+const { error: slaError } = await supabase
   .from("crm_leads")
   .update({
-    contact_timer_started_at: now.toISOString(),
-    contact_timer_expires_at: contactWindowExpiry.toISOString(),
+    // Existing SLA fields
+    first_contact_at: contactTime,
+    first_action_completed: true,
+    last_contact_at: contactTime,
+    
+    // NEW: Clear contact timer (contact made successfully)
+    contact_timer_expires_at: null,
     contact_sla_breached: false,
-    // Clear claim timer since lead is now claimed
-    claim_timer_expires_at: null,
   })
-  .eq("id", leadId);
+  .eq("id", lead.id);
+```
 
-if (timerError) {
-  console.error("[claim-lead] Failed to start contact timer:", timerError);
-} else {
-  console.log(`[claim-lead] Contact timer started for lead ${leadId}`);
-  console.log(`[claim-lead] Contact window expires at: ${contactWindowExpiry.toISOString()}`);
+Update success log message to include timer clearing confirmation.
+
+### Change 2: Handle Leads with Active Timer but Existing First Contact (after line 196)
+
+Add new block to handle edge case where lead already had first contact but contact timer is still active:
+
+```typescript
+// If lead already had first contact but contact timer was active, clear it
+if (lead && lead.first_contact_at && lead.contact_timer_expires_at) {
+  await supabase
+    .from("crm_leads")
+    .update({
+      contact_timer_expires_at: null,
+      contact_sla_breached: false,
+      last_contact_at: startTime || new Date().toISOString(),
+    })
+    .eq("id", lead.id);
+  
+  console.log(`[salestrail-webhook] Cleared active contact timer for lead ${lead.id}`);
 }
-
-// Log activity for audit trail
-await supabase.from("crm_activities").insert({
-  lead_id: leadId,
-  agent_id: agentId,
-  activity_type: "note",
-  notes: "Lead claimed - 5-minute contact window started",
-  created_at: now.toISOString(),
-});
 ```
 
 ---
 
-## Timer Behavior
-
-| Field | Before Claim | After Claim |
-|-------|--------------|-------------|
-| `claim_timer_started_at` | Set | Unchanged |
-| `claim_timer_expires_at` | Set | **Cleared (null)** |
-| `claim_sla_breached` | false | Unchanged |
-| `contact_timer_started_at` | null | **NOW()** |
-| `contact_timer_expires_at` | null | **NOW() + 5 min** |
-| `contact_sla_breached` | false | false |
-
----
-
-## Dual-Stage SLA Flow
+## Logic Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                         LEAD CREATED                                 │
-│                    claim_timer_started_at = NOW()                    │
-│                    claim_timer_expires_at = NOW() + 5 min           │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                    ┌───────────▼───────────┐
-                    │    STAGE 1: CLAIM     │
-                    │    5-minute window    │
-                    └───────────┬───────────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              │                 │                 │
-        ┌─────▼─────┐    ┌──────▼──────┐   ┌─────▼─────┐
-        │  CLAIMED  │    │   EXPIRED   │   │  EXPIRED  │
-        │  (success)│    │  (breach)   │   │(reassign) │
-        └─────┬─────┘    └─────────────┘   └───────────┘
-              │
-              │ claim_timer_expires_at = null
-              │ contact_timer_started_at = NOW()
-              │ contact_timer_expires_at = NOW() + 5 min
-              │
-    ┌─────────▼─────────┐
-    │   STAGE 2: CALL   │
-    │   5-minute window │
-    └─────────┬─────────┘
-              │
-        ┌─────▼─────┐
-        │  CALLED   │ → first_action_completed = true
-        │  (success)│   contact_timer_expires_at = null
-        └───────────┘
+SALESTRAIL CALL RECEIVED
+         │
+         ▼
+    Lead Matched?
+         │
+    ┌────┴────┐
+   NO        YES
+    │         │
+    │    ┌────┴────────────────┐
+    │    │                     │
+    │  First Contact?    Already Contacted?
+    │    │                     │
+    │   YES                   YES
+    │    │                     │
+    │    ▼                     ▼
+    │  Update SLA:         Timer Active?
+    │  • first_contact_at       │
+    │  • first_action_completed ├───NO──► Done
+    │  • contact_timer = null   │
+    │  • contact_sla_breached   YES
+    │    = false                │
+    │                          ▼
+    │                    Clear Timer:
+    │                    • contact_timer = null
+    │                    • contact_sla_breached = false
+    │                    • last_contact_at = now
+    │                          │
+    └──────────────────────────┴──► Continue to Notification
 ```
+
+---
+
+## Technical Details
+
+### Fields Updated
+
+| Condition | Fields Updated |
+|-----------|----------------|
+| No prior first contact | `first_contact_at`, `first_action_completed`, `last_contact_at`, `contact_timer_expires_at = null`, `contact_sla_breached = false` |
+| Already contacted but timer active | `contact_timer_expires_at = null`, `contact_sla_breached = false`, `last_contact_at` |
+
+### Edge Cases Handled
+
+1. **First call to lead**: Full SLA completion + timer clearing
+2. **Follow-up call with active timer**: Timer clearing only
+3. **Follow-up call with no active timer**: No timer updates needed (skipped)
+4. **Unmatched lead**: No timer updates (no lead to update)
 
 ---
 
 ## Verification Steps
 
-1. Claim a lead as an agent
+1. Make a test call through Salestrail app to a lead with active contact timer
 2. Query database to verify:
    ```sql
    SELECT id, 
-          claim_timer_started_at, 
-          claim_timer_expires_at,
+          first_contact_at,
+          first_action_completed,
           contact_timer_started_at, 
           contact_timer_expires_at,
           contact_sla_breached
@@ -140,8 +135,7 @@ await supabase.from("crm_activities").insert({
    WHERE id = '<lead-id>';
    ```
 3. Confirm:
-   - `claim_timer_expires_at` is `NULL`
-   - `contact_timer_started_at` is set
-   - `contact_timer_expires_at` is 5 minutes after `contact_timer_started_at`
-   - Activity log shows "Lead claimed - 5-minute contact window started"
+   - `contact_timer_expires_at` is `NULL`
+   - `contact_sla_breached` is `false`
+   - `first_action_completed` is `true`
 
