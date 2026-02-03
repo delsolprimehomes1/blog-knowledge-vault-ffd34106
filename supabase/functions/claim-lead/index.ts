@@ -55,6 +55,37 @@ serve(async (req) => {
       );
     }
 
+    // NEW: Start contact window timer (5 minutes for first contact)
+    const now = new Date();
+    const contactWindowExpiry = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+
+    const { error: timerError } = await supabase
+      .from("crm_leads")
+      .update({
+        contact_timer_started_at: now.toISOString(),
+        contact_timer_expires_at: contactWindowExpiry.toISOString(),
+        contact_sla_breached: false,
+        // Clear claim timer since lead is now claimed
+        claim_timer_expires_at: null,
+      })
+      .eq("id", leadId);
+
+    if (timerError) {
+      console.error("[claim-lead] Failed to start contact timer:", timerError);
+    } else {
+      console.log(`[claim-lead] Contact timer started for lead ${leadId}`);
+      console.log(`[claim-lead] Contact window expires at: ${contactWindowExpiry.toISOString()}`);
+    }
+
+    // Log activity for audit trail
+    await supabase.from("crm_activities").insert({
+      lead_id: leadId,
+      agent_id: agentId,
+      activity_type: "note",
+      notes: "Lead claimed - 5-minute contact window started",
+      created_at: now.toISOString(),
+    });
+
     // Mark notification as read for this agent
     await supabase
       .from("crm_notifications")
