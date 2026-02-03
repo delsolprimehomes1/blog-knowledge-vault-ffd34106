@@ -1,16 +1,16 @@
 
 
-# Create Claim Window Expiry Monitoring Cron Job
+# Create Contact Window Expiry Monitoring Cron Job
 
 ## Overview
 
-Create a new edge function `check-claim-window-expiry` that monitors the Stage 1 SLA (claim timer) and sends admin notifications when leads go unclaimed past the 5-minute claim window. This function uses the new dual-stage SLA fields (`claim_timer_expires_at`, `claim_sla_breached`) introduced in our migration.
+Create a new edge function `check-contact-window-expiry` that monitors Stage 2 SLA (contact timer) and sends admin notifications when agents claim leads but fail to make contact within 5 minutes. This completes the dual-stage SLA monitoring system.
 
 ---
 
 ## Architecture Context
 
-The CRM now has a dual-stage SLA system:
+The CRM has a dual-stage SLA system:
 
 ```text
 Stage 1: CLAIM WINDOW (5 min)      Stage 2: CONTACT WINDOW (5 min)
@@ -20,8 +20,8 @@ Stage 1: CLAIM WINDOW (5 min)      Stage 2: CONTACT WINDOW (5 min)
 └──────────────────────────┘       └──────────────────────────┘
          │                                   │
          ▼                                   ▼
-  check-claim-window-expiry           check-sla-breaches
-       (NEW)                           (existing, repurpose)
+  check-claim-window-expiry           check-contact-window-expiry
+       (deployed)                           (NEW)
 ```
 
 ---
@@ -30,13 +30,14 @@ Stage 1: CLAIM WINDOW (5 min)      Stage 2: CONTACT WINDOW (5 min)
 
 ### 1. New Edge Function
 
-**File**: `supabase/functions/check-claim-window-expiry/index.ts`
+**File**: `supabase/functions/check-contact-window-expiry/index.ts`
 
 The function will:
-- Query leads where `claim_timer_expires_at < NOW()` and `claim_sla_breached = false` and `lead_claimed = false`
-- Mark each lead as `claim_sla_breached = true`
+- Query leads where `contact_timer_expires_at < NOW()` and `contact_sla_breached = false` and `lead_claimed = true` and `first_action_completed = false`
+- Mark each lead as `contact_sla_breached = true`
+- Get the assigned agent's details
 - Look up the language-specific fallback admin from `crm_round_robin_config`
-- Send email notification via Resend with lead details and admin action link
+- Send email notification via Resend with lead and agent details
 - Create in-app notification for the admin
 - Log activity for audit trail
 
@@ -44,10 +45,11 @@ Key query:
 ```typescript
 const { data: expiredLeads } = await supabase
   .from("crm_leads")
-  .select("*, crm_round_robin_config!inner(...)")
-  .lt("claim_timer_expires_at", new Date().toISOString())
-  .eq("lead_claimed", false)
-  .eq("claim_sla_breached", false)
+  .select("*")
+  .lt("contact_timer_expires_at", new Date().toISOString())
+  .eq("lead_claimed", true)
+  .eq("first_action_completed", false)
+  .eq("contact_sla_breached", false)
   .eq("archived", false);
 ```
 
@@ -55,7 +57,7 @@ const { data: expiredLeads } = await supabase
 
 Add new function configuration:
 ```toml
-[functions.check-claim-window-expiry]
+[functions.check-contact-window-expiry]
 verify_jwt = false
 ```
 
@@ -64,11 +66,11 @@ verify_jwt = false
 Add to `supabase/cron_jobs.sql`:
 ```sql
 SELECT cron.schedule(
-  'check-claim-window-expiry',
+  'check-contact-window-expiry',
   '* * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/check-claim-window-expiry',
+    url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/check-contact-window-expiry',
     headers := '{"Content-Type": "application/json", "Authorization": "Bearer <anon_key>"}'::jsonb,
     body := '{"triggered_by": "cron"}'::jsonb
   ) AS request_id;
@@ -81,12 +83,13 @@ SELECT cron.schedule(
 ## Function Flow
 
 ```text
-check-claim-window-expiry (runs every 1 minute)
+check-contact-window-expiry (runs every 1 minute)
          │
          ▼
-    Query: claim_timer_expires_at < NOW()
-           AND lead_claimed = false
-           AND claim_sla_breached = false
+    Query: contact_timer_expires_at < NOW()
+           AND lead_claimed = true
+           AND first_action_completed = false
+           AND contact_sla_breached = false
          │
          ▼
     For each expired lead:
@@ -94,8 +97,8 @@ check-claim-window-expiry (runs every 1 minute)
     ┌────┴────────────────────────────────────┐
     │                                          │
     ▼                                          ▼
-  Update lead:                          Get fallback admin
-  claim_sla_breached = true             from round_robin_config
+  Update lead:                          Get agent + admin details
+  contact_sla_breached = true           from crm_agents + round_robin_config
                                                │
                                                ▼
                                         Send email via Resend
@@ -105,27 +108,40 @@ check-claim-window-expiry (runs every 1 minute)
 
 ---
 
+## Difference from Stage 1 (Claim Window)
+
+| Aspect | Stage 1 (Claim) | Stage 2 (Contact) |
+|--------|-----------------|-------------------|
+| Timer Field | `claim_timer_expires_at` | `contact_timer_expires_at` |
+| Breach Field | `claim_sla_breached` | `contact_sla_breached` |
+| Condition | `lead_claimed = false` | `lead_claimed = true` + `first_action_completed = false` |
+| Issue | No agent claimed | Agent claimed but didn't call |
+| Email Subject | "Lead Unclaimed" | "Agent Claimed But No Contact" |
+| Agent Info | N/A | Included in email |
+
+---
+
 ## Email Template
 
 The admin email will include:
 
-- Lead name, phone, email
-- Language and source
-- Time since creation (elapsed minutes)
+- Lead details (name, phone, email, language)
+- Agent details (name, email, when claimed)
+- Elapsed time since claim
+- Clear situation summary
 - Direct link to admin leads page for reassignment
-- Clear call-to-action button
 
 ---
 
 ## Technical Details
 
-### Relation to Existing Functions
+### Pattern Match
 
-| Function | Purpose | Timer Field |
-|----------|---------|-------------|
-| `check-claim-window-expiry` (NEW) | Stage 1 SLA - notify admin of unclaimed leads | `claim_timer_expires_at` |
-| `check-unclaimed-leads` | Escalation/round-robin logic | `claim_window_expires_at` |
-| `check-sla-breaches` | Stage 2 SLA - notify admin of uncontacted leads | Uses `assigned_at` calculation |
+Following the same robust pattern as `check-claim-window-expiry`:
+- CORS headers for manual triggering
+- Separate queries for round-robin config and agent details
+- Error handling per lead (continue on individual failures)
+- Comprehensive logging
 
 ### Dependencies
 
@@ -133,14 +149,13 @@ The admin email will include:
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` - auto-provided
 - `APP_URL` - for email links (fallback: production URL)
 
-### Admin Lookup
+---
 
-```text
-1. Query crm_round_robin_config for lead.language
-2. Get fallback_admin_id
-3. Join to crm_agents to get email
-4. Send notification to that admin
-```
+## Files to Create/Modify
+
+1. **Create**: `supabase/functions/check-contact-window-expiry/index.ts`
+2. **Modify**: `supabase/config.toml` - add function config
+3. **Modify**: `supabase/cron_jobs.sql` - add cron schedule
 
 ---
 
@@ -150,16 +165,11 @@ After deployment:
 
 1. Deploy the edge function
 2. Run the cron SQL in Cloud View > Run SQL
-3. Create a test lead and wait 5+ minutes without claiming
-4. Verify:
-   - `claim_sla_breached` becomes `true`
-   - Admin receives email notification
+3. Claim a test lead but don't make any calls
+4. Wait 5+ minutes
+5. Verify:
+   - `contact_sla_breached` becomes `true`
+   - Admin receives email notification with agent details
    - In-app notification created in `crm_notifications`
    - Activity logged in `crm_activities`
-
----
-
-## SQL to Manually Run
-
-The cron job SQL needs to be executed manually in Cloud View after the edge function is deployed. This is documented in the updated `cron_jobs.sql` file.
 
