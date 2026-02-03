@@ -1917,6 +1917,8 @@ export type Database = {
           activity_type: string
           agent_id: string
           auto_status_update: string | null
+          call_answered: boolean | null
+          call_direction: string | null
           call_duration: number | null
           callback_completed: boolean | null
           callback_datetime: string | null
@@ -1928,6 +1930,10 @@ export type Database = {
           lead_id: string
           notes: string
           outcome: string | null
+          salestrail_call_id: string | null
+          salestrail_metadata: Json | null
+          salestrail_recording_url: string | null
+          salestrail_transcription: string | null
           scheduled_for: string | null
           sentiment_score: number | null
           subject: string | null
@@ -1937,6 +1943,8 @@ export type Database = {
           activity_type: string
           agent_id: string
           auto_status_update?: string | null
+          call_answered?: boolean | null
+          call_direction?: string | null
           call_duration?: number | null
           callback_completed?: boolean | null
           callback_datetime?: string | null
@@ -1948,6 +1956,10 @@ export type Database = {
           lead_id: string
           notes: string
           outcome?: string | null
+          salestrail_call_id?: string | null
+          salestrail_metadata?: Json | null
+          salestrail_recording_url?: string | null
+          salestrail_transcription?: string | null
           scheduled_for?: string | null
           sentiment_score?: number | null
           subject?: string | null
@@ -1957,6 +1969,8 @@ export type Database = {
           activity_type?: string
           agent_id?: string
           auto_status_update?: string | null
+          call_answered?: boolean | null
+          call_direction?: string | null
           call_duration?: number | null
           callback_completed?: boolean | null
           callback_datetime?: string | null
@@ -1968,6 +1982,10 @@ export type Database = {
           lead_id?: string
           notes?: string
           outcome?: string | null
+          salestrail_call_id?: string | null
+          salestrail_metadata?: Json | null
+          salestrail_recording_url?: string | null
+          salestrail_transcription?: string | null
           scheduled_for?: string | null
           sentiment_score?: number | null
           subject?: string | null
