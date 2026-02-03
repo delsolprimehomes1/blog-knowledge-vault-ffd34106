@@ -185,6 +185,9 @@ serve(async (req) => {
           first_contact_at: contactTime,
           first_action_completed: true,
           last_contact_at: contactTime,
+          // Clear contact timer (contact made successfully)
+          contact_timer_expires_at: null,
+          contact_sla_breached: false,
         })
         .eq("id", lead.id);
 
@@ -192,6 +195,25 @@ serve(async (req) => {
         console.error("[salestrail-webhook] SLA update error:", slaError);
       } else {
         console.log(`[salestrail-webhook] SLA completed for lead ${lead.id}`);
+        console.log(`[salestrail-webhook] Contact timer cleared - call logged successfully`);
+      }
+    }
+
+    // If lead already had first contact but contact timer was active, clear it
+    if (lead && lead.first_contact_at && lead.contact_timer_expires_at) {
+      const { error: timerClearError } = await supabase
+        .from("crm_leads")
+        .update({
+          contact_timer_expires_at: null,
+          contact_sla_breached: false,
+          last_contact_at: startTime || new Date().toISOString(),
+        })
+        .eq("id", lead.id);
+
+      if (timerClearError) {
+        console.error("[salestrail-webhook] Timer clear error:", timerClearError);
+      } else {
+        console.log(`[salestrail-webhook] Cleared active contact timer for lead ${lead.id}`);
       }
     }
 
