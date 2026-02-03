@@ -1,141 +1,165 @@
 
 
-# Update Salestrail Webhook to Clear Contact Timer
+# Create Claim Window Expiry Monitoring Cron Job
 
 ## Overview
 
-Extend the salestrail-webhook edge function to clear the contact timer when a call is successfully logged, completing the dual-stage SLA tracking integration.
+Create a new edge function `check-claim-window-expiry` that monitors the Stage 1 SLA (claim timer) and sends admin notifications when leads go unclaimed past the 5-minute claim window. This function uses the new dual-stage SLA fields (`claim_timer_expires_at`, `claim_sla_breached`) introduced in our migration.
 
 ---
 
-## Current State
+## Architecture Context
 
-The SLA update section (lines 179-196) currently:
-- Sets `first_contact_at` when lead has no prior contact
-- Sets `first_action_completed: true`
-- Sets `last_contact_at`
-
-**Missing**: Clearing the Stage 2 contact timer fields from the new dual-stage SLA system.
-
----
-
-## Changes Required
-
-### File: `supabase/functions/salestrail-webhook/index.ts`
-
-### Change 1: Extend SLA Update (lines 182-188)
-
-Add contact timer clearing to the existing update:
-
-```typescript
-const { error: slaError } = await supabase
-  .from("crm_leads")
-  .update({
-    // Existing SLA fields
-    first_contact_at: contactTime,
-    first_action_completed: true,
-    last_contact_at: contactTime,
-    
-    // NEW: Clear contact timer (contact made successfully)
-    contact_timer_expires_at: null,
-    contact_sla_breached: false,
-  })
-  .eq("id", lead.id);
-```
-
-Update success log message to include timer clearing confirmation.
-
-### Change 2: Handle Leads with Active Timer but Existing First Contact (after line 196)
-
-Add new block to handle edge case where lead already had first contact but contact timer is still active:
-
-```typescript
-// If lead already had first contact but contact timer was active, clear it
-if (lead && lead.first_contact_at && lead.contact_timer_expires_at) {
-  await supabase
-    .from("crm_leads")
-    .update({
-      contact_timer_expires_at: null,
-      contact_sla_breached: false,
-      last_contact_at: startTime || new Date().toISOString(),
-    })
-    .eq("id", lead.id);
-  
-  console.log(`[salestrail-webhook] Cleared active contact timer for lead ${lead.id}`);
-}
-```
-
----
-
-## Logic Flow
+The CRM now has a dual-stage SLA system:
 
 ```text
-SALESTRAIL CALL RECEIVED
+Stage 1: CLAIM WINDOW (5 min)      Stage 2: CONTACT WINDOW (5 min)
+┌──────────────────────────┐       ┌──────────────────────────┐
+│ claim_timer_expires_at   │  -->  │ contact_timer_expires_at │
+│ claim_sla_breached       │       │ contact_sla_breached     │
+└──────────────────────────┘       └──────────────────────────┘
+         │                                   │
+         ▼                                   ▼
+  check-claim-window-expiry           check-sla-breaches
+       (NEW)                           (existing, repurpose)
+```
+
+---
+
+## Deliverables
+
+### 1. New Edge Function
+
+**File**: `supabase/functions/check-claim-window-expiry/index.ts`
+
+The function will:
+- Query leads where `claim_timer_expires_at < NOW()` and `claim_sla_breached = false` and `lead_claimed = false`
+- Mark each lead as `claim_sla_breached = true`
+- Look up the language-specific fallback admin from `crm_round_robin_config`
+- Send email notification via Resend with lead details and admin action link
+- Create in-app notification for the admin
+- Log activity for audit trail
+
+Key query:
+```typescript
+const { data: expiredLeads } = await supabase
+  .from("crm_leads")
+  .select("*, crm_round_robin_config!inner(...)")
+  .lt("claim_timer_expires_at", new Date().toISOString())
+  .eq("lead_claimed", false)
+  .eq("claim_sla_breached", false)
+  .eq("archived", false);
+```
+
+### 2. Config.toml Update
+
+Add new function configuration:
+```toml
+[functions.check-claim-window-expiry]
+verify_jwt = false
+```
+
+### 3. Cron Job SQL
+
+Add to `supabase/cron_jobs.sql`:
+```sql
+SELECT cron.schedule(
+  'check-claim-window-expiry',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/check-claim-window-expiry',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer <anon_key>"}'::jsonb,
+    body := '{"triggered_by": "cron"}'::jsonb
+  ) AS request_id;
+  $$
+);
+```
+
+---
+
+## Function Flow
+
+```text
+check-claim-window-expiry (runs every 1 minute)
          │
          ▼
-    Lead Matched?
+    Query: claim_timer_expires_at < NOW()
+           AND lead_claimed = false
+           AND claim_sla_breached = false
          │
-    ┌────┴────┐
-   NO        YES
-    │         │
-    │    ┌────┴────────────────┐
-    │    │                     │
-    │  First Contact?    Already Contacted?
-    │    │                     │
-    │   YES                   YES
-    │    │                     │
-    │    ▼                     ▼
-    │  Update SLA:         Timer Active?
-    │  • first_contact_at       │
-    │  • first_action_completed ├───NO──► Done
-    │  • contact_timer = null   │
-    │  • contact_sla_breached   YES
-    │    = false                │
-    │                          ▼
-    │                    Clear Timer:
-    │                    • contact_timer = null
-    │                    • contact_sla_breached = false
-    │                    • last_contact_at = now
-    │                          │
-    └──────────────────────────┴──► Continue to Notification
+         ▼
+    For each expired lead:
+         │
+    ┌────┴────────────────────────────────────┐
+    │                                          │
+    ▼                                          ▼
+  Update lead:                          Get fallback admin
+  claim_sla_breached = true             from round_robin_config
+                                               │
+                                               ▼
+                                        Send email via Resend
+                                        Create notification
+                                        Log activity
 ```
+
+---
+
+## Email Template
+
+The admin email will include:
+
+- Lead name, phone, email
+- Language and source
+- Time since creation (elapsed minutes)
+- Direct link to admin leads page for reassignment
+- Clear call-to-action button
 
 ---
 
 ## Technical Details
 
-### Fields Updated
+### Relation to Existing Functions
 
-| Condition | Fields Updated |
-|-----------|----------------|
-| No prior first contact | `first_contact_at`, `first_action_completed`, `last_contact_at`, `contact_timer_expires_at = null`, `contact_sla_breached = false` |
-| Already contacted but timer active | `contact_timer_expires_at = null`, `contact_sla_breached = false`, `last_contact_at` |
+| Function | Purpose | Timer Field |
+|----------|---------|-------------|
+| `check-claim-window-expiry` (NEW) | Stage 1 SLA - notify admin of unclaimed leads | `claim_timer_expires_at` |
+| `check-unclaimed-leads` | Escalation/round-robin logic | `claim_window_expires_at` |
+| `check-sla-breaches` | Stage 2 SLA - notify admin of uncontacted leads | Uses `assigned_at` calculation |
 
-### Edge Cases Handled
+### Dependencies
 
-1. **First call to lead**: Full SLA completion + timer clearing
-2. **Follow-up call with active timer**: Timer clearing only
-3. **Follow-up call with no active timer**: No timer updates needed (skipped)
-4. **Unmatched lead**: No timer updates (no lead to update)
+- `RESEND_API_KEY` - already configured
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` - auto-provided
+- `APP_URL` - for email links (fallback: production URL)
+
+### Admin Lookup
+
+```text
+1. Query crm_round_robin_config for lead.language
+2. Get fallback_admin_id
+3. Join to crm_agents to get email
+4. Send notification to that admin
+```
 
 ---
 
 ## Verification Steps
 
-1. Make a test call through Salestrail app to a lead with active contact timer
-2. Query database to verify:
-   ```sql
-   SELECT id, 
-          first_contact_at,
-          first_action_completed,
-          contact_timer_started_at, 
-          contact_timer_expires_at,
-          contact_sla_breached
-   FROM crm_leads 
-   WHERE id = '<lead-id>';
-   ```
-3. Confirm:
-   - `contact_timer_expires_at` is `NULL`
-   - `contact_sla_breached` is `false`
-   - `first_action_completed` is `true`
+After deployment:
+
+1. Deploy the edge function
+2. Run the cron SQL in Cloud View > Run SQL
+3. Create a test lead and wait 5+ minutes without claiming
+4. Verify:
+   - `claim_sla_breached` becomes `true`
+   - Admin receives email notification
+   - In-app notification created in `crm_notifications`
+   - Activity logged in `crm_activities`
+
+---
+
+## SQL to Manually Run
+
+The cron job SQL needs to be executed manually in Cloud View after the edge function is deployed. This is documented in the updated `cron_jobs.sql` file.
 
