@@ -19,6 +19,7 @@ import { LeadSourceCard, AssignmentCard, FormSubmissionCard } from "@/components
 import { QuickNotesCard } from "@/components/crm/detail/QuickNotesCard";
 import { QuickActionButtons } from "@/components/crm/activities/QuickActionButtons";
 import { AdminLeadActions } from "@/components/crm/admin/AdminLeadActions";
+import { SalestrailCallsCard } from "@/components/crm/detail/SalestrailCallsCard";
 
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
@@ -244,6 +245,12 @@ export default function LeadDetailPage() {
               leadId={lead.id}
               currentAgentId={lead.assigned_agent_id || undefined}
               onLeadUpdated={() => queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] })}
+            />
+            
+            {/* Salestrail Call History */}
+            <SalestrailCallsCard 
+              leadId={lead.id}
+              phoneNumber={lead.full_phone || lead.phone_number || undefined}
             />
             
             <LeadSourceCard lead={lead} />

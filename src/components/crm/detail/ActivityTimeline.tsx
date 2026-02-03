@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
   Mail,
   MessageSquare,
   FileText,
@@ -12,7 +14,9 @@ import {
   Bell,
   Check,
   Clock,
+  Zap,
 } from "lucide-react";
+import { CallRecordingPlayer } from "./CallRecordingPlayer";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import type { Database } from "@/integrations/supabase/types";
@@ -174,6 +178,69 @@ function ActivityTimelineItem({
             <Check className="w-3 h-3 mr-1" />
             Callback completed
           </Badge>
+        )}
+
+        {/* Salestrail-specific enhancements */}
+        {(activity as any).salestrail_call_id && (
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Direction badge */}
+              {(activity as any).call_direction && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    (activity as any).call_direction === "inbound"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-green-50 text-green-700"
+                  )}
+                >
+                  {(activity as any).call_direction === "inbound" ? (
+                    <PhoneIncoming className="w-3 h-3 mr-1" />
+                  ) : (
+                    <PhoneOutgoing className="w-3 h-3 mr-1" />
+                  )}
+                  {(activity as any).call_direction}
+                </Badge>
+              )}
+
+              {/* Answered status */}
+              {(activity as any).call_answered !== null && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    (activity as any).call_answered
+                      ? "bg-green-50 text-green-700"
+                      : "bg-amber-50 text-amber-700"
+                  )}
+                >
+                  {(activity as any).call_answered ? (
+                    <>
+                      <Check className="w-3 h-3 mr-1" />
+                      Answered
+                    </>
+                  ) : (
+                    "Missed"
+                  )}
+                </Badge>
+              )}
+
+              {/* Auto-logged indicator */}
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                <Zap className="w-3 h-3 mr-1" />
+                Auto-logged
+              </Badge>
+            </div>
+
+            {/* Recording player */}
+            {(activity as any).salestrail_recording_url && (
+              <CallRecordingPlayer
+                url={(activity as any).salestrail_recording_url}
+                compact
+              />
+            )}
+          </div>
         )}
       </div>
     </div>
