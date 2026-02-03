@@ -374,3 +374,6 @@ verify_jwt = false
 
 [functions.check-contact-window-expiry]
 verify_jwt = false
+
+[functions.reassign-lead]
+verify_jwt = false

@@ -5022,6 +5022,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_agent_lead_count: {
+        Args: { p_agent_id: string }
+        Returns: undefined
+      }
       increment_domain_usage: {
         Args: { p_article_id?: string; p_domain: string }
         Returns: {
