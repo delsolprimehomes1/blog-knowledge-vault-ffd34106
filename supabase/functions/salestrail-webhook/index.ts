@@ -102,10 +102,11 @@ serve(async (req) => {
       
       console.log(`[salestrail-webhook] Searching for lead with phone: ${phoneNumber} (normalized: ${normalized}, last9: ${last9})`);
       
+      // Search ALL leads for phone match (not just agent's assigned leads)
+      // This ensures calls are logged even when agent calls a lead assigned to someone else
       const { data: matchedLead, error: leadError } = await supabase
         .from("crm_leads")
         .select("*")
-        .eq("assigned_agent_id", agent.id)
         .or(`phone_number.ilike.%${last9}%,full_phone.ilike.%${normalized}%`)
         .order("created_at", { ascending: false })
         .limit(1)

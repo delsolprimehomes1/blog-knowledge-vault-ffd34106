@@ -1927,7 +1927,7 @@ export type Database = {
           created_at: string | null
           id: string
           interest_level: string | null
-          lead_id: string
+          lead_id: string | null
           notes: string
           outcome: string | null
           salestrail_call_id: string | null
@@ -1953,7 +1953,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           interest_level?: string | null
-          lead_id: string
+          lead_id?: string | null
           notes: string
           outcome?: string | null
           salestrail_call_id?: string | null
@@ -1979,7 +1979,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           interest_level?: string | null
-          lead_id?: string
+          lead_id?: string | null
           notes?: string
           outcome?: string | null
           salestrail_call_id?: string | null
