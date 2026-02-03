@@ -4928,6 +4928,19 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_crm_agent: { Args: { _user_id: string }; Returns: boolean }
+      match_lead_by_phone: {
+        Args: { agent_uuid: string; search_digits: string }
+        Returns: {
+          assigned_agent_id: string
+          created_at: string
+          first_contact_at: string
+          first_name: string
+          full_phone: string
+          id: string
+          last_name: string
+          phone_number: string
+        }[]
+      }
       normalize_url: {
         Args: { domain_only?: boolean; strip_query?: boolean; url: string }
         Returns: string
