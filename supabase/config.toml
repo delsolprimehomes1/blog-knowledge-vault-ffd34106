@@ -365,3 +365,6 @@ verify_jwt = false
 
 [functions.cleanup-citation-markers]
 verify_jwt = false
+
+[functions.salestrail-webhook]
+verify_jwt = false
