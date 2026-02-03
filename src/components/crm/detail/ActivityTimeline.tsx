@@ -89,26 +89,55 @@ function ActivityTimelineItem({
   isLast: boolean;
   onCompleteCallback?: (activityId: string) => void;
 }) {
+  const isSalestrailCall = !!activity.salestrail_call_id;
+  const interestLevel = activity.interest_level;
+  const whatsappTemplate = activity.whatsapp_template_used;
+
   return (
     <div className="flex">
       <div className="flex flex-col items-center mr-4">
         <div
           className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center",
-            getActivityColor(activity.activity_type)
+            isSalestrailCall ? "bg-purple-100 text-purple-600" : getActivityColor(activity.activity_type)
           )}
         >
-          {getActivityIcon(activity.activity_type)}
+          {isSalestrailCall ? (
+            activity.call_direction === "inbound" ? (
+              <PhoneIncoming className="w-4 h-4" />
+            ) : (
+              <PhoneOutgoing className="w-4 h-4" />
+            )
+          ) : (
+            getActivityIcon(activity.activity_type)
+          )}
         </div>
         {!isLast && <div className="w-px h-full bg-border mt-2" />}
       </div>
 
       <div className="flex-1 pb-6">
         <div className="flex items-center justify-between mb-1">
-          <p className="font-semibold text-sm capitalize">
-            {activity.activity_type}
-            {activity.subject && `: ${activity.subject}`}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-sm capitalize">
+              {isSalestrailCall ? (
+                <>
+                  {activity.call_direction === "inbound" ? "Inbound" : "Outbound"} Call
+                </>
+              ) : (
+                <>
+                  {activity.activity_type}
+                  {activity.subject && `: ${activity.subject}`}
+                </>
+              )}
+            </p>
+            {/* Auto-logged indicator - prominent placement */}
+            {isSalestrailCall && (
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                <Zap className="w-3 h-3 mr-1" />
+                Auto-logged
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(activity.created_at || ""), {
               addSuffix: true,
@@ -116,41 +145,108 @@ function ActivityTimelineItem({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-1 mb-2">
-          {activity.outcome && (
+        {/* Salestrail-specific badges */}
+        {isSalestrailCall && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {/* Direction badge */}
             <Badge
-              variant="secondary"
-              className={cn("text-xs", getOutcomeColor(activity.outcome))}
+              variant="outline"
+              className={cn(
+                "text-xs",
+                activity.call_direction === "inbound"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              )}
             >
-              {activity.outcome.replace(/_/g, " ")}
+              {activity.call_direction === "inbound" ? (
+                <PhoneIncoming className="w-3 h-3 mr-1" />
+              ) : (
+                <PhoneOutgoing className="w-3 h-3 mr-1" />
+              )}
+              {activity.call_direction}
             </Badge>
-          )}
-          {(activity as any).interest_level && (
-            <Badge variant="outline" className="text-xs">
-              {(activity as any).interest_level === "very_interested" && "🤩"}
-              {(activity as any).interest_level === "interested" && "😊"}
-              {(activity as any).interest_level === "neutral" && "😐"}
-              {(activity as any).interest_level === "not_interested" && "😞"}
-              {" "}{(activity as any).interest_level.replace(/_/g, " ")}
-            </Badge>
-          )}
-          {(activity as any).whatsapp_template_used && (
-            <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-              📱 WhatsApp sent
-            </Badge>
-          )}
-        </div>
+
+            {/* Answered status */}
+            {activity.call_answered !== null && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs",
+                  activity.call_answered
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                )}
+              >
+                {activity.call_answered ? (
+                  <>
+                    <Check className="w-3 h-3 mr-1" />
+                    Answered
+                  </>
+                ) : (
+                  "Missed"
+                )}
+              </Badge>
+            )}
+
+            {/* Duration if available */}
+            {activity.call_duration && activity.call_duration > 0 && (
+              <Badge variant="outline" className="text-xs bg-muted">
+                <Clock className="w-3 h-3 mr-1" />
+                {Math.floor(activity.call_duration / 60)}m {activity.call_duration % 60}s
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Standard activity badges */}
+        {!isSalestrailCall && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {activity.outcome && (
+              <Badge
+                variant="secondary"
+                className={cn("text-xs", getOutcomeColor(activity.outcome))}
+              >
+                {activity.outcome.replace(/_/g, " ")}
+              </Badge>
+            )}
+            {interestLevel && (
+              <Badge variant="outline" className="text-xs">
+                {interestLevel === "very_interested" && "🤩"}
+                {interestLevel === "interested" && "😊"}
+                {interestLevel === "neutral" && "😐"}
+                {interestLevel === "not_interested" && "😞"}
+                {" "}{interestLevel.replace(/_/g, " ")}
+              </Badge>
+            )}
+            {whatsappTemplate && (
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                📱 WhatsApp sent
+              </Badge>
+            )}
+          </div>
+        )}
 
         {activity.notes && (
           <p className="text-sm text-muted-foreground mb-2">{activity.notes}</p>
         )}
 
-        {activity.call_duration && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+        {/* Call duration for non-Salestrail calls */}
+        {!isSalestrailCall && activity.call_duration && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
             <Clock className="w-3 h-3" />
             Duration: {Math.floor(activity.call_duration / 60)}m{" "}
             {activity.call_duration % 60}s
           </p>
+        )}
+
+        {/* Recording player - prominent for Salestrail calls */}
+        {isSalestrailCall && activity.salestrail_recording_url && (
+          <div className="mt-2 p-2 bg-muted/50 rounded-md border">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+              🎙️ Call Recording
+            </p>
+            <CallRecordingPlayer url={activity.salestrail_recording_url} />
+          </div>
         )}
 
         {activity.callback_requested && !activity.callback_completed && (
@@ -178,69 +274,6 @@ function ActivityTimelineItem({
             <Check className="w-3 h-3 mr-1" />
             Callback completed
           </Badge>
-        )}
-
-        {/* Salestrail-specific enhancements */}
-        {(activity as any).salestrail_call_id && (
-          <div className="mt-2 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Direction badge */}
-              {(activity as any).call_direction && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    (activity as any).call_direction === "inbound"
-                      ? "bg-blue-50 text-blue-700"
-                      : "bg-green-50 text-green-700"
-                  )}
-                >
-                  {(activity as any).call_direction === "inbound" ? (
-                    <PhoneIncoming className="w-3 h-3 mr-1" />
-                  ) : (
-                    <PhoneOutgoing className="w-3 h-3 mr-1" />
-                  )}
-                  {(activity as any).call_direction}
-                </Badge>
-              )}
-
-              {/* Answered status */}
-              {(activity as any).call_answered !== null && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    (activity as any).call_answered
-                      ? "bg-green-50 text-green-700"
-                      : "bg-amber-50 text-amber-700"
-                  )}
-                >
-                  {(activity as any).call_answered ? (
-                    <>
-                      <Check className="w-3 h-3 mr-1" />
-                      Answered
-                    </>
-                  ) : (
-                    "Missed"
-                  )}
-                </Badge>
-              )}
-
-              {/* Auto-logged indicator */}
-              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
-                <Zap className="w-3 h-3 mr-1" />
-                Auto-logged
-              </Badge>
-            </div>
-
-            {/* Recording player */}
-            {(activity as any).salestrail_recording_url && (
-              <CallRecordingPlayer
-                url={(activity as any).salestrail_recording_url}
-                compact
-              />
-            )}
-          </div>
         )}
       </div>
     </div>
