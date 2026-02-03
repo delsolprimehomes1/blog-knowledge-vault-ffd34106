@@ -79,6 +79,22 @@ SELECT cron.schedule(
 );
 
 -- ==============================================
+-- 5. CHECK CLAIM WINDOW EXPIRY - Every 1 minute
+-- Detects leads whose claim window expired (Stage 1 SLA), notifies admin
+-- ==============================================
+SELECT cron.schedule(
+  'check-claim-window-expiry',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/check-claim-window-expiry',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemdnbnVmYW9pY29wdm13aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MzM0ODEsImV4cCI6MjA3NjEwOTQ4MX0.acQwC_xPXFXvOwwn7IATeg6OwQ2HWlu52x76iqUdhB4"}'::jsonb,
+    body := '{"triggered_by": "cron"}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+-- ==============================================
 -- UTILITY COMMANDS (for reference)
 -- ==============================================
 

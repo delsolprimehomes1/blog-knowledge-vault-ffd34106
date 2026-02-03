@@ -368,3 +368,6 @@ verify_jwt = false
 
 [functions.salestrail-webhook]
 verify_jwt = false
+
+[functions.check-claim-window-expiry]
+verify_jwt = false
