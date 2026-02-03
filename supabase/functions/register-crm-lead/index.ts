@@ -450,6 +450,10 @@ serve(async (req) => {
 
     const claimWindowMinutes = roundConfig?.claim_window_minutes || 15;
 
+    // Calculate claim timer values (5-minute fixed SLA window)
+    const claimTimerStart = new Date();
+    const claimTimerExpiry = new Date(claimTimerStart.getTime() + 5 * 60 * 1000);
+
     // 1. Create lead in database with round tracking
     const { data: lead, error: leadError } = await supabase
       .from("crm_leads")
@@ -497,6 +501,10 @@ serve(async (req) => {
         is_night_held: false,
         sla_breached: false,
         first_action_completed: false,
+        // NEW: Dual-stage SLA tracking - Claim window timer (5 minutes)
+        claim_timer_started_at: contactComplete ? claimTimerStart.toISOString() : null,
+        claim_timer_expires_at: contactComplete ? claimTimerExpiry.toISOString() : null,
+        claim_sla_breached: false,
       })
       .select()
       .single();
@@ -507,6 +515,12 @@ serve(async (req) => {
     }
 
     console.log("[register-crm-lead] Lead created:", lead.id);
+    
+    // Log claim timer for complete leads
+    if (contactComplete) {
+      console.log(`[register-crm-lead] Claim timer started for lead ${lead.id}`);
+      console.log(`[register-crm-lead] Claim window expires at: ${claimTimerExpiry.toISOString()}`);
+    }
 
     // SEND ADMIN FORM SUBMISSION ALERT for ALL new leads
     try {
@@ -593,6 +607,9 @@ serve(async (req) => {
           scheduled_release_at: scheduledRelease,
           lead_status: "night_held",
           claim_window_expires_at: null, // Clear claim window during night hold
+          // Clear dual-stage SLA timers during night hold
+          claim_timer_started_at: null,
+          claim_timer_expires_at: null,
         })
         .eq("id", lead.id);
 
