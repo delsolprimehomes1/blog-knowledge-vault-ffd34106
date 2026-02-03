@@ -1,115 +1,55 @@
 
-
-# Create Phone Number Matching Database Function
+# Add Date and Time to Call History
 
 ## Overview
 
-This plan creates a PostgreSQL function `match_lead_by_phone` that enables flexible phone number matching by stripping all formatting characters (spaces, dashes, parentheses) before comparison.
+Add the actual date and time to the Salestrail Call History card, showing both the absolute timestamp and the relative time for better clarity.
 
 ---
 
-## Problem Being Solved
+## Current vs Proposed
 
-| Issue | Example |
-|-------|---------|
-| Lead phone in database | `765 476 4675` (with spaces) |
-| Webhook search pattern | `654764675` (digits only) |
-| Current ILIKE query | `phone_number ILIKE '%654764675%'` → **No match** |
-
-The spaces in the stored phone numbers prevent the ILIKE pattern from matching.
+| Current | Proposed |
+|---------|----------|
+| `1 minute ago` | `Feb 3, 2026 at 1:49 PM · 1 minute ago` |
 
 ---
 
-## Solution: Database Function
+## Implementation
 
-### SQL to Execute
+### File to Modify
 
-```sql
-CREATE OR REPLACE FUNCTION public.match_lead_by_phone(
-  search_digits text,
-  agent_uuid uuid
-)
-RETURNS TABLE (
-  id uuid,
-  first_name text,
-  last_name text,
-  phone_number text,
-  full_phone text,
-  assigned_agent_id uuid,
-  first_contact_at timestamptz,
-  created_at timestamptz
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    l.id, 
-    l.first_name, 
-    l.last_name, 
-    l.phone_number, 
-    l.full_phone, 
-    l.assigned_agent_id,
-    l.first_contact_at,
-    l.created_at
-  FROM crm_leads l
-  WHERE l.assigned_agent_id = agent_uuid
-    AND (
-      regexp_replace(l.phone_number, '[^0-9]', '', 'g') LIKE '%' || search_digits || '%'
-      OR regexp_replace(COALESCE(l.full_phone, ''), '[^0-9]', '', 'g') LIKE '%' || search_digits || '%'
-    )
-  ORDER BY l.created_at DESC
-  LIMIT 1;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = 'public';
+`src/components/crm/detail/SalestrailCallsCard.tsx`
+
+### Changes
+
+1. **Import `format` from date-fns** (already using `formatDistanceToNow`)
+
+2. **Update timestamp display** (lines 96-98):
+   - Show formatted date/time: `Feb 3, 2026 at 1:49 PM`
+   - Keep relative time in parentheses or with separator: `· 1 minute ago`
+
+### Code Change
+
+```tsx
+// Line 16 - Add format import
+import { formatDistanceToNow, format } from "date-fns";
+
+// Lines 96-98 - Update timestamp display
+<p className="text-xs text-muted-foreground mt-1">
+  {format(new Date(call.created_at), "MMM d, yyyy 'at' h:mm a")} · {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
+</p>
 ```
 
 ---
 
-## How It Works
+## Result
 
-1. **Input Parameters**:
-   - `search_digits`: The last 9 digits of the phone number (e.g., `654764675`)
-   - `agent_uuid`: The agent's UUID for security filtering
+The call history will show:
 
-2. **Processing**:
-   - `regexp_replace(phone_number, '[^0-9]', '', 'g')` strips all non-digit characters
-   - `765 476 4675` becomes `7654764675`
-   - LIKE pattern `%654764675%` now matches!
-
-3. **Security**:
-   - Only returns leads assigned to the specified agent
-   - `SECURITY DEFINER` allows bypassing RLS for webhook use
-   - `SET search_path = 'public'` prevents search path attacks
-
----
-
-## Implementation Steps
-
-1. **Create migration file** with the function definition
-2. **Run migration** to add function to database
-3. **Update webhook** to use this function instead of ILIKE query
-
----
-
-## Files to Create/Modify
-
-| File | Action |
-|------|--------|
-| `supabase/migrations/20260203213500_add_match_lead_by_phone_function.sql` | Create new migration |
-
----
-
-## After Migration
-
-The Salestrail webhook can call this function:
-
-```typescript
-const { data: matchedLeads } = await supabase
-  .rpc('match_lead_by_phone', { 
-    search_digits: last9,  // e.g., "654764675"
-    agent_uuid: agent.id 
-  });
-
-const lead = matchedLeads?.[0] || null;
+```
+📞 Outbound | Missed
+Feb 3, 2026 at 1:49 PM · 1 minute ago
 ```
 
+This gives agents both the exact timestamp for record-keeping and the relative time for quick context.
