@@ -2195,6 +2195,71 @@ export type Database = {
           },
         ]
       }
+      crm_lead_reassignments: {
+        Row: {
+          created_at: string | null
+          from_agent_id: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          reason: string
+          reassigned_by: string
+          stage: string
+          to_agent_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          from_agent_id?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          reason: string
+          reassigned_by: string
+          stage: string
+          to_agent_id: string
+        }
+        Update: {
+          created_at?: string | null
+          from_agent_id?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          reason?: string
+          reassigned_by?: string
+          stage?: string
+          to_agent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_reassignments_from_agent_id_fkey"
+            columns: ["from_agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_reassignments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_reassignments_reassigned_by_fkey"
+            columns: ["reassigned_by"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_reassignments_to_agent_id_fkey"
+            columns: ["to_agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_leads: {
         Row: {
           archived: boolean | null
@@ -2209,9 +2274,15 @@ export type Database = {
           city_name: string | null
           city_slug: string | null
           claim_broadcast_sent: boolean | null
+          claim_sla_breached: boolean | null
+          claim_timer_expires_at: string | null
+          claim_timer_started_at: string | null
           claim_window_expires_at: string | null
           claimed_by: string | null
           contact_complete: boolean | null
+          contact_sla_breached: boolean | null
+          contact_timer_expires_at: string | null
+          contact_timer_started_at: string | null
           conversation_duration: string | null
           conversation_transcript: Json | null
           country_prefix: string | null
@@ -2246,12 +2317,16 @@ export type Database = {
           page_type: string | null
           page_url: string
           phone_number: string | null
+          previous_agent_id: string | null
           property_price: string | null
           property_purpose: string | null
           property_ref: string | null
           property_type: string[] | null
           qa_pairs: Json | null
           questions_answered: number | null
+          reassigned_at: string | null
+          reassignment_count: number | null
+          reassignment_reason: string | null
           referrer: string | null
           round_broadcast_at: string | null
           round_escalated_at: string | null
@@ -2276,9 +2351,15 @@ export type Database = {
           city_name?: string | null
           city_slug?: string | null
           claim_broadcast_sent?: boolean | null
+          claim_sla_breached?: boolean | null
+          claim_timer_expires_at?: string | null
+          claim_timer_started_at?: string | null
           claim_window_expires_at?: string | null
           claimed_by?: string | null
           contact_complete?: boolean | null
+          contact_sla_breached?: boolean | null
+          contact_timer_expires_at?: string | null
+          contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
           country_prefix?: string | null
@@ -2313,12 +2394,16 @@ export type Database = {
           page_type?: string | null
           page_url: string
           phone_number?: string | null
+          previous_agent_id?: string | null
           property_price?: string | null
           property_purpose?: string | null
           property_ref?: string | null
           property_type?: string[] | null
           qa_pairs?: Json | null
           questions_answered?: number | null
+          reassigned_at?: string | null
+          reassignment_count?: number | null
+          reassignment_reason?: string | null
           referrer?: string | null
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
@@ -2343,9 +2428,15 @@ export type Database = {
           city_name?: string | null
           city_slug?: string | null
           claim_broadcast_sent?: boolean | null
+          claim_sla_breached?: boolean | null
+          claim_timer_expires_at?: string | null
+          claim_timer_started_at?: string | null
           claim_window_expires_at?: string | null
           claimed_by?: string | null
           contact_complete?: boolean | null
+          contact_sla_breached?: boolean | null
+          contact_timer_expires_at?: string | null
+          contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
           country_prefix?: string | null
@@ -2380,12 +2471,16 @@ export type Database = {
           page_type?: string | null
           page_url?: string
           phone_number?: string | null
+          previous_agent_id?: string | null
           property_price?: string | null
           property_purpose?: string | null
           property_ref?: string | null
           property_type?: string[] | null
           qa_pairs?: Json | null
           questions_answered?: number | null
+          reassigned_at?: string | null
+          reassignment_count?: number | null
+          reassignment_reason?: string | null
           referrer?: string | null
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
@@ -2401,6 +2496,13 @@ export type Database = {
           {
             foreignKeyName: "crm_leads_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_previous_agent_id_fkey"
+            columns: ["previous_agent_id"]
             isOneToOne: false
             referencedRelation: "crm_agents"
             referencedColumns: ["id"]
