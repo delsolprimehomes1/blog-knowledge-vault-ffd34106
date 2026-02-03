@@ -141,6 +141,7 @@ const CrmSystemVerification = lazy(() => import("./pages/crm/admin/SystemVerific
 const CrmRoutingRules = lazy(() => import("./pages/crm/admin/RoutingRulesPage"));
 const CrmRoundRobinConfig = lazy(() => import("./pages/crm/admin/RoundRobinConfig"));
 const CrmEmailLogs = lazy(() => import("./pages/crm/admin/EmailLogs"));
+const CrmSalestrailCallLogs = lazy(() => import("./pages/crm/admin/SalestrailCallLogs"));
 const LandingEn = lazy(() => import("./pages/landing/en"));
 const LandingNl = lazy(() => import("./pages/landing/nl"));
 const LandingFr = lazy(() => import("./pages/landing/fr"));
@@ -280,6 +281,7 @@ const App = () => (
                 <Route path="routing-rules" element={<CrmRoutingRules />} />
                 <Route path="round-robin" element={<CrmRoundRobinConfig />} />
                 <Route path="email-logs" element={<CrmEmailLogs />} />
+                <Route path="call-logs" element={<CrmSalestrailCallLogs />} />
                 <Route path="verification" element={<CrmSystemVerification />} />
                 <Route path="settings" element={<CrmSettings />} />
               </Route>

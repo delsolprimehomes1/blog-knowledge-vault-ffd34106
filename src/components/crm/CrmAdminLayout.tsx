@@ -16,6 +16,7 @@ import {
   RefreshCcw,
   BarChart3,
   Mail,
+  Phone,
 } from "lucide-react";
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Analytics", href: "/crm/admin/analytics", icon: BarChart3 },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
   { name: "Leads Overview", href: "/crm/admin/leads", icon: ClipboardList },
+  { name: "Call Logs", href: "/crm/admin/call-logs", icon: Phone },
   { name: "Routing Rules", href: "/crm/admin/routing-rules", icon: Route },
   { name: "Round Robin", href: "/crm/admin/round-robin", icon: RefreshCcw },
   { name: "Email Logs", href: "/crm/admin/email-logs", icon: Mail },
