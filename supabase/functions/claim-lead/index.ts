@@ -67,6 +67,8 @@ serve(async (req) => {
         contact_sla_breached: false,
         // Clear claim timer since lead is now claimed
         claim_timer_expires_at: null,
+        // Stop escalating alarms - set to 99 so cron job ignores this lead
+        last_alarm_level: 99,
       })
       .eq("id", leadId);
 
@@ -75,6 +77,7 @@ serve(async (req) => {
     } else {
       console.log(`[claim-lead] Contact timer started for lead ${leadId}`);
       console.log(`[claim-lead] Contact window expires at: ${contactWindowExpiry.toISOString()}`);
+      console.log(`[claim-lead] Escalating alarms cancelled - lead claimed by agent`);
     }
 
     // Log activity for audit trail
@@ -82,7 +85,7 @@ serve(async (req) => {
       lead_id: leadId,
       agent_id: agentId,
       activity_type: "note",
-      notes: "Lead claimed - 5-minute contact window started",
+      notes: "Lead claimed - 5-minute contact window started - escalating alarms cancelled",
       created_at: now.toISOString(),
     });
 
