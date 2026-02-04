@@ -1,0 +1,301 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const APP_URL = Deno.env.get("APP_URL") || "https://www.delsolprimehomes.com";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Level-specific styling configuration
+const ALARM_CONFIG: Record<number, { emoji: string; text: string; color: string }> = {
+  1: { emoji: "⏰", text: "1 MIN PASSED", color: "#EAB308" },
+  2: { emoji: "⚠️", text: "2 MIN PASSED", color: "#F97316" },
+  3: { emoji: "🚨", text: "3 MIN PASSED", color: "#EA580C" },
+  4: { emoji: "🔥", text: "4 MIN PASSED - FINAL WARNING", color: "#DC2626" },
+};
+
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    console.log("[send-escalating-alarms] Starting escalating alarm check...");
+
+    const now = new Date();
+    const alarmsToSend: Array<{ lead: any; targetLevel: number; agents: any[] }> = [];
+
+    // Check each alarm level (1-4)
+    for (let level = 1; level <= 4; level++) {
+      const minutesSinceCreation = level;
+      const targetTime = new Date(now.getTime() - minutesSinceCreation * 60 * 1000);
+
+      console.log(`[send-escalating-alarms] Checking level ${level} - leads with claim_timer_started_at <= ${targetTime.toISOString()}`);
+
+      // Query leads that need this alarm level
+      const { data: leads, error } = await supabase
+        .from("crm_leads")
+        .select("*")
+        .eq("lead_claimed", false)
+        .eq("claim_sla_breached", false)
+        .eq("archived", false)
+        .eq("last_alarm_level", level - 1)
+        .not("claim_timer_started_at", "is", null)
+        .lte("claim_timer_started_at", targetTime.toISOString());
+
+      if (error) {
+        console.error(`[send-escalating-alarms] Error querying level ${level}:`, error);
+        continue;
+      }
+
+      if (!leads || leads.length === 0) {
+        console.log(`[send-escalating-alarms] No leads need level ${level} alarm`);
+        continue;
+      }
+
+      console.log(`[send-escalating-alarms] Found ${leads.length} leads needing alarm level ${level}`);
+
+      // For each lead, get agents from round robin config
+      for (const lead of leads) {
+        const language = (lead.language || "EN").toUpperCase();
+
+        // Get round robin config for this language
+        const { data: config, error: configError } = await supabase
+          .from("crm_round_robin_config")
+          .select("agent_ids")
+          .eq("language", language)
+          .single();
+
+        if (configError || !config?.agent_ids?.length) {
+          console.warn(`[send-escalating-alarms] No round robin config for language ${language}, lead ${lead.id}`);
+          continue;
+        }
+
+        // Get agent details
+        const { data: agents, error: agentsError } = await supabase
+          .from("crm_agents")
+          .select("id, email, first_name, last_name")
+          .in("id", config.agent_ids)
+          .eq("is_active", true);
+
+        if (agentsError || !agents?.length) {
+          console.warn(`[send-escalating-alarms] No active agents found for lead ${lead.id}`);
+          continue;
+        }
+
+        alarmsToSend.push({ lead, targetLevel: level, agents });
+      }
+    }
+
+    if (alarmsToSend.length === 0) {
+      console.log("[send-escalating-alarms] No escalating alarms needed");
+      return new Response(
+        JSON.stringify({ processed: 0, message: "No alarms needed" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[send-escalating-alarms] Processing ${alarmsToSend.length} total alarms`);
+
+    const results: Array<{ lead_id: string; level: number; success: boolean }> = [];
+
+    for (const { lead, targetLevel, agents } of alarmsToSend) {
+      const config = ALARM_CONFIG[targetLevel];
+      const agentEmails = agents.map((a) => a.email).filter(Boolean);
+
+      if (agentEmails.length === 0) {
+        console.warn(`[send-escalating-alarms] No valid emails for lead ${lead.id}`);
+        continue;
+      }
+
+      const langCode = (lead.language || "EN").toUpperCase();
+      const subject = `${config.emoji} ${config.text} - NEW LEAD ${langCode} #${lead.id.slice(0, 8)}`;
+
+      // Calculate elapsed time
+      const createdAt = new Date(lead.created_at);
+      const elapsedMinutes = Math.floor((now.getTime() - createdAt.getTime()) / 60000);
+      const remainingMinutes = Math.max(0, 5 - elapsedMinutes);
+
+      // Build email HTML
+      const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: ${config.color}; padding: 24px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">
+                ${config.emoji} ${config.text}
+              </h1>
+              <p style="margin: 8px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.9;">
+                Lead still unclaimed after ${elapsedMinutes} minute${elapsedMinutes !== 1 ? 's' : ''}!
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding: 24px;">
+              <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">Lead Details</h2>
+              
+              <table width="100%" cellpadding="8" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px;">
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px; width: 120px;">Name:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.first_name || ''} ${lead.last_name || ''}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px;">Phone:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.phone_number || 'Not provided'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px;">Email:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.email || 'Not provided'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px;">Language:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.language || 'Unknown'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px;">Source:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.lead_source || 'Unknown'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px;">Time Elapsed:</td>
+                  <td style="color: ${config.color}; font-size: 14px; font-weight: 700;">${elapsedMinutes} minute${elapsedMinutes !== 1 ? 's' : ''}</td>
+                </tr>
+              </table>
+
+              ${targetLevel === 4 ? `
+              <!-- Final Warning Banner -->
+              <div style="margin-top: 16px; padding: 16px; background-color: #fef2f2; border: 2px solid #dc2626; border-radius: 6px;">
+                <p style="margin: 0; color: #dc2626; font-size: 14px; font-weight: bold; text-align: center;">
+                  ⚠️ FINAL WARNING - If not claimed within 1 minute, this lead will be escalated to admin!
+                </p>
+              </div>
+              ` : ''}
+
+              <!-- CTA Button -->
+              <div style="margin-top: 24px; text-align: center;">
+                <a href="${APP_URL}/crm/leads/${lead.id}" 
+                   style="display: inline-block; padding: 14px 32px; background-color: ${config.color}; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 6px;">
+                  CLAIM THIS LEAD NOW
+                </a>
+              </div>
+
+              <!-- Time Remaining -->
+              <p style="margin-top: 16px; text-align: center; color: #6b7280; font-size: 14px;">
+                Time remaining: <strong style="color: ${config.color};">${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}</strong>
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 16px; background-color: #f9fafb; text-align: center;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Del Sol Prime Homes CRM - Escalating Alarm Level ${targetLevel}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      // Send email via Resend
+      try {
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "CRM Alerts <crm@notifications.delsolprimehomes.com>",
+            to: agentEmails,
+            subject: subject,
+            html: emailHtml,
+            headers: {
+              "X-Priority": targetLevel >= 3 ? "1" : "2",
+            },
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const errorText = await emailResponse.text();
+          console.error(`[send-escalating-alarms] Resend error for lead ${lead.id}:`, errorText);
+          results.push({ lead_id: lead.id, level: targetLevel, success: false });
+          continue;
+        }
+
+        console.log(`[send-escalating-alarms] Sent level ${targetLevel} alarm for lead ${lead.id} to ${agentEmails.length} agents`);
+
+      } catch (emailError) {
+        console.error(`[send-escalating-alarms] Email error for lead ${lead.id}:`, emailError);
+        results.push({ lead_id: lead.id, level: targetLevel, success: false });
+        continue;
+      }
+
+      // Update lead's alarm level
+      const { error: updateError } = await supabase
+        .from("crm_leads")
+        .update({ last_alarm_level: targetLevel })
+        .eq("id", lead.id);
+
+      if (updateError) {
+        console.error(`[send-escalating-alarms] Failed to update alarm level for lead ${lead.id}:`, updateError);
+      }
+
+      // Log activity for audit trail
+      await supabase.from("crm_activities").insert({
+        lead_id: lead.id,
+        agent_id: null,
+        activity_type: "note",
+        notes: `${config.emoji} Escalating alarm level ${targetLevel} sent - ${config.text} - lead still unclaimed`,
+        created_at: now.toISOString(),
+      });
+
+      results.push({ lead_id: lead.id, level: targetLevel, success: true });
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    console.log(`[send-escalating-alarms] Completed - ${successCount}/${results.length} alarms sent successfully`);
+
+    return new Response(
+      JSON.stringify({
+        processed: results.length,
+        success_count: successCount,
+        results: results,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[send-escalating-alarms] Fatal error:", error);
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

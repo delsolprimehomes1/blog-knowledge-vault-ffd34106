@@ -111,6 +111,25 @@ SELECT cron.schedule(
 );
 
 -- ==============================================
+-- 7. SEND ESCALATING ALARMS - Every 1 minute
+-- Sends escalating email notifications (levels 1-4) during claim window
+-- Level 0: Initial broadcast (handled by register-crm-lead)
+-- Levels 1-4: Escalating alarms at T+1, T+2, T+3, T+4 minutes
+-- Level 5+: Admin escalation (handled by check-claim-window-expiry)
+-- ==============================================
+SELECT cron.schedule(
+  'send-escalating-alarms',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/send-escalating-alarms',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthemdnbnVmYW9pY29wdm13aGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MzM0ODEsImV4cCI6MjA3NjEwOTQ4MX0.acQwC_xPXFXvOwwn7IATeg6OwQ2HWlu52x76iqUdhB4"}'::jsonb,
+    body := '{"triggered_by": "cron"}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+-- ==============================================
 -- UTILITY COMMANDS (for reference)
 -- ==============================================
 

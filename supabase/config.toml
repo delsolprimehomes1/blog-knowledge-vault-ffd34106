@@ -377,3 +377,6 @@ verify_jwt = false
 
 [functions.reassign-lead]
 verify_jwt = false
+
+[functions.send-escalating-alarms]
+verify_jwt = false
