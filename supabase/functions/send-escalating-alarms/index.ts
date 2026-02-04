@@ -66,7 +66,7 @@ serve(async (req) => {
 
       // For each lead, get agents from round robin config
       for (const lead of leads) {
-        const language = (lead.language || "EN").toUpperCase();
+        const language = (lead.language || "en").toLowerCase();
 
         // Get round robin config for this language
         const { data: config, error: configError } = await supabase
