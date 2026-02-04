@@ -505,6 +505,8 @@ serve(async (req) => {
         claim_timer_started_at: contactComplete ? claimTimerStart.toISOString() : null,
         claim_timer_expires_at: contactComplete ? claimTimerExpiry.toISOString() : null,
         claim_sla_breached: false,
+        // NEW: Initialize alarm system at level 0
+        last_alarm_level: 0,
       })
       .select()
       .single();
@@ -520,6 +522,7 @@ serve(async (req) => {
     if (contactComplete) {
       console.log(`[register-crm-lead] Claim timer started for lead ${lead.id}`);
       console.log(`[register-crm-lead] Claim window expires at: ${claimTimerExpiry.toISOString()}`);
+      console.log(`[register-crm-lead] Alarm system initialized at level 0 - escalating alerts at T+1, T+2, T+3, T+4`);
     }
 
     // SEND ADMIN FORM SUBMISSION ALERT for ALL new leads
