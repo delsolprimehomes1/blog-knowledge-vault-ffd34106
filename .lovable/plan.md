@@ -1,70 +1,81 @@
 
-# Update claim-lead to Cancel Escalating Alarms
+# Update Initial Lead Notification Email to Match Escalating Alarm Format
 
 ## Overview
 
-When an agent claims a lead, we need to stop any remaining escalating alarms (levels 1-4) from being sent. This prevents agents from receiving alarm emails after someone has already claimed the lead.
+The initial lead notification email (sent at T+0) needs to use a consistent subject format that matches the escalating alarm system. This enables agents to set up a single Gmail filter that catches all alarm levels (0-4) for any language.
 
 ---
 
 ## Current State
 
-The contact timer update (lines 62-71) currently sets:
-- `contact_timer_started_at`
-- `contact_timer_expires_at`
-- `contact_sla_breached: false`
-- `claim_timer_expires_at: null`
+### Subject Line (line 364)
+```typescript
+emailSubject = `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`;
+```
+**Example**: `🇬🇧 New EN Lead: John Smith`
 
-The activity log (lines 81-87) notes: "Lead claimed - 5-minute contact window started"
+### Email Body (line 98)
+Already mentions: `⏱️ You have ${claimWindowMinutes} minutes to claim this lead`
+**Missing**: Information about escalating reminders at 1, 2, 3, 4 minutes
 
 ---
 
 ## Changes Required
 
-### 1. Add Alarm Cancellation to Timer Update (lines 64-70)
+### 1. Update Subject Line Format (line 364)
 
-Add `last_alarm_level: 99` to stop the escalation sequence:
-
+**Before**:
 ```typescript
-.update({
-  contact_timer_started_at: now.toISOString(),
-  contact_timer_expires_at: contactWindowExpiry.toISOString(),
-  contact_sla_breached: false,
-  claim_timer_expires_at: null,
-  // Stop escalating alarms - set to 99 so cron job ignores this lead
-  last_alarm_level: 99,
-})
+emailSubject = `${flag} New ${normalizedLead.language?.toUpperCase()} Lead: ${lead.first_name} ${lead.last_name}`;
 ```
 
-### 2. Add Alarm Cancellation Logging (after line 77)
-
-Add a log message confirming alarms are cancelled:
-
+**After**:
 ```typescript
-console.log(`[claim-lead] Escalating alarms cancelled - lead claimed by agent`);
+const langCode = (normalizedLead.language || "EN").toUpperCase();
+emailSubject = `🔔 NEW LEAD ${langCode} #${lead.id.slice(0, 8)}`;
 ```
 
-### 3. Update Activity Log Message (line 85)
+This matches the escalating alarm format:
+- T+0: `🔔 NEW LEAD EN #12345678`
+- T+1: `⏰ 1 MIN PASSED - NEW LEAD EN #12345678`
+- T+2: `⚠️ 2 MIN PASSED - NEW LEAD EN #12345678`
+- etc.
 
-Update the notes to reflect alarm cancellation:
+### 2. Update Email Body - Add Escalation Warning (line 98)
 
+Insert after the existing claim window banner a new escalation info section:
+
+```html
+<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0;">
+  <p style="margin: 0; color: #92400e; font-weight: bold;">📧 Escalating Reminders</p>
+  <p style="margin: 5px 0 0 0; color: #92400e; font-size: 14px;">
+    You will receive reminder emails at 1, 2, 3, and 4 minutes if this lead remains unclaimed.
+  </p>
+</div>
+```
+
+### 3. Add Logging for Alarm Level 0 (around line 402)
+
+Add console.log to indicate this is the initial alarm:
 ```typescript
-notes: "Lead claimed - 5-minute contact window started - escalating alarms cancelled",
+console.log(`[send-lead-notification] Sending initial alarm (level 0) for lead ${lead.id}`);
+console.log(`[send-lead-notification] Subject: ${emailSubject}`);
 ```
 
 ---
 
-## How It Works
+## Subject Format Summary (for Gmail Filter Setup)
 
-```text
-Escalating Alarm Cron Job Query:
-└── Looks for: last_alarm_level = 0, 1, 2, or 3
+| Time | Emoji | Subject Pattern |
+|------|-------|-----------------|
+| T+0 | 🔔 | `NEW LEAD EN #12345678` |
+| T+1 | ⏰ | `1 MIN PASSED - NEW LEAD EN #12345678` |
+| T+2 | ⚠️ | `2 MIN PASSED - NEW LEAD EN #12345678` |
+| T+3 | 🚨 | `3 MIN PASSED - NEW LEAD EN #12345678` |
+| T+4 | 🔥 | `4 MIN PASSED - FINAL WARNING - NEW LEAD EN #12345678` |
 
-After Lead Claimed:
-└── last_alarm_level = 99 → No longer matches query → No more alarms sent
-```
-
-The value 99 is used as a "sentinel value" meaning "alarms complete/stopped".
+**Gmail Filter Example**: Subject contains `NEW LEAD EN` catches all 5 alarm levels for English leads.
 
 ---
 
@@ -72,13 +83,15 @@ The value 99 is used as a "sentinel value" meaning "alarms complete/stopped".
 
 | File | Change |
 |------|--------|
-| `supabase/functions/claim-lead/index.ts` | Add `last_alarm_level: 99`, update logging and activity note |
+| `supabase/functions/send-lead-notification/index.ts` | Update subject line format, add escalation warning to email body, add logging |
 
 ---
 
 ## Verification
 
 After implementation:
-1. Claim a test lead
-2. Query: `SELECT last_alarm_level FROM crm_leads WHERE id = 'lead-id'` → should be 99
-3. Wait 1+ minutes → no escalating emails should arrive for that lead
+1. Create a new test lead
+2. Check email inbox
+3. Subject should be: `🔔 NEW LEAD [LANG] #[ID]`
+4. Body should mention escalating reminders at 1, 2, 3, 4 minutes
+5. Logs should show "Sending initial alarm (level 0)"
