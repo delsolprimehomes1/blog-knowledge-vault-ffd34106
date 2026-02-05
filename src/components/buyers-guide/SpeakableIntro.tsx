@@ -45,7 +45,7 @@ export const SpeakableIntro: React.FC = () => {
               </div>
               <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
                 <Clock className="w-6 h-6 text-prime-gold mx-auto mb-2" />
-                <span className="text-2xl font-bold text-white block">3-6</span>
+                <span className="text-2xl font-bold text-white block">1-24</span>
                 <span className="text-xs text-white/60">{t.speakable.months}</span>
               </div>
               <div className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
