@@ -26,7 +26,7 @@ import BlogEmmaChat from "@/components/blog-article/BlogEmmaChat";
 import PersonSchema from '@/components/schema/PersonSchema';
 import ArticleSchema from '@/components/schema/ArticleSchema';
 import AuthorByline from '@/components/blog-article/AuthorByline';
-import { LanguageMismatchNotFound } from "@/components/LanguageMismatchNotFound";
+
 
 const BlogArticle = () => {
   const { slug, lang = 'en' } = useParams<{ slug: string; lang: string }>();
@@ -61,39 +61,7 @@ const BlogArticle = () => {
     staleTime: 15 * 60 * 1000, // 15 minutes - articles don't change often
   });
 
-  // Smart language mismatch handling:
-  // 1. If translation exists for requested language → redirect to correct URL
-  // 2. If no translation → show branded 404 with alternatives
-  if (article && article.language !== lang) {
-    const translations = article.translations as Record<string, string | { id: string; slug: string }> | null;
-    
-    // Helper to extract slug from translation value (handles both string and object formats)
-    const getSlugFromTranslation = (value: string | { id: string; slug: string } | undefined): string | null => {
-      if (!value) return null;
-      if (typeof value === 'string') return value;
-      if (typeof value === 'object' && 'slug' in value) return value.slug;
-      return null;
-    };
-    
-    const correctSlug = translations ? getSlugFromTranslation(translations[lang]) : null;
-    
-    if (correctSlug) {
-      // Translation exists → 301-style redirect to correct localized URL
-      return <Navigate to={`/${lang}/blog/${correctSlug}`} replace />;
-    }
-    
-    // No translation available → show helpful 404 with language alternatives
-    return (
-      <LanguageMismatchNotFound
-        requestedLang={lang}
-        actualLang={article.language}
-        slug={slug || ''}
-        translations={translations}
-        contentType="blog"
-      />
-    );
-  }
-
+  // All hooks MUST be called before any conditional returns
   const { data: author } = useQuery({
     queryKey: ["author", article?.author_id],
     queryFn: async () => {
@@ -153,6 +121,30 @@ const BlogArticle = () => {
     },
     enabled: !!article?.cta_article_ids,
   });
+
+  // Helper to extract slug from translation value (handles both string and object formats)
+  const getSlugFromTranslation = (value: string | { id: string; slug: string } | undefined): string | null => {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && 'slug' in value) return value.slug;
+    return null;
+  };
+
+  // Smart language mismatch handling (AFTER all hooks):
+  // 1. If translation exists for requested language → redirect to correct URL
+  // 2. If no translation → redirect to article's native language
+  if (article && article.language !== lang) {
+    const translations = article.translations as Record<string, string | { id: string; slug: string }> | null;
+    const correctSlug = translations ? getSlugFromTranslation(translations[lang]) : null;
+    
+    if (correctSlug) {
+      // Translation exists → redirect to correct localized URL
+      return <Navigate to={`/${lang}/blog/${correctSlug}`} replace />;
+    }
+    
+    // No translation exists → redirect to article in its native language
+    return <Navigate to={`/${article.language}/blog/${article.slug}`} replace />;
+  }
 
   if (isLoading) {
     return (
