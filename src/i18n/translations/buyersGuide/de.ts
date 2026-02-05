@@ -23,7 +23,7 @@ export const buyersGuideDe = {
     months: "Monate",
     visaIncome: "Visum-Einkommen",
     paragraph1: "Der Immobilienkauf an der Costa del Sol ist ein unkomplizierter Prozess für internationale Käufer. Sie benötigen eine NIE (Steueridentifikationsnummer), ein spanisches Bankkonto und in der Regel 10-13% des Kaufpreises zur Deckung von Steuern und Gebühren.",
-    paragraph2: "Der Prozess dauert 3-6 Monate vom Finden Ihrer Immobilie bis zur Schlüsselübergabe. Remote-Arbeiter und digitale Nomaden können sich für Spaniens Digital Nomad Visum qualifizieren, das es Ihnen ermöglicht, von der wunderschönen Costa del Sol aus zu leben und zu arbeiten, während Sie Ihre internationale Karriere fortsetzen.",
+    paragraph2: "Der Prozess dauert 1-24 Monate vom Finden Ihrer Immobilie bis zur Schlüsselübergabe. Remote-Arbeiter und digitale Nomaden können sich für Spaniens Digital Nomad Visum qualifizieren, das es Ihnen ermöglicht, von der wunderschönen Costa del Sol aus zu leben und zu arbeiten, während Sie Ihre internationale Karriere fortsetzen.",
     optimizedFor: "Optimiert für Sprachassistenten und KI-Suche"
   },
   process: {

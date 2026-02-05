@@ -23,7 +23,7 @@ export const buyersGuidePl = {
     months: "Miesięcy",
     visaIncome: "Dochód na Wizę",
     paragraph1: "Zakup nieruchomości na Costa del Sol to prosty proces dla międzynarodowych kupujących. Potrzebujesz NIE (numeru identyfikacji podatkowej), hiszpańskiego konta bankowego i zazwyczaj 10-13% ceny zakupu na pokrycie podatków i opłat.",
-    paragraph2: "Proces trwa 3-6 miesięcy od znalezienia nieruchomości do otrzymania kluczy. Pracownicy zdalni i cyfrowi nomadzi mogą ubiegać się o hiszpańską Wizę Digital Nomad, pozwalającą mieszkać i pracować na pięknej Costa del Sol, kontynuując międzynarodową karierę.",
+    paragraph2: "Proces trwa 1-24 miesięcy od znalezienia nieruchomości do otrzymania kluczy. Pracownicy zdalni i cyfrowi nomadzi mogą ubiegać się o hiszpańską Wizę Digital Nomad, pozwalającą mieszkać i pracować na pięknej Costa del Sol, kontynuując międzynarodową karierę.",
     optimizedFor: "Zoptymalizowane dla asystentów głosowych i wyszukiwania AI"
   },
   process: {

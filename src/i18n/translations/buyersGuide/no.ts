@@ -23,7 +23,7 @@ export const buyersGuideNo = {
     months: "Måneder",
     visaIncome: "Visuminntekt",
     paragraph1: "Å kjøpe eiendom på Costa del Sol er en enkel prosess for internasjonale kjøpere. Du trenger et NIE (skatteidentifikasjonsnummer), en spansk bankkonto, og vanligvis 10-13% av kjøpesummen for å dekke skatter og avgifter.",
-    paragraph2: "Prosessen tar 3-6 måneder fra du finner eiendommen til du får nøklene. Fjernarbeidere og digitale nomader kan kvalifisere for Spanias Digital Nomad Visum, som lar deg bo og jobbe fra den vakre Costa del Sol mens du opprettholder din internasjonale karriere.",
+    paragraph2: "Prosessen tar 1-24 måneder fra du finner eiendommen til du får nøklene. Fjernarbeidere og digitale nomader kan kvalifisere for Spanias Digital Nomad Visum, som lar deg bo og jobbe fra den vakre Costa del Sol mens du opprettholder din internasjonale karriere.",
     optimizedFor: "Optimalisert for stemmeassistenter og AI-søk"
   },
   process: {

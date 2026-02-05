@@ -23,7 +23,7 @@ export const buyersGuideHu = {
     months: "Hónap",
     visaIncome: "Vízum Jövedelem",
     paragraph1: "Az ingatlanvásárlás a Costa del Solon egyszerű folyamat nemzetközi vásárlók számára. Szüksége lesz egy NIE-re (adóazonosító szám), spanyol bankszámlára, és jellemzően a vételár 10-13%-ára az adók és díjak fedezésére.",
-    paragraph2: "A folyamat 3-6 hónapot vesz igénybe az ingatlan megtalálásától a kulcsok átvételéig. A távmunkások és digitális nomádok igényelhetik Spanyolország Digital Nomad Vízumát, amely lehetővé teszi, hogy a gyönyörű Costa del Solon éljenek és dolgozzanak, miközben fenntartják nemzetközi karrierjüket.",
+    paragraph2: "A folyamat 1-24 hónapot vesz igénybe az ingatlan megtalálásától a kulcsok átvételéig. A távmunkások és digitális nomádok igényelhetik Spanyolország Digital Nomad Vízumát, amely lehetővé teszi, hogy a gyönyörű Costa del Solon éljenek és dolgozzanak, miközben fenntartják nemzetközi karrierjüket.",
     optimizedFor: "Hangasszisztensekre és AI-keresésre optimalizálva"
   },
   process: {

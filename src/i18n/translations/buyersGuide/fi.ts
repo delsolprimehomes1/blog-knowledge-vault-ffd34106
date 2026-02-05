@@ -23,7 +23,7 @@ export const buyersGuideFi = {
     months: "Kuukautta",
     visaIncome: "Viisumitulo",
     paragraph1: "Kiinteistön ostaminen Costa del Solilta on yksinkertainen prosessi kansainvälisille ostajille. Tarvitset NIE:n (verotunnistenumero), espanjalaisen pankkitilin ja tyypillisesti 10-13% ostohinnasta verojen ja maksujen kattamiseksi.",
-    paragraph2: "Prosessi kestää 3-6 kuukautta kiinteistön löytämisestä avainten saamiseen. Etätyöntekijät ja digitaaliset nomadit voivat hakea Espanjan Digital Nomad -viisumia, joka mahdollistaa asumisen ja työskentelyn kauniilla Costa del Solilla säilyttäen kansainvälisen urasi.",
+    paragraph2: "Prosessi kestää 1-24 kuukautta kiinteistön löytämisestä avainten saamiseen. Etätyöntekijät ja digitaaliset nomadit voivat hakea Espanjan Digital Nomad -viisumia, joka mahdollistaa asumisen ja työskentelyn kauniilla Costa del Solilla säilyttäen kansainvälisen urasi.",
     optimizedFor: "Optimoitu ääniassistenteille ja AI-haulle"
   },
   process: {

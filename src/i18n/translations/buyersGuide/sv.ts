@@ -23,7 +23,7 @@ export const buyersGuideSv = {
     months: "Månader",
     visaIncome: "Visuminkomst",
     paragraph1: "Att köpa fastighet på Costa del Sol är en enkel process för internationella köpare. Du behöver ett NIE (skatteidentifikationsnummer), ett spanskt bankkonto och vanligtvis 10-13% av köpeskillingen för att täcka skatter och avgifter.",
-    paragraph2: "Processen tar 3-6 månader från att hitta din fastighet till att få nycklarna. Distansarbetare och digitala nomader kan kvalificera sig för Spaniens Digital Nomad Visum, vilket låter dig bo och arbeta från den vackra Costa del Sol samtidigt som du behåller din internationella karriär.",
+    paragraph2: "Processen tar 1-24 månader från att hitta din fastighet till att få nycklarna. Distansarbetare och digitala nomader kan kvalificera sig för Spaniens Digital Nomad Visum, vilket låter dig bo och arbeta från den vackra Costa del Sol samtidigt som du behåller din internationella karriär.",
     optimizedFor: "Optimerad för röstassistenter och AI-sökning"
   },
   process: {

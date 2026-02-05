@@ -23,7 +23,7 @@ export const buyersGuideNl = {
     months: "Maanden",
     visaIncome: "Visa Inkomen",
     paragraph1: "Het kopen van onroerend goed aan de Costa del Sol is een eenvoudig proces voor internationale kopers. U heeft een NIE (belastingidentificatienummer), een Spaanse bankrekening en doorgaans 10-13% van de aankoopprijs nodig om belastingen en kosten te dekken.",
-    paragraph2: "Het proces duurt 3-6 maanden vanaf het vinden van uw woning tot het ontvangen van de sleutels. Thuiswerkers en digitale nomaden kunnen in aanmerking komen voor het Spaanse Digital Nomad Visa, waarmee u kunt wonen en werken vanuit de prachtige Costa del Sol met behoud van uw internationale carrière.",
+    paragraph2: "Het proces duurt 1-24 maanden vanaf het vinden van uw woning tot het ontvangen van de sleutels. Thuiswerkers en digitale nomaden kunnen in aanmerking komen voor het Spaanse Digital Nomad Visa, waarmee u kunt wonen en werken vanuit de prachtige Costa del Sol met behoud van uw internationale carrière.",
     optimizedFor: "Geoptimaliseerd voor spraakassistenten en AI-zoekopdrachten"
   },
   process: {

@@ -23,7 +23,7 @@ export const buyersGuideFr = {
     months: "Mois",
     visaIncome: "Revenu Visa",
     paragraph1: "L'achat d'un bien immobilier sur la Costa del Sol est un processus simple pour les acheteurs internationaux. Vous aurez besoin d'un NIE (numéro d'identification fiscale), d'un compte bancaire espagnol, et généralement de 10-13% du prix d'achat pour couvrir les taxes et frais.",
-    paragraph2: "Le processus prend 3 à 6 mois, de la recherche de votre propriété à la remise des clés. Les télétravailleurs et nomades numériques peuvent bénéficier du Visa Nomade Numérique espagnol, vous permettant de vivre et travailler depuis la magnifique Costa del Sol tout en maintenant votre carrière internationale.",
+    paragraph2: "Le processus prend 1 à 24 mois, de la recherche de votre propriété à la remise des clés. Les télétravailleurs et nomades numériques peuvent bénéficier du Visa Nomade Numérique espagnol, vous permettant de vivre et travailler depuis la magnifique Costa del Sol tout en maintenant votre carrière internationale.",
     optimizedFor: "Optimisé pour les assistants vocaux et la recherche IA"
   },
   process: {

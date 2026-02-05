@@ -23,7 +23,7 @@ export const buyersGuideEn = {
     months: "Months",
     visaIncome: "Visa Income",
     paragraph1: "Buying property on the Costa del Sol is a straightforward process for international buyers. You'll need a NIE (tax identification number), a Spanish bank account, and typically 10-13% of the purchase price to cover taxes and fees.",
-    paragraph2: "The process takes 3-6 months from finding your property to receiving the keys. Remote workers and digital nomads can qualify for Spain's Digital Nomad Visa, allowing you to live and work from the beautiful Costa del Sol while maintaining your international career.",
+    paragraph2: "The process takes 1-24 months from finding your property to receiving the keys. Remote workers and digital nomads can qualify for Spain's Digital Nomad Visa, allowing you to live and work from the beautiful Costa del Sol while maintaining your international career.",
     optimizedFor: "Optimized for voice assistants and AI search"
   },
   process: {
