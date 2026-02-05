@@ -194,7 +194,7 @@ serve(async (req) => {
 
               <!-- CTA Button -->
               <div style="margin-top: 24px; text-align: center;">
-                <a href="${APP_URL}/crm/leads/${lead.id}" 
+                <a href="${APP_URL}/crm/agent/leads/${lead.id}/claim" 
                    style="display: inline-block; padding: 14px 32px; background-color: ${config.color}; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 6px;">
                   CLAIM THIS LEAD NOW
                 </a>
