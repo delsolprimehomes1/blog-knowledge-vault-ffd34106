@@ -47,12 +47,12 @@ SELECT cron.schedule(
 
 -- ==============================================
 -- 3. RELEASE NIGHT-HELD LEADS - Daily at 09:00 Madrid time
--- 07:00 UTC = 09:00 Europe/Madrid (winter), 08:00 Europe/Madrid (summer)
--- Adjust as needed for DST
+-- Runs every 5 minutes to check for leads ready to release
+-- Leads have scheduled_release_at set to 09:00 Madrid time
 -- ==============================================
 SELECT cron.schedule(
   'release-night-held-leads',
-  '0 7 * * *',
+  '*/5 * * * *',
   $$
   SELECT net.http_post(
     url := 'https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/release-night-held-leads',
