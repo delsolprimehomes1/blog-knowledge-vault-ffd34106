@@ -1,57 +1,24 @@
 
-## Update About Us Page LinkedIn Links
 
-### Problem Identified
-The LinkedIn URLs in the `about_page_content.founders` JSONB column are incorrect. The FounderProfiles component reads `linkedin_url` from this data, causing the wrong links to appear.
+## Update Buyer's Guide Timeline from "3-6" to "1-24"
 
-### Current State vs Required State
-
-| Founder | Current (Broken) | Required (Correct) |
-|---------|------------------|-------------------|
-| Cédric Van Hecke | `https://linkedin.com/in/cedricvanhecke` | `https://www.linkedin.com/company/delsolprimehomes/` |
-| Steven Roberts | `https://linkedin.com/in/stevenroberts` | `https://www.linkedin.com/company/delsolprimehomes/` |
-| Hans Beeckman | `https://linkedin.com/in/hansbeeckman` | `https://www.linkedin.com/in/hansbeeckman/` |
-
-### Solution
-Update the `founders` JSONB array in the `about_page_content` table to use the correct LinkedIn URLs.
+### Change Required
+Update the months timeline value displayed in the SpeakableIntro component from "3-6" to "1-24" months.
 
 ### Technical Details
 
-**Database Change Required:**
-Run an UPDATE query on `about_page_content` table to fix the `linkedin` field in the founders JSONB array.
+**File:** `src/components/buyers-guide/SpeakableIntro.tsx`
 
-**SQL to Execute:**
-```sql
-UPDATE about_page_content
-SET founders = jsonb_set(
-  jsonb_set(
-    jsonb_set(
-      founders,
-      '{0,linkedin}', '"https://www.linkedin.com/company/delsolprimehomes/"'
-    ),
-    '{1,linkedin}', '"https://www.linkedin.com/company/delsolprimehomes/"'
-  ),
-  '{2,linkedin}', '"https://www.linkedin.com/in/hansbeeckman/"'
-)
-WHERE slug = 'main';
+**Line 48 - Current:**
+```tsx
+<span className="text-2xl font-bold text-white block">3-6</span>
 ```
 
-**Note:** The founders array order is:
-- Index 0: Steven Roberts → Company page
-- Index 1: Cédric Van Hecke → Company page  
-- Index 2: Hans Beeckman → Personal profile
+**Updated to:**
+```tsx
+<span className="text-2xl font-bold text-white block">1-24</span>
+```
 
-### Already Correct
-- The `team_members` database table has the correct URLs
-- The hardcoded `FOUNDERS_DATA` in `aboutSchemaGenerator.ts` has the correct URLs
+### Why This Works for All Languages
+The numeric value "3-6" (and the new "1-24") is hardcoded in the component itself, not in translation files. The label below it (`{t.speakable.months}`) is translated, but the number display is universal. This single change automatically applies to all 10 language versions of the Buyer's Guide.
 
-### Testing Checklist
-1. Visit the About Us page in any language
-2. Verify all three LinkedIn buttons are visible on founder cards
-3. Click each button and confirm correct destination:
-   - Steven Roberts → Company page opens
-   - Cédric Van Hecke → Company page opens
-   - Hans Beeckman → Personal profile opens
-4. Confirm all links open in a new tab
-5. Test on desktop and mobile views
-6. Verify consistency across multiple language versions
