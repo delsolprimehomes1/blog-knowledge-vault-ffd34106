@@ -65,6 +65,42 @@ async function fetchAllGoneUrls(): Promise<GoneUrl[]> {
   return allData;
 }
 
+// Helper to batch slugs into chunks and query in parallel
+// This avoids URL length limits when using .in() with many slugs
+async function batchedSlugLookup(
+  table: "blog_articles" | "qa_pages" | "comparison_pages",
+  slugs: string[],
+  batchSize: number = 50
+): Promise<Map<string, string>> {
+  const resultMap = new Map<string, string>();
+  const uniqueSlugs = [...new Set(slugs)];
+  
+  if (uniqueSlugs.length === 0) return resultMap;
+
+  // Process in batches to avoid URL length limits
+  const batches: string[][] = [];
+  for (let i = 0; i < uniqueSlugs.length; i += batchSize) {
+    batches.push(uniqueSlugs.slice(i, i + batchSize));
+  }
+
+  // Execute all batches in parallel for speed
+  const results = await Promise.all(
+    batches.map(async (batch) => {
+      const { data } = await supabase
+        .from(table)
+        .select("slug, language")
+        .in("slug", batch)
+        .eq("status", "published");
+      return data || [];
+    })
+  );
+
+  // Merge all results into one map
+  results.flat().forEach(row => resultMap.set(row.slug, row.language));
+
+  return resultMap;
+}
+
 // Fetch summary counts
 export function useNotFoundSummary() {
   return useQuery({
@@ -124,67 +160,41 @@ async function countLanguageMismatches(goneUrls: GoneUrl[]): Promise<number> {
 
   if (parsed.length === 0) return 0;
 
-  // Get all slugs from blog and qa tables
+  // Get all slugs by content type
   const blogSlugs = parsed.filter(p => p.content_type === "blog").map(p => p.slug);
   const qaSlugs = parsed.filter(p => p.content_type === "qa").map(p => p.slug);
+  const compareSlugs = parsed.filter(p => p.content_type === "compare").map(p => p.slug);
+
+  // Use batched lookups to avoid URL length limits
+  const [blogMap, qaMap, compareMap] = await Promise.all([
+    batchedSlugLookup("blog_articles", blogSlugs),
+    batchedSlugLookup("qa_pages", qaSlugs),
+    batchedSlugLookup("comparison_pages", compareSlugs),
+  ]);
 
   let mismatchCount = 0;
 
-  // Check blog articles (batch fetch to handle large slug lists)
-  if (blogSlugs.length > 0) {
-    const uniqueBlogSlugs = [...new Set(blogSlugs)];
-    const { data: blogArticles } = await supabase
-      .from("blog_articles")
-      .select("slug, language")
-      .in("slug", uniqueBlogSlugs.slice(0, 500)) // Supabase IN limit
-      .eq("status", "published");
-
-    const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
-    
-    for (const p of parsed.filter(p => p.content_type === "blog")) {
-      const actualLang = blogMap.get(p.slug);
-      if (actualLang && actualLang !== p.url_lang) {
-        mismatchCount++;
-      }
+  // Count blog mismatches
+  for (const p of parsed.filter(p => p.content_type === "blog")) {
+    const actualLang = blogMap.get(p.slug);
+    if (actualLang && actualLang !== p.url_lang) {
+      mismatchCount++;
     }
   }
 
-  // Check Q&A pages
-  if (qaSlugs.length > 0) {
-    const uniqueQaSlugs = [...new Set(qaSlugs)];
-    const { data: qaPages } = await supabase
-      .from("qa_pages")
-      .select("slug, language")
-      .in("slug", uniqueQaSlugs.slice(0, 500))
-      .eq("status", "published");
-
-    const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
-    
-    for (const p of parsed.filter(p => p.content_type === "qa")) {
-      const actualLang = qaMap.get(p.slug);
-      if (actualLang && actualLang !== p.url_lang) {
-        mismatchCount++;
-      }
+  // Count Q&A mismatches
+  for (const p of parsed.filter(p => p.content_type === "qa")) {
+    const actualLang = qaMap.get(p.slug);
+    if (actualLang && actualLang !== p.url_lang) {
+      mismatchCount++;
     }
   }
 
-  // Check comparison pages
-  const compareSlugs = parsed.filter(p => p.content_type === "compare").map(p => p.slug);
-  if (compareSlugs.length > 0) {
-    const uniqueCompareSlugs = [...new Set(compareSlugs)];
-    const { data: comparisonPages } = await supabase
-      .from("comparison_pages")
-      .select("slug, language")
-      .in("slug", uniqueCompareSlugs.slice(0, 500))
-      .eq("status", "published");
-
-    const compareMap = new Map(comparisonPages?.map(c => [c.slug, c.language]) || []);
-    
-    for (const p of parsed.filter(p => p.content_type === "compare")) {
-      const actualLang = compareMap.get(p.slug);
-      if (actualLang && actualLang !== p.url_lang) {
-        mismatchCount++;
-      }
+  // Count comparison mismatches
+  for (const p of parsed.filter(p => p.content_type === "compare")) {
+    const actualLang = compareMap.get(p.slug);
+    if (actualLang && actualLang !== p.url_lang) {
+      mismatchCount++;
     }
   }
 
@@ -234,75 +244,52 @@ export function useLanguageMismatches() {
 
       if (parsed.length === 0) return [];
 
-      const blogSlugs = [...new Set(parsed.filter(p => p.content_type === "blog").map(p => p.slug))];
-      const qaSlugs = [...new Set(parsed.filter(p => p.content_type === "qa").map(p => p.slug))];
+      const blogSlugs = parsed.filter(p => p.content_type === "blog").map(p => p.slug);
+      const qaSlugs = parsed.filter(p => p.content_type === "qa").map(p => p.slug);
+      const compareSlugs = parsed.filter(p => p.content_type === "compare").map(p => p.slug);
+
+      // Use batched lookups to avoid URL length limits
+      const [blogMap, qaMap, compareMap] = await Promise.all([
+        batchedSlugLookup("blog_articles", blogSlugs),
+        batchedSlugLookup("qa_pages", qaSlugs),
+        batchedSlugLookup("comparison_pages", compareSlugs),
+      ]);
 
       const results: LanguageMismatch[] = [];
 
-      // Check blog articles
-      if (blogSlugs.length > 0) {
-        const { data: blogArticles } = await supabase
-          .from("blog_articles")
-          .select("slug, language")
-          .in("slug", blogSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "blog")) {
-          const actualLang = blogMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            results.push({
-              ...p,
-              actual_language: actualLang,
-              correct_url: `/${actualLang}/blog/${p.slug}`,
-            });
-          }
+      // Check blog mismatches
+      for (const p of parsed.filter(p => p.content_type === "blog")) {
+        const actualLang = blogMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          results.push({
+            ...p,
+            actual_language: actualLang,
+            correct_url: `/${actualLang}/blog/${p.slug}`,
+          });
         }
       }
 
-      // Check Q&A pages
-      if (qaSlugs.length > 0) {
-        const { data: qaPages } = await supabase
-          .from("qa_pages")
-          .select("slug, language")
-          .in("slug", qaSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "qa")) {
-          const actualLang = qaMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            results.push({
-              ...p,
-              actual_language: actualLang,
-              correct_url: `/${actualLang}/qa/${p.slug}`,
-            });
-          }
+      // Check Q&A mismatches
+      for (const p of parsed.filter(p => p.content_type === "qa")) {
+        const actualLang = qaMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          results.push({
+            ...p,
+            actual_language: actualLang,
+            correct_url: `/${actualLang}/qa/${p.slug}`,
+          });
         }
       }
 
-      // Check comparison pages
-      const compareSlugs = [...new Set(parsed.filter(p => p.content_type === "compare").map(p => p.slug))];
-      if (compareSlugs.length > 0) {
-        const { data: comparisonPages } = await supabase
-          .from("comparison_pages")
-          .select("slug, language")
-          .in("slug", compareSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const compareMap = new Map(comparisonPages?.map(c => [c.slug, c.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "compare")) {
-          const actualLang = compareMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            results.push({
-              ...p,
-              actual_language: actualLang,
-              correct_url: `/${actualLang}/compare/${p.slug}`,
-            });
-          }
+      // Check comparison mismatches
+      for (const p of parsed.filter(p => p.content_type === "compare")) {
+        const actualLang = compareMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          results.push({
+            ...p,
+            actual_language: actualLang,
+            correct_url: `/${actualLang}/compare/${p.slug}`,
+          });
         }
       }
 
@@ -341,61 +328,40 @@ export function useConfirmedGoneUrls() {
           slug: string;
         }>;
 
-      const blogSlugs = [...new Set(parsed.filter(p => p.content_type === "blog").map(p => p.slug))];
-      const qaSlugs = [...new Set(parsed.filter(p => p.content_type === "qa").map(p => p.slug))];
+      const blogSlugs = parsed.filter(p => p.content_type === "blog").map(p => p.slug);
+      const qaSlugs = parsed.filter(p => p.content_type === "qa").map(p => p.slug);
+      const compareSlugs = parsed.filter(p => p.content_type === "compare").map(p => p.slug);
+
+      // Use batched lookups to avoid URL length limits
+      const [blogMap, qaMap, compareMap] = await Promise.all([
+        batchedSlugLookup("blog_articles", blogSlugs),
+        batchedSlugLookup("qa_pages", qaSlugs),
+        batchedSlugLookup("comparison_pages", compareSlugs),
+      ]);
 
       const mismatchIds = new Set<string>();
 
-      if (blogSlugs.length > 0) {
-        const { data: blogArticles } = await supabase
-          .from("blog_articles")
-          .select("slug, language")
-          .in("slug", blogSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const blogMap = new Map(blogArticles?.map(a => [a.slug, a.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "blog")) {
-          const actualLang = blogMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            mismatchIds.add(p.id);
-          }
+      // Find blog mismatches
+      for (const p of parsed.filter(p => p.content_type === "blog")) {
+        const actualLang = blogMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          mismatchIds.add(p.id);
         }
       }
 
-      if (qaSlugs.length > 0) {
-        const { data: qaPages } = await supabase
-          .from("qa_pages")
-          .select("slug, language")
-          .in("slug", qaSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const qaMap = new Map(qaPages?.map(a => [a.slug, a.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "qa")) {
-          const actualLang = qaMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            mismatchIds.add(p.id);
-          }
+      // Find Q&A mismatches
+      for (const p of parsed.filter(p => p.content_type === "qa")) {
+        const actualLang = qaMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          mismatchIds.add(p.id);
         }
       }
 
-      // Check comparison pages
-      const compareSlugs = [...new Set(parsed.filter(p => p.content_type === "compare").map(p => p.slug))];
-      if (compareSlugs.length > 0) {
-        const { data: comparisonPages } = await supabase
-          .from("comparison_pages")
-          .select("slug, language")
-          .in("slug", compareSlugs.slice(0, 500))
-          .eq("status", "published");
-
-        const compareMap = new Map(comparisonPages?.map(c => [c.slug, c.language]) || []);
-        
-        for (const p of parsed.filter(p => p.content_type === "compare")) {
-          const actualLang = compareMap.get(p.slug);
-          if (actualLang && actualLang !== p.url_lang) {
-            mismatchIds.add(p.id);
-          }
+      // Find comparison mismatches
+      for (const p of parsed.filter(p => p.content_type === "compare")) {
+        const actualLang = compareMap.get(p.slug);
+        if (actualLang && actualLang !== p.url_lang) {
+          mismatchIds.add(p.id);
         }
       }
 
