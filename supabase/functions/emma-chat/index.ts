@@ -29,6 +29,9 @@ interface CustomFields {
     family_name?: string;
     phone?: string;
     country_prefix?: string;
+    country_name?: string;          // NEW: "Belgium", "France", "United Kingdom"
+    country_code?: string;          // NEW: "BE", "FR", "GB"
+    country_flag?: string;          // NEW: "🇧🇪", "🇫🇷", "🇬🇧"
     
     // Content phase tracking
     question_1?: string;
@@ -40,7 +43,7 @@ interface CustomFields {
     location_preference?: string[];
     sea_view_importance?: string;
     budget_range?: string;
-    bedrooms_desired?: string;      // NEW: "2", "3", "4+", "3-4", "flexible"
+    bedrooms_desired?: string;      // "2", "3", "4+", "3-4", "flexible"
     property_type?: string[];
     purpose?: string;
     timeframe?: string;
@@ -93,18 +96,103 @@ function extractCustomFields(text: string): CustomFields | null {
     return null;
 }
 
-// Extract collected info (name/family_name/phone/country_prefix)
-function extractCollectedInfo(text: string): { name?: string; family_name?: string; phone?: string; country_prefix?: string; whatsapp?: string } | null {
+// Country prefix lookup table - maps prefix to country info
+const COUNTRY_PREFIX_MAP: Record<string, { name: string; code: string; flag: string }> = {
+    '+32': { name: 'Belgium', code: 'BE', flag: '🇧🇪' },
+    '+33': { name: 'France', code: 'FR', flag: '🇫🇷' },
+    '+31': { name: 'Netherlands', code: 'NL', flag: '🇳🇱' },
+    '+49': { name: 'Germany', code: 'DE', flag: '🇩🇪' },
+    '+44': { name: 'United Kingdom', code: 'GB', flag: '🇬🇧' },
+    '+1': { name: 'USA/Canada', code: 'US', flag: '🇺🇸' },
+    '+34': { name: 'Spain', code: 'ES', flag: '🇪🇸' },
+    '+46': { name: 'Sweden', code: 'SE', flag: '🇸🇪' },
+    '+45': { name: 'Denmark', code: 'DK', flag: '🇩🇰' },
+    '+358': { name: 'Finland', code: 'FI', flag: '🇫🇮' },
+    '+36': { name: 'Hungary', code: 'HU', flag: '🇭🇺' },
+    '+47': { name: 'Norway', code: 'NO', flag: '🇳🇴' },
+    '+48': { name: 'Poland', code: 'PL', flag: '🇵🇱' },
+    '+41': { name: 'Switzerland', code: 'CH', flag: '🇨🇭' },
+    '+43': { name: 'Austria', code: 'AT', flag: '🇦🇹' },
+    '+39': { name: 'Italy', code: 'IT', flag: '🇮🇹' },
+    '+351': { name: 'Portugal', code: 'PT', flag: '🇵🇹' },
+    '+353': { name: 'Ireland', code: 'IE', flag: '🇮🇪' },
+    '+352': { name: 'Luxembourg', code: 'LU', flag: '🇱🇺' },
+    '+7': { name: 'Russia', code: 'RU', flag: '🇷🇺' },
+    '+971': { name: 'UAE', code: 'AE', flag: '🇦🇪' },
+    '+966': { name: 'Saudi Arabia', code: 'SA', flag: '🇸🇦' },
+    '+27': { name: 'South Africa', code: 'ZA', flag: '🇿🇦' },
+    '+61': { name: 'Australia', code: 'AU', flag: '🇦🇺' },
+    '+86': { name: 'China', code: 'CN', flag: '🇨🇳' },
+    '+91': { name: 'India', code: 'IN', flag: '🇮🇳' },
+};
+
+// Extract country info from phone prefix
+function extractCountryFromPrefix(phone: string): { country_prefix: string; country_name: string; country_code: string; country_flag: string } | null {
+    if (!phone || !phone.startsWith('+')) return null;
+    
+    // Try matching longest prefix first (e.g., +358 before +3)
+    const sortedPrefixes = Object.keys(COUNTRY_PREFIX_MAP).sort((a, b) => b.length - a.length);
+    
+    for (const prefix of sortedPrefixes) {
+        if (phone.startsWith(prefix)) {
+            const countryInfo = COUNTRY_PREFIX_MAP[prefix];
+            return {
+                country_prefix: prefix,
+                country_name: countryInfo.name,
+                country_code: countryInfo.code,
+                country_flag: countryInfo.flag
+            };
+        }
+    }
+    
+    // If prefix not found in map, extract it but mark country as unknown
+    const prefixMatch = phone.match(/^(\+\d{1,4})/);
+    if (prefixMatch) {
+        return {
+            country_prefix: prefixMatch[1],
+            country_name: 'Unknown',
+            country_code: 'XX',
+            country_flag: '🌍'
+        };
+    }
+    
+    return null;
+}
+
+// Extract collected info (name/family_name/phone/country info)
+function extractCollectedInfo(text: string): { 
+    name?: string; 
+    family_name?: string; 
+    phone?: string; 
+    country_prefix?: string; 
+    country_name?: string;
+    country_code?: string;
+    country_flag?: string;
+    whatsapp?: string 
+} | null {
     const match = text.match(/COLLECTED_INFO:\s*({[\s\S]*?})/);
     if (match) {
         try {
             const info = JSON.parse(match[1]);
-            // Build whatsapp from phone + country_prefix for backwards compatibility
-            if (info.phone && info.country_prefix) {
+            
+            // If phone starts with +, extract country info from it
+            if (info.phone && info.phone.startsWith('+')) {
+                const countryInfo = extractCountryFromPrefix(info.phone);
+                if (countryInfo) {
+                    info.country_prefix = countryInfo.country_prefix;
+                    info.country_name = countryInfo.country_name;
+                    info.country_code = countryInfo.country_code;
+                    info.country_flag = countryInfo.country_flag;
+                }
+                // Phone is already the full international number
+                info.whatsapp = info.phone.replace(/[\s\-\(\)]/g, '');
+            } else if (info.phone && info.country_prefix) {
+                // Legacy: Build whatsapp from phone + country_prefix
                 info.whatsapp = `${info.country_prefix}${info.phone.replace(/^0+/, '')}`;
             } else if (info.phone) {
                 info.whatsapp = info.phone;
             }
+            
             return info;
         } catch (e) {
             console.error('Error parsing collected info:', e);
@@ -229,29 +317,41 @@ Wait for family name.
 
 ---
 
-## STEP 6: REACHABILITY (NO TECHNICAL WORDS)
+## STEP 6: REACHABILITY (PHONE WITH COUNTRY CODE)
 
 Emma's exact message:
-"In case additional clarification or a correction needs to be sent, to which number may I send it if needed?"
+"What's the best phone number to reach you? Please include the country code (e.g., +32 for Belgium, +44 for UK, +33 for France)."
 
-Store: phone_number
+Store: phone_number (must start with +)
 Wait for phone number.
 
 ⚠️ PHONE NUMBER VALIDATION - CRITICAL:
-- The user MUST provide an actual phone number with at least 7 digits
-- If user responds with "yes", "ok", "sure", "no problem", or any non-numeric response:
-  Emma MUST clarify: "I need the actual phone number to reach you. For example: 555-123-4567 or just the digits like 5551234567"
-- Do NOT proceed to country prefix until a VALID phone number is received (7+ digits)
-- Do NOT output COLLECTED_INFO until valid phone is received
-- Only after receiving valid phone number, output: COLLECTED_INFO: {"phone": "[validated phone number]"}
 
-Then ask:
-"Thank you.
+VALID FORMAT: Phone MUST start with "+" followed by country code and number
+Examples of VALID phones: +32471234567, +44 7911 123456, +33 6 12 34 56 78, +1 555-123-4567
 
-And which country prefix should I note?"
+VALIDATION RULES:
+1. If phone starts with "+" and has at least 8 total characters → VALID
+2. If phone does NOT start with "+" → INVALID, ask for country code
 
-Store: country_prefix (e.g., +31, +49, +34, +44, etc.)
-Output: COLLECTED_INFO: {"country_prefix": "[prefix]"}
+If phone is INVALID (doesn't start with "+"), Emma says:
+"I need the country code to ensure the right regional expert contacts you. For example:
+
+• Belgium: +32
+• UK: +44
+• France: +33
+• Netherlands: +31
+• Germany: +49
+• Spain: +34
+
+Could you please provide your number with the country code?"
+
+Do NOT proceed until phone starts with "+"!
+
+Once valid phone received (starts with "+"):
+- The system will automatically extract country info from the prefix
+- Output: COLLECTED_INFO: {"phone": "[full phone with country code]"}
+- Do NOT ask for country prefix separately - it's already included in the phone!
 
 ---
 
@@ -585,8 +685,11 @@ If you forget to output CUSTOM_FIELDS, the user's answer will NOT be saved to th
 Contact Information (Steps 4-6):
 - first_name (name)
 - last_name (family_name)
-- phone_number (phone)
-- country_prefix
+- phone_number (phone) - MUST include country code (e.g., +32471234567)
+- country_prefix (auto-extracted from phone, e.g., +32)
+- country_name (auto-extracted from prefix, e.g., Belgium)
+- country_code (auto-extracted from prefix, e.g., BE)
+- country_flag (auto-extracted from prefix, e.g., 🇧🇪)
 
 Content Phase (Steps 9-10):
 - question_1, answer_1
@@ -639,10 +742,16 @@ For location_preference and property_type, ALWAYS output as JSON arrays:
 IMPORTANT - PATH B:
 If user declines at Step 11: CUSTOM_FIELDS: {"declined_selection": true}
 
-When you collect name, family_name, phone, or country_prefix, ALWAYS add BOTH:
-COLLECTED_INFO: {"name": "first_name", "family_name": "last_name", "phone": "number", "country_prefix": "+XX"}
+When you collect name, family_name, or phone, ALWAYS add BOTH:
+COLLECTED_INFO: {"name": "first_name", "family_name": "last_name", "phone": "+XX1234567890"}
 AND
 CUSTOM_FIELDS: {"name": "first_name"} (or whichever field was just collected)
+
+NOTE: The phone number MUST include the country code (e.g., +32471234567). The system will automatically extract:
+- country_prefix (e.g., +32)
+- country_name (e.g., Belgium)
+- country_code (e.g., BE)
+- country_flag (e.g., 🇧🇪)
 
 ---
 

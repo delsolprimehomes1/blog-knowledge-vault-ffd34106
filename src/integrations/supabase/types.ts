@@ -2285,6 +2285,7 @@ export type Database = {
           contact_timer_started_at: string | null
           conversation_duration: string | null
           conversation_transcript: Json | null
+          country_name: string | null
           country_prefix: string | null
           created_at: string | null
           current_lead_score: number | null
@@ -2363,6 +2364,7 @@ export type Database = {
           contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
+          country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
           current_lead_score?: number | null
@@ -2441,6 +2443,7 @@ export type Database = {
           contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
+          country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
           current_lead_score?: number | null
@@ -3020,6 +3023,7 @@ export type Database = {
           conversation_id: string
           conversation_status: string | null
           conversation_transcript: Json | null
+          country_name: string | null
           country_prefix: string | null
           created_at: string | null
           declined_selection: boolean | null
@@ -3079,6 +3083,7 @@ export type Database = {
           conversation_id: string
           conversation_status?: string | null
           conversation_transcript?: Json | null
+          country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
           declined_selection?: boolean | null
@@ -3138,6 +3143,7 @@ export type Database = {
           conversation_id?: string
           conversation_status?: string | null
           conversation_transcript?: Json | null
+          country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
           declined_selection?: boolean | null
