@@ -76,7 +76,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY')?.trim();
 
     if (!perplexityApiKey) {
       throw new Error('PERPLEXITY_API_KEY not configured');
@@ -296,7 +296,7 @@ async function handleBatchMode(requestData: any) {
   }
 
   const results = [];
-  const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+  const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY')?.trim();
 
   for (let index = 0; index < (articlesToProcess || []).length; index++) {
     const article = articlesToProcess![index];

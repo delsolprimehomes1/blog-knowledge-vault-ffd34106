@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Link2, Loader2, Eye, CheckCircle, AlertCircle, Sparkles } from "lucide-react";
+import { Link2, Loader2, Eye, CheckCircle, AlertCircle, Sparkles, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { BlogArticle, InternalLink } from "@/types/blog";
 
 interface LinkSuggestion {
@@ -18,6 +19,14 @@ interface LinkSuggestion {
   links: InternalLink[];
   confidenceScore: number;
   status: 'pending' | 'applied';
+}
+
+interface GenerationResult {
+  articleId: string;
+  headline?: string;
+  success: boolean;
+  error?: string;
+  linkCount: number;
 }
 
 export default function BulkInternalLinks() {
@@ -29,6 +38,8 @@ export default function BulkInternalLinks() {
   const [linkCountFilter, setLinkCountFilter] = useState<string>("0");
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ total: 0, completed: 0 });
+  const [generationResults, setGenerationResults] = useState<GenerationResult[] | null>(null);
+  const [showFailedArticles, setShowFailedArticles] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -97,10 +108,15 @@ export default function BulkInternalLinks() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data?.results) {
         const newSuggestions: Record<string, LinkSuggestion> = {};
+        const results: GenerationResult[] = [];
+        
         data.results.forEach((result: any) => {
+          // Find the article headline for better error reporting
+          const article = articles.find((a: BlogArticle) => a.id === result.articleId);
+          
           if (result.success && result.links?.length > 0) {
             newSuggestions[result.articleId] = {
               articleId: result.articleId,
@@ -109,12 +125,31 @@ export default function BulkInternalLinks() {
               status: 'pending'
             };
           }
+          
+          results.push({
+            articleId: result.articleId,
+            headline: article?.headline || 'Unknown article',
+            success: result.success,
+            error: result.error,
+            linkCount: result.linkCount || 0
+          });
         });
         
         setSuggestions(prev => ({ ...prev, ...newSuggestions }));
+        setGenerationResults(prev => prev ? [...prev, ...results] : results);
         
-        const successCount = data.results.filter((r: any) => r.success).length;
-        toast.success(`Generated links for ${successCount} article${successCount !== 1 ? 's' : ''}`);
+        const successCount = results.filter(r => r.success).length;
+        const failedCount = results.filter(r => !r.success).length;
+        
+        if (failedCount === results.length) {
+          // All failed - show specific error
+          const firstError = results.find(r => r.error)?.error || 'Unknown error';
+          toast.error(`All ${failedCount} articles failed: ${firstError}`);
+        } else if (failedCount > 0) {
+          toast.warning(`Generated links for ${successCount} articles, ${failedCount} failed`);
+        } else {
+          toast.success(`Generated links for ${successCount} article${successCount !== 1 ? 's' : ''}`);
+        }
       }
       setGeneratingArticles(new Set());
     },
@@ -207,6 +242,7 @@ export default function BulkInternalLinks() {
 
     setBulkGenerating(true);
     setBulkProgress({ total: articleIds.length, completed: 0 });
+    setGenerationResults([]); // Reset results for new generation
 
     // Process in batches of 10
     const batchSize = 10;
@@ -218,6 +254,7 @@ export default function BulkInternalLinks() {
 
     setBulkGenerating(false);
     setSelectedArticles(new Set());
+    setShowFailedArticles(true); // Auto-expand failed articles section
   };
 
   const handleBulkApply = async () => {
@@ -325,6 +362,57 @@ export default function BulkInternalLinks() {
                 </div>
                 <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} />
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Generation Results Card */}
+        {generationResults && generationResults.length > 0 && !bulkGenerating && (
+          <Card className="border-amber-200 bg-amber-50/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                Generation Results
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="ml-auto"
+                  onClick={() => setGenerationResults(null)}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mb-4">
+                <Badge variant="default" className="gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  {generationResults.filter(r => r.success).length} succeeded
+                </Badge>
+                <Badge variant="destructive" className="gap-1">
+                  <XCircle className="h-3 w-3" />
+                  {generationResults.filter(r => !r.success).length} failed
+                </Badge>
+              </div>
+              
+              {generationResults.some(r => !r.success) && (
+                <Collapsible open={showFailedArticles} onOpenChange={setShowFailedArticles}>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-amber-800 hover:text-amber-900">
+                    {showFailedArticles ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    View failed articles ({generationResults.filter(r => !r.success).length})
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3 space-y-2">
+                    {generationResults.filter(r => !r.success).map((result) => (
+                      <div key={result.articleId} className="flex items-start justify-between py-2 px-3 bg-white rounded border border-amber-200">
+                        <div className="flex-1">
+                          <span className="font-medium text-sm">{result.headline}</span>
+                        </div>
+                        <span className="text-red-600 text-sm ml-4 max-w-[300px] text-right">{result.error || 'Unknown error'}</span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </CardContent>
           </Card>
         )}

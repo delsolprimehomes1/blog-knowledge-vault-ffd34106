@@ -109,23 +109,8 @@ export async function callPerplexity<T = any>(
       }
     }
 
-    // Handle error responses
-    if (isHtml) {
-      return {
-        success: false,
-        error: {
-          error_code: 'PERPLEXITY_WAF_BLOCK',
-          upstreamStatus,
-          contentType,
-          isHtml: true,
-          userMessage: 'Perplexity is blocking requests with a security challenge. Try again in a few minutes.',
-          responseSnippet: sanitizedSnippet,
-        },
-        latencyMs,
-      };
-    }
-
-    // Map HTTP status to error code
+    // Handle error responses - PRIORITIZE status codes over HTML detection
+    // Map HTTP status to error code FIRST (fixes 401 being misclassified as WAF block)
     const errorCodeMap: Record<number, string> = {
       401: 'PERPLEXITY_AUTH_FAILED',
       402: 'PERPLEXITY_PAYMENT_REQUIRED',
@@ -146,17 +131,48 @@ export async function callPerplexity<T = any>(
       503: 'Perplexity is temporarily unavailable. Try again later.',
     };
 
+    // Check for mapped status codes FIRST (before HTML detection)
+    if (errorCodeMap[upstreamStatus]) {
+      return {
+        success: false,
+        error: {
+          error_code: errorCodeMap[upstreamStatus],
+          upstreamStatus,
+          contentType,
+          userMessage: userMessageMap[upstreamStatus],
+          responseSnippet: sanitizedSnippet,
+        },
+        latencyMs,
+      };
+    }
+
+    // Only fall back to WAF detection for unmapped statuses with HTML content
+    if (isHtml) {
+      return {
+        success: false,
+        error: {
+          error_code: 'PERPLEXITY_WAF_BLOCK',
+          upstreamStatus,
+          contentType,
+          isHtml: true,
+          userMessage: 'Perplexity is blocking requests with a security challenge. Try again in a few minutes.',
+          responseSnippet: sanitizedSnippet,
+        },
+        latencyMs,
+      };
+    }
+
+    // Generic error for other cases
     return {
       success: false,
       error: {
-        error_code: errorCodeMap[upstreamStatus] || 'PERPLEXITY_API_ERROR',
+        error_code: 'PERPLEXITY_API_ERROR',
         upstreamStatus,
         contentType,
-        userMessage: userMessageMap[upstreamStatus] || `Perplexity returned HTTP ${upstreamStatus}`,
+        userMessage: `Perplexity returned HTTP ${upstreamStatus}`,
         responseSnippet: sanitizedSnippet,
       },
       latencyMs,
-    };
 
   } catch (error) {
     return {
