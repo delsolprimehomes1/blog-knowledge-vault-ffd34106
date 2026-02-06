@@ -1,81 +1,75 @@
 
-# Fix: URL Length Limit Causing Language Mismatch Detection to Fail
 
-## Root Cause Identified
+# Fix: "Fixed Images" Count Showing 100 Instead of Actual Total (600)
 
-The 404 Resolution Dashboard shows **0 language mismatches** because the database query to `qa_pages` is failing with a **400 Bad Request** error. The cause is that the Supabase query URL exceeds the browser's URL length limit.
+## Problem Identified
 
-### Evidence
-- Network request to `qa_pages` returns **400 Bad Request**
-- The URL contains ~500 slugs as query parameters, resulting in a URL over 15KB
-- Browser/Supabase URL limit is approximately 8KB
+The "Fixed Images" card shows **100** but the actual count is **600**. This happens because:
 
-### Database Verification
-- There ARE **111 QA language mismatches** in the database (e.g., `/de/qa/swedish-slug` where content exists in Swedish)
-- There are **0 blog mismatches** and **0 comparison mismatches** (all those URLs are truly gone)
-- The total of **911 gone URLs** with 111 being fixable mismatches
+1. Line 337 has `.limit(100)` on the resolved issues query (for performance)
+2. Line 353 uses `resolvedIssuesData.length` for the count instead of querying the actual total
+
+The system IS continuing to fix images - this is only a display bug.
+
+## Current Database State
+
+| Status | Count |
+|--------|-------|
+| Fixed (resolved) | **600** |
+| Pending (unresolved) | **250** |
 
 ## Solution
 
-Batch the slug queries into smaller chunks (50 slugs per request) to stay within URL length limits.
+Add a separate `{ count: "exact", head: true }` query to get the actual total of fixed images, while keeping the `.limit(100)` on the data query (for the Fixed tab display).
 
-### File to Modify
+## Technical Changes
 
-`src/hooks/useNotFoundAnalysis.ts`
+### File: `src/pages/admin/ImageHealthDashboard.tsx`
 
-### Changes Required
-
-1. **Create a helper function for batched slug lookups**
+1. **Add a count-only query for resolved issues** (around line 319)
 
 ```typescript
-// Helper to batch slugs into chunks and query in parallel
-async function batchedSlugLookup(
-  table: "blog_articles" | "qa_pages" | "comparison_pages",
-  slugs: string[],
-  batchSize: number = 50
-): Promise<Map<string, string>> {
-  const resultMap = new Map<string, string>();
-  const uniqueSlugs = [...new Set(slugs)];
-  
-  // Process in batches
-  for (let i = 0; i < uniqueSlugs.length; i += batchSize) {
-    const batch = uniqueSlugs.slice(i, i + batchSize);
-    const { data } = await supabase
-      .from(table)
-      .select("slug, language")
-      .in("slug", batch)
-      .eq("status", "published");
-    
-    data?.forEach(row => resultMap.set(row.slug, row.language));
-  }
-  
-  return resultMap;
-}
+// Get accurate count of resolved issues (separate from limited data query)
+const { count: resolvedCount } = await supabase
+  .from('article_image_issues')
+  .select('*', { count: 'exact', head: true })
+  .not('resolved_at', 'is', null);
+
+// Fetch resolved issues for display (limited to 100 for performance)
+const { data: resolvedData, error: resolvedError } = await supabase
+  .from('article_image_issues')
+  .select(`...`)
+  .not('resolved_at', 'is', null)
+  .order('resolved_at', { ascending: false })
+  .limit(100);
 ```
 
-2. **Update countLanguageMismatches() to use batched lookup**
+2. **Update the counts calculation** (around line 353)
 
-Replace the individual table queries with calls to the batched helper function.
+```typescript
+const newCounts = {
+  duplicates: issuesData.filter(i => i.issue_type === 'duplicate').length,
+  textIssues: issuesData.filter(i => i.issue_type === 'text_detected').length,
+  expiredUrls: issuesData.filter(i => i.issue_type === 'expired_url').length,
+  total: issuesData.length,
+  fixed: resolvedCount || 0  // Use the count query, not the limited array length
+};
+```
 
-3. **Update useLanguageMismatches() to use batched lookup**
+3. **Update the Fixed tab to show "100 of 600"** (around line 670)
 
-Same pattern - use the batched helper instead of single large queries.
-
-4. **Update useConfirmedGoneUrls() to use batched lookup**
-
-Same pattern for the exclusion logic.
+Show users that they're viewing a subset of all fixed images.
 
 ## Expected Result
 
-After this fix:
-- The dashboard will show **~111 Language Mismatches** (all QA pages)
-- Users can click "Fix All" to remove these from `gone_urls`
-- The smart redirect system will then handle these URLs automatically
-- The "Confirmed 410s" count will decrease from 911 to ~800
+After the fix:
+- **Fixed Images card**: Shows **600** (actual total)
+- **Fixed tab**: Shows "Showing 100 of 600" with the most recent 100 fixes
+- **Pending issues**: 250 can still be fixed via Regenerate buttons
 
-## Technical Notes
+## Files to Modify
 
-- Current code: `.in("slug", uniqueSlugs.slice(0, 500))` creates a URL over 15KB
-- Fixed code: Batches of 50 slugs creates URLs of ~2KB each
-- Trade-off: Slightly more network requests but all will succeed
-- Alternative: Could use Postgres function, but batching is simpler
+| File | Change |
+|------|--------|
+| `src/pages/admin/ImageHealthDashboard.tsx` | Add count query, update counts calculation |
+
