@@ -1,75 +1,79 @@
 
 
-# Add Country Prefix Visibility to Lead Dashboards
+# Fix: Phone Number Display Showing "XX XX+" on Lead Dashboards
 
-## Current State
+## Problem Identified
 
-Emma chatbot **already captures** the country prefix when asking users for their phone number. This data is stored in the `crm_leads` table in these columns:
-- `country_prefix` (e.g., "+31", "+44", "+34")
-- `country_name` (e.g., "Netherlands", "United Kingdom")
-- `country_flag` (e.g., "🇳🇱", "🇬🇧")
+The display shows `XX XX+17027678743` because of **corrupted data in the database**:
 
-**The problem**: These fields are not being displayed on the lead dashboards for admins and agents.
+| Field | Expected Value | Actual Value |
+|-------|----------------|--------------|
+| `phone_number` | `+17027678743` | `XX+17027678743` |
+| `country_prefix` | `+1` | `XX` |
+| `country_flag` | `🇺🇸` | `null` |
+| `country_name` | `United States` | `null` |
 
----
-
-## What Needs to Change
-
-### Visual Overview
-
-| View | Current Display | After Fix |
-|------|-----------------|-----------|
-| Admin Leads Table | `7027776546` | `+1 7027776546` or `🇺🇸 +1 7027776546` |
-| Agent Leads Table | `7027776546` | `+1 7027776546` |
-| Mobile Lead Card | No prefix shown | `🇺🇸 +1 7027776546` |
+The "4 X's" come from:
+1. `country_prefix` = "XX" (first two X's)
+2. `phone_number` starts with "XX" (second two X's)
 
 ---
 
-## Implementation Plan
+## Root Cause
 
-### 1. Update Admin Leads Hook (`src/hooks/useAdminLeads.ts`)
+The Emma chatbot's `extractCountryFromPrefix()` function only works when the phone starts with `+`. If someone enters `XX+17027678743` or any non-standard format, the country extraction fails and defaults to "XX".
 
-Add country fields to the `AdminLead` interface so they're available in the admin table:
+---
+
+## Two-Part Solution
+
+### Part 1: Clean Existing Bad Data (Database Fix)
+
+Update leads that have malformed phone numbers with "XX" prefix:
+
+```sql
+-- Fix leads where phone_number starts with "XX+"
+UPDATE crm_leads
+SET 
+  phone_number = REGEXP_REPLACE(phone_number, '^XX\+', '+'),
+  country_prefix = REGEXP_REPLACE(phone_number, '^XX(\+\d{1,4}).*', '\1'),
+  country_code = CASE 
+    WHEN phone_number LIKE 'XX+1%' THEN 'US'
+    WHEN phone_number LIKE 'XX+34%' THEN 'ES'
+    WHEN phone_number LIKE 'XX+31%' THEN 'NL'
+    -- etc.
+  END,
+  country_flag = CASE 
+    WHEN phone_number LIKE 'XX+1%' THEN '🇺🇸'
+    WHEN phone_number LIKE 'XX+34%' THEN '🇪🇸'
+    WHEN phone_number LIKE 'XX+31%' THEN '🇳🇱'
+    -- etc.
+  END,
+  country_name = CASE 
+    WHEN phone_number LIKE 'XX+1%' THEN 'United States'
+    WHEN phone_number LIKE 'XX+34%' THEN 'Spain'
+    WHEN phone_number LIKE 'XX+31%' THEN 'Netherlands'
+    -- etc.
+  END
+WHERE phone_number LIKE 'XX+%';
+```
+
+### Part 2: Defensive UI Display
+
+Update the UI to:
+1. Not display "XX" as a country prefix (it's not valid)
+2. Strip "XX" from phone number display if present
+3. Only show country flag/prefix when they're actually valid
 
 ```typescript
-export interface AdminLead {
-  // ... existing fields ...
-  country_prefix: string | null;
-  country_name: string | null;
-  country_flag: string | null;
-}
+// In LeadsOverview.tsx - only show prefix if it starts with "+"
+{(lead as any).country_prefix && (lead as any).country_prefix.startsWith('+') && (
+  <span className="font-medium">{(lead as any).country_prefix}</span>
+)}
+
+// Strip any leading "XX" from phone display
+{lead.phone_number?.replace(/^XX\+?/, '+')}
 ```
-
-### 2. Update Admin Leads Overview (`src/pages/crm/admin/LeadsOverview.tsx`)
-
-Modify the Contact column (lines 332-351) to show the prefix with the phone number:
-
-```text
-Current:
-  📞 7027776546
-
-After:
-  🇺🇸 +1 7027776546
-  ✉️ email@example.com
-```
-
-The country flag + prefix will be prepended to the phone number for immediate visibility.
-
-### 3. Update Agent Leads Table (`src/components/crm/LeadsTable.tsx`)
-
-Modify the Contact column (lines 319-340) to include the country prefix:
-
-```text
-Current:
-  📞 7027776546
-
-After:
-  📞 +1 7027776546  (or 🇺🇸 +1 7027776546)
-```
-
-### 4. Update Mobile Lead Card (`src/components/crm/MobileLeadCard.tsx`)
-
-The mobile card already shows country flag + name in the header. We'll also update the call/WhatsApp functionality description to show the full international number.
 
 ---
 
@@ -77,20 +81,20 @@ The mobile card already shows country flag + name in the header. We'll also upda
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAdminLeads.ts` | Add `country_prefix`, `country_name`, `country_flag` to AdminLead interface |
-| `src/pages/crm/admin/LeadsOverview.tsx` | Show prefix + flag in Contact column |
-| `src/components/crm/LeadsTable.tsx` | Show prefix in Contact column phone display |
-| `src/components/crm/MobileLeadCard.tsx` | Show prefix with phone number display |
+| Database migration | Clean up existing bad data |
+| `src/pages/crm/admin/LeadsOverview.tsx` | Defensive display - hide invalid "XX" prefix, clean phone display |
+| `src/components/crm/LeadsTable.tsx` | Same defensive display logic |
+| `src/components/crm/MobileLeadCard.tsx` | Same defensive display logic |
+| `supabase/functions/emma-chat/index.ts` | (Optional) Add validation to strip "XX" from phone input before processing |
 
 ---
 
 ## Expected Result
 
-After this update:
-- **Admins** will see the full international phone number with country prefix in the leads table
-- **Agents** will see the same in their leads table
-- **Mobile view** will show the country prefix for easy identification
-- All views will clearly indicate the lead's country of origin for proper follow-up
+| Before | After |
+|--------|-------|
+| `XX XX+17027678743` | `+1 7027678743` or just `+17027678743` |
+| No flag visible | 🇺🇸 (after data cleanup) |
 
-This helps agents and admins immediately know which country code to use when calling or messaging leads.
+The fix ensures both existing bad data is corrected AND future displays gracefully handle any edge cases.
 
