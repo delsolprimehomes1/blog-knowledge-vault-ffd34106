@@ -1,210 +1,107 @@
 
-# Comprehensive Website Link Audit Plan
 
-## Executive Summary
+# Fix: Internal Link Generator Failing with "Generated 0 links"
 
-This plan creates a **Unified Link Audit System** to confirm there are no broken links on your website and that all links are active and responsive. The audit will cover:
+## Problem Identified
 
-- Internal content links (blog, Q&A, comparisons, locations)
-- External authority/citation links
-- Navigation links (header, footer, CTAs)
-- Social media links
+The bulk internal link generator is returning **"Generated links for 0 articles"** because:
 
----
-
-## Current State Analysis
-
-### Existing Link Infrastructure
-| Tool | Purpose | Last Run |
-|------|---------|----------|
-| `/admin/broken-links` | Internal link validation | Jan 30, 2026 (0 broken found) |
-| `/admin/redirect-checker` | Detect redirect URLs | Available |
-| `/admin/production-audit` | Live site SEO checks | Available |
-
-### Content with Links
-| Content Type | Total Published | With Internal Links |
-|--------------|-----------------|---------------------|
-| Blog Articles | 3,271 | 517 |
-| Q&A Pages | 9,600 | 9,600 |
-| Comparison Pages | 47 | 47 |
-| Gone URLs (410) | 800 | N/A |
+1. **Perplexity API is returning HTML error responses** (likely rate limiting or service issues)
+2. **No error handling for non-200 responses** - The code tries to parse HTML as JSON, causing failures
+3. **Errors are silently swallowed** - The catch block just sets `suggestions = []` without logging
 
 ---
 
-## Proposed Solution
+## Solution
 
-### Phase 1: Create Comprehensive Link Audit Dashboard
+Add proper error handling to the Perplexity API call in the edge function:
 
-A new `/admin/link-audit` page that consolidates all link checking into one view:
+### Changes to `supabase/functions/find-internal-links/index.ts`
 
-**Section 1: Internal Links**
-- Run existing broken link scanner across all content types
-- Show results grouped by content type
-- Quick-fix actions (remove link, mark as 410)
+**Add HTTP status check before JSON parsing (around line 398):**
 
-**Section 2: External Links Health**
-- Scan all published content for external URLs
-- HTTP HEAD request to verify each returns 200/301/302
-- Flag any 4xx/5xx responses
-- Track authority domain health (gov.es, notaries.es, etc.)
+```typescript
+const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+  // ... existing code
+});
 
-**Section 3: Navigation Links**
-- Audit all hardcoded links in footer, CTAs, and navigation
-- Verify routes exist in React Router
-- Check external links (social media, Google reviews)
-
-**Section 4: Summary Dashboard**
-- Total links audited
-- Healthy vs broken percentage
-- Links by status (200, 301, 404, 410, timeout)
-- Last scan timestamp
-
----
-
-## Technical Implementation
-
-### 1. New Edge Function: `audit-all-links`
-
-```text
-Input: { 
-  scanTypes: ['internal', 'external', 'navigation'],
-  contentTypes: ['blog', 'qa', 'comparison', 'location'],
-  sampleSize?: number // for large datasets
+// ADD: Check for API errors before parsing
+if (!aiResponse.ok) {
+  const errorText = await aiResponse.text();
+  console.error(`Perplexity API error for "${article.headline}": ${aiResponse.status} - ${errorText.substring(0, 200)}`);
+  
+  // Handle rate limiting specifically
+  if (aiResponse.status === 429) {
+    results.push({
+      articleId: article.id,
+      success: false,
+      error: 'Rate limited by Perplexity API - try again in a few minutes',
+      linkCount: 0
+    });
+    continue;
+  }
+  
+  throw new Error(`Perplexity API returned ${aiResponse.status}`);
 }
 
-Process:
-1. Query all published content with links
-2. Extract internal links from internal_links JSONB
-3. Extract external links from content body
-4. HTTP HEAD request to each unique URL
-5. Record results in audit_results table
+const aiData = await aiResponse.json();
+// ... rest of existing code
+```
 
-Output: {
-  total_links: number,
-  healthy: number,
-  broken: number,
-  redirects: number,
-  timeouts: number,
-  results: LinkResult[]
+**Also add to single mode (around line 194):**
+
+```typescript
+if (!aiResponse.ok) {
+  const errorText = await aiResponse.text();
+  console.error('Perplexity API error:', aiResponse.status, errorText.substring(0, 200));
+  throw new Error(`Perplexity API error: ${aiResponse.status}`);
 }
 ```
 
-### 2. New Database Table: `link_audit_results`
+---
 
-```sql
-CREATE TABLE link_audit_results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  audit_id UUID NOT NULL,
-  link_url TEXT NOT NULL,
-  link_type TEXT, -- 'internal' | 'external' | 'navigation'
-  source_type TEXT, -- 'blog' | 'qa' | 'footer' | 'cta'
-  source_id UUID,
-  source_slug TEXT,
-  http_status INTEGER,
-  response_time_ms INTEGER,
-  is_broken BOOLEAN,
-  checked_at TIMESTAMPTZ DEFAULT now()
-);
+## Additional Improvements
+
+1. **Better logging** - Log the full Perplexity response status
+2. **Rate limit handling** - Add delay between batch API calls
+3. **User feedback** - Show specific error message on frontend when rate limited
+
+### Optional: Add delay between batch items
+
+```typescript
+// Add small delay between API calls to avoid rate limiting
+if (index > 0) {
+  await new Promise(resolve => setTimeout(resolve, 500));
+}
 ```
 
-### 3. New Admin Page: `/admin/link-audit`
+---
 
-**Dashboard Layout:**
-- Summary cards (Total, Healthy, Broken, Redirects)
-- Progress bar during scan
-- Tabs for Internal/External/Navigation
-- Bulk actions (Remove all broken, Export CSV)
+## Why This Is Happening Now
+
+The Perplexity API has rate limits. When processing multiple articles quickly:
+- Each article = 1 API call
+- Rapid-fire calls trigger rate limiting
+- API returns HTML error page instead of JSON
+- Code tries to parse HTML as JSON → crashes
+- Result: `success: false` for all articles
 
 ---
 
-## Navigation Links to Audit
+## Files to Modify
 
-### Footer Links (src/components/home/Footer.tsx)
-| Link | Destination | Type |
-|------|-------------|------|
-| Properties | `/{lang}/properties` | Internal |
-| Locations | `/{lang}/locations` | Internal |
-| About | `/about` | Internal |
-| Buyers Guide | `/{lang}/buyers-guide` | Internal |
-| Blog | `/{lang}/blog` | Internal |
-| Glossary | `/{lang}/glossary` | Internal |
-| Comparisons | `/{lang}/compare` | Internal |
-| Contact | `/{lang}/contact` | Internal |
-| Dashboard | `/crm/agent/login` | Internal |
-| Privacy | `/privacy` | Internal |
-| Terms | `/terms` | Internal |
-
-### Social Links
-| Platform | URL | Status Check |
-|----------|-----|--------------|
-| Facebook | facebook.com/delsolprimehomes | HEAD request |
-| Instagram | instagram.com/delsolprimehomes | HEAD request |
-| LinkedIn | linkedin.com/company/delsolprimehomes | HEAD request |
-| Google Reviews | Google My Business link | HEAD request |
+| File | Change |
+|------|--------|
+| `supabase/functions/find-internal-links/index.ts` | Add HTTP status checks, rate limit handling, and delays |
 
 ---
 
-## Audit Execution Steps
+## Testing After Fix
 
-1. **Run Internal Link Scan**
-   - Use existing `/admin/broken-links` tool
-   - Select all content types (blog, QA, comparison, location)
-   - Export results
+1. Navigate to `/admin/bulk-internal-links`
+2. Select 2-3 French articles
+3. Click "Generate Links"
+4. Should now either:
+   - Generate links successfully, OR
+   - Show meaningful error message if rate limited
 
-2. **Run External Link Scan**
-   - New scanner for external URLs in content
-   - Sample 100-200 articles for efficiency
-   - Focus on authority domains
-
-3. **Verify Navigation Links**
-   - Automated check of all footer/header links
-   - Verify React routes exist
-   - Test external social links
-
-4. **Generate Report**
-   - Export comprehensive CSV
-   - Dashboard summary
-   - Action items for any broken links
-
----
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/pages/admin/LinkAudit.tsx` | Create | Unified audit dashboard |
-| `supabase/functions/audit-all-links/index.ts` | Create | Comprehensive link scanner |
-| `src/components/AdminLayout.tsx` | Modify | Add menu item |
-| `src/App.tsx` | Modify | Add route |
-
----
-
-## Quick Win: Run Existing Tools Now
-
-Before building the new system, you can run the existing tools:
-
-1. **Go to `/admin/broken-links`**
-   - Enable all content types
-   - Click "Scan Content"
-   - Review any broken internal links
-
-2. **Go to `/admin/production-audit`**
-   - Run full audit
-   - Check "External Citations" section
-   - Review any broken authority links
-
-3. **Manual Navigation Check**
-   - Test each footer link manually
-   - Verify social links open correctly
-
----
-
-## Timeline Estimate
-
-| Phase | Duration |
-|-------|----------|
-| Run existing tools | 15 minutes |
-| Create new audit edge function | 2 hours |
-| Create unified dashboard | 3 hours |
-| Full site audit | 30 minutes |
-| **Total** | **~6 hours** |
