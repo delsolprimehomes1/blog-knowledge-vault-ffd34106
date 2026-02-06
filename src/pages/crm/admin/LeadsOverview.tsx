@@ -334,13 +334,13 @@ export default function LeadsOverview() {
                           {lead.phone_number ? (
                             <div className="flex items-center gap-1 text-sm">
                               <Phone className="h-3 w-3" />
-                              {(lead as any).country_flag && (
+                              {(lead as any).country_flag && (lead as any).country_prefix?.startsWith('+') && (
                                 <span className="text-base">{(lead as any).country_flag}</span>
                               )}
-                              {(lead as any).country_prefix && (
+                              {(lead as any).country_prefix?.startsWith('+') && (
                                 <span className="font-medium">{(lead as any).country_prefix}</span>
                               )}
-                              {lead.phone_number}
+                              {lead.phone_number?.replace(/^XX\+?/, '+')}
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-orange-600 border-orange-300">
