@@ -209,6 +209,9 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
                 {...register("max_active_leads", { valueAsNumber: true })}
                 defaultValue={500}
               />
+              {errors.max_active_leads && (
+                <p className="text-sm text-destructive">{errors.max_active_leads.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Timezone</Label>
