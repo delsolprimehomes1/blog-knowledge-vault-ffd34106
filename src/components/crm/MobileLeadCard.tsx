@@ -227,7 +227,7 @@ export function MobileLeadCard({
             </h3>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-            {lead.country_flag && lead.country_name && (
+            {lead.country_flag && lead.country_name && lead.country_prefix?.startsWith('+') && (
               <span className="bg-muted px-1.5 py-0.5 rounded text-xs">
                 {lead.country_flag} {lead.country_name}
                 {lead.country_prefix && ` (${lead.country_prefix})`}

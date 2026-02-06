@@ -321,17 +321,17 @@ export function LeadsTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="space-y-1">
                         <a
-                          href={`tel:${lead.country_prefix || ''}${lead.phone_number}`}
+                          href={`tel:${lead.country_prefix?.startsWith('+') ? lead.country_prefix : ''}${lead.phone_number?.replace(/^XX\+?/, '+')}`}
                           className="flex items-center gap-1 text-sm hover:text-primary"
                         >
                           <Phone className="w-3 h-3" />
-                          {lead.country_flag && (
+                          {lead.country_flag && lead.country_prefix?.startsWith('+') && (
                             <span className="text-base">{lead.country_flag}</span>
                           )}
-                          {lead.country_prefix && (
+                          {lead.country_prefix?.startsWith('+') && (
                             <span className="font-medium">{lead.country_prefix}</span>
                           )}
-                          {lead.phone_number}
+                          {lead.phone_number?.replace(/^XX\+?/, '+')}
                         </a>
                         {lead.email && (
                           <a
