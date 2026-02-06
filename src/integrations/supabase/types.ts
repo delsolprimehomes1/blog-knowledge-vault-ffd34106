@@ -2285,6 +2285,8 @@ export type Database = {
           contact_timer_started_at: string | null
           conversation_duration: string | null
           conversation_transcript: Json | null
+          country_code: string | null
+          country_flag: string | null
           country_name: string | null
           country_prefix: string | null
           created_at: string | null
@@ -2364,6 +2366,8 @@ export type Database = {
           contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
+          country_code?: string | null
+          country_flag?: string | null
           country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
@@ -2443,6 +2447,8 @@ export type Database = {
           contact_timer_started_at?: string | null
           conversation_duration?: string | null
           conversation_transcript?: Json | null
+          country_code?: string | null
+          country_flag?: string | null
           country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
@@ -3023,6 +3029,8 @@ export type Database = {
           conversation_id: string
           conversation_status: string | null
           conversation_transcript: Json | null
+          country_code: string | null
+          country_flag: string | null
           country_name: string | null
           country_prefix: string | null
           created_at: string | null
@@ -3083,6 +3091,8 @@ export type Database = {
           conversation_id: string
           conversation_status?: string | null
           conversation_transcript?: Json | null
+          country_code?: string | null
+          country_flag?: string | null
           country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
@@ -3143,6 +3153,8 @@ export type Database = {
           conversation_id?: string
           conversation_status?: string | null
           conversation_transcript?: Json | null
+          country_code?: string | null
+          country_flag?: string | null
           country_name?: string | null
           country_prefix?: string | null
           created_at?: string | null
