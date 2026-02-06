@@ -29,6 +29,10 @@ export interface AdminLead {
   days_since_last_contact: number | null;
   archived: boolean;
   contact_complete?: boolean;
+  // Country fields for phone prefix display
+  country_prefix: string | null;
+  country_name: string | null;
+  country_flag: string | null;
   agent?: {
     id: string;
     first_name: string;

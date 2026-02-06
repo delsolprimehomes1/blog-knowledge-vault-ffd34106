@@ -321,10 +321,16 @@ export function LeadsTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="space-y-1">
                         <a
-                          href={`tel:${lead.phone_number}`}
+                          href={`tel:${lead.country_prefix || ''}${lead.phone_number}`}
                           className="flex items-center gap-1 text-sm hover:text-primary"
                         >
                           <Phone className="w-3 h-3" />
+                          {lead.country_flag && (
+                            <span className="text-base">{lead.country_flag}</span>
+                          )}
+                          {lead.country_prefix && (
+                            <span className="font-medium">{lead.country_prefix}</span>
+                          )}
                           {lead.phone_number}
                         </a>
                         {lead.email && (

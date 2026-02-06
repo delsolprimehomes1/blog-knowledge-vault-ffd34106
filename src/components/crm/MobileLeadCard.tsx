@@ -230,6 +230,7 @@ export function MobileLeadCard({
             {lead.country_flag && lead.country_name && (
               <span className="bg-muted px-1.5 py-0.5 rounded text-xs">
                 {lead.country_flag} {lead.country_name}
+                {lead.country_prefix && ` (${lead.country_prefix})`}
               </span>
             )}
             <span>{languageFlag} {(lead.language || "en").toUpperCase()}</span>

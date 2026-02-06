@@ -334,6 +334,12 @@ export default function LeadsOverview() {
                           {lead.phone_number ? (
                             <div className="flex items-center gap-1 text-sm">
                               <Phone className="h-3 w-3" />
+                              {(lead as any).country_flag && (
+                                <span className="text-base">{(lead as any).country_flag}</span>
+                              )}
+                              {(lead as any).country_prefix && (
+                                <span className="font-medium">{(lead as any).country_prefix}</span>
+                              )}
                               {lead.phone_number}
                             </div>
                           ) : (
