@@ -316,7 +316,13 @@ export default function ImageHealthDashboard() {
 
       if (unresolvedError) throw unresolvedError;
 
-      // Fetch resolved issues
+      // Get accurate count of resolved issues (separate from limited data query)
+      const { count: resolvedCount } = await supabase
+        .from('article_image_issues')
+        .select('*', { count: 'exact', head: true })
+        .not('resolved_at', 'is', null);
+
+      // Fetch resolved issues for display (limited to 100 for performance)
       const { data: resolvedData, error: resolvedError } = await supabase
         .from('article_image_issues')
         .select(`
@@ -344,13 +350,13 @@ export default function ImageHealthDashboard() {
       setIssues(issuesData);
       setResolvedIssues(resolvedIssuesData);
 
-      // Calculate counts
+      // Calculate counts - use resolvedCount for accurate total
       const newCounts = {
         duplicates: issuesData.filter(i => i.issue_type === 'duplicate').length,
         textIssues: issuesData.filter(i => i.issue_type === 'text_detected').length,
         expiredUrls: issuesData.filter(i => i.issue_type === 'expired_url').length,
         total: issuesData.length,
-        fixed: resolvedIssuesData.length
+        fixed: resolvedCount || 0
       };
       setCounts(newCounts);
     } catch (error) {
