@@ -1,111 +1,194 @@
 
-# Update send-lead-notification to Display Country Information
+# Update CRM Lead Cards to Display Country Information
 
 ## Overview
 
-Add country/origin information to agent notification emails to address Hans's request for distinguishing which country leads are from (e.g., French leads from France vs. Belgium). This will add visual badges after the lead name and a dedicated "Country/Origin" row in contact details.
+Add country information visibility across the CRM interface so agents can immediately see which country each lead is from (e.g., distinguish French leads from France vs. Belgium). This complements the email notification updates already deployed.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
+| File | Purpose |
 |------|---------|
-| `supabase/functions/send-lead-notification/index.ts` | Update Lead interface and 6 email templates |
+| `src/hooks/useAgentLeadsTable.ts` | Add country fields to AgentLead interface and query |
+| `src/components/crm/MobileLeadCard.tsx` | Add country badge to mobile cards |
+| `src/components/crm/LeadsTable.tsx` | Add country display in desktop table |
+| `src/components/crm/detail/LeadDetailHeader.tsx` | Add country badge in lead detail header |
+| `src/components/crm/detail/ContactInfoCard.tsx` | Add country/origin row in contact details |
 
 ---
 
 ## Changes Required
 
-### 1. Update Lead Interface (lines 19-42)
+### 1. Update AgentLead Interface (useAgentLeadsTable.ts)
 
-Add the three country fields that are now stored in `crm_leads`:
+Add country fields to the interface (lines 6-33):
 
 ```typescript
-interface Lead {
+export interface AgentLead {
   // ... existing fields ...
-  country_name?: string;     // NEW: "Belgium", "France", etc.
-  country_code?: string;     // NEW: "BE", "FR", etc.
-  country_flag?: string;     // NEW: "🇧🇪", "🇫🇷", etc.
-  country_prefix?: string;   // Already exists in DB
+  country_name: string | null;      // NEW
+  country_code: string | null;      // NEW
+  country_flag: string | null;      // NEW
+  country_prefix: string | null;    // NEW
 }
 ```
 
+Update the Supabase query to include these fields in the select statement.
+
 ---
 
-### 2. Update Email Templates
+### 2. Update MobileLeadCard.tsx
 
-Add a **badges section** after the lead name and a **Country/Origin row** in contact details for all 6 templates:
+**Add to interface (lines 90-113):**
+```typescript
+lead: {
+  // ... existing fields ...
+  country_name?: string | null;
+  country_code?: string | null;
+  country_flag?: string | null;
+  country_prefix?: string | null;
+}
+```
 
-#### Badge Section (after lead name heading)
-```html
-<div style="display: flex; gap: 10px; margin-bottom: 20px;">
-  ${lead.country_flag ? `
-    <span style="background: #f0f0f0; padding: 6px 12px; border-radius: 6px; font-size: 14px;">
-      ${lead.country_flag} ${lead.country_name}
+**Add country badge in the info section (around line 225-226):**
+Replace the current language display:
+```typescript
+// Before
+<span>{languageFlag} {(lead.language || "en").toUpperCase()}</span>
+
+// After - Show country + language badges
+<span className="flex items-center gap-1">
+  {lead.country_flag && lead.country_name && (
+    <span className="bg-muted px-1.5 py-0.5 rounded text-xs">
+      {lead.country_flag} {lead.country_name}
     </span>
-  ` : ''}
-  <span style="background: #4F46E5; color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px;">
-    ${getLanguageFlag(lead.language)} ${lead.language.toUpperCase()}
-  </span>
+  )}
+  <span>{languageFlag} {(lead.language || "en").toUpperCase()}</span>
+</span>
+```
+
+---
+
+### 3. Update LeadsTable.tsx
+
+**Modify the Language column (lines 343-353):**
+```typescript
+{/* Language */}
+{visibleColumns.language && (
+  <TableCell onClick={() => navigate(`/crm/agent/leads/${lead.id}`)}>
+    <div className="flex flex-col gap-0.5">
+      {/* Country badge - if available */}
+      {lead.country_flag && lead.country_name && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span>{lead.country_flag}</span>
+          <span>{lead.country_name}</span>
+        </div>
+      )}
+      {/* Language */}
+      <div className="flex items-center gap-1">
+        <span>{getLanguageFlag(lead.language)}</span>
+        <span className="text-xs font-medium">
+          {lead.language.toUpperCase()}
+        </span>
+      </div>
+    </div>
+  </TableCell>
+)}
+```
+
+Also add country fields to `AgentLead` type import if needed.
+
+---
+
+### 4. Update LeadDetailHeader.tsx
+
+**Add country badge next to language (around line 134-137):**
+```typescript
+<h1 className="text-xl font-bold flex items-center gap-2">
+  {lead.first_name} {lead.last_name}
+  {/* Country badge */}
+  {lead.country_flag && lead.country_name && (
+    <Badge variant="secondary" className="text-sm font-normal">
+      {lead.country_flag} {lead.country_name}
+    </Badge>
+  )}
+  {/* Language badge */}
+  <Badge variant="outline" className="text-sm font-normal">
+    {getLanguageFlag(lead.language)} {lead.language.toUpperCase()}
+  </Badge>
+</h1>
+```
+
+---
+
+### 5. Update ContactInfoCard.tsx
+
+**Add Country/Origin section after Language (around line 178):**
+```typescript
+{/* Country/Origin */}
+<div>
+  <dt className="text-xs text-muted-foreground mb-1">Country/Origin</dt>
+  <dd className="flex items-center gap-2 text-sm font-medium">
+    {lead.country_name && lead.country_name !== 'Unknown' ? (
+      <>
+        <span className="text-lg">{lead.country_flag || '🌍'}</span>
+        {lead.country_name}
+        {lead.country_prefix && (
+          <span className="text-muted-foreground">({lead.country_prefix})</span>
+        )}
+      </>
+    ) : (
+      <span className="text-muted-foreground">Not specified</span>
+    )}
+  </dd>
 </div>
 ```
-
-#### Country/Origin Row (in contact details section)
-```html
-<p style="margin: 8px 0;">
-  <strong>Country/Origin:</strong> 
-  ${lead.country_name && lead.country_name !== 'Unknown'
-    ? `${lead.country_flag} ${lead.country_name} (${lead.country_prefix})`
-    : '<span style="color: #DC2626;">Not Specified - Check chat log</span>'
-  }
-</p>
-```
-
----
-
-### 3. Templates to Update
-
-| Template Function | Location | Purpose |
-|------------------|----------|---------|
-| `generateEmailHtml` | Line 93 | Standard broadcast to agents |
-| `generateUrgentEmailHtml` | Line 101 | Urgent/direct assignment emails |
-| `generateAdminUnclaimedEmailHtml` | Line 110 | Admin fallback emails |
-| `generateSlaWarningEmailHtml` | Line 119 | SLA breach warning emails |
-| `generateNightHoldAlertEmailHtml` | Line 127 | Night hold notifications |
-| `generateFormSubmissionAlertEmailHtml` | Line 152 | Form submission alerts |
 
 ---
 
 ## Visual Preview
 
-After this change, agent emails will show:
-
+### Mobile Card
 ```text
-┌─────────────────────────────────────────┐
-│  John Smith                             │
-│  [🇧🇪 Belgium] [🇫🇷 FR]                  │ ← Country badge + Language badge
-│                                         │
-│  Phone: +32 471 234 567                 │
-│  Country/Origin: 🇧🇪 Belgium (+32)       │ ← New row
-│  Budget: €350,000 - €500,000            │
-│  ...                                    │
-└─────────────────────────────────────────┘
+┌────────────────────────────────────┐
+│ ☑ John Smith                [📞][💬]│
+│   [🇧🇪 Belgium] 🇫🇷 FR • Villa        │
+│   🏠 THE KOS - Fuengirola           │
+└────────────────────────────────────┘
+```
+
+### Desktop Table (Language Column)
+```text
+| Language    |
+|-------------|
+| 🇧🇪 Belgium  |
+| 🇫🇷 FR       |
+```
+
+### Lead Detail Header
+```text
+John Smith [🇧🇪 Belgium] [🇫🇷 FR]
+Created 2 hours ago
 ```
 
 ---
 
-## Use Case Addressed
+## Data Flow
 
-This directly solves Hans's request:
-- A French-speaking lead from **Belgium** (phone +32) will show: `🇧🇪 Belgium` badge + `🇫🇷 FR` language badge
-- A French-speaking lead from **France** (phone +33) will show: `🇫🇷 France` badge + `🇫🇷 FR` language badge
-- Agents can instantly see the distinction before calling
+The country data is now stored in `crm_leads` table and flows from:
+1. `emma-chat` extracts from phone prefix
+2. `EmmaChat.tsx` passes to `send-emma-lead`  
+3. `send-emma-lead` passes to `register-crm-lead`
+4. `register-crm-lead` saves to database
+5. CRM UI components read from database and display
 
 ---
 
 ## Technical Notes
 
-- Country data flows from `emma-chat` → `EmmaChat.tsx` → `send-emma-lead` → `register-crm-lead` → `crm_leads` table
-- When loading leads for notification, the country fields will now be included in the lead object
-- Fallback text "Not Specified - Check chat log" handles old leads without country data
+- Country fields are nullable since existing leads won't have this data
+- Fallback displays "Not specified" for missing country data
+- Uses existing `Badge` component from shadcn for consistent styling
+- No database changes needed - fields already exist in `crm_leads`
