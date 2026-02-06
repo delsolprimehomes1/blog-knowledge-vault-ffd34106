@@ -8,7 +8,7 @@ export const agentFormSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(["agent", "admin"]),
   languages: z.array(z.string()).min(1, "At least one language is required"),
-  max_active_leads: z.number().min(1).max(200).default(50),
+  max_active_leads: z.number().min(1).max(1000).default(50),
   email_notifications: z.boolean().default(true),
   timezone: z.string().default("Europe/Madrid"),
 });
