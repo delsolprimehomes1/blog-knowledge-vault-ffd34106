@@ -1,60 +1,75 @@
 
 
-# Fix: Edit Agent Form Not Saving Changes
+# Add Country Prefix Visibility to Lead Dashboards
 
-## Problem Identified
+## Current State
 
-The form fails silently when the admin tries to save because of a **validation constraint mismatch**:
+Emma chatbot **already captures** the country prefix when asking users for their phone number. This data is stored in the `crm_leads` table in these columns:
+- `country_prefix` (e.g., "+31", "+44", "+34")
+- `country_name` (e.g., "Netherlands", "United Kingdom")
+- `country_flag` (e.g., "🇳🇱", "🇬🇧")
 
-| Field | Validation Rule | User's Value | Result |
-|-------|-----------------|--------------|--------|
-| `max_active_leads` | `.max(200)` | 500 | Validation fails |
-
-The Zod schema in `crm-validations.ts` restricts `max_active_leads` to a maximum of 200:
-
-```typescript
-max_active_leads: z.number().min(1).max(200).default(50),
-```
-
-But the user is trying to set it to 500. The form validation fails, but **no error message is shown** because the `max_active_leads` field doesn't render validation errors in the UI.
+**The problem**: These fields are not being displayed on the lead dashboards for admins and agents.
 
 ---
 
-## Solution
+## What Needs to Change
 
-### 1. Increase the Max Leads Limit
+### Visual Overview
 
-Update `src/lib/crm-validations.ts` to allow higher lead limits (up to 1000):
+| View | Current Display | After Fix |
+|------|-----------------|-----------|
+| Admin Leads Table | `7027776546` | `+1 7027776546` or `🇺🇸 +1 7027776546` |
+| Agent Leads Table | `7027776546` | `+1 7027776546` |
+| Mobile Lead Card | No prefix shown | `🇺🇸 +1 7027776546` |
+
+---
+
+## Implementation Plan
+
+### 1. Update Admin Leads Hook (`src/hooks/useAdminLeads.ts`)
+
+Add country fields to the `AdminLead` interface so they're available in the admin table:
 
 ```typescript
-// Before
-max_active_leads: z.number().min(1).max(200).default(50),
-
-// After  
-max_active_leads: z.number().min(1).max(1000).default(50),
+export interface AdminLead {
+  // ... existing fields ...
+  country_prefix: string | null;
+  country_name: string | null;
+  country_flag: string | null;
+}
 ```
 
-### 2. Add Error Display for Max Active Leads Field
+### 2. Update Admin Leads Overview (`src/pages/crm/admin/LeadsOverview.tsx`)
 
-Update `src/components/crm/EditAgentModal.tsx` to show validation errors:
+Modify the Contact column (lines 332-351) to show the prefix with the phone number:
 
-```typescript
-<div className="space-y-2">
-  <Label htmlFor="max_active_leads">Max Active Leads</Label>
-  <Input
-    id="max_active_leads"
-    type="number"
-    {...register("max_active_leads", { valueAsNumber: true })}
-  />
-  {errors.max_active_leads && (
-    <p className="text-sm text-destructive">{errors.max_active_leads.message}</p>
-  )}
-</div>
+```text
+Current:
+  📞 7027776546
+
+After:
+  🇺🇸 +1 7027776546
+  ✉️ email@example.com
 ```
 
-### 3. Also Update AddAgentModal
+The country flag + prefix will be prepended to the phone number for immediate visibility.
 
-For consistency, add the same error display to `src/components/crm/AddAgentModal.tsx`.
+### 3. Update Agent Leads Table (`src/components/crm/LeadsTable.tsx`)
+
+Modify the Contact column (lines 319-340) to include the country prefix:
+
+```text
+Current:
+  📞 7027776546
+
+After:
+  📞 +1 7027776546  (or 🇺🇸 +1 7027776546)
+```
+
+### 4. Update Mobile Lead Card (`src/components/crm/MobileLeadCard.tsx`)
+
+The mobile card already shows country flag + name in the header. We'll also update the call/WhatsApp functionality description to show the full international number.
 
 ---
 
@@ -62,17 +77,20 @@ For consistency, add the same error display to `src/components/crm/AddAgentModal
 
 | File | Change |
 |------|--------|
-| `src/lib/crm-validations.ts` | Increase `max_active_leads` max value from 200 to 1000 |
-| `src/components/crm/EditAgentModal.tsx` | Add validation error display for max_active_leads |
-| `src/components/crm/AddAgentModal.tsx` | Add validation error display for max_active_leads |
+| `src/hooks/useAdminLeads.ts` | Add `country_prefix`, `country_name`, `country_flag` to AdminLead interface |
+| `src/pages/crm/admin/LeadsOverview.tsx` | Show prefix + flag in Contact column |
+| `src/components/crm/LeadsTable.tsx` | Show prefix in Contact column phone display |
+| `src/components/crm/MobileLeadCard.tsx` | Show prefix with phone number display |
 
 ---
 
-## Why This Fixes the Issue
+## Expected Result
 
-1. **Root cause**: Zod validation silently rejects values > 200
-2. **The fix**: Increase limit to 1000 to accommodate business needs
-3. **Bonus**: Show error messages so admins know when validation fails
+After this update:
+- **Admins** will see the full international phone number with country prefix in the leads table
+- **Agents** will see the same in their leads table
+- **Mobile view** will show the country prefix for easy identification
+- All views will clearly indicate the lead's country of origin for proper follow-up
 
-After this fix, the "Save Changes" button will work correctly for values up to 1000.
+This helps agents and admins immediately know which country code to use when calling or messaging leads.
 
