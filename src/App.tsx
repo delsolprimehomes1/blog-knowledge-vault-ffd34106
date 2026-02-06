@@ -115,6 +115,7 @@ const CanonicalBackfill = lazy(() => import("./pages/admin/CanonicalBackfill"));
 const NotFoundResolver = lazy(() => import("./pages/admin/NotFoundResolver"));
 const CitationBackfill = lazy(() => import("./pages/admin/CitationBackfill"));
 const SpeakableTestBench = lazy(() => import("./pages/admin/SpeakableTestBench"));
+const LinkAudit = lazy(() => import("./pages/admin/LinkAudit"));
 
 // CRM Pages
 const AgentLogin = lazy(() => import("./pages/crm/AgentLogin"));
@@ -251,6 +252,7 @@ const App = () => (
               <Route path="/admin/404-resolver" element={<ProtectedRoute><NotFoundResolver /></ProtectedRoute>} />
               <Route path="/admin/citation-backfill" element={<ProtectedRoute><CitationBackfill /></ProtectedRoute>} />
               <Route path="/admin/speakable-test" element={<ProtectedRoute><SpeakableTestBench /></ProtectedRoute>} />
+              <Route path="/admin/link-audit" element={<ProtectedRoute><LinkAudit /></ProtectedRoute>} />
 
               {/* Standalone Property Management Page */}
               <Route path="/add-property" element={<ProtectedRoute><AddProperty /></ProtectedRoute>} />

@@ -3562,6 +3562,105 @@ export type Database = {
         }
         Relationships: []
       }
+      link_audit_results: {
+        Row: {
+          audit_id: string
+          checked_at: string | null
+          created_at: string | null
+          error_message: string | null
+          http_status: number | null
+          id: string
+          is_broken: boolean | null
+          link_type: string
+          link_url: string
+          redirect_url: string | null
+          response_time_ms: number | null
+          source_id: string | null
+          source_slug: string | null
+          source_type: string | null
+        }
+        Insert: {
+          audit_id: string
+          checked_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          is_broken?: boolean | null
+          link_type: string
+          link_url: string
+          redirect_url?: string | null
+          response_time_ms?: number | null
+          source_id?: string | null
+          source_slug?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          audit_id?: string
+          checked_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          is_broken?: boolean | null
+          link_type?: string
+          link_url?: string
+          redirect_url?: string | null
+          response_time_ms?: number | null
+          source_id?: string | null
+          source_slug?: string | null
+          source_type?: string | null
+        }
+        Relationships: []
+      }
+      link_audits: {
+        Row: {
+          broken_links: number | null
+          completed_at: string | null
+          content_types: string[]
+          created_at: string | null
+          error_message: string | null
+          healthy_links: number | null
+          id: string
+          redirect_links: number | null
+          scan_types: string[]
+          started_at: string | null
+          status: string
+          timeout_links: number | null
+          total_links: number | null
+        }
+        Insert: {
+          broken_links?: number | null
+          completed_at?: string | null
+          content_types?: string[]
+          created_at?: string | null
+          error_message?: string | null
+          healthy_links?: number | null
+          id?: string
+          redirect_links?: number | null
+          scan_types?: string[]
+          started_at?: string | null
+          status?: string
+          timeout_links?: number | null
+          total_links?: number | null
+        }
+        Update: {
+          broken_links?: number | null
+          completed_at?: string | null
+          content_types?: string[]
+          created_at?: string | null
+          error_message?: string | null
+          healthy_links?: number | null
+          id?: string
+          redirect_links?: number | null
+          scan_types?: string[]
+          started_at?: string | null
+          status?: string
+          timeout_links?: number | null
+          total_links?: number | null
+        }
+        Relationships: []
+      }
       link_suggestions: {
         Row: {
           applied_at: string | null
