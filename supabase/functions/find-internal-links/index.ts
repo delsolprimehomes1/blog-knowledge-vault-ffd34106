@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { callPerplexity, extractContent } from "../shared/perplexityClient.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,43 +164,29 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
 
-    const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar-pro',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an SEO expert specializing in strategic internal linking for content funnels. You understand that:
+    // Use standardized Perplexity client with proper error handling
+    const systemPrompt = `You are an SEO expert specializing in strategic internal linking for content funnels. You understand that:
 - TOFU (Top of Funnel) = Awareness content
 - MOFU (Middle of Funnel) = Consideration content  
 - BOFU (Bottom of Funnel) = Decision/conversion content
 
-Your goal is to create strategic links that guide users through the buyer's journey, NOT to link everything to everything. Quality over quantity. ALL anchor text must be in ${languageName}.`
-          },
-          {
-            role: 'user',
-            content: analysisPrompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500,
-      }),
-    });
+Your goal is to create strategic links that guide users through the buyer's journey, NOT to link everything to everything. Quality over quantity. ALL anchor text must be in ${languageName}.`;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('Perplexity API error:', aiResponse.status, errorText);
-      throw new Error('Failed to analyze content with Perplexity');
+    const perplexityResult = await callPerplexity(
+      perplexityApiKey,
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ],
+      { model: 'sonar-pro', temperature: 0.3, max_tokens: 1500 }
+    );
+
+    if (!perplexityResult.success) {
+      console.error('[Strategic Linking] Perplexity API error:', perplexityResult.error);
+      throw new Error(perplexityResult.error?.userMessage || 'Failed to analyze content with Perplexity');
     }
 
-    const aiData = await aiResponse.json();
-    const aiContent = aiData.choices[0].message.content;
-    
+    const aiContent = extractContent(perplexityResult.data);
     console.log('[Strategic Linking] Perplexity response:', aiContent);
 
     // Parse JSON response
@@ -311,7 +298,15 @@ async function handleBatchMode(requestData: any) {
   const results = [];
   const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
-  for (const article of articlesToProcess || []) {
+  for (let index = 0; index < (articlesToProcess || []).length; index++) {
+    const article = articlesToProcess![index];
+    
+    // Add delay between API calls to avoid rate limiting (except for first article)
+    if (index > 0) {
+      console.log(`[Batch Strategic Linking] Waiting 500ms before next API call...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
     try {
       // Build query - filter by cluster_id to enforce cluster boundaries
       let query = supabase
@@ -340,7 +335,6 @@ async function handleBatchMode(requestData: any) {
       }
       
       console.log(`[Batch Strategic Linking] Found ${availableArticles.length} articles within cluster for "${article.headline}"`);
-
 
       const languageName = getLanguageName(article.language);
       const funnelStage = article.funnel_stage || 'TOFU';
@@ -376,28 +370,58 @@ Return ONLY valid JSON:
   ]
 }`;
 
-      const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${perplexityApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'sonar-pro',
-          messages: [
-            { 
-              role: 'system', 
-              content: `You are an SEO expert specializing in strategic funnel-based internal linking. Maximum ${strategy.maxWithinCluster} links per article. Quality over quantity. Return only valid JSON.` 
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 1500,
-        }),
-      });
+      // Use standardized Perplexity client with proper error handling
+      const systemPrompt = `You are an SEO expert specializing in strategic funnel-based internal linking. Maximum ${strategy.maxWithinCluster} links per article. Quality over quantity. Return only valid JSON.`;
 
-      const aiData = await aiResponse.json();
-      const aiContent = aiData.choices[0].message.content;
+      const perplexityResult = await callPerplexity(
+        perplexityApiKey!,
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        { model: 'sonar-pro', temperature: 0.3, max_tokens: 1500 }
+      );
+
+      // Handle Perplexity API errors gracefully
+      if (!perplexityResult.success) {
+        const errorInfo = perplexityResult.error;
+        console.error(`[Batch Strategic Linking] Perplexity error for "${article.headline}":`, errorInfo);
+        
+        // Handle rate limiting specifically
+        if (errorInfo?.error_code === 'PERPLEXITY_RATE_LIMIT') {
+          results.push({
+            articleId: article.id,
+            success: false,
+            error: 'Rate limited by Perplexity API - try again in a few minutes',
+            linkCount: 0
+          });
+          // Add extra delay after rate limit hit
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        
+        // Handle WAF blocks
+        if (errorInfo?.error_code === 'PERPLEXITY_WAF_BLOCK') {
+          results.push({
+            articleId: article.id,
+            success: false,
+            error: 'Perplexity is blocking requests - try again in a few minutes',
+            linkCount: 0
+          });
+          continue;
+        }
+        
+        results.push({
+          articleId: article.id,
+          success: false,
+          error: errorInfo?.userMessage || 'Perplexity API error',
+          linkCount: 0
+        });
+        continue;
+      }
+
+      const aiContent = extractContent(perplexityResult.data);
+      console.log(`[Batch Strategic Linking] Perplexity response for "${article.headline}" (${perplexityResult.latencyMs}ms)`);
       
       let suggestions = [];
       try {
@@ -405,6 +429,7 @@ Return ONLY valid JSON:
         const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { links: [] };
         suggestions = parsed.links || [];
       } catch {
+        console.warn(`[Batch Strategic Linking] Failed to parse JSON for "${article.headline}"`);
         suggestions = [];
       }
 
@@ -450,6 +475,7 @@ Return ONLY valid JSON:
       });
 
     } catch (error: any) {
+      console.error(`[Batch Strategic Linking] Error processing "${article.headline}":`, error);
       results.push({
         articleId: article.id,
         success: false,
