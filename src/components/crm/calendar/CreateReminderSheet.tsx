@@ -72,7 +72,6 @@ export function CreateReminderSheet({
     initialDatetime ? format(initialDatetime, "HH:mm") : ""
   );
   const [sendEmail, setSendEmail] = useState(true);
-  const [sendSlack, setSendSlack] = useState(true);
 
   // Reset form when opening
   useEffect(() => {
@@ -83,7 +82,6 @@ export function CreateReminderSheet({
       setReminderDate(initialDatetime);
       setReminderTime(initialDatetime ? format(initialDatetime, "HH:mm") : "");
       setSendEmail(true);
-      setSendSlack(true);
     }
   }, [isOpen, initialDatetime]);
 
@@ -133,7 +131,6 @@ export function CreateReminderSheet({
       reminderType,
       reminderDatetime,
       sendEmail,
-      sendSlack,
     });
 
     onClose();
@@ -297,22 +294,11 @@ export function CreateReminderSheet({
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4 text-primary" />
                 <div>
-                  <p className="font-medium text-sm">Email Reminder</p>
-                  <p className="text-xs text-muted-foreground">1 hour before</p>
+                  <p className="font-medium text-sm">Email Reminders</p>
+                  <p className="text-xs text-muted-foreground">1 hour & 10 minutes before</p>
                 </div>
               </div>
               <Switch checked={sendEmail} onCheckedChange={setSendEmail} />
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg border">
-              <div className="flex items-center space-x-3">
-                <Bell className="w-4 h-4 text-primary" />
-                <div>
-                  <p className="font-medium text-sm">Slack Notification</p>
-                  <p className="text-xs text-muted-foreground">At reminder time</p>
-                </div>
-              </div>
-              <Switch checked={sendSlack} onCheckedChange={setSendSlack} />
             </div>
           </div>
         </div>
