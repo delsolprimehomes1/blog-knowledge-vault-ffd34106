@@ -194,14 +194,104 @@ Deno.serve(async (req) => {
     // Check if agent record with this email already exists in crm_agents
     const { data: existingAgent } = await supabaseAdmin
       .from("crm_agents")
-      .select("id")
+      .select("id, is_active")
       .eq("email", body.email)
       .single();
 
     if (existingAgent) {
+      if (existingAgent.is_active) {
+        // Block if already active
+        return new Response(
+          JSON.stringify({ error: "An agent with this email already exists" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Reactivate inactive agent with new data
+      console.log("Reactivating inactive agent:", existingAgent.id);
+      
+      // Update auth user password
+      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(existingAgent.id, {
+        password: body.password,
+      });
+      
+      if (updateAuthError) {
+        console.warn("Could not update password for reactivated agent:", updateAuthError.message);
+      }
+      
+      // Update agent record with new details
+      const { data: reactivatedAgent, error: reactivateError } = await supabaseAdmin
+        .from("crm_agents")
+        .update({
+          first_name: body.first_name,
+          last_name: body.last_name,
+          phone: body.phone || null,
+          role: body.role || "agent",
+          languages: body.languages || ["en"],
+          max_active_leads: body.max_active_leads || 50,
+          email_notifications: body.email_notifications ?? true,
+          timezone: body.timezone || "Europe/Madrid",
+          is_active: true,
+          accepts_new_leads: true,
+        })
+        .eq("id", existingAgent.id)
+        .select()
+        .single();
+      
+      if (reactivateError) {
+        console.error("Failed to reactivate agent:", reactivateError);
+        return new Response(
+          JSON.stringify({ error: reactivateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log("Agent reactivated successfully:", reactivatedAgent.id);
+      
+      // Send welcome email for reactivated agent
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      let emailSent = false;
+      
+      if (resendApiKey) {
+        try {
+          const appUrl = Deno.env.get("APP_URL") || "https://www.delsolprimehomes.com";
+          const loginUrl = `${appUrl}/crm/login`;
+          const isAdmin = body.role === 'admin';
+          const subjectLine = isAdmin 
+            ? "Welcome Back to Del Sol Prime Homes CRM - Your Admin Account is Reactivated"
+            : "Welcome Back to Del Sol Prime Homes CRM - Your Account is Reactivated";
+          
+          const emailResponse = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${resendApiKey}`,
+            },
+            body: JSON.stringify({
+              from: "Del Sol Prime Homes CRM <crm@notifications.delsolprimehomes.com>",
+              to: [body.email],
+              subject: subjectLine,
+              html: generateWelcomeEmailHtml({
+                firstName: body.first_name,
+                email: body.email,
+                password: body.password,
+                loginUrl,
+                languages: body.languages || ["en"],
+                role: body.role || "agent",
+              }),
+            }),
+          });
+          
+          emailSent = emailResponse.ok;
+          console.log("Reactivation email result:", emailSent ? "sent successfully" : "failed");
+        } catch (emailError) {
+          console.error("Failed to send reactivation email:", emailError);
+        }
+      }
+      
       return new Response(
-        JSON.stringify({ error: "An agent with this email already exists" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, agent: reactivatedAgent, agentId: reactivatedAgent.id, emailSent, reactivated: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
