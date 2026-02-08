@@ -193,23 +193,24 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                     </nav>
 
                     {/* Left: Logo on Mobile */}
-                    <div className="lg:hidden">
-                        <span
-                            className="text-landing-gold font-serif text-sm sm:text-base font-bold tracking-[0.08em] sm:tracking-[0.1em] whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        >
-                            DELSOLPRIMEHOMES
-                        </span>
+                    <div className="lg:hidden cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                        <img 
+                            src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                            alt="DelSolPrimeHomes"
+                            className="h-8 sm:h-10 w-auto object-contain"
+                        />
                     </div>
 
                     {/* Center: Logo (Desktop Only - Absolute Centered) */}
-                    <div className="hidden lg:block absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                        <span
-                            className="text-landing-gold font-serif text-2xl font-bold tracking-[0.15em] whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        >
-                            DELSOLPRIMEHOMES
-                        </span>
+                    <div 
+                        className="hidden lg:block absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    >
+                        <img 
+                            src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                            alt="DelSolPrimeHomes"
+                            className="h-12 md:h-14 w-auto object-contain"
+                        />
                     </div>
 
                     {/* Right: Actions */}

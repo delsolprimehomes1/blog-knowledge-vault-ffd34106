@@ -109,11 +109,11 @@ const RetargetingLanding = () => {
             
             {/* Centered Logo */}
             <Link to={`/${language}`} className="inline-block lg:absolute lg:left-1/2 lg:-translate-x-1/2">
-              <span className="text-landing-navy text-lg md:text-xl tracking-widest font-light">
-                DEL
-                <span className="text-landing-gold">SOL</span>
-                PRIMEHOMES
-              </span>
+              <img 
+                src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                alt="DelSolPrimeHomes"
+                className="h-10 md:h-12 w-auto object-contain"
+              />
             </Link>
 
             {/* Right Side - Emma CTA + Language Selector */}

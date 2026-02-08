@@ -15,9 +15,11 @@ const Footer: React.FC<FooterProps> = ({ content }) => {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
 
                     {/* Logo */}
-                    <span className="text-xs sm:text-sm font-serif font-bold text-landing-gold tracking-widest">
-                        DELSOLPRIMEHOMES
-                    </span>
+                    <img 
+                        src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                        alt="DelSolPrimeHomes"
+                        className="h-10 sm:h-12 w-auto object-contain"
+                    />
 
                     {/* Copyright & Links */}
                     <div className="flex flex-row items-center gap-2 sm:gap-3 md:gap-6 text-[10px] sm:text-xs text-landing-text-secondary">

@@ -166,7 +166,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-card">
         <div className="flex h-16 items-center justify-between border-b px-4">
-          <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
+          <img src={logo} alt="Del Sol Prime Homes" className="h-12 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
           <ThemeToggle />
         </div>
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -186,14 +186,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               </SheetTrigger>
               <SheetContent side="left" className="w-64 p-0">
                 <div className="flex h-16 items-center px-6 border-b justify-center">
-                  <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
+                  <img src={logo} alt="Del Sol Prime Homes" className="h-12 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
                 </div>
                 <nav className="flex-1 p-4 overflow-y-auto">
                   <NavLinks />
                 </nav>
               </SheetContent>
             </Sheet>
-            <img src={logo} alt="Del Sol Prime Homes" className="h-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
+            <img src={logo} alt="Del Sol Prime Homes" className="h-12 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]" />
           </div>
           <ThemeToggle />
         </header>
