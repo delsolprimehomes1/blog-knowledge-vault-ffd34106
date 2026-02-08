@@ -1,136 +1,132 @@
 
 
-# Create Email Tracking Database Tables
+# Gmail Email Sync Edge Function Implementation
 
 ## Overview
 
-Create two new database tables for bidirectional email tracking (incoming + outgoing) to support Gmail/Outlook email sync for agents.
+Create a Gmail API polling edge function that syncs emails directly from Gmail into the `email_tracking` table without third-party services like Zapier or Mailgun.
 
-## Important Correction
+## Prerequisites - Secrets Required
 
-The provided SQL references `agents(id)` but the correct table name in your database is `crm_agents(id)`. I'll fix this in the migration.
+The function needs Google OAuth credentials that are **not currently configured**:
 
-## Tables to Create
+| Secret | Status | Purpose |
+|--------|--------|---------|
+| `GOOGLE_CLIENT_ID` | Missing | OAuth 2.0 Client ID |
+| `GOOGLE_CLIENT_SECRET` | Missing | OAuth 2.0 Client Secret |
 
-### 1. `email_tracking` Table
+You'll need to:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create/select a project
+3. Enable the Gmail API
+4. Create OAuth 2.0 credentials (Web application type)
+5. Provide these credentials when I request them
 
-Tracks all incoming and outgoing emails synced from agent email accounts:
+## Database Changes
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `lead_id` | UUID | Optional link to CRM lead |
-| `agent_id` | UUID | Required - references `crm_agents` |
-| `agent_email` | TEXT | Agent's email address |
-| `direction` | TEXT | 'incoming' or 'outgoing' |
-| `from_email` | TEXT | Sender email |
-| `to_email` | TEXT | Recipient email |
-| `cc_emails` | TEXT[] | CC recipients |
-| `subject` | TEXT | Email subject |
-| `body_text` | TEXT | Plain text body |
-| `body_html` | TEXT | HTML body |
-| `received_at` | TIMESTAMPTZ | When email was received |
-| `read_at` | TIMESTAMPTZ | When agent read it in CRM |
-| `created_at` | TIMESTAMPTZ | Record creation time |
-| `updated_at` | TIMESTAMPTZ | Last update time |
+Add Gmail OAuth columns to `crm_agents` table (note: your table is `crm_agents`, not `agents`):
 
-### 2. `email_webhook_logs` Table
+```sql
+ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS gmail_access_token TEXT;
+ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS gmail_refresh_token TEXT;
+ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS last_gmail_sync TIMESTAMPTZ;
+```
 
-Debug table for webhook troubleshooting:
+## Edge Function Implementation
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `raw_payload` | JSONB | Raw webhook data |
-| `success` | BOOLEAN | Processing success |
-| `error_message` | TEXT | Error details |
-| `created_at` | TIMESTAMPTZ | When received |
+### File: `supabase/functions/sync-gmail-emails/index.ts`
 
-## Security (RLS Policies)
+The function will:
 
-### `email_tracking` Table:
-- **SELECT**: Agents can only view their own emails
-- **UPDATE**: Agents can only update their own emails (mark as read)
-- **INSERT**: Service role only (edge functions)
-- **Admin access**: Admins can view all emails
+1. **Query agents** with Gmail OAuth tokens from `crm_agents` table
+2. **Fetch emails** from Gmail API for each agent since their last sync
+3. **Match leads** by email address against `crm_leads` table
+4. **Detect direction** (incoming/outgoing) based on `@delsolprimehomes.com` domain
+5. **Store emails** in `email_tracking` table with deduplication
+6. **Handle token refresh** automatically when access tokens expire
+7. **Update sync timestamp** after successful sync
 
-### `email_webhook_logs` Table:
-- **SELECT**: Admin-only access using `is_admin()` function
+### Key Features:
+- Uses service role key for database operations (bypasses RLS)
+- Automatic OAuth token refresh when expired
+- Deduplication prevents duplicate email entries
+- Proper base64 decoding for email content (Gmail uses URL-safe base64)
+- Error handling per-agent (one failure doesn't stop others)
 
-## Performance Indexes
+### Config: `supabase/config.toml`
 
-- `idx_email_tracking_lead_id` - Fast lead-based lookups
-- `idx_email_tracking_agent_id` - Fast agent-based lookups
-- `idx_email_tracking_direction` - Filter by incoming/outgoing
-- `idx_email_tracking_received_at` - Sort by date (DESC)
+Add function configuration:
+```toml
+[functions.sync-gmail-emails]
+verify_jwt = false
+```
 
 ## Technical Details
 
-### SQL Migration
-
-```sql
--- Email tracking table for bidirectional email sync
-CREATE TABLE email_tracking (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lead_id UUID REFERENCES crm_leads(id) ON DELETE CASCADE,
-  agent_id UUID REFERENCES crm_agents(id) NOT NULL,  -- FIXED: crm_agents not agents
-  agent_email TEXT NOT NULL,
-  direction TEXT NOT NULL CHECK (direction IN ('incoming', 'outgoing')),
-  from_email TEXT NOT NULL,
-  to_email TEXT NOT NULL,
-  cc_emails TEXT[],
-  subject TEXT,
-  body_text TEXT,
-  body_html TEXT,
-  received_at TIMESTAMPTZ NOT NULL,
-  read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes for performance
-CREATE INDEX idx_email_tracking_lead_id ON email_tracking(lead_id);
-CREATE INDEX idx_email_tracking_agent_id ON email_tracking(agent_id);
-CREATE INDEX idx_email_tracking_direction ON email_tracking(direction);
-CREATE INDEX idx_email_tracking_received_at ON email_tracking(received_at DESC);
-
--- RLS
-ALTER TABLE email_tracking ENABLE ROW LEVEL SECURITY;
-
--- Agent policies
-CREATE POLICY "Agents view own emails"
-  ON email_tracking FOR SELECT
-  USING (agent_id = auth.uid() OR public.is_admin(auth.uid()));
-
-CREATE POLICY "Agents update own emails"
-  ON email_tracking FOR UPDATE
-  USING (agent_id = auth.uid())
-  WITH CHECK (agent_id = auth.uid());
-
-CREATE POLICY "System can insert emails"
-  ON email_tracking FOR INSERT
-  WITH CHECK (true);
-
--- Webhook logs table
-CREATE TABLE email_webhook_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  raw_payload JSONB,
-  success BOOLEAN,
-  error_message TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE email_webhook_logs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Only admins view logs"
-  ON email_webhook_logs FOR SELECT
-  USING (public.is_admin(auth.uid()));
+### Gmail API Flow:
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                   sync-gmail-emails                         │
+├─────────────────────────────────────────────────────────────┤
+│  1. Query crm_agents with gmail_access_token IS NOT NULL    │
+│                           │                                 │
+│                           ▼                                 │
+│  2. For each agent:                                         │
+│     ├── Build query: after:{last_gmail_sync}                │
+│     ├── Call Gmail API: /users/me/messages                  │
+│     ├── Handle 401 → Refresh token                          │
+│     └── For each message:                                   │
+│         ├── Fetch full message details                      │
+│         ├── Parse headers (From, To, Subject)               │
+│         ├── Decode body (base64url → UTF-8)                 │
+│         ├── Determine direction (incoming/outgoing)         │
+│         ├── Match lead_id by email                          │
+│         ├── Check deduplication                             │
+│         └── Insert into email_tracking                      │
+│                           │                                 │
+│                           ▼                                 │
+│  3. Update last_gmail_sync for each agent                   │
+│                           │                                 │
+│                           ▼                                 │
+│  4. Return: { agents_synced, emails_synced }                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## What This Does NOT Change
+### Email Direction Detection:
+- If `from_email` contains `@delsolprimehomes.com` → **outgoing**
+- Otherwise → **incoming**
 
-- No modifications to existing `crm_email_logs` table
-- No modifications to existing edge functions
-- No frontend code changes
-- Purely database schema addition
+### Lead Matching:
+- For **outgoing** emails: match `to_email` against `crm_leads.email`
+- For **incoming** emails: match `from_email` against `crm_leads.email`
+
+## Files to Create/Modify
+
+| Action | File | Purpose |
+|--------|------|---------|
+| Create | `supabase/functions/sync-gmail-emails/index.ts` | Main edge function |
+| Modify | `supabase/config.toml` | Add function config |
+| Migrate | `crm_agents` table | Add Gmail OAuth columns |
+
+## Usage
+
+Invoke manually or via cron:
+```bash
+curl https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/sync-gmail-emails
+```
+
+Expected response:
+```json
+{
+  "success": true,
+  "agents_synced": 3,
+  "emails_synced": 47
+}
+```
+
+## Future Enhancements (Not in This Implementation)
+
+1. **Gmail OAuth UI** - Frontend for agents to connect their Gmail accounts
+2. **Webhook-based sync** - Use Gmail Push Notifications instead of polling
+3. **Scheduled sync** - Cron job to run sync every 5 minutes
 
