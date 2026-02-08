@@ -53,7 +53,7 @@ const PropertyFinder = () => {
       location: searchParams.get("location") || undefined,
       sublocation: searchParams.get("sublocation") || undefined,
       transactionType: (searchParams.get("transactionType") as 'sale' | 'rent') || 'sale',
-      priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : undefined,
+      priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : 400000,
       priceMax: searchParams.get("priceMax") ? parseInt(searchParams.get("priceMax")!) : undefined,
       propertyType: searchParams.get("propertyType") || undefined,
       bedrooms: searchParams.get("bedrooms") ? parseInt(searchParams.get("bedrooms")!) : undefined,
