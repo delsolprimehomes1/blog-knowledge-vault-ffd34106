@@ -27,6 +27,7 @@ import {
   Building2,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
@@ -168,6 +169,16 @@ export function CrmAgentLayout() {
                     </Button>
                   </Link>
                 ))}
+                
+                {/* Admin Dashboard Button - Only for admins */}
+                {agent?.role === "admin" && (
+                  <Link to="/crm/admin/dashboard">
+                    <Button variant="outline" size="sm" className="gap-2 ml-2 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950">
+                      <Shield className="w-4 h-4" />
+                      Admin Dashboard
+                    </Button>
+                  </Link>
+                )}
               </nav>
             </div>
 
@@ -253,6 +264,15 @@ export function CrmAgentLayout() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {agent?.role === "admin" && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate("/crm/admin/dashboard")}>
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/crm/agent/profile")}>
                     <User className="w-4 h-4 mr-2" />
                     My Profile
@@ -296,6 +316,16 @@ export function CrmAgentLayout() {
                 </Button>
               </Link>
             ))}
+            
+            {/* Admin Dashboard Button - Only for admins */}
+            {agent?.role === "admin" && (
+              <Link to="/crm/admin/dashboard">
+                <Button variant="outline" className="w-full justify-start gap-2 h-12 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950">
+                  <Shield className="w-5 h-5" />
+                  Admin Dashboard
+                </Button>
+              </Link>
+            )}
           </nav>
         )}
       </header>
