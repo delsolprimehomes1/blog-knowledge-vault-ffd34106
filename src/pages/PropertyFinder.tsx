@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Header } from "@/components/home/Header";
@@ -30,7 +30,7 @@ const PropertyFinder = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("price-asc");
 
   const validLangCodes = AVAILABLE_LANGUAGES.map(l => l.code as string);
   const validCurrentLanguage = (lang && validLangCodes.includes(lang) ? lang : Language.EN) as Language;
@@ -53,7 +53,7 @@ const PropertyFinder = () => {
       location: searchParams.get("location") || undefined,
       sublocation: searchParams.get("sublocation") || undefined,
       transactionType: (searchParams.get("transactionType") as 'sale' | 'rent') || 'sale',
-      priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : 400000,
+      priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : undefined,
       priceMax: searchParams.get("priceMax") ? parseInt(searchParams.get("priceMax")!) : undefined,
       propertyType: searchParams.get("propertyType") || undefined,
       bedrooms: searchParams.get("bedrooms") ? parseInt(searchParams.get("bedrooms")!) : undefined,
@@ -357,6 +357,22 @@ const PropertyFinder = () => {
     { icon: Shield, value: "100%", label: t.stats.trusted },
   ];
 
+  // Client-side sorting based on sortBy selection
+  const sortedProperties = useMemo(() => {
+    const sorted = [...properties];
+    switch (sortBy) {
+      case "price-asc":
+        return sorted.sort((a, b) => a.price - b.price);
+      case "price-desc":
+        return sorted.sort((a, b) => b.price - a.price);
+      case "beds":
+        return sorted.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0));
+      case "newest":
+      default:
+        return sorted; // API returns in default order
+    }
+  }, [properties, sortBy]);
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-background to-muted/20">
       <PropertyFinderHreflangTags 
@@ -613,7 +629,7 @@ const PropertyFinder = () => {
                   : "space-y-4"
               }
             >
-              {properties.map((property, index) => (
+              {sortedProperties.map((property, index) => (
                 <motion.div 
                   key={property.reference}
                   initial={{ opacity: 0, y: 20 }}

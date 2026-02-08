@@ -67,7 +67,7 @@ export const PropertyFilters = ({
   const [propertyType, setPropertyType] = useState(initialParams.propertyType || "");
   const [bedrooms, setBedrooms] = useState(initialParams.bedrooms?.toString() || "");
   const [bathrooms, setBathrooms] = useState(initialParams.bathrooms?.toString() || "");
-  const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "400000");
+  const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "");
   const [priceMax, setPriceMax] = useState(initialParams.priceMax?.toString() || "");
   // Default to New Developments
   const getStatusFromParams = (newDevs?: string) => {
@@ -94,7 +94,7 @@ export const PropertyFilters = ({
     setPropertyType(initialParams.propertyType || "");
     setBedrooms(initialParams.bedrooms?.toString() || "");
     setBathrooms(initialParams.bathrooms?.toString() || "");
-    setPriceMin(initialParams.priceMin?.toString() || "400000");
+    setPriceMin(initialParams.priceMin?.toString() || "");
     setPriceMax(initialParams.priceMax?.toString() || "");
     setStatus(getStatusFromParams(initialParams.newDevs as string));
   }, [initialParams]);
