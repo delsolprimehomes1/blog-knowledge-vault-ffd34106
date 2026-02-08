@@ -62,7 +62,7 @@ export const FOUNDERS_DATA: Founder[] = [
     role: "Co-Founder & Sales Director",
     bio: "Belgian real estate expert with deep knowledge of the Dutch and Belgian buyer market. 35+ years guiding international clients through Spanish property purchases.",
     photo_url: "https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/hans-beeckman.jpg",
-    linkedin_url: "https://www.linkedin.com/in/hansbeeckman/",
+    linkedin_url: "https://www.linkedin.com/company/delsolprimehomes/",
     credentials: ["API Licensed Agent", "Property Investment Specialist"],
     years_experience: 15,
     languages: ["Dutch", "French", "English", "Spanish"],
