@@ -201,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({ variant = 'transparent', content
             height={64}
             loading="eager"
             decoding="async"
-            className={`h-12 md:h-14 w-auto min-w-[120px] object-contain transition-all duration-500 ${
+            className={`h-14 md:h-16 w-auto min-w-[120px] object-contain transition-all duration-500 ${
               isLightBackground 
                 ? 'brightness-0 sepia saturate-[10] hue-rotate-[15deg]' 
                 : ''

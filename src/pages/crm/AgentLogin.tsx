@@ -154,7 +154,7 @@ export default function AgentLogin() {
             <img 
               src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
               alt="Del Sol Prime Homes"
-              className="h-16 md:h-20 w-auto object-contain"
+              className="h-20 md:h-24 w-auto object-contain"
             />
           </div>
           <h1 className="text-3xl font-serif font-bold text-white">Del Sol Prime Homes</h1>

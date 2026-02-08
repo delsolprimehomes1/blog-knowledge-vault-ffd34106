@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
               <img 
                 src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png" 
                 alt="DelSolPrimeHomes" 
-                className="h-16 md:h-24 w-auto object-contain"
+                className="h-20 md:h-28 w-auto object-contain"
               />
             </div>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
