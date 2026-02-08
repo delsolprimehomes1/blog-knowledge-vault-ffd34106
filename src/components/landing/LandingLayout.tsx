@@ -194,11 +194,13 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
 
                     {/* Left: Logo on Mobile */}
                     <div className="lg:hidden cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                        <img 
-                            src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
-                            alt="DelSolPrimeHomes"
-                            className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
-                        />
+                        <div className="relative p-1.5 rounded-lg shadow-[0_0_20px_rgba(26,35,50,0.25)]">
+                            <img 
+                                src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                                alt="DelSolPrimeHomes"
+                                className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                            />
+                        </div>
                     </div>
 
                     {/* Center: Logo (Desktop Only - Absolute Centered) */}
@@ -206,11 +208,13 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ language, translations })
                         className="hidden lg:block absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
                         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                     >
-                        <img 
-                            src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
-                            alt="DelSolPrimeHomes"
-                            className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
-                        />
+                        <div className="relative p-2 rounded-lg shadow-[0_0_25px_rgba(26,35,50,0.25)]">
+                            <img 
+                                src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+                                alt="DelSolPrimeHomes"
+                                className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                            />
+                        </div>
                     </div>
 
                     {/* Right: Actions */}
