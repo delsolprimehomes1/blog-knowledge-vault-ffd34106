@@ -227,7 +227,6 @@ export function useCreateReminder() {
           reminder_type: data.reminderType,
           reminder_datetime: data.reminderDatetime.toISOString(),
           send_email: data.sendEmail ?? true,
-          send_slack: data.sendSlack ?? true,
         })
         .select()
         .single();

@@ -2598,6 +2598,7 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           description: string | null
+          email_10min_sent: boolean | null
           email_sent: boolean | null
           id: string
           is_completed: boolean | null
@@ -2616,6 +2617,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
+          email_10min_sent?: boolean | null
           email_sent?: boolean | null
           id?: string
           is_completed?: boolean | null
@@ -2634,6 +2636,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           description?: string | null
+          email_10min_sent?: boolean | null
           email_sent?: boolean | null
           id?: string
           is_completed?: boolean | null
