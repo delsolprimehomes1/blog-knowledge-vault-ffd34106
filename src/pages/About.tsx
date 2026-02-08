@@ -77,7 +77,10 @@ const About = () => {
         client_satisfaction_percent: content.client_satisfaction_percent || COMPANY_FACTS.clientSatisfaction,
         faq_entities: (content.faq_entities as unknown as AboutPageContent["faq_entities"]) || [],
         citations: (content.citations as unknown as AboutPageContent["citations"]) || [],
-        founders: (content.founders as unknown as AboutPageContent["founders"]) || [],
+        founders: ((content.founders as unknown as Array<{ linkedin?: string; linkedin_url?: string; [key: string]: unknown }>) || []).map(f => ({
+          ...f,
+          linkedin_url: f.linkedin_url || f.linkedin || ""
+        })) as AboutPageContent["founders"],
         language: content.language || "en"
       }
     : defaultContent;
