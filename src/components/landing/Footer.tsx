@@ -18,7 +18,7 @@ const Footer: React.FC<FooterProps> = ({ content }) => {
                     <img 
                         src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
                         alt="DelSolPrimeHomes"
-                        className="h-10 sm:h-12 w-auto object-contain"
+                        className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
                     />
 
                     {/* Copyright & Links */}
