@@ -1,110 +1,139 @@
 
 
-# Fix: Localize Glossary Term Cards on Homepage
+# Localize Blog Teaser by Current Language
 
 ## Problem Identified
 
-The Polish homepage (`/pl/`) displays **English text** on the glossary term cards. The section headers are correctly translated, but the **term descriptions inside the cards are hardcoded in English**.
+The homepage Blog Teaser section is **hardcoded to fetch only English articles** regardless of which language the user is viewing. 
 
-| Element | Current State | 
-|---------|---------------|
-| Section eyebrow | ✅ Translated ("Podstawowe Terminy") |
-| Section headline | ✅ Translated ("Zrozum Hiszpańską Terminologię...") |
-| Section description | ✅ Translated |
-| CTA button | ✅ Translated ("Przeglądaj Pełny Słownik") |
-| **Term card titles** | ⚠️ Keep as-is (Spanish legal terms: NIE, IBI, etc.) |
-| **Term card descriptions** | ❌ **HARDCODED ENGLISH** |
-| "Learn more" link text | ❌ **HARDCODED ENGLISH** |
-
-## Root Cause
-
-In `src/components/home/sections/ReviewsAndBlog.tsx` (lines 144-149), the `FEATURED_TERMS` array has hardcoded English descriptions:
-
+Looking at line 55 of `src/components/home/sections/ReviewsAndBlog.tsx`:
 ```typescript
-const FEATURED_TERMS = [
-  { term: "NIE", icon: Scale, description: "Tax identification number required..." },
-  { term: "Digital Nomad Visa", icon: Laptop, description: "Spanish visa for remote workers..." },
-  // ... all in English
-];
+.eq('language', 'en')  // ❌ Always English
 ```
+
+This means French visitors (on `/fr/`) see English blog posts, Dutch visitors (on `/nl/`) see English blog posts, etc.
+
+## Current State
+
+| Element | Status |
+|---------|--------|
+| Section headers (eyebrow, headline) | ✅ Translated |
+| "Visit Blog" button text | ✅ Translated |
+| "Read Article" link text | ✅ Translated |
+| **Blog article content** | ❌ **Always English** |
+| Article date format | ⚠️ Always English format |
+
+## Database Availability
+
+All 10 languages have published articles available:
+- English: 440 articles
+- Dutch: 337 articles  
+- German: 334 articles
+- Polish: 324 articles
+- Swedish: 323 articles
+- French: 315 articles
+- Hungarian: 311 articles
+- Danish: 309 articles
+- Norwegian: 298 articles
+- Finnish: 280 articles
 
 ## Solution
 
-### 1. Add Term Descriptions to All 10 Language Translation Files
+### 1. Update Query to Use Current Language
 
-Add a `terms` object inside `glossaryTeaser` with localized descriptions for each term:
+Modify the `BlogTeaser` component to filter articles by `currentLanguage`:
 
 ```typescript
-// Example for pl.ts
-glossaryTeaser: {
-  eyebrow: "Podstawowe Terminy",
-  headline: "Zrozum Hiszpańską Terminologię Nieruchomości",
-  // ... existing fields
-  learnMore: "Dowiedz się więcej",  // NEW
-  terms: {  // NEW
-    nie: "Numer identyfikacji podatkowej wymagany do wszystkich transakcji nieruchomościowych w Hiszpanii.",
-    digitalNomadVisa: "Hiszpańska wiza dla pracowników zdalnych zarabiających ponad €2,520/miesiąc od klientów spoza Hiszpanii.",
-    ibi: "Roczny podatek od nieruchomości (Impuesto sobre Bienes Inmuebles) płacony na rzecz lokalnych rad.",
-    escritura: "Oficjalny akt notarialny podpisany przed notariuszem przy zakupie nieruchomości.",
-  },
-},
+// Before
+.eq('language', 'en')
+
+// After  
+.eq('language', currentLanguage)
 ```
 
-### 2. Update the GlossaryTeaser Component
+### 2. Update Query Key to Include Language
 
-Modify `ReviewsAndBlog.tsx` to read term descriptions from translations:
+Ensure React Query refetches when language changes:
 
 ```typescript
-const FEATURED_TERMS = [
-  { term: "NIE", icon: Scale, key: "nie" },
-  { term: "Digital Nomad Visa", icon: Laptop, key: "digitalNomadVisa" },
-  { term: "IBI", icon: Home, key: "ibi" },
-  { term: "Escritura", icon: Book, key: "escritura" },
-];
+// Before
+queryKey: ['homepage-blog-articles']
 
-// In the component render:
-<p className="text-slate-600 text-sm font-light leading-relaxed">
-  {t.glossaryTeaser?.terms?.[item.key] || item.fallbackDescription}
-</p>
+// After
+queryKey: ['homepage-blog-articles', currentLanguage]
+```
 
-// And for "Learn more":
-<div className="...">
-  {t.glossaryTeaser?.learnMore || "Learn more"} <ArrowRight size={14} />
-</div>
+### 3. Add Fallback to English (Optional Safety)
+
+If no articles exist for the current language, fall back to English articles:
+
+```typescript
+const { data: articles, isLoading } = useQuery({
+  queryKey: ['homepage-blog-articles', currentLanguage],
+  queryFn: async () => {
+    // First try current language
+    let { data, error } = await supabase
+      .from('blog_articles')
+      .select('...')
+      .eq('status', 'published')
+      .eq('language', currentLanguage)
+      .order('date_published', { ascending: false })
+      .limit(3);
+    
+    // Fallback to English if no articles in current language
+    if (!error && (!data || data.length === 0) && currentLanguage !== 'en') {
+      const fallback = await supabase
+        .from('blog_articles')
+        .select('...')
+        .eq('status', 'published')
+        .eq('language', 'en')
+        .order('date_published', { ascending: false })
+        .limit(3);
+      data = fallback.data;
+    }
+    
+    if (error) throw error;
+    return data;
+  },
+});
+```
+
+### 4. Add Localized Date Formatting (Enhancement)
+
+Format dates in the user's language using date-fns locales:
+
+```typescript
+import { 
+  enUS, nl, de, fr, pl, sv, da, hu, fi, nb 
+} from 'date-fns/locale';
+
+const dateLocales: Record<string, Locale> = {
+  en: enUS, nl, de, fr, pl, sv, da, hu, fi, no: nb
+};
+
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '';
+  try {
+    return format(new Date(dateString), 'MMM dd, yyyy', {
+      locale: dateLocales[currentLanguage] || enUS
+    });
+  } catch {
+    return '';
+  }
+};
 ```
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/i18n/translations/en.ts` | Add `learnMore` and `terms` object |
-| `src/i18n/translations/pl.ts` | Add Polish `learnMore` and `terms` |
-| `src/i18n/translations/de.ts` | Add German `learnMore` and `terms` |
-| `src/i18n/translations/nl.ts` | Add Dutch `learnMore` and `terms` |
-| `src/i18n/translations/fr.ts` | Add French `learnMore` and `terms` |
-| `src/i18n/translations/sv.ts` | Add Swedish `learnMore` and `terms` |
-| `src/i18n/translations/da.ts` | Add Danish `learnMore` and `terms` |
-| `src/i18n/translations/hu.ts` | Add Hungarian `learnMore` and `terms` |
-| `src/i18n/translations/fi.ts` | Add Finnish `learnMore` and `terms` |
-| `src/i18n/translations/no.ts` | Add Norwegian `learnMore` and `terms` |
-| `src/components/home/sections/ReviewsAndBlog.tsx` | Update component to use translations |
-
-## Term Translations (All 10 Languages)
-
-| Term | English | Polish |
-|------|---------|--------|
-| NIE | Tax identification number required for all property transactions in Spain. | Numer identyfikacji podatkowej wymagany do wszystkich transakcji nieruchomościowych w Hiszpanii. |
-| Digital Nomad Visa | Spanish visa for remote workers earning €2,520+/month from non-Spanish clients. | Hiszpańska wiza dla pracowników zdalnych zarabiających ponad €2,520/miesiąc od klientów spoza Hiszpanii. |
-| IBI | Annual property tax (Impuesto sobre Bienes Inmuebles) paid to local councils. | Roczny podatek od nieruchomości (Impuesto sobre Bienes Inmuebles) płacony na rzecz lokalnych rad. |
-| Escritura | Official public deed signed before a notary when purchasing property. | Oficjalny akt notarialny podpisany przed notariuszem przy zakupie nieruchomości. |
-| Learn more | Learn more | Dowiedz się więcej |
-
-*(Full translations for all 10 languages will be added)*
+| `src/components/home/sections/ReviewsAndBlog.tsx` | Update query filter, query key, add fallback logic, and localized date formatting |
 
 ## Result After Implementation
 
-- All glossary term cards will display localized descriptions
-- Spanish legal terms (NIE, IBI, Escritura) remain untranslated as per project standards
-- "Learn more" link text will be translated
-- 100% localization integrity on the Polish homepage (and all other language versions)
+- French homepage → French blog articles
+- Dutch homepage → Dutch blog articles  
+- All other languages → Articles in matching language
+- Fallback → English articles if none exist in user's language
+- Dates formatted in the user's language (e.g., "Jan 13, 2026" → "13 janv. 2026" in French)
 
