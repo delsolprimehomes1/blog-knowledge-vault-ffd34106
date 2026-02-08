@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, LogOut, Mail, Phone, Globe, Users, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { ConnectGmail } from "@/components/crm/ConnectGmail";
 
 const languageFlags: Record<string, string> = {
   en: "🇬🇧",
@@ -39,6 +40,7 @@ const languageNames: Record<string, string> = {
 
 export default function AgentProfilePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Get session
   const { data: session } = useQuery({
@@ -159,6 +161,27 @@ export default function AgentProfilePage() {
               </Badge>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Email Integration Card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Email Integration
+          </CardTitle>
+          <CardDescription>
+            Connect your @delsolprimehomes.com Gmail to sync emails with leads
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ConnectGmail
+            agentId={agent.id}
+            agentEmail={agent.email}
+            isConnected={!!agent.gmail_access_token}
+            onConnected={() => queryClient.invalidateQueries({ queryKey: ["agent-profile-full"] })}
+          />
         </CardContent>
       </Card>
 

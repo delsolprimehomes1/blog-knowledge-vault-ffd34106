@@ -43,6 +43,9 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ThankYou from "./pages/ThankYou";
 
+// Gmail OAuth callback
+const GmailCallback = lazy(() => import("./pages/auth/GmailCallback"));
+
 // Lazy load heavy public pages
 const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const QAPage = lazy(() => import("./pages/QAPage"));
@@ -194,6 +197,7 @@ const App = () => (
               {/* Eager-loaded critical pages */}
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/gmail/callback" element={<GmailCallback />} />
               <Route path="/login" element={<Navigate to="/auth" replace />} />
               <Route path="/thank-you" element={<ThankYou />} />
 
