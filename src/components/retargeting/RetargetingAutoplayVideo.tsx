@@ -96,6 +96,7 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
             muted
             playsInline
             preload="auto"
+            controls
           />
 
           {/* Sound Toggle Button - Bottom Right Corner */}
