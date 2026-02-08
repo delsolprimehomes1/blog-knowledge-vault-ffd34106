@@ -22,11 +22,11 @@ export const RetargetingFooter = ({ language = "en" }: RetargetingFooterProps) =
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
           <Link to={`/${language}`} className="inline-block">
-            <span className="text-landing-navy text-lg md:text-xl tracking-widest font-light">
-              DEL
-              <span className="text-landing-gold">SOL</span>
-              PRIMEHOMES
-            </span>
+            <img 
+              src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+              alt="DelSolPrimeHomes"
+              className="h-12 md:h-14 w-auto object-contain"
+            />
           </Link>
 
           {/* Legal Links */}
