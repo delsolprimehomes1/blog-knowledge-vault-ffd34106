@@ -1,68 +1,62 @@
 
-# Fix: Agent Deletion vs. Re-creation Conflict
+# Fix: Reminder Creation Error + Enhanced Email Notification System
 
-## Problem Summary
+## Problem Analysis
 
-The agent with email `info@delsolprimehomes.com` still exists in the database with `is_active: false`. The current "delete" function only performs a **soft delete**, but the "create" function blocks any email that already exists, regardless of active status.
+You're experiencing two distinct issues with the reminder system:
+
+1. **"Failed to create reminder" error** - Reminders cannot be saved from the Calendar
+2. **Missing dual-timing email notifications** - You want emails at 1 hour AND 10 minutes before each meeting
 
 ---
 
-## Solution
+## Root Cause 1: Column Name Mismatch
 
-Update the `create-crm-agent` edge function to handle inactive agents properly. Two options:
+The `useCreateReminder` hook in `src/hooks/useReminders.ts` is trying to insert a column called `send_slack` which doesn't exist in the database. The actual column is `slack_sent`.
 
-### Option A: Allow Reactivation of Inactive Agents (Recommended)
+| Intended | Actual Database Column |
+|----------|------------------------|
+| `send_slack` | `slack_sent` |
 
-When creating an agent with an email that exists but is inactive, **reactivate** the existing record instead of blocking.
+This causes every reminder insert to fail silently.
+
+---
+
+## Root Cause 2: Single Email Timing
+
+Currently the system only sends ONE email notification:
+- Cron job runs hourly at :00
+- Checks for reminders due within the next 60 minutes
+- Marks them as `email_sent: true` after sending
+
+You want TWO emails per reminder:
+- **1 hour before** the meeting
+- **10 minutes before** the meeting
+
+---
+
+## Implementation Plan
+
+### Part 1: Fix Reminder Creation
 
 | File | Change |
 |------|--------|
-| `supabase/functions/create-crm-agent/index.ts` | Update duplicate check to only block **active** agents, and reactivate inactive ones |
+| `src/hooks/useReminders.ts` | Remove the invalid `send_slack` column from insert |
 
-**Logic:**
-```typescript
-// Check if agent record already exists
-const { data: existingAgent } = await supabaseAdmin
-  .from("crm_agents")
-  .select("id, is_active")
-  .eq("email", body.email)
-  .single();
+The database doesn't have a `send_slack` column for controlling Slack notifications on insert - it only has `slack_sent` to track if Slack was already sent. Since the feature description confirms Slack infrastructure has been removed, we'll simply remove this field.
 
-if (existingAgent) {
-  if (existingAgent.is_active) {
-    // Block if already active
-    return error "An agent with this email already exists"
-  } else {
-    // Reactivate the inactive agent with new data
-    UPDATE the existing record with new values and set is_active: true
-    // Optionally update their auth password
-  }
-}
-```
+### Part 2: Dual Email Notification System
 
-### Option B: Hard Delete Inactive Agents First
+**Database Changes:**
+- Add a new column `email_10min_sent` to track the 10-minute reminder separately
 
-Before checking for duplicates, delete any inactive agent with the same email.
+**Edge Function Changes:**
+- Modify `send-reminder-emails` to send TWO types of emails:
+  - 60-minute reminder (mark `email_sent: true`)
+  - 10-minute reminder (mark `email_10min_sent: true`)
 
----
-
-## Implementation Details
-
-**Changes to `create-crm-agent/index.ts`:**
-
-1. Modify the existing agent check to include `is_active` in the select
-2. If an agent exists but is inactive:
-   - Update the existing record with new details (name, phone, role, etc.)
-   - Set `is_active: true`
-   - Update or create auth user with new password
-   - Send welcome email
-3. If an agent exists and is active: block as before
-
----
-
-## Immediate Fix (Optional)
-
-For the current `info@delsolprimehomes.com` issue, I can also run a database query to hard-delete the inactive record so you can create a fresh agent.
+**Cron Job Changes:**
+- Increase frequency from hourly to every 5 minutes (to catch the 10-minute window)
 
 ---
 
@@ -70,4 +64,58 @@ For the current `info@delsolprimehomes.com` issue, I can also run a database que
 
 | File | Action |
 |------|--------|
-| `supabase/functions/create-crm-agent/index.ts` | Update to handle inactive agents |
+| `src/hooks/useReminders.ts` | Remove `send_slack` column from insert |
+| `supabase/functions/send-reminder-emails/index.ts` | Add 10-minute reminder logic with separate email template |
+| `supabase/cron_jobs.sql` | Update cron schedule from `'0 * * * *'` to `'*/5 * * * *'` |
+| Database migration | Add `email_10min_sent` boolean column to `crm_reminders` |
+
+---
+
+## Email Timing Logic
+
+The updated edge function will:
+
+1. **60-minute check**: Find reminders due in 55-65 minutes where `email_sent = false`
+   - Send "1 hour reminder" email
+   - Set `email_sent = true`
+
+2. **10-minute check**: Find reminders due in 5-15 minutes where `email_10min_sent = false`
+   - Send "10 minute reminder" email (more urgent styling)
+   - Set `email_10min_sent = true`
+
+---
+
+## UI Component Updates
+
+The CreateReminderSheet already shows "Email Reminder - 1 hour before" but we'll update it to show:
+- "Email Reminders: 1 hour and 10 minutes before" to reflect the new dual notification system
+
+---
+
+## Technical Details
+
+### Database Migration
+```sql
+ALTER TABLE crm_reminders 
+ADD COLUMN email_10min_sent boolean DEFAULT false;
+```
+
+### Cron Schedule Update
+```text
+Old: '0 * * * *'   -- Every hour at :00
+New: '*/5 * * * *' -- Every 5 minutes
+```
+
+### Email Templates
+- **1-hour email**: Current styling (yellow/amber urgency bar)
+- **10-minute email**: Red urgency bar with "STARTING SOON" alert
+
+---
+
+## Summary
+
+After implementation:
+- Reminders will save successfully from the Calendar
+- Each reminder will trigger TWO email notifications
+- Each agent receives their own individual reminders
+- Reminders appear on each agent's dashboard based on their `agent_id`
