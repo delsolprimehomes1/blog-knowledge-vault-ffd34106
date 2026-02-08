@@ -1,132 +1,174 @@
 
 
-# Gmail Email Sync Edge Function Implementation
+# Gmail OAuth Authentication Flow Implementation
 
-## Overview
+## Summary
+Create a complete Gmail OAuth flow allowing CRM agents to connect their `@delsolprimehomes.com` Gmail accounts. This will populate the `gmail_access_token` and `gmail_refresh_token` columns in the `crm_agents` table, enabling the already-deployed `sync-gmail-emails` edge function to start syncing emails.
 
-Create a Gmail API polling edge function that syncs emails directly from Gmail into the `email_tracking` table without third-party services like Zapier or Mailgun.
+## Current State Analysis
 
-## Prerequisites - Secrets Required
+| Component | Status |
+|-----------|--------|
+| `GOOGLE_CLIENT_ID` secret | Already configured |
+| `GOOGLE_CLIENT_SECRET` secret | Already configured |
+| `gmail_access_token` column | Already exists in `crm_agents` |
+| `gmail_refresh_token` column | Already exists in `crm_agents` |
+| `last_gmail_sync` column | Already exists in `crm_agents` |
+| `sync-gmail-emails` function | Already deployed and working |
 
-The function needs Google OAuth credentials that are **not currently configured**:
+**What's Missing:** OAuth UI flow to get agent consent and populate the tokens.
 
-| Secret | Status | Purpose |
-|--------|--------|---------|
-| `GOOGLE_CLIENT_ID` | Missing | OAuth 2.0 Client ID |
-| `GOOGLE_CLIENT_SECRET` | Missing | OAuth 2.0 Client Secret |
+---
 
-You'll need to:
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create/select a project
-3. Enable the Gmail API
-4. Create OAuth 2.0 credentials (Web application type)
-5. Provide these credentials when I request them
+## Implementation Plan
 
-## Database Changes
+### Part 1: Edge Functions (2 new functions)
 
-Add Gmail OAuth columns to `crm_agents` table (note: your table is `crm_agents`, not `agents`):
+#### Function 1: `gmail-auth-url`
+Generates the Google OAuth authorization URL for agent consent.
 
-```sql
-ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS gmail_access_token TEXT;
-ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS gmail_refresh_token TEXT;
-ALTER TABLE crm_agents ADD COLUMN IF NOT EXISTS last_gmail_sync TIMESTAMPTZ;
-```
-
-## Edge Function Implementation
-
-### File: `supabase/functions/sync-gmail-emails/index.ts`
-
-The function will:
-
-1. **Query agents** with Gmail OAuth tokens from `crm_agents` table
-2. **Fetch emails** from Gmail API for each agent since their last sync
-3. **Match leads** by email address against `crm_leads` table
-4. **Detect direction** (incoming/outgoing) based on `@delsolprimehomes.com` domain
-5. **Store emails** in `email_tracking` table with deduplication
-6. **Handle token refresh** automatically when access tokens expire
-7. **Update sync timestamp** after successful sync
-
-### Key Features:
-- Uses service role key for database operations (bypasses RLS)
-- Automatic OAuth token refresh when expired
-- Deduplication prevents duplicate email entries
-- Proper base64 decoding for email content (Gmail uses URL-safe base64)
-- Error handling per-agent (one failure doesn't stop others)
-
-### Config: `supabase/config.toml`
-
-Add function configuration:
-```toml
-[functions.sync-gmail-emails]
-verify_jwt = false
-```
-
-## Technical Details
-
-### Gmail API Flow:
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                   sync-gmail-emails                         │
-├─────────────────────────────────────────────────────────────┤
-│  1. Query crm_agents with gmail_access_token IS NOT NULL    │
-│                           │                                 │
-│                           ▼                                 │
-│  2. For each agent:                                         │
-│     ├── Build query: after:{last_gmail_sync}                │
-│     ├── Call Gmail API: /users/me/messages                  │
-│     ├── Handle 401 → Refresh token                          │
-│     └── For each message:                                   │
-│         ├── Fetch full message details                      │
-│         ├── Parse headers (From, To, Subject)               │
-│         ├── Decode body (base64url → UTF-8)                 │
-│         ├── Determine direction (incoming/outgoing)         │
-│         ├── Match lead_id by email                          │
-│         ├── Check deduplication                             │
-│         └── Insert into email_tracking                      │
-│                           │                                 │
-│                           ▼                                 │
-│  3. Update last_gmail_sync for each agent                   │
-│                           │                                 │
-│                           ▼                                 │
-│  4. Return: { agents_synced, emails_synced }                │
-└─────────────────────────────────────────────────────────────┘
+Request:  POST { agentId, redirectUrl }
+Response: { authUrl: "https://accounts.google.com/o/oauth2/v2/auth?..." }
 ```
 
-### Email Direction Detection:
-- If `from_email` contains `@delsolprimehomes.com` → **outgoing**
-- Otherwise → **incoming**
+Key features:
+- Uses `GOOGLE_CLIENT_ID` from environment
+- Requests Gmail read/modify and userinfo.email scopes
+- Uses `access_type=offline` to get refresh token
+- Encodes `agentId` in state parameter for callback
 
-### Lead Matching:
-- For **outgoing** emails: match `to_email` against `crm_leads.email`
-- For **incoming** emails: match `from_email` against `crm_leads.email`
+#### Function 2: `gmail-auth-callback`
+Handles the OAuth callback and exchanges code for tokens.
+
+```text
+Request:  POST { code, state, redirectUri }
+Response: { success: true, email: "agent@delsolprimehomes.com" }
+```
+
+Key features:
+- Exchanges authorization code for access/refresh tokens
+- Verifies email ends with `@delsolprimehomes.com`
+- Stores tokens in `crm_agents` table
+- Returns success/error status
+
+### Part 2: Frontend Components (3 new files)
+
+#### Component 1: `ConnectGmail.tsx`
+Button component for agent profile page.
+
+- Shows "Connect Gmail" when not connected
+- Shows "Gmail Connected: email@..." when connected
+- Handles OAuth redirect initiation
+
+#### Component 2: `GmailCallback.tsx`
+OAuth callback page that processes the authorization code.
+
+- Parses `code` and `state` from URL
+- Calls `gmail-auth-callback` edge function
+- Shows processing/success/error states
+- Redirects back to agent profile
+
+### Part 3: Route Configuration
+
+Add new route for OAuth callback:
+```
+/auth/gmail/callback -> GmailCallback
+```
+
+### Part 4: Integration
+
+Modify `AgentProfilePage.tsx` to include the `ConnectGmail` component in a new "Email Integration" card.
+
+---
+
+## OAuth Flow Diagram
+
+```text
+Agent clicks "Connect Gmail"
+         |
+         v
+┌─────────────────────────────┐
+│   gmail-auth-url function   │
+│   Generates OAuth URL       │
+└─────────────────────────────┘
+         |
+         v (redirect)
+┌─────────────────────────────┐
+│   Google OAuth Consent      │
+│   Agent grants access       │
+└─────────────────────────────┘
+         |
+         v (redirect with code)
+┌─────────────────────────────┐
+│   /auth/gmail/callback      │
+│   GmailCallback page        │
+└─────────────────────────────┘
+         |
+         v
+┌─────────────────────────────┐
+│   gmail-auth-callback fn    │
+│   - Exchange code for token │
+│   - Verify @delsolprime... │
+│   - Store in crm_agents     │
+└─────────────────────────────┘
+         |
+         v
+┌─────────────────────────────┐
+│   Redirect to Profile       │
+│   Show "Gmail Connected"    │
+└─────────────────────────────┘
+```
+
+---
 
 ## Files to Create/Modify
 
 | Action | File | Purpose |
 |--------|------|---------|
-| Create | `supabase/functions/sync-gmail-emails/index.ts` | Main edge function |
-| Modify | `supabase/config.toml` | Add function config |
-| Migrate | `crm_agents` table | Add Gmail OAuth columns |
+| Create | `supabase/functions/gmail-auth-url/index.ts` | Generate OAuth URL |
+| Create | `supabase/functions/gmail-auth-callback/index.ts` | Handle OAuth callback |
+| Create | `src/components/crm/ConnectGmail.tsx` | Gmail connection button |
+| Create | `src/pages/auth/GmailCallback.tsx` | OAuth callback page |
+| Modify | `src/App.tsx` | Add callback route |
+| Modify | `src/pages/crm/agent/AgentProfilePage.tsx` | Add ConnectGmail card |
+| Modify | `supabase/config.toml` | Register new functions |
 
-## Usage
+---
 
-Invoke manually or via cron:
-```bash
-curl https://kazggnufaoicopvmwhdl.supabase.co/functions/v1/sync-gmail-emails
+## Security Considerations
+
+1. **Domain Restriction**: Only `@delsolprimehomes.com` emails are accepted
+2. **State Parameter**: Agent ID is encoded in OAuth state to prevent CSRF
+3. **Service Role**: Token storage uses service role key (bypasses RLS)
+4. **Token Refresh**: Existing `sync-gmail-emails` already handles token refresh
+
+---
+
+## Technical Details
+
+### Google OAuth Scopes
+- `https://www.googleapis.com/auth/gmail.readonly` - Read emails
+- `https://www.googleapis.com/auth/gmail.modify` - Mark as read/unread
+- `https://www.googleapis.com/auth/userinfo.email` - Verify email domain
+
+### Redirect URI
+The callback URL must be registered in Google Cloud Console:
+```
+https://id-preview--8cbd0f4b-f95f-4e66-b71d-a9cc047a12e7.lovable.app/auth/gmail/callback
+```
+And for production:
+```
+https://blog-knowledge-vault.lovable.app/auth/gmail/callback
 ```
 
-Expected response:
-```json
-{
-  "success": true,
-  "agents_synced": 3,
-  "emails_synced": 47
-}
-```
+---
 
-## Future Enhancements (Not in This Implementation)
+## Post-Implementation
 
-1. **Gmail OAuth UI** - Frontend for agents to connect their Gmail accounts
-2. **Webhook-based sync** - Use Gmail Push Notifications instead of polling
-3. **Scheduled sync** - Cron job to run sync every 5 minutes
+Once agents connect their Gmail accounts:
+1. Their tokens will be stored in `crm_agents`
+2. The `sync-gmail-emails` function will automatically sync their emails
+3. Emails will appear in the CRM's email tracking system
+4. Lead emails will be automatically matched and linked
 
