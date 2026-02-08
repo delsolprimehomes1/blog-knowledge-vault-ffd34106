@@ -1,91 +1,79 @@
 
-# Default Property Search: New Developments + €250,000 Minimum + Price Low-High
 
-## Summary
+# Fix: Hans Missing from user_roles Table
 
-Update the property search defaults to show **New Developments Only** with a **€250,000 minimum price** sorted by **price ascending** on page load. This filters out all resale properties and lower-priced homes by default.
+## Problem Identified
 
----
+The edge function `create-crm-agent` uses the `is_admin()` RPC function to verify admin status. This function checks the `user_roles` table, but Hans (and Steven) were set as admins in `crm_agents.role` without corresponding entries in `user_roles`.
 
-## Changes Required
+| Admin Email | crm_agents.role | user_roles entry |
+|-------------|-----------------|------------------|
+| hans@delsolprimehomes.com | admin | ❌ **MISSING** |
+| steven@delsolprimehomes.com | admin | ❌ **MISSING** |
+| info@yenomai.com | admin | ✅ Present |
+| info@delsolprimehomes.com | admin | ✅ Present |
 
-### 1. Set Default priceMin to €250,000
+## Solution
 
-**Frontend - PropertyFinder.tsx** (Line 56)
+### 1. Add Missing user_roles Entries (Database Migration)
 
-```typescript
-// Current
-priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : undefined,
+Insert the missing admin entries for Hans and Steven:
 
-// Change to
-priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : 250000,
+```sql
+INSERT INTO public.user_roles (user_id, role, granted_at, notes)
+VALUES 
+  ('95808453-dde1-421c-85ba-52fe534ef288', 'admin', NOW(), 'Hans - CRM admin sync'),
+  -- Steven's ID needs to be looked up
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-**Frontend - PropertyFilters.tsx** (Lines 70, 97)
+### 2. Create a Database Trigger for Future Sync (Recommended)
 
-```typescript
-// Current (Line 70)
-const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "");
+To prevent this from happening again, create a trigger that automatically syncs `crm_agents.role` changes to `user_roles`:
 
-// Change to
-const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "250000");
+```sql
+CREATE OR REPLACE FUNCTION sync_crm_agent_role_to_user_roles()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If role is admin, ensure user_roles entry exists
+  IF NEW.role = 'admin' THEN
+    INSERT INTO public.user_roles (user_id, role, granted_at, notes)
+    VALUES (NEW.id, 'admin', NOW(), 'Auto-synced from CRM agent role')
+    ON CONFLICT (user_id, role) DO NOTHING;
+  ELSE
+    -- If role changed away from admin, remove the user_roles entry
+    DELETE FROM public.user_roles 
+    WHERE user_id = NEW.id AND role = 'admin';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-// Current (Line 97)
-setPriceMin(initialParams.priceMin?.toString() || "");
-
-// Change to
-setPriceMin(initialParams.priceMin?.toString() || "250000");
+CREATE TRIGGER sync_agent_role_trigger
+AFTER INSERT OR UPDATE OF role ON public.crm_agents
+FOR EACH ROW
+EXECUTE FUNCTION sync_crm_agent_role_to_user_roles();
 ```
 
-**Backend - search-properties Edge Function** (Line 145)
+## Technical Details
 
-```typescript
-// Current
-if (filters.priceMin) proxyParams.minPrice = String(filters.priceMin);
+### Why This Happened
 
-// Change to
-proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '250000';
-```
+The CRM was set up with two separate admin concepts:
+1. `crm_agents.role = 'admin'` - Used for UI display and CRM-specific permissions
+2. `user_roles.role = 'admin'` - Used by security-definer functions for RLS and edge function authorization
 
-### 2. Verify Existing Defaults (Already Correct)
+When Hans was made an admin in the CRM, only the `crm_agents.role` column was updated. The `user_roles` table was not populated.
 
-These settings are already in place from the previous update:
+### Files to Update
 
-- **Sort by price-asc**: Line 33 in PropertyFinder.tsx has `useState("price-asc")` ✅
-- **New Developments Only**: Lines 42-49 default to `newDevs: "only"` ✅
-- **Client-side sorting**: The `sortedProperties` useMemo is already implemented ✅
+No code changes needed - this is a data issue. The database migration will:
+1. Add missing `user_roles` entries for Hans and Steven
+2. Create a sync trigger to prevent future mismatches
 
----
+## Immediate Fix Steps
 
-## Summary of Changes
+1. Run database migration to add Hans and Steven to `user_roles`
+2. Add the sync trigger for future-proofing
+3. Verify Hans can create agents after the migration
 
-| File | Line(s) | Current | New |
-|------|---------|---------|-----|
-| `PropertyFinder.tsx` | 56 | `undefined` fallback | `250000` fallback |
-| `PropertyFilters.tsx` | 70 | `""` fallback | `"250000"` fallback |
-| `PropertyFilters.tsx` | 97 | `""` fallback | `"250000"` fallback |
-| `search-properties/index.ts` | 145 | Only pass if set | Default to `'250000'` |
-
----
-
-## Default Page Load State
-
-| Setting | Value |
-|---------|-------|
-| Property Type Filter | New Developments Only |
-| Minimum Price | €250,000 |
-| Maximum Price | €10,000,000 |
-| Sort Order | Price: Low to High |
-| Expected Results | ~421 new development properties |
-
----
-
-## User Controls Preserved
-
-Users can still manually:
-- Switch to "All Properties" or "Resales Only" using the status dropdown
-- Change minimum price to lower/higher amounts
-- Adjust maximum price, bedrooms, bathrooms, location, etc.
-- Change sort order (Newest, Price High-Low, Most Bedrooms)
-
-The search button count will update to reflect these default filters applied.
