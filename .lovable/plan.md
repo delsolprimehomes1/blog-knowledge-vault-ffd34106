@@ -1,64 +1,146 @@
 
-# Make Logo Bigger Across Entire Website
+# Add Del Sol Navy Blue Glow Behind Logos
 
 ## Overview
 
-Increase the logo size consistently across all pages of the website for better brand visibility and visual impact.
+Add a subtle navy blue glow effect behind the logos on all Landing pages and Retargeting pages to enhance brand visibility and create a premium visual effect.
 
 ---
 
-## Current Logo Sizes
+## Color Reference
 
-| Location | Current Size | File |
-|----------|--------------|------|
-| **Main Header** | `h-12 md:h-14` | `src/components/home/Header.tsx` |
-| **Main Footer** | `h-16 md:h-24` | `src/components/home/Footer.tsx` |
-| **Landing Header (Mobile)** | `h-8 sm:h-10` | `src/components/landing/LandingLayout.tsx` |
-| **Landing Header (Desktop)** | `h-12 md:h-14` | `src/components/landing/LandingLayout.tsx` |
-| **Landing Footer** | `h-10 sm:h-12` | `src/components/landing/Footer.tsx` |
-| **Retargeting Header** | `h-10 md:h-12` | `src/pages/RetargetingLanding.tsx` |
-| **Retargeting Footer** | `h-12 md:h-14` | `src/components/retargeting/RetargetingFooter.tsx` |
-| **Admin Layout** (3 places) | `h-12` | `src/components/AdminLayout.tsx` |
-| **CRM Login** | `h-20 md:h-24` | `src/pages/crm/CrmLogin.tsx` |
-| **Agent Login** | `h-16 md:h-20` | `src/pages/crm/AgentLogin.tsx` |
+The "Del Sol" navy blue color from the design system:
+- **Color**: `#1A2332` (`landing-navy`)
+- **Glow Effect**: Semi-transparent version for the glow: `rgba(26, 35, 50, 0.4)`
 
 ---
 
-## Proposed New Sizes
+## Technical Approach
 
-All logos increased by approximately 25% for better visibility:
+Wrap each logo in a container with a radial gradient or box-shadow glow effect. This creates a soft blue halo behind the logo that enhances visibility on both light and dark backgrounds.
 
-| Location | Before | After |
-|----------|--------|-------|
-| **Main Header** | `h-12 md:h-14` | `h-14 md:h-16` |
-| **Main Footer** | `h-16 md:h-24` | `h-20 md:h-28` |
-| **Landing Header (Mobile)** | `h-8 sm:h-10` | `h-10 sm:h-12` |
-| **Landing Header (Desktop)** | `h-12 md:h-14` | `h-14 md:h-16` |
-| **Landing Footer** | `h-10 sm:h-12` | `h-12 sm:h-14` |
-| **Retargeting Header** | `h-10 md:h-12` | `h-12 md:h-14` |
-| **Retargeting Footer** | `h-12 md:h-14` | `h-14 md:h-16` |
-| **Admin Layout** | `h-12` | `h-14` |
-| **CRM Login** | `h-20 md:h-24` | `h-24 md:h-28` |
-| **Agent Login** | `h-16 md:h-20` | `h-20 md:h-24` |
+**CSS Effect to Apply:**
+```tsx
+// Wrapper div with blue glow
+<div className="relative p-2 rounded-full bg-gradient-to-br from-landing-navy/10 via-transparent to-transparent shadow-[0_0_30px_rgba(26,35,50,0.3)]">
+  <img ... />
+</div>
+```
 
 ---
 
 ## Files to Update
 
-| File | Changes |
-|------|---------|
-| `src/components/home/Header.tsx` | Line 200: Update height classes |
-| `src/components/home/Footer.tsx` | Line 21: Update height classes |
-| `src/components/landing/LandingLayout.tsx` | Lines 200, 212: Update both mobile and desktop heights |
-| `src/components/landing/Footer.tsx` | Line 21: Update height classes |
-| `src/pages/RetargetingLanding.tsx` | Line 115: Update height classes |
-| `src/components/retargeting/RetargetingFooter.tsx` | Line 28: Update height classes |
-| `src/components/AdminLayout.tsx` | Lines 169, 189, 196: Update all 3 logo heights |
-| `src/pages/crm/CrmLogin.tsx` | Line 223: Update height classes |
-| `src/pages/crm/AgentLogin.tsx` | Line 157: Update height classes |
+| File | Logo Location | Lines |
+|------|---------------|-------|
+| `src/components/landing/LandingLayout.tsx` | Mobile Header Logo | ~197-201 |
+| `src/components/landing/LandingLayout.tsx` | Desktop Header Logo | ~209-213 |
+| `src/components/landing/Footer.tsx` | Footer Logo | ~18-22 |
+| `src/pages/RetargetingLanding.tsx` | Header Logo | ~111-117 |
+| `src/components/retargeting/RetargetingFooter.tsx` | Footer Logo | ~24-30 |
+
+---
+
+## Detailed Changes
+
+### 1. Landing Page Header - Mobile (`src/components/landing/LandingLayout.tsx`)
+
+**Lines 197-201**: Wrap logo in glow container:
+```tsx
+// Before
+<img 
+  src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+  alt="DelSolPrimeHomes"
+  className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+/>
+
+// After
+<div className="relative p-1.5 rounded-lg bg-gradient-radial from-landing-navy/15 to-transparent shadow-[0_0_20px_rgba(26,35,50,0.25)]">
+  <img 
+    src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+    alt="DelSolPrimeHomes"
+    className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+  />
+</div>
+```
+
+### 2. Landing Page Header - Desktop (`src/components/landing/LandingLayout.tsx`)
+
+**Lines 209-213**: Same glow container pattern:
+```tsx
+<div className="relative p-2 rounded-lg bg-gradient-radial from-landing-navy/15 to-transparent shadow-[0_0_25px_rgba(26,35,50,0.25)]">
+  <img 
+    src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+    alt="DelSolPrimeHomes"
+    className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+  />
+</div>
+```
+
+### 3. Landing Page Footer (`src/components/landing/Footer.tsx`)
+
+**Lines 18-22**: Add glow container:
+```tsx
+<div className="relative p-1.5 rounded-lg bg-gradient-radial from-landing-navy/15 to-transparent shadow-[0_0_20px_rgba(26,35,50,0.25)]">
+  <img 
+    src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+    alt="DelSolPrimeHomes"
+    className="h-12 sm:h-14 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+  />
+</div>
+```
+
+### 4. Retargeting Page Header (`src/pages/RetargetingLanding.tsx`)
+
+**Lines 111-117**: Wrap logo in glow container:
+```tsx
+<Link to={`/${language}`} className="inline-block lg:absolute lg:left-1/2 lg:-translate-x-1/2">
+  <div className="relative p-2 rounded-lg bg-gradient-radial from-landing-navy/15 to-transparent shadow-[0_0_25px_rgba(26,35,50,0.25)]">
+    <img 
+      src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+      alt="DelSolPrimeHomes"
+      className="h-12 md:h-14 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+    />
+  </div>
+</Link>
+```
+
+### 5. Retargeting Page Footer (`src/components/retargeting/RetargetingFooter.tsx`)
+
+**Lines 24-30**: Add glow container:
+```tsx
+<Link to={`/${language}`} className="inline-block">
+  <div className="relative p-2 rounded-lg bg-gradient-radial from-landing-navy/15 to-transparent shadow-[0_0_25px_rgba(26,35,50,0.25)]">
+    <img 
+      src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
+      alt="DelSolPrimeHomes"
+      className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+    />
+  </div>
+</Link>
+```
+
+---
+
+## Visual Effect
+
+The navy blue glow will:
+- Create a subtle halo effect around the logo using `shadow-[0_0_25px_rgba(26,35,50,0.25)]`
+- Add a radial gradient background fade from navy to transparent
+- Enhance logo visibility on white/light backgrounds
+- Maintain the premium, elegant aesthetic of the site
+- Apply consistently across all 10 language versions (since it's in the shared components)
 
 ---
 
 ## Summary
 
-This change increases all logo sizes across **9 files** and **12 logo instances** for a more prominent brand presence throughout the entire website.
+| Component | Changes |
+|-----------|---------|
+| Landing Header (Mobile) | Add glow wrapper div |
+| Landing Header (Desktop) | Add glow wrapper div |
+| Landing Footer | Add glow wrapper div |
+| Retargeting Header | Add glow wrapper div inside Link |
+| Retargeting Footer | Add glow wrapper div inside Link |
+
+**Total: 5 logo instances across 4 files**
