@@ -17,9 +17,11 @@ import {
   BarChart3,
   Mail,
   Phone,
+  Briefcase,
+  Calendar,
 } from "lucide-react";
 
-const navigation = [
+const adminNavigation = [
   { name: "Dashboard", href: "/crm/admin/dashboard", icon: LayoutDashboard },
   { name: "Analytics", href: "/crm/admin/analytics", icon: BarChart3 },
   { name: "Agents", href: "/crm/admin/agents", icon: Users },
@@ -30,6 +32,12 @@ const navigation = [
   { name: "Email Logs", href: "/crm/admin/email-logs", icon: Mail },
   { name: "Verification", href: "/crm/admin/verification", icon: Shield },
   { name: "Settings", href: "/crm/admin/settings", icon: Settings },
+];
+
+const agentNavigation = [
+  { name: "My Dashboard", href: "/crm/agent/dashboard", icon: Briefcase },
+  { name: "My Leads", href: "/crm/agent/leads", icon: Users },
+  { name: "My Calendar", href: "/crm/agent/calendar", icon: Calendar },
 ];
 
 export function CrmAdminLayout() {
@@ -61,7 +69,32 @@ export function CrmAdminLayout() {
 
   const NavLinks = () => (
     <>
-      {navigation.map((item) => (
+      <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        Admin Tools
+      </p>
+      {adminNavigation.map((item) => (
+        <NavLink
+          key={item.name}
+          to={item.href}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`
+          }
+        >
+          <item.icon className="h-5 w-5" />
+          <span className="font-medium">{item.name}</span>
+        </NavLink>
+      ))}
+      
+      <div className="my-4 border-t border-border" />
+      
+      <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        My Agent View
+      </p>
+      {agentNavigation.map((item) => (
         <NavLink
           key={item.name}
           to={item.href}
