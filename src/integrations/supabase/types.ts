@@ -2968,6 +2968,99 @@ export type Database = {
         }
         Relationships: []
       }
+      email_tracking: {
+        Row: {
+          agent_email: string
+          agent_id: string
+          body_html: string | null
+          body_text: string | null
+          cc_emails: string[] | null
+          created_at: string | null
+          direction: string
+          from_email: string
+          id: string
+          lead_id: string | null
+          read_at: string | null
+          received_at: string
+          subject: string | null
+          to_email: string
+          updated_at: string | null
+        }
+        Insert: {
+          agent_email: string
+          agent_id: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          direction: string
+          from_email: string
+          id?: string
+          lead_id?: string | null
+          read_at?: string | null
+          received_at: string
+          subject?: string | null
+          to_email: string
+          updated_at?: string | null
+        }
+        Update: {
+          agent_email?: string
+          agent_id?: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          direction?: string
+          from_email?: string
+          id?: string
+          lead_id?: string | null
+          read_at?: string | null
+          received_at?: string
+          subject?: string | null
+          to_email?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "crm_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          raw_payload: Json | null
+          success: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          raw_payload?: Json | null
+          success?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          raw_payload?: Json | null
+          success?: boolean | null
+        }
+        Relationships: []
+      }
       emma_conversations: {
         Row: {
           conversation_id: string
