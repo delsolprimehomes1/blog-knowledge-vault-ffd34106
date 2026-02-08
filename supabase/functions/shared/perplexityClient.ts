@@ -173,7 +173,7 @@ export async function callPerplexity<T = any>(
         responseSnippet: sanitizedSnippet,
       },
       latencyMs,
-
+    };
   } catch (error) {
     return {
       success: false,
