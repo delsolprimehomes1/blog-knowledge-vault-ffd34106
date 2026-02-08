@@ -23,7 +23,8 @@ export function ConnectGmail({
   const handleConnect = async () => {
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/auth/gmail/callback`;
+      // Use production domain for consistent OAuth redirect URI
+      const redirectUrl = `https://www.delsolprimehomes.com/auth/gmail/callback`;
 
       // Get auth URL from edge function
       const { data, error } = await supabase.functions.invoke("gmail-auth-url", {
