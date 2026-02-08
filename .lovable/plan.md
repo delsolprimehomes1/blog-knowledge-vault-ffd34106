@@ -1,94 +1,77 @@
 
+# Default Property Search to €400,000 + New Developments
 
-# Property Search Default to New Developments - Verification
+## Current Issue
 
-## Status: Already Implemented ✅
+When the page loads at `/:lang/properties`, the current defaults are:
+- **New Developments**: ✅ Already defaults to `only` 
+- **Price Minimum**: ❌ Not set in frontend (backend defaults to €180,000)
 
-After thorough code review, I can confirm that the property search **already defaults to "New Developments Only"** on page load. The implementation is complete across all layers.
-
----
-
-## Current Implementation Summary
-
-### 1. Type Definition (`src/types/property.ts`)
-```typescript
-newDevs?: 'only' | '';  // Currently defined
-```
-**Minor Fix Needed**: Expand to include `'resales'` for type safety.
-
-### 2. Initial State (`src/pages/PropertyFinder.tsx`)
-```typescript
-// Lines 38-62
-const getInitialParams = (): PropertySearchParams => {
-  const newDevsParam = searchParams.get("newDevs");
-  let newDevs: "only" | undefined = "only"; // ← Already defaults to new developments
-  ...
-}
-```
-
-### 3. Filter Component (`src/components/property/PropertyFilters.tsx`)
-```typescript
-// Lines 73-80
-const getStatusFromParams = (newDevs?: string) => {
-  if (newDevs === "only") return "new-developments";
-  ...
-  return "new-developments"; // ← Default
-};
-
-// Lines 84-88 - Filter options
-const STATUS_OPTIONS = [
-  { label: t.filters.newDevelopments, value: "new-developments" },  // ← First/default
-  { label: t.filters.resales || "Resales", value: "resales" },
-  { label: t.filters.allProperties || "All Properties", value: "all" },
-];
-```
-
-### 4. Edge Function (`supabase/functions/search-properties/index.ts`)
-```typescript
-// Lines 152-159
-if (filters.newDevs === 'only') {
-  proxyParams.p_new_devs = 'only';
-} else if (filters.newDevs === 'resales') {
-  proxyParams.p_new_devs = 'exclude';
-}
-// else: default 'include' - don't send parameter
-```
+Your screenshot shows the desired state: **€400,000 minimum + New Developments = 5,403 properties**
 
 ---
 
-## Minor Improvement to Make
+## Changes Required
 
-### Update Type Definition for Complete Type Safety
+### 1. Frontend - Set Default priceMin to 400,000
 
-**File**: `src/types/property.ts` (Line 71)
+**File**: `src/pages/PropertyFinder.tsx` (Lines 51-62)
 
-| Before | After |
-|--------|-------|
-| `newDevs?: 'only' \| '';` | `newDevs?: 'only' \| 'resales' \| 'all' \| '';` |
+Update `getInitialParams()` to default `priceMin` to 400000:
 
-This ensures TypeScript recognizes all valid status options used throughout the codebase.
+```typescript
+// Before
+priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : undefined,
+
+// After  
+priceMin: searchParams.get("priceMin") ? parseInt(searchParams.get("priceMin")!) : 400000,
+```
+
+### 2. Frontend - Update Filter Component Default
+
+**File**: `src/components/property/PropertyFilters.tsx` (Lines 70, 97)
+
+Update initial state and effect to reflect the €400,000 default:
+
+```typescript
+// Line 70: Initial state
+const [priceMin, setPriceMin] = useState(initialParams.priceMin?.toString() || "400000");
+
+// Line 97: Effect sync
+setPriceMin(initialParams.priceMin?.toString() || "400000");
+```
+
+### 3. Backend - Update Edge Function Default
+
+**File**: `supabase/functions/search-properties/index.ts` (Line 145)
+
+Change default minimum price from €180,000 to €400,000:
+
+```typescript
+// Before
+proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '180000';
+
+// After
+proxyParams.minPrice = filters.priceMin ? String(filters.priceMin) : '400000';
+```
 
 ---
 
-## Verification Checklist
+## Summary of Changes
 
-| Requirement | Status |
-|-------------|--------|
-| Default to `p_new_devs: 'only'` on page load | ✅ Implemented |
-| Pass parameter to Edge Function | ✅ Implemented |
-| Filter toggle for New Developments / All / Resales | ✅ Implemented |
-| Edge Function passes to proxy server | ✅ Implemented |
-| Type definition includes all options | ⚠️ Minor fix needed |
+| File | Location | Change |
+|------|----------|--------|
+| `PropertyFinder.tsx` | Line 56 | Default `priceMin` to `400000` |
+| `PropertyFilters.tsx` | Lines 70, 97 | Default state to `"400000"` |
+| `search-properties/index.ts` | Line 145 | Default `minPrice` to `'400000'` |
 
 ---
 
 ## Result
 
-When users first land on the search page (`/:lang/properties`), they will see **only new development properties (~421 results)** instead of all 6,911 properties. Users can switch between:
+When users first visit `/:lang/properties`:
+- **Price Minimum**: €400,000 ✅
+- **Status**: New Developments Only ✅
+- **Expected Results**: ~5,403 properties (matching your screenshot)
 
-- **New Developments Only** (default) - Shows ~421 properties
-- **All Properties** - Shows ~6,911 properties  
-- **Resales Only** - Shows resale properties only
-
-The only change needed is updating the TypeScript type definition for complete type safety.
-
+The price filter dropdown will show "€400,000" pre-selected, and users can change it to any other value if desired.
