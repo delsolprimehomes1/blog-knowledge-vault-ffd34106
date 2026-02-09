@@ -133,7 +133,7 @@ serve(async (req) => {
             body: JSON.stringify({
               from: "CRM Alerts <crm@notifications.delsolprimehomes.com>",
               to: [adminEmail],
-              subject: `⚠️ No Contact Made - ${agentName} claimed ${lead.first_name} ${lead.last_name}`,
+              subject: `CRM_ADMIN_CLAIMED_NOT_CALLED_${lead.language.toUpperCase()} | Lead claimed but not called (SLA breach)`,
               html: `
                 <!DOCTYPE html>
                 <html>
