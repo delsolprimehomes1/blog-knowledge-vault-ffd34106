@@ -425,9 +425,16 @@ serve(async (req) => {
         } else if (useUrgentTemplate) {
           emailSubject = `🔥 URGENT LEAD: ${lead.first_name} ${lead.last_name} - ${lead.budget_range || 'Action Required'}`;
         } else {
-          // Initial alarm (level 0) - format matches escalating alarms for unified Gmail filtering
+          // Initial alarm (level 0) - deterministic CRM subject for broadcast
           const langCode = (normalizedLead.language || "EN").toUpperCase();
-          emailSubject = `🔔 NEW LEAD ${langCode} #${lead.id.slice(0, 8)}`;
+          const langNames: Record<string, string> = {
+            EN: 'English', NL: 'Dutch', FR: 'French',
+            FI: 'Finnish', PL: 'Polish', DE: 'German',
+            ES: 'Spanish', SV: 'Swedish', DA: 'Danish',
+            HU: 'Hungarian', NO: 'Norwegian'
+          };
+          const langName = langNames[langCode] || langCode;
+          emailSubject = `CRM_NEW_LEAD_${langCode} | New ${langName} lead – call immediately`;
         }
 
         const emailPayload: Record<string, unknown> = {
