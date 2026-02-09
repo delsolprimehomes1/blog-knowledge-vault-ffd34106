@@ -10,11 +10,34 @@ const corsHeaders = {
 };
 
 // Level-specific styling configuration
-const ALARM_CONFIG: Record<number, { emoji: string; text: string; color: string }> = {
-  1: { emoji: "⏰", text: "1 MIN PASSED", color: "#EAB308" },
-  2: { emoji: "⚠️", text: "2 MIN PASSED", color: "#F97316" },
-  3: { emoji: "🚨", text: "3 MIN PASSED", color: "#EA580C" },
-  4: { emoji: "🔥", text: "4 MIN PASSED - FINAL WARNING", color: "#DC2626" },
+const ALARM_CONFIG: Record<number, { 
+  emoji: string; text: string; color: string;
+  subjectTemplate: (lang: string) => string;
+}> = {
+  1: { 
+    emoji: "⏰", 
+    text: "1 MIN PASSED", 
+    color: "#EAB308",
+    subjectTemplate: (lang) => `CRM_NEW_LEAD_${lang}_T1 | Reminder 1 – lead not claimed (1 min)`
+  },
+  2: { 
+    emoji: "⚠️", 
+    text: "2 MIN PASSED", 
+    color: "#F97316",
+    subjectTemplate: (lang) => `CRM_NEW_LEAD_${lang}_T2 | Reminder 2 – SLA running (2 min)`
+  },
+  3: { 
+    emoji: "🚨", 
+    text: "3 MIN PASSED", 
+    color: "#EA580C",
+    subjectTemplate: (lang) => `CRM_NEW_LEAD_${lang}_T3 | Reminder 3 – URGENT (3 min)`
+  },
+  4: { 
+    emoji: "🔥", 
+    text: "4 MIN PASSED - FINAL WARNING", 
+    color: "#DC2626",
+    subjectTemplate: (lang) => `CRM_NEW_LEAD_${lang}_T4 | FINAL reminder – fallback in 1 minute`
+  },
 };
 
 serve(async (req) => {
@@ -118,7 +141,7 @@ serve(async (req) => {
       }
 
       const langCode = (lead.language || "EN").toUpperCase();
-      const subject = `${config.emoji} ${config.text} - NEW LEAD ${langCode} #${lead.id.slice(0, 8)}`;
+      const subject = config.subjectTemplate(langCode);
 
       // Calculate elapsed time
       const createdAt = new Date(lead.created_at);
