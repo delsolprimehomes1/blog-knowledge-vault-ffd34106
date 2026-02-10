@@ -1,42 +1,79 @@
 
-# Fix T+5 Admin Email Subject Lines
 
-## Problem
+# Fix T+1-T+4 Escalating Alarms: Silent Failures
 
-The T+5 admin email for the Finnish test lead used the old emoji subject format:
-- **Sent**: `🚨 UNCLAIMED: Fin Test - Manual Assignment Required`
-- **Expected**: `CRM_ADMIN_NO_CLAIM_FI | No agent claimed lead within 5 minutes`
+## Findings
 
-The email was sent by `check-unclaimed-leads` which calls `send-lead-notification` with `notification_type: 'admin_unclaimed'`. That function still has legacy subject lines.
+The investigation uncovered two bugs in `send-escalating-alarms/index.ts`:
 
-## Root Cause
+1. **Silent activity insert failure** (line 293-299): The function sets `agent_id: null`, but `crm_activities.agent_id` is a NOT NULL column. Every activity insert for escalating alarms fails silently -- there is no error handling on this insert.
 
-`send-lead-notification/index.ts` line 424 has the old format. The direct-sending functions (`check-claim-window-expiry`, `check-contact-window-expiry`) already use the correct deterministic format, but `send-lead-notification` was never updated for its admin templates.
+2. **No email delivery logging**: Resend returns 200 OK and `last_alarm_level` increments, but there's no record of what emails were sent, making it impossible to verify delivery.
+
+The cron job fired correctly every minute. The function processed the lead 4 times (alarm levels 0 through 4). Resend API calls returned success. But agents report not receiving T+1 through T+4 emails -- without logging, we cannot determine if this is a Resend delivery issue, spam filtering, or something else.
 
 ## Changes
 
-### File: `supabase/functions/send-lead-notification/index.ts`
+### 1. Fix `agent_id: null` bug in `send-escalating-alarms/index.ts`
 
-**Line 422** -- SLA Warning subject (used by `check-sla-breaches`):
-```
+**Line 293-299** -- Change the activity insert to use the first agent ID from the list instead of null:
+
+```typescript
 // Before:
-emailSubject = `⚠️ SLA Warning: ${lead.first_name} ${lead.last_name} not worked by ${assigned_agent_name || 'Agent'}`;
+await supabase.from("crm_activities").insert({
+  lead_id: lead.id,
+  agent_id: null,  // BUG: column is NOT NULL
+  activity_type: "note",
+  notes: `${config.emoji} Escalating alarm level ${targetLevel} sent...`,
+  created_at: now.toISOString(),
+});
 
 // After:
-const slaLangCode = (normalizedLead.language || "EN").toUpperCase();
-emailSubject = `CRM_ADMIN_CLAIMED_NOT_CALLED_${slaLangCode} | Lead claimed but not called (SLA breach)`;
+const activityAgentId = agents[0]?.id;
+if (activityAgentId) {
+  const { error: activityError } = await supabase.from("crm_activities").insert({
+    lead_id: lead.id,
+    agent_id: activityAgentId,
+    activity_type: "note",
+    notes: `${config.emoji} Escalating alarm level ${targetLevel} sent - ${config.text} - lead still unclaimed`,
+    created_at: now.toISOString(),
+  });
+  if (activityError) {
+    console.error(`[send-escalating-alarms] Activity insert failed for lead ${lead.id}:`, activityError);
+  }
+}
 ```
 
-**Line 424** -- Admin Unclaimed subject (used by `check-unclaimed-leads`):
+### 2. Add email delivery logging to `send-escalating-alarms/index.ts`
+
+After the Resend API call (line 267-274), log the full response details so we can trace delivery:
+
+```typescript
+if (!emailResponse.ok) {
+  const errorText = await emailResponse.text();
+  console.error(`[send-escalating-alarms] Resend error for lead ${lead.id} level ${targetLevel}:`, errorText);
+  results.push({ lead_id: lead.id, level: targetLevel, success: false });
+  continue;
+}
+
+const emailResult = await emailResponse.json();
+console.log(`[send-escalating-alarms] Level ${targetLevel} alarm for lead ${lead.id}: Resend ID=${emailResult.id}, recipients=${agentEmails.join(',')}, subject="${subject}"`);
 ```
-// Before:
-emailSubject = `🚨 UNCLAIMED: ${lead.first_name} ${lead.last_name} - Manual Assignment Required`;
 
-// After:
-const unclaimedLangCode = (normalizedLead.language || "EN").toUpperCase();
-emailSubject = `CRM_ADMIN_NO_CLAIM_${unclaimedLangCode} | No agent claimed lead within 5 minutes`;
-```
+This ensures that on the next test, we will have a clear audit trail showing:
+- The exact Resend email ID for each alarm
+- Which recipients received each level
+- The exact subject line sent
+- Activity entries in the database as proof
 
-These two changes align `send-lead-notification` with the deterministic subject standard already used by `check-claim-window-expiry` and `check-contact-window-expiry`.
+### 3. No other files need changes
 
-No other files need changes. The `urgent` template (line 426) is a separate notification type not part of the 7-tier escalation sequence.
+The cron job configuration is correct (every minute, active). The query logic is correct. The subject templates are already using the deterministic format.
+
+## Expected Result After Fix
+
+For the next Finnish test lead, we should see:
+- 4 activity entries in `crm_activities` for alarm levels 1-4
+- 4 console log entries with Resend email IDs
+- T+1 through T+4 emails delivered to juho@ and eetu@
+
