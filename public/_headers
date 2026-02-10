@@ -27,6 +27,12 @@
 /llm.txt
   Content-Type: text/plain; charset=utf-8
 
+# Q&A pages - caching and crawler headers
+/*/qa/*
+  Cache-Control: public, max-age=3600, s-maxage=3600, stale-while-revalidate=300
+  X-Robots-Tag: all
+  X-Content-Type-Options: nosniff
+
 # JSON files
 /*.json
   Content-Type: application/json; charset=utf-8
