@@ -12,12 +12,12 @@ const corsHeaders = {
 // TIMEOUT & CIRCUIT BREAKER CONFIGURATION
 // Prevents 504/524 errors from hanging database queries
 // ============================================================
-const QUERY_TIMEOUT = 6000 // 6 seconds max per database query (reduced to force faster failures)
+const QUERY_TIMEOUT = 12000 // 12 seconds max per database query (allow cold-start queries to complete)
 const TOTAL_REQUEST_TIMEOUT = 20000 // 20 seconds max for entire request
 
-// Simple in-memory cache to reduce DB load (5-minute TTL)
+// In-memory cache to reduce DB load (1-hour TTL, covers most of 9,600 Q&A pages)
 const pageCache = new Map<string, { data: any; expires: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // Circuit breaker state
 let consecutiveFailures = 0
@@ -39,8 +39,8 @@ function getCachedPage(key: string): any | null {
 
 function setCachedPage(key: string, data: any): void {
   pageCache.set(key, { data, expires: Date.now() + CACHE_TTL })
-  // Limit cache size to 200 entries to prevent memory issues
-  if (pageCache.size > 200) {
+  // Limit cache size to 2000 entries to cover more of the 9,600 Q&A pages
+  if (pageCache.size > 2000) {
     const oldest = pageCache.keys().next().value
     if (oldest) pageCache.delete(oldest)
   }
@@ -89,14 +89,33 @@ async function withTimeout<T>(
  * Generates minimal SEO-friendly fallback HTML when database is slow
  */
 function generateFallbackHTML(url: URL): string {
-  const baseTitle = 'Del Sol Prime Homes - Luxury Real Estate Costa del Sol';
-  const baseDescription = 'Discover premium properties and luxury villas on the Costa del Sol. Expert real estate services for international buyers seeking their dream Mediterranean home.';
   const baseUrl = url.origin;
   const pathname = url.pathname;
   
-  // Extract language from URL path instead of hardcoding "en"
+  // Extract language and content type from URL path
   const langMatch = pathname.match(/^\/([a-z]{2})\//);
   const lang = langMatch ? langMatch[1] : 'en';
+  
+  // Detect Q&A paths and extract slug for hreflang generation
+  const qaMatch = pathname.match(/^\/([a-z]{2})\/qa\/(.+?)$/);
+  const slug = qaMatch ? qaMatch[2] : null;
+  const isQA = !!qaMatch;
+  
+  // Generate hreflang tags for all 10 supported languages (even without DB data)
+  const supportedLangs = ['en', 'nl', 'hu', 'de', 'fr', 'sv', 'pl', 'no', 'fi', 'da'];
+  const contentPath = isQA ? 'qa' : pathname.split('/').filter(Boolean)[1] || '';
+  const hreflangTags = isQA && slug
+    ? supportedLangs.map(l => 
+        `<link rel="alternate" hreflang="${l}" href="${BASE_URL}/${l}/qa/${slug}">`
+      ).join('\n  ') + `\n  <link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/qa/${slug}">`
+    : '';
+  
+  const baseTitle = isQA
+    ? 'Real Estate Q&A | Del Sol Prime Homes'
+    : 'Del Sol Prime Homes - Luxury Real Estate Costa del Sol';
+  const baseDescription = isQA
+    ? 'Expert answers about buying property on the Costa del Sol. Real estate guidance for international buyers.'
+    : 'Discover premium properties and luxury villas on the Costa del Sol. Expert real estate services for international buyers seeking their dream Mediterranean home.';
   
   return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -105,50 +124,48 @@ function generateFallbackHTML(url: URL): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${baseTitle}</title>
   <meta name="description" content="${baseDescription}">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Canonical -->
+  <link rel="canonical" href="${BASE_URL}${pathname}">
+  
+  <!-- Hreflang tags -->
+  ${hreflangTags}
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${url.toString()}">
+  <meta property="og:url" content="${BASE_URL}${pathname}">
   <meta property="og:title" content="${baseTitle}">
   <meta property="og:description" content="${baseDescription}">
   <meta property="og:site_name" content="Del Sol Prime Homes">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${url.toString()}">
   <meta name="twitter:title" content="${baseTitle}">
   <meta name="twitter:description" content="${baseDescription}">
-  
-  <!-- Canonical -->
-  <link rel="canonical" href="${url.toString()}">
-  
-  <!-- Auto-redirect to React app for user experience -->
-  <meta http-equiv="refresh" content="0;url=${pathname}">
   
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
+    "@type": "${isQA ? 'QAPage' : 'RealEstateAgent'}",
     "name": "Del Sol Prime Homes",
     "description": "${baseDescription}",
-    "url": "${baseUrl}",
-    "address": {
-      "@type": "PostalAddress",
-      "addressRegion": "Costa del Sol",
-      "addressCountry": "ES"
-    }
+    "url": "${BASE_URL}${pathname}"
   }
   </script>
 </head>
 <body>
-  <!-- Immediate JavaScript redirect -->
-  <script>window.location.href='${pathname}';</script>
-  
-  <!-- Fallback for no-JS -->
-  <noscript>
-    <p>Redirecting to <a href="${pathname}">${baseTitle}</a>...</p>
-  </noscript>
+  <header>
+    <h1>${baseTitle}</h1>
+  </header>
+  <main>
+    <p>${baseDescription}</p>
+    ${isQA ? '<section><p>Expert real estate Q&amp;A for Costa del Sol property buyers. Our team provides detailed answers about the property purchase process, legal requirements, costs, and lifestyle information.</p></section>' : ''}
+  </main>
+  <footer>
+    <p>&copy; Del Sol Prime Homes - Costa del Sol, Spain</p>
+  </footer>
 </body>
 </html>`;
 }
@@ -283,7 +300,7 @@ async function fetchQAMetadata(supabase: any, slug: string, lang: string): Promi
   // First try: exact match (slug + language)
   const { data: exactMatch, error: exactError } = await supabase
     .from('qa_pages')
-    .select('*')
+    .select('language, slug, question_main, answer_main, speakable_answer, meta_title, meta_description, canonical_url, featured_image_url, featured_image_alt, date_published, date_modified, hreflang_group_id, related_qas, translations, title')
     .eq('slug', slug)
     .eq('language', lang)
     .eq('status', 'published')
@@ -604,6 +621,7 @@ async function fetchHreflangSiblings(supabase: any, hreflangGroupId: string, con
     .select('language, slug, canonical_url')
     .eq('hreflang_group_id', hreflangGroupId)
     .eq('status', 'published')
+    .limit(15)
 
   if (error || !data) {
     console.error('Error fetching hreflang siblings:', error)
