@@ -266,12 +266,13 @@ serve(async (req) => {
 
         if (!emailResponse.ok) {
           const errorText = await emailResponse.text();
-          console.error(`[send-escalating-alarms] Resend error for lead ${lead.id}:`, errorText);
+          console.error(`[send-escalating-alarms] Resend error for lead ${lead.id} level ${targetLevel}:`, errorText);
           results.push({ lead_id: lead.id, level: targetLevel, success: false });
           continue;
         }
 
-        console.log(`[send-escalating-alarms] Sent level ${targetLevel} alarm for lead ${lead.id} to ${agentEmails.length} agents`);
+        const emailResult = await emailResponse.json();
+        console.log(`[send-escalating-alarms] Level ${targetLevel} alarm for lead ${lead.id}: Resend ID=${emailResult.id}, recipients=${agentEmails.join(',')}, subject="${subject}"`);
 
       } catch (emailError) {
         console.error(`[send-escalating-alarms] Email error for lead ${lead.id}:`, emailError);
@@ -290,13 +291,19 @@ serve(async (req) => {
       }
 
       // Log activity for audit trail
-      await supabase.from("crm_activities").insert({
-        lead_id: lead.id,
-        agent_id: null,
-        activity_type: "note",
-        notes: `${config.emoji} Escalating alarm level ${targetLevel} sent - ${config.text} - lead still unclaimed`,
-        created_at: now.toISOString(),
-      });
+      const activityAgentId = agents[0]?.id;
+      if (activityAgentId) {
+        const { error: activityError } = await supabase.from("crm_activities").insert({
+          lead_id: lead.id,
+          agent_id: activityAgentId,
+          activity_type: "note",
+          notes: `${config.emoji} Escalating alarm level ${targetLevel} sent - ${config.text} - lead still unclaimed`,
+          created_at: now.toISOString(),
+        });
+        if (activityError) {
+          console.error(`[send-escalating-alarms] Activity insert failed for lead ${lead.id}:`, activityError);
+        }
+      }
 
       results.push({ lead_id: lead.id, level: targetLevel, success: true });
     }
