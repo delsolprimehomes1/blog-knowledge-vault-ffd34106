@@ -274,6 +274,29 @@ serve(async (req) => {
         const emailResult = await emailResponse.json();
         console.log(`[send-escalating-alarms] Level ${targetLevel} alarm for lead ${lead.id}: Resend ID=${emailResult.id}, recipients=${agentEmails.join(',')}, subject="${subject}"`);
 
+        // Log to crm_email_logs for audit trail
+        const emailLogEntries = agents.map(agent => ({
+          lead_id: lead.id,
+          agent_id: agent.id,
+          recipient_email: agent.email,
+          recipient_name: `${agent.first_name || ''} ${agent.last_name || ''}`.trim() || null,
+          subject: subject,
+          template_type: `escalating_alarm_t${targetLevel}`,
+          triggered_by: 'system',
+          trigger_reason: `Escalating alarm level ${targetLevel} - ${config.text}`,
+          status: 'sent',
+          resend_message_id: emailResult.id,
+          sent_at: now.toISOString(),
+        }));
+
+        const { error: logError } = await supabase
+          .from("crm_email_logs")
+          .insert(emailLogEntries);
+
+        if (logError) {
+          console.error(`[send-escalating-alarms] Email log insert failed for lead ${lead.id} level ${targetLevel}:`, logError);
+        }
+
       } catch (emailError) {
         console.error(`[send-escalating-alarms] Email error for lead ${lead.id}:`, emailError);
         results.push({ lead_id: lead.id, level: targetLevel, success: false });
