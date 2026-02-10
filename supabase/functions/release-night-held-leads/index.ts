@@ -79,6 +79,8 @@ serve(async (req) => {
           current_round: 1,
           round_broadcast_at: new Date().toISOString(),
           claim_window_expires_at: new Date(Date.now() + claimWindowMinutes * 60 * 1000).toISOString(),
+          claim_timer_started_at: new Date().toISOString(),
+          last_alarm_level: 0,
         })
         .eq("id", lead.id);
 
@@ -98,10 +100,12 @@ serve(async (req) => {
           .eq("is_active", true)
           .eq("accepts_new_leads", true);
 
-        availableAgents = (roundAgents || []).filter(
+        const capacityFiltered = (roundAgents || []).filter(
           (agent: { current_lead_count: number; max_active_leads: number }) => 
             agent.current_lead_count < agent.max_active_leads
         );
+        const nonAdminAgents = capacityFiltered.filter((agent: { role: string }) => agent.role !== 'admin');
+        availableAgents = nonAdminAgents.length > 0 ? nonAdminAgents : capacityFiltered;
       } else {
         // Fallback to language-matched agents
         const { data: eligibleAgents } = await supabase
@@ -111,10 +115,12 @@ serve(async (req) => {
           .eq("is_active", true)
           .eq("accepts_new_leads", true);
 
-        availableAgents = (eligibleAgents || []).filter(
+        const capacityFilteredFallback = (eligibleAgents || []).filter(
           (agent: { current_lead_count: number; max_active_leads: number }) => 
             agent.current_lead_count < agent.max_active_leads
         );
+        const nonAdminFallback = capacityFilteredFallback.filter((agent: { role: string }) => agent.role !== 'admin');
+        availableAgents = nonAdminFallback.length > 0 ? nonAdminFallback : capacityFilteredFallback;
       }
 
       // Create notifications for all eligible agents
@@ -143,7 +149,7 @@ serve(async (req) => {
               lead,
               agents: availableAgents,
               claimWindowMinutes,
-              isNightRelease: true,
+              notification_type: "broadcast",
             }),
           });
         } catch (emailError) {
