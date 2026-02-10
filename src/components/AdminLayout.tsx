@@ -89,6 +89,7 @@ const navGroups = [
       { name: "Redirect Checker", href: "/admin/redirect-checker", icon: ArrowRightLeft },
       { name: "Broken Links", href: "/admin/broken-links", icon: Link2Off },
       { name: "Link Audit", href: "/admin/link-audit", icon: Link2 },
+      { name: "Crawlability Test", href: "/admin/crawlability-test", icon: Search },
       { name: "Production Audit", href: "/admin/production-audit", icon: Shield },
     ],
   },
