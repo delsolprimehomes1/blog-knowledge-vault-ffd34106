@@ -1,61 +1,69 @@
 
 
-# Phase 4: Multi-Language Verification and Google Re-indexing Preparation
+# Fix Edge Function Timeouts - Critical SEO Fix
 
-## What's Already Done (No Changes Needed)
+## Root Cause Analysis
 
-- **Sitemap priorities**: Q&A pages already use `priority 0.7` in `scripts/generateSitemap.ts` (line 336). Blog is at `1.0`, locations at `0.9`.
-- **robots.txt**: Already correctly configured with `Allow: /` for all crawlers, sitemap reference, and `/admin/` and `/crm/` blocked.
-- **Database**: Confirmed 960 published Q&A pages per language, 9,600 total across all 10 languages (en, nl, de, fr, pl, sv, da, hu, fi, no).
+The `serve-seo-page` edge function times out because each Q&A request makes **2-3 sequential database queries**, each pulling unnecessary data:
 
-## New Scripts to Create
+1. `fetchQAMetadata`: `select('*')` on `qa_pages` (all columns including large JSONB) -- line 286
+2. Empty content check: already optimized to skip if `answer_main` exists from step 1
+3. `fetchHreflangSiblings`: separate query on `qa_pages` by `hreflang_group_id` -- line 602
 
-### Script 1: `scripts/testAllLanguagesQA.ts`
+Under concurrent load, these sequential queries stack up and exceed the 15-second total timeout.
 
-A verification script that tests one Q&A page per language against the production domain.
+**Good news**: Database indexes already exist (`faq_pages_slug_language_idx` on `(slug, language)`), so the fix is purely in the edge function code.
 
-- Queries the database for one published Q&A slug per language
-- For each language, fetches the production URL (`https://www.delsolprimehomes.com/{lang}/qa/{slug}`) with a Googlebot user-agent
-- Validates each response for:
-  - HTTP 200 status
-  - Correct `<html lang="{lang}">` attribute
-  - `X-SEO-Source` header present
-  - Response body length greater than 5,000 characters
-  - Presence of all 10 hreflang `<link>` tags
-  - `<title>` tag with content
-- Prints a pass/fail report per language
+## Changes (all in `supabase/functions/serve-seo-page/index.ts`)
 
-### Script 2: `scripts/sampleQAPages.ts`
+### Fix 1: Optimize Q&A Query to Select Only Needed Columns
 
-A broader verification script that tests 100 random Q&A pages (10 per language).
+Replace `select('*')` in `fetchQAMetadata` (line 286) with specific columns:
 
-- Queries the database for 10 random published Q&A slugs per language (using SQL `ORDER BY random() LIMIT 10`)
-- Fetches each URL on the production domain with Googlebot user-agent
-- Validates the same criteria as Script 1
-- Reports failures with the specific URL and reason
-- Outputs a summary: "95/100 passed, 5 failed" with details
+```
+.select('language, slug, question_main, answer_main, speakable_answer, meta_title, meta_description, canonical_url, featured_image_url, featured_image_alt, date_published, date_modified, hreflang_group_id, related_qas, translations, title')
+```
 
-### Script 3: `scripts/generatePriorityQAUrls.ts`
+This eliminates transferring large unused JSONB fields like `detailed_content`, `internal_links`, `external_citations`, etc.
 
-Generates a plain text file of Q&A URLs for manual Google Search Console submission.
+### Fix 2: Increase Cache Size and TTL
 
-- Queries the database for all 9,600 published Q&A pages (or top 100 per language = 1,000 URLs)
-- Outputs one URL per line to `public/priority-qa-urls.txt`
-- Format: `https://www.delsolprimehomes.com/{lang}/qa/{slug}`
-- Groups by language for readability
+- Change `CACHE_TTL` from 5 minutes to **1 hour** (line 20: `60 * 60 * 1000`)
+- Increase max cache entries from 200 to **2000** (line 43) to cover more of the 9,600 Q&A pages
+- This means repeated crawler hits serve from memory instantly
 
-### Package.json Updates
+### Fix 3: Increase Query Timeout
 
-Add three new npm scripts:
-- `"test-qa-languages": "tsx scripts/testAllLanguagesQA.ts"`
-- `"sample-qa-pages": "tsx scripts/sampleQAPages.ts"`
-- `"generate-priority-urls": "tsx scripts/generatePriorityQAUrls.ts"`
+- Change `QUERY_TIMEOUT` from 6,000ms to **12,000ms** (line 15) to allow cold-start queries to complete
+- Keep the total request timeout at 15,000ms (line 2604) -- this is fine
 
-## Technical Notes
+### Fix 4: Improve Fallback HTML with Hreflang Tags and Q&A Content
 
-- All scripts use the existing Supabase client pattern from `scripts/generateSitemap.ts` (dotenv + createClient with build-optimized settings)
-- Scripts target the **production** domain since the middleware only runs there
-- The fetch calls use `AbortSignal.timeout(15000)` to handle slow responses
-- No database or edge function changes required
-- No sitemap regeneration needed since priorities are already correct
+Update `generateFallbackHTML` (lines 91-154) to:
+- Detect Q&A paths and extract language/slug
+- Include all 10 hreflang tags (even without DB data, we can construct the URLs from the slug pattern)
+- Add a basic content section instead of just a redirect
+- Remove the `meta http-equiv="refresh"` redirect so crawlers actually index the fallback content
 
+### Fix 5: Optimize Hreflang Siblings Query
+
+Add `.limit(15)` to the hreflang siblings query (line 602-606) as a safety net, and select only the 3 needed columns (already done correctly).
+
+Also add a partial index check -- the `idx_qa_pages_hreflang_group` index already exists, so this query should be fast. The main optimization is combining fewer round trips.
+
+## Technical Details
+
+| Change | Location | Impact |
+|---|---|---|
+| Select specific columns | Line 286 | Reduces data transfer ~80% |
+| Cache TTL 5min to 1hr | Line 20 | Eliminates repeat DB queries |
+| Cache size 200 to 2000 | Line 43 | Covers more pages in memory |
+| Query timeout 6s to 12s | Line 15 | Allows cold-start queries to finish |
+| Fallback HTML with hreflang | Lines 91-154 | Crawlers get SEO value even on timeout |
+
+## Expected Outcome
+
+- Most requests served from in-memory cache (0ms DB time)
+- Cache misses complete in under 3 seconds (optimized query)
+- Timeout fallback now includes hreflang tags (SEO safety net)
+- Consecutive timeout rate should drop from ~100% to under 5%
