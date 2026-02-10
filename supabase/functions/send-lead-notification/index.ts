@@ -419,9 +419,11 @@ serve(async (req) => {
         } else if (useNightHoldAlertTemplate) {
           emailSubject = `🌙 After-Hours Lead: ${lead.first_name} ${lead.last_name} (${flag} ${normalizedLead.language?.toUpperCase()})`;
         } else if (useSlaWarningTemplate) {
-          emailSubject = `⚠️ SLA Warning: ${lead.first_name} ${lead.last_name} not worked by ${assigned_agent_name || 'Agent'}`;
+          const slaLangCode = (normalizedLead.language || "EN").toUpperCase();
+          emailSubject = `CRM_ADMIN_CLAIMED_NOT_CALLED_${slaLangCode} | Lead claimed but not called (SLA breach)`;
         } else if (useAdminUnclaimedTemplate) {
-          emailSubject = `🚨 UNCLAIMED: ${lead.first_name} ${lead.last_name} - Manual Assignment Required`;
+          const unclaimedLangCode = (normalizedLead.language || "EN").toUpperCase();
+          emailSubject = `CRM_ADMIN_NO_CLAIM_${unclaimedLangCode} | No agent claimed lead within 5 minutes`;
         } else if (useUrgentTemplate) {
           emailSubject = `🔥 URGENT LEAD: ${lead.first_name} ${lead.last_name} - ${lead.budget_range || 'Action Required'}`;
         } else {
