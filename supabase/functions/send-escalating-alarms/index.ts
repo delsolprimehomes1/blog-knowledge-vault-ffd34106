@@ -193,34 +193,26 @@ serve(async (req) => {
           <!-- Body -->
           <tr>
             <td style="padding: 24px;">
-              <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">Lead Details</h2>
+              <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">Lead Information</h2>
               
               <table width="100%" cellpadding="8" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px;">
                 <tr>
-                  <td style="color: #6b7280; font-size: 14px; width: 120px;">Name:</td>
-                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.first_name || ''} ${lead.last_name || ''}</td>
+                  <td style="color: #6b7280; font-size: 14px; width: 120px;">Language:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.language ? lead.language.toUpperCase() : 'Unknown'}</td>
                 </tr>
                 <tr>
-                  <td style="color: #6b7280; font-size: 14px;">Phone:</td>
-                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.phone_number || 'Not provided'}</td>
-                </tr>
-                <tr>
-                  <td style="color: #6b7280; font-size: 14px;">Email:</td>
-                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.email || 'Not provided'}</td>
-                </tr>
-                <tr>
-                  <td style="color: #6b7280; font-size: 14px;">Language:</td>
-                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.language || 'Unknown'}</td>
-                </tr>
-                <tr>
-                  <td style="color: #6b7280; font-size: 14px;">Source:</td>
-                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.lead_source || 'Unknown'}</td>
+                  <td style="color: #6b7280; font-size: 14px;">Country:</td>
+                  <td style="color: #1f2937; font-size: 14px; font-weight: 600;">${lead.country_flag || '🌍'} ${lead.country_name || 'Not specified'}</td>
                 </tr>
                 <tr>
                   <td style="color: #6b7280; font-size: 14px;">Time Elapsed:</td>
                   <td style="color: ${config.color}; font-size: 14px; font-weight: 700;">${elapsedMinutes} minute${elapsedMinutes !== 1 ? 's' : ''}</td>
                 </tr>
               </table>
+
+              <div style="margin-top: 16px; padding: 12px 16px; background-color: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px;">
+                <p style="margin: 0; color: #92400E; font-size: 13px; font-weight: 600;">🔒 Claim this lead to see full contact details.</p>
+              </div>
 
               ${targetLevel === 4 ? `
               <!-- Final Warning Banner -->
