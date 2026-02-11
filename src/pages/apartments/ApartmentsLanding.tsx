@@ -4,11 +4,14 @@ import { Helmet } from 'react-helmet';
 import ApartmentsHero from '@/components/apartments/ApartmentsHero';
 import ApartmentsPropertiesSection from '@/components/apartments/ApartmentsPropertiesSection';
 import ApartmentsLeadFormModal from '@/components/apartments/ApartmentsLeadFormModal';
-import ExplainerVideo from '@/components/landing/ExplainerVideo';
+import AutoplayVideo from '@/components/landing/AutoplayVideo';
+import EmmaSection from '@/components/landing/EmmaSection';
+import EmmaChat from '@/components/landing/EmmaChat';
 import { Footer } from '@/components/home/Footer';
 import LanguageSelector from '@/components/landing/LanguageSelector';
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import { supabase } from '@/integrations/supabase/client';
+import { MessageCircle } from 'lucide-react';
 
 const SUPPORTED_LANGS = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 
@@ -25,6 +28,7 @@ const ApartmentsLanding: React.FC = () => {
   const language = SUPPORTED_LANGS.includes(lang || '') ? lang! : 'en';
   const [selectedProperty, setSelectedProperty] = useState<SelectedProperty | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
   const [metaTitle, setMetaTitle] = useState('Luxury Costa del Sol Apartments | Del Sol Prime Homes');
   const [metaDescription, setMetaDescription] = useState('Find your perfect apartment on the Costa del Sol.');
   const [widgetId, setWidgetId] = useState('');
@@ -59,10 +63,20 @@ const ApartmentsLanding: React.FC = () => {
       document.body.appendChild(script);
     }
   }, [widgetId]);
+
+  // Listen for openEmmaChat events
+  useEffect(() => {
+    const handleOpenEmma = () => setIsEmmaOpen(true);
+    window.addEventListener('openEmmaChat', handleOpenEmma);
+    return () => window.removeEventListener('openEmmaChat', handleOpenEmma);
+  }, []);
+
   const handlePropertyClick = (property: SelectedProperty) => {
     setSelectedProperty(property);
     setModalOpen(true);
   };
+
+  const openEmma = () => setIsEmmaOpen(true);
 
   const canonical = `https://blog-knowledge-vault.lovable.app/${language}/apartments`;
 
@@ -86,21 +100,28 @@ const ApartmentsLanding: React.FC = () => {
         })}</script>
       </Helmet>
 
-      {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+      {/* Fixed Header - matching landing page glass style */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
         <div className="container mx-auto px-4 flex items-center justify-between h-16">
           <img
             src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
             alt="Del Sol Prime Homes"
             className="h-10"
           />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <LanguageSelector currentLang={language as LanguageCode} />
             <button
               onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="hidden sm:inline-flex px-4 py-2 bg-landing-gold text-white rounded-lg font-semibold hover:bg-landing-goldDark transition-colors text-sm"
+              className="hidden sm:inline-flex px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
             >
               View Properties
+            </button>
+            <button
+              onClick={openEmma}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-landing-gold text-white rounded-lg font-semibold hover:bg-landing-goldDark transition-colors text-sm"
+            >
+              <MessageCircle size={16} />
+              <span className="hidden sm:inline">Speak with Emma</span>
             </button>
           </div>
         </div>
@@ -108,7 +129,8 @@ const ApartmentsLanding: React.FC = () => {
 
       <main>
         <ApartmentsHero language={language} />
-        <ExplainerVideo language={language} />
+        <AutoplayVideo language={language} onOpenEmmaChat={openEmma} />
+        <EmmaSection onStartChat={openEmma} />
         <ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />
 
         {/* Google Reviews */}
@@ -130,6 +152,12 @@ const ApartmentsLanding: React.FC = () => {
         open={modalOpen}
         onOpenChange={setModalOpen}
         property={selectedProperty}
+        language={language}
+      />
+
+      <EmmaChat
+        isOpen={isEmmaOpen}
+        onClose={() => setIsEmmaOpen(false)}
         language={language}
       />
     </>
