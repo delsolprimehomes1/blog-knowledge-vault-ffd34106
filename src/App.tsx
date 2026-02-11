@@ -65,6 +65,7 @@ const BuyersGuide = lazy(() => import("./pages/BuyersGuide"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Contact = lazy(() => import("./pages/Contact"));
+const ApartmentsLanding = lazy(() => import("./pages/apartments/ApartmentsLanding"));
 
 // Lazy load ALL admin pages (rarely accessed, heavy components)
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -352,6 +353,10 @@ const App = () => (
               {/* Contact page */}
               <Route path="/contact" element={<Navigate to="/en/contact" replace />} />
               <Route path="/:lang/contact" element={<Contact />} />
+
+              {/* Apartments landing page */}
+              <Route path="/apartments" element={<Navigate to="/en/apartments" replace />} />
+              <Route path="/:lang/apartments" element={<ApartmentsLanding />} />
 
               {/* ========================================== */}
               {/* LANGUAGE-PREFIXED ROUTES (Phase 2)        */}

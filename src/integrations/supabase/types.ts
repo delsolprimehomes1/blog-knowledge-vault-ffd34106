@@ -104,6 +104,162 @@ export type Database = {
         }
         Relationships: []
       }
+      apartments_page_content: {
+        Row: {
+          created_at: string | null
+          cta_text: string | null
+          elfsight_widget_id: string | null
+          headline: string
+          hero_image_alt: string | null
+          hero_image_url: string | null
+          id: string
+          is_published: boolean | null
+          language: string
+          meta_description: string | null
+          meta_title: string | null
+          reviews_enabled: boolean | null
+          subheadline: string | null
+          updated_at: string | null
+          updated_by: string | null
+          video_enabled: boolean | null
+          video_thumbnail_url: string | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cta_text?: string | null
+          elfsight_widget_id?: string | null
+          headline: string
+          hero_image_alt?: string | null
+          hero_image_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          language: string
+          meta_description?: string | null
+          meta_title?: string | null
+          reviews_enabled?: boolean | null
+          subheadline?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          video_enabled?: boolean | null
+          video_thumbnail_url?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cta_text?: string | null
+          elfsight_widget_id?: string | null
+          headline?: string
+          hero_image_alt?: string | null
+          hero_image_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          language?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          reviews_enabled?: boolean | null
+          subheadline?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          video_enabled?: boolean | null
+          video_thumbnail_url?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      apartments_properties: {
+        Row: {
+          bathrooms: number
+          bedrooms: number
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          display_order: number | null
+          featured: boolean | null
+          featured_image_alt: string | null
+          featured_image_url: string | null
+          features: Json | null
+          id: string
+          images: Json | null
+          inquiries: number | null
+          language: string
+          location: string
+          price: number
+          property_group_id: string | null
+          property_type: string | null
+          short_description: string | null
+          slug: string | null
+          sqm: number
+          status: string | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          views: number | null
+          visible: boolean | null
+        }
+        Insert: {
+          bathrooms: number
+          bedrooms: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          featured?: boolean | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          features?: Json | null
+          id?: string
+          images?: Json | null
+          inquiries?: number | null
+          language: string
+          location: string
+          price: number
+          property_group_id?: string | null
+          property_type?: string | null
+          short_description?: string | null
+          slug?: string | null
+          sqm: number
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+          views?: number | null
+          visible?: boolean | null
+        }
+        Update: {
+          bathrooms?: number
+          bedrooms?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          featured?: boolean | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          features?: Json | null
+          id?: string
+          images?: Json | null
+          inquiries?: number | null
+          language?: string
+          location?: string
+          price?: number
+          property_group_id?: string | null
+          property_type?: string | null
+          short_description?: string | null
+          slug?: string | null
+          sqm?: number
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          views?: number | null
+          visible?: boolean | null
+        }
+        Relationships: []
+      }
       approved_domains: {
         Row: {
           category: string
@@ -2313,6 +2469,7 @@ export type Database = {
           intake_complete: boolean | null
           interest: string | null
           is_night_held: boolean | null
+          landing_page_url: string | null
           language: string
           last_alarm_level: number | null
           last_contact_at: string | null
@@ -2331,6 +2488,7 @@ export type Database = {
           page_url: string
           phone_number: string | null
           previous_agent_id: string | null
+          property_interest: string | null
           property_price: string | null
           property_purpose: string | null
           property_ref: string | null
@@ -2341,6 +2499,7 @@ export type Database = {
           reassignment_count: number | null
           reassignment_reason: string | null
           referrer: string | null
+          referrer_url: string | null
           round_broadcast_at: string | null
           round_escalated_at: string | null
           routing_rule_id: string | null
@@ -2350,6 +2509,11 @@ export type Database = {
           timeframe: string | null
           total_contacts: number | null
           updated_at: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
           archived?: boolean | null
@@ -2394,6 +2558,7 @@ export type Database = {
           intake_complete?: boolean | null
           interest?: string | null
           is_night_held?: boolean | null
+          landing_page_url?: string | null
           language: string
           last_alarm_level?: number | null
           last_contact_at?: string | null
@@ -2412,6 +2577,7 @@ export type Database = {
           page_url: string
           phone_number?: string | null
           previous_agent_id?: string | null
+          property_interest?: string | null
           property_price?: string | null
           property_purpose?: string | null
           property_ref?: string | null
@@ -2422,6 +2588,7 @@ export type Database = {
           reassignment_count?: number | null
           reassignment_reason?: string | null
           referrer?: string | null
+          referrer_url?: string | null
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
           routing_rule_id?: string | null
@@ -2431,6 +2598,11 @@ export type Database = {
           timeframe?: string | null
           total_contacts?: number | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
           archived?: boolean | null
@@ -2475,6 +2647,7 @@ export type Database = {
           intake_complete?: boolean | null
           interest?: string | null
           is_night_held?: boolean | null
+          landing_page_url?: string | null
           language?: string
           last_alarm_level?: number | null
           last_contact_at?: string | null
@@ -2493,6 +2666,7 @@ export type Database = {
           page_url?: string
           phone_number?: string | null
           previous_agent_id?: string | null
+          property_interest?: string | null
           property_price?: string | null
           property_purpose?: string | null
           property_ref?: string | null
@@ -2503,6 +2677,7 @@ export type Database = {
           reassignment_count?: number | null
           reassignment_reason?: string | null
           referrer?: string | null
+          referrer_url?: string | null
           round_broadcast_at?: string | null
           round_escalated_at?: string | null
           routing_rule_id?: string | null
@@ -2512,6 +2687,11 @@ export type Database = {
           timeframe?: string | null
           total_contacts?: number | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: [
           {
