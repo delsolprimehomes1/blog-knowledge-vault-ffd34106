@@ -31,6 +31,7 @@ import {
   ChevronRight,
   Copy,
   AlertTriangle,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -60,6 +61,13 @@ const navGroups = [
     label: "Properties",
     items: [
       { name: "Properties", href: "/admin/properties", icon: Home },
+    ],
+  },
+  {
+    label: "Apartments",
+    items: [
+      { name: "Page Content", href: "/admin/apartments-content", icon: FileText },
+      { name: "Properties", href: "/admin/apartments-properties", icon: Building2 },
     ],
   },
   {
