@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Volume2, VolumeX, Check, MessageCircle } from "lucide-react";
+import { Play, X, Check, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRetargetingTranslations } from "@/lib/retargetingTranslations";
 import { getWelcomeBackVideoUrl, RETARGETING_VIDEO_THUMBNAIL } from "@/config/retargetingWelcomeBackVideos";
@@ -11,45 +11,16 @@ interface RetargetingAutoplayVideoProps {
 
 export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutoplayVideoProps) => {
   const t = getRetargetingTranslations(language);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const videoUrl = getWelcomeBackVideoUrl(language);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+  const handlePlayClick = () => {
+    setIsPlaying(true);
+  };
 
-    const playVideo = async () => {
-      try {
-        video.muted = true;
-        await video.play();
-        setIsPlaying(true);
-      } catch (error) {
-        console.log("Autoplay blocked, waiting for user interaction");
-        setIsPlaying(false);
-      }
-    };
-
-    playVideo();
-  }, []);
-
-  const toggleSound = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (video.muted) {
-      // Unmuting - restart video from beginning
-      video.currentTime = 0;
-      video.muted = false;
-      setIsMuted(false);
-      video.play();
-    } else {
-      // Muting - just mute, don't restart
-      video.muted = true;
-      setIsMuted(true);
-    }
+  const handleCloseClick = () => {
+    setIsPlaying(false);
   };
 
   const handleEmmaClick = () => {
@@ -85,45 +56,45 @@ export const RetargetingAutoplayVideo = ({ language = "en" }: RetargetingAutopla
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.7 }}
-          className="relative rounded-2xl overflow-hidden shadow-2xl bg-landing-navy/5"
+          className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl bg-landing-navy/5"
         >
-          <video
-            ref={videoRef}
-            src={videoUrl || undefined}
-            poster={RETARGETING_VIDEO_THUMBNAIL}
-            className="w-full aspect-video object-cover"
-            loop
-            muted
-            playsInline
-            preload="auto"
-            controls
-          />
-
-          {/* Sound Toggle Button - Bottom Right Corner */}
-          <button
-            onClick={toggleSound}
-            className={`absolute z-10 flex items-center justify-center
-              bg-white/90 backdrop-blur-md rounded-full shadow-lg
-              hover:bg-white hover:scale-105
-              transition-all duration-300 ease-out
-              border border-white/50
-              ${isMuted 
-                ? 'bottom-4 right-4 px-4 py-2.5 gap-2'
-                : 'bottom-4 left-4 w-8 h-8'
-              }`}
-            aria-label={isMuted ? "Enable sound" : "Mute sound"}
-          >
-            {isMuted ? (
-              <>
-                <VolumeX className="w-5 h-5 text-landing-navy" />
-                <span className="text-sm font-medium text-landing-navy">
-                  {t.videoUnmuteButton || "Click for sound"}
-                </span>
-              </>
-            ) : (
-              <Volume2 className="w-4 h-4 text-landing-gold" />
-            )}
-          </button>
+          {!isPlaying ? (
+            <div className="relative w-full h-full flex items-center justify-center">
+              <img
+                src={RETARGETING_VIDEO_THUMBNAIL}
+                alt="Video thumbnail"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-landing-navy/30 to-black/20" />
+              <button
+                onClick={handlePlayClick}
+                className="group relative w-20 h-20 md:w-24 md:h-24 flex items-center justify-center bg-landing-gold rounded-full hover:bg-landing-goldDark transition-all duration-300 hover:scale-110 shadow-2xl z-10"
+                aria-label="Play video"
+              >
+                <Play size={36} className="text-white ml-2" fill="white" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative w-full h-full">
+              <video
+                src={videoUrl || undefined}
+                controls
+                autoPlay
+                className="w-full h-full"
+                controlsList="nodownload"
+                playsInline
+              >
+                Your browser does not support the video tag.
+              </video>
+              <button
+                onClick={handleCloseClick}
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors z-20"
+                aria-label="Close video"
+              >
+                <X size={20} className="text-white" />
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Bullet Points */}
