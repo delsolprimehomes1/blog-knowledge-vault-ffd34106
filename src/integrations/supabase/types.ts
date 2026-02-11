@@ -108,7 +108,7 @@ export type Database = {
         Row: {
           created_at: string | null
           cta_text: string | null
-          elfsight_widget_id: string | null
+          elfsight_embed_code: string | null
           headline: string
           hero_image_alt: string | null
           hero_image_url: string | null
@@ -128,7 +128,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           cta_text?: string | null
-          elfsight_widget_id?: string | null
+          elfsight_embed_code?: string | null
           headline: string
           hero_image_alt?: string | null
           hero_image_url?: string | null
@@ -148,7 +148,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           cta_text?: string | null
-          elfsight_widget_id?: string | null
+          elfsight_embed_code?: string | null
           headline?: string
           hero_image_alt?: string | null
           hero_image_url?: string | null

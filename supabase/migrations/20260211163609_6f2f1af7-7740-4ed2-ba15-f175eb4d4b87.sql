@@ -1,0 +1,1 @@
+ALTER TABLE public.apartments_page_content RENAME COLUMN elfsight_widget_id TO elfsight_embed_code;

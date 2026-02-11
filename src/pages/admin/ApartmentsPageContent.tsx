@@ -25,7 +25,7 @@ interface PageContent {
   video_url: string;
   video_thumbnail_url: string;
   reviews_enabled: boolean;
-  elfsight_widget_id: string;
+  elfsight_embed_code: string;
   meta_title: string;
   meta_description: string;
   is_published: boolean;
@@ -42,7 +42,7 @@ const emptyContent = (lang: string): PageContent => ({
   video_url: "",
   video_thumbnail_url: "",
   reviews_enabled: false,
-  elfsight_widget_id: "",
+  elfsight_embed_code: "",
   meta_title: "",
   meta_description: "",
   is_published: false,
@@ -81,7 +81,7 @@ export const ApartmentsPageContentInner = () => {
       video_url: data.video_url || "",
       video_thumbnail_url: data.video_thumbnail_url || "",
       reviews_enabled: data.reviews_enabled ?? false,
-      elfsight_widget_id: data.elfsight_widget_id || "",
+      elfsight_embed_code: data.elfsight_embed_code || "",
       meta_title: data.meta_title || "",
       meta_description: data.meta_description || "",
       is_published: data.is_published ?? false,
@@ -102,7 +102,7 @@ export const ApartmentsPageContentInner = () => {
       video_url: content.video_url,
       video_thumbnail_url: content.video_thumbnail_url,
       reviews_enabled: content.reviews_enabled,
-      elfsight_widget_id: content.elfsight_widget_id,
+      elfsight_embed_code: content.elfsight_embed_code,
       meta_title: content.meta_title,
       meta_description: content.meta_description,
       is_published: content.is_published,
@@ -182,7 +182,11 @@ export const ApartmentsPageContentInner = () => {
                       <Switch checked={content.reviews_enabled} onCheckedChange={v => update("reviews_enabled", v)} />
                       <Label>Reviews Enabled</Label>
                     </div>
-                    <div><Label>Elfsight Widget ID</Label><Input value={content.elfsight_widget_id} onChange={e => update("elfsight_widget_id", e.target.value)} /></div>
+                    <div>
+                      <Label>Elfsight Embed Code</Label>
+                      <Textarea rows={4} value={content.elfsight_embed_code} onChange={e => update("elfsight_embed_code", e.target.value)} placeholder="Paste the full Elfsight embed code here..." />
+                      <p className="text-sm text-muted-foreground mt-1">Paste the full Elfsight embed code (HTML comment + script + div)</p>
+                    </div>
                   </CardContent>
                 </Card>
 
