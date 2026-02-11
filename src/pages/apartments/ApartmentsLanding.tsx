@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import DOMPurify from 'dompurify';
 import ApartmentsHero from '@/components/apartments/ApartmentsHero';
 import ApartmentsPropertiesSection from '@/components/apartments/ApartmentsPropertiesSection';
 import ApartmentsLeadFormModal from '@/components/apartments/ApartmentsLeadFormModal';
@@ -28,8 +27,7 @@ const ApartmentsLanding: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [metaTitle, setMetaTitle] = useState('Luxury Costa del Sol Apartments | Del Sol Prime Homes');
   const [metaDescription, setMetaDescription] = useState('Find your perfect apartment on the Costa del Sol.');
-  const [embedCode, setEmbedCode] = useState('');
-  const reviewsRef = useRef<HTMLDivElement>(null);
+  const [widgetId, setWidgetId] = useState('');
 
   useEffect(() => {
     const fetchPageContent = async () => {
@@ -43,28 +41,24 @@ const ApartmentsLanding: React.FC = () => {
         if (data.meta_title) setMetaTitle(data.meta_title);
         if (data.meta_description) setMetaDescription(data.meta_description);
         if (data.reviews_enabled && data.elfsight_embed_code) {
-          setEmbedCode(data.elfsight_embed_code);
+          const match = data.elfsight_embed_code.match(/elfsight-app-([a-f0-9-]+)/);
+          if (match) setWidgetId(match[1]);
         }
       }
     };
     fetchPageContent();
   }, [language]);
 
-  // Render embed code safely
+  // Load Elfsight platform script
   useEffect(() => {
-    if (!embedCode || !reviewsRef.current) return;
-    const container = reviewsRef.current;
-    // Sanitize but allow script tags for Elfsight
-    const clean = DOMPurify.sanitize(embedCode, { ADD_TAGS: ['script'], ADD_ATTR: ['async', 'data-elfsight-app-lazy'] });
-    container.innerHTML = clean;
-    // Re-execute script tags
-    container.querySelectorAll('script').forEach(oldScript => {
-      const newScript = document.createElement('script');
-      Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, [embedCode]);
+    if (!widgetId) return;
+    if (!document.querySelector('script[src*="elfsightcdn"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://elfsightcdn.com/platform.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, [widgetId]);
   const handlePropertyClick = (property: SelectedProperty) => {
     setSelectedProperty(property);
     setModalOpen(true);
@@ -118,13 +112,13 @@ const ApartmentsLanding: React.FC = () => {
         <ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />
 
         {/* Google Reviews */}
-        {embedCode && (
+        {widgetId && (
           <section className="py-20 bg-muted">
             <div className="container mx-auto px-4">
               <h2 className="text-3xl lg:text-4xl font-serif font-bold text-foreground text-center mb-12">
                 What Our Clients Say
               </h2>
-              <div ref={reviewsRef} />
+              <div key={widgetId} className={`elfsight-app-${widgetId}`} data-elfsight-app-lazy />
             </div>
           </section>
         )}
