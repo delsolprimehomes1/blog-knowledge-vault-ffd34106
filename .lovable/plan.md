@@ -1,27 +1,39 @@
 
-# Change Elfsight Widget ID to Embed Code
 
-## What Changes
+# Fix Elfsight Widget Not Displaying
 
-The "Reviews Section" in the Apartments Page Content admin form currently has a single-line input labeled "Elfsight Widget ID". This needs to become a multi-line textarea labeled "Elfsight Embed Code" so editors can paste the full HTML embed snippet (e.g. `<!-- Elfsight Google Reviews | English --> <script ...></script> <div class="elfsight-app-..." ...></div>`).
+## Problem
+
+DOMPurify strips the `src` attribute from `<script>` tags even when scripts are allowed via `ADD_TAGS`. This means the Elfsight platform script (`https://elfsightcdn.com/platform.js`) never actually loads, so the widget div remains empty.
+
+## Solution
+
+Instead of injecting raw HTML with `dangerouslySetInnerHTML`, extract the widget ID from the embed code and render it properly using the same pattern as the existing `ElfsightGoogleReviews` component:
+
+1. Load the Elfsight platform script programmatically (if not already loaded)
+2. Render just the widget `<div>` with the correct CSS class
 
 ## Changes
 
-### 1. Database Migration
-- Rename the column `elfsight_widget_id` to `elfsight_embed_code` on the `apartments_page_content` table (using `ALTER TABLE ... RENAME COLUMN`).
+### `src/pages/apartments/ApartmentsLanding.tsx`
 
-### 2. `src/pages/admin/ApartmentsPageContent.tsx`
-- Rename `elfsight_widget_id` to `elfsight_embed_code` in the `PageContent` interface, `emptyContent`, `fetchContent` mapping, and `handleSave` payload.
-- Change the Reviews Section field from `<Input>` to `<Textarea>` with 4 rows.
-- Update the label from "Elfsight Widget ID" to "Elfsight Embed Code".
-- Add a helper text below: "Paste the full Elfsight embed code (HTML comment + script + div)".
+- Remove the `DOMPurify` import and the `reviewsRef`-based innerHTML injection logic
+- Add a helper function to extract the widget ID from the embed code using a regex (e.g., match `elfsight-app-([a-f0-9-]+)` from the class attribute)
+- In the `useEffect` that runs when `embedCode` changes, load the Elfsight platform script (`https://elfsightcdn.com/platform.js`) if it hasn't been loaded yet
+- In the JSX, render a simple `<div className="elfsight-app-{widgetId}" data-elfsight-app-lazy />` instead of injecting raw HTML
 
-### 3. Frontend rendering (if applicable)
-- Check where `elfsight_widget_id` is consumed on the public-facing apartments page and update it to use the new `elfsight_embed_code` field, rendering the raw HTML via `dangerouslySetInnerHTML` (sanitized with DOMPurify, which is already installed).
+### What stays the same
 
----
+- The database column (`elfsight_embed_code`) and admin textarea remain unchanged -- editors still paste the full embed code
+- The fetch logic and `reviews_enabled` check remain the same
+- The "What Our Clients Say" section layout stays identical
 
-### Technical Notes
-- The column rename is non-destructive -- existing data is preserved.
-- DOMPurify (already a project dependency) will sanitize the embed code before rendering to prevent XSS.
-- The Supabase types file will auto-update after the migration.
+### Technical Detail
+
+The regex `elfsight-app-([a-f0-9-]+)` reliably extracts the widget ID from any standard Elfsight embed snippet like:
+```
+<div class="elfsight-app-4e9c9e21-aeb3-4a2d-97ac-014bfffab99b" data-elfsight-app-lazy></div>
+```
+
+This is the same approach already proven to work in `src/components/reviews/ElfsightGoogleReviews.tsx`.
+
