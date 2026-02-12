@@ -1,43 +1,23 @@
 
 
-# Add Google Tag Manager (GTM-MNQLS97C)
+# GTM Verification Test Page
 
-## Overview
-Add Google Tag Manager tracking scripts to `index.html` so GTM loads on every page across all routes and languages.
+## Current Status
+GTM-MNQLS97C is already correctly installed:
+- `index.html`: Script in `<head>` (line 4-8), noscript after `<body>` (line 54-56)
+- `public/app-shell.html`: Script in `<head>` (line 4-8), noscript after `<body>` (line 41-43)
 
 ## Changes
 
-### `index.html` (single file edit)
+### 1. Create `src/pages/GTMTest.tsx`
+A simple diagnostic page that checks for `window.dataLayer` and displays its contents, showing a green checkmark if GTM loaded or a red X if not.
 
-1. **Head section** -- Add the GTM script as the very first element inside `<head>`, before the existing inline language-detection script:
+### 2. Update routing to add `/gtm-test`
+Add a route in the app's router configuration so the page is accessible at `/gtm-test`.
 
-```html
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-MNQLS97C');</script>
-<!-- End Google Tag Manager -->
-```
-
-2. **Body section** -- Add the noscript fallback immediately after the opening `<body>` tag, before `<div id="root">`:
-
-```html
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MNQLS97C"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
-```
-
-### `public/app-shell.html` (same two additions)
-
-The app-shell used by content pages (blog, Q&A, compare, locations) also needs the same GTM snippets in the same positions to ensure tracking coverage on SSR/middleware-served pages.
-
-## Technical Notes
-
-- No React code changes needed -- `index.html` is the entry point for all SPA routes.
-- `app-shell.html` covers pages served by the Cloudflare middleware fallback.
-- The `dataLayer` global will be available immediately for any future custom event pushes.
-- GTM will fire on every route change automatically via its built-in History Change trigger.
+## After Deployment
+- Navigate to `/gtm-test` to see the status
+- Open browser console and type `dataLayer` to confirm the array exists
+- In Google Tag Manager dashboard, use "Preview" mode with your site URL to verify tags are firing
+- Once verified, the test page can be removed
 
