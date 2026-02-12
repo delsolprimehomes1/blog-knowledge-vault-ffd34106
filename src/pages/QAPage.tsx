@@ -15,6 +15,7 @@ import { translations } from '@/i18n/translations';
 import BlogEmmaChat from '@/components/blog-article/BlogEmmaChat';
 import { LanguageMismatchNotFound } from '@/components/LanguageMismatchNotFound';
 import { Helmet } from 'react-helmet';
+import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
 
@@ -224,10 +225,13 @@ export default function QAPage() {
         {qaPage.translations && (qaPage.translations as Record<string, string>)['en'] && (
           <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/en/qa/${(qaPage.translations as Record<string, string>)['en']}`} />
         )}
+        <script type="application/ld+json">
+          {JSON.stringify(generateAllQASchemas(qaPage as any, author))}
+        </script>
       </Helmet>
       <Header variant="transparent" />
 
-      <main className="min-h-screen bg-background">
+      <main className="min-h-screen bg-background" itemScope itemType="https://schema.org/QAPage">
         {/* Parallax Hero Section */}
         <section className="relative h-[50vh] min-h-[400px] overflow-hidden">
           {qaPage.featured_image_url ? (
@@ -283,9 +287,12 @@ export default function QAPage() {
                 />
               </div>
               {/* Main Question (H1) - qa-question-main class for speakable schema */}
-              <h1 className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                {qaPage.question_main}
-              </h1>
+              <div itemProp="mainEntity" itemScope itemType="https://schema.org/Question">
+                <h1 itemProp="name" className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                  {qaPage.question_main}
+                </h1>
+                <meta itemProp="answerCount" content="1" />
+              </div>
             </div>
           </div>
         </section>
@@ -347,12 +354,15 @@ export default function QAPage() {
             </div>
           )}
 
-          {/* Main Answer */}
-          <article
-            className="prose prose-lg max-w-none mb-14 prose-headings:font-display prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-prime-gold prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground animate-fade-in-up"
-            style={{ animationDelay: '0.5s' }}
-            dangerouslySetInnerHTML={{ __html: qaPage.answer_main }}
-          />
+          {/* Main Answer - wrapped in acceptedAnswer microdata */}
+          <div itemProp="acceptedAnswer" itemScope itemType="https://schema.org/Answer">
+            <article
+              itemProp="text"
+              className="prose prose-lg max-w-none mb-14 prose-headings:font-display prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-prime-gold prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground animate-fade-in-up"
+              style={{ animationDelay: '0.5s' }}
+              dangerouslySetInnerHTML={{ __html: qaPage.answer_main }}
+            />
+          </div>
 
           {/* Related Q&As */}
           {relatedQas.length > 0 && (
