@@ -1,23 +1,20 @@
 
 
-# GTM Verification Test Page
+# Fix GTM Test Page (404 Issue)
 
-## Current Status
-GTM-MNQLS97C is already correctly installed:
-- `index.html`: Script in `<head>` (line 4-8), noscript after `<body>` (line 54-56)
-- `public/app-shell.html`: Script in `<head>` (line 4-8), noscript after `<body>` (line 41-43)
+## Problem
+The GTM test page route was added to `San Diego Testing/src/routes/AppRoutes.tsx`, but the live application uses `src/App.tsx` as its main router. The route and component need to be in the correct location.
 
 ## Changes
 
-### 1. Create `src/pages/GTMTest.tsx`
-A simple diagnostic page that checks for `window.dataLayer` and displays its contents, showing a green checkmark if GTM loaded or a red X if not.
+### 1. Add GTMTest route to `src/App.tsx`
+Add the `/gtm-test` route alongside other public routes (near the `/thank-you` route, before the admin section). Import the existing `GTMTest` component.
 
-### 2. Update routing to add `/gtm-test`
-Add a route in the app's router configuration so the page is accessible at `/gtm-test`.
+### 2. Ensure the component file exists at the correct path
+The `GTMTest.tsx` page component already exists but may be in the wrong directory. It needs to be importable from `src/pages/GTMTest` (without the `San Diego Testing/` prefix).
 
-## After Deployment
-- Navigate to `/gtm-test` to see the status
-- Open browser console and type `dataLayer` to confirm the array exists
-- In Google Tag Manager dashboard, use "Preview" mode with your site URL to verify tags are firing
-- Once verified, the test page can be removed
+## Technical Detail
+- Add `const GTMTest = lazy(() => import("./pages/GTMTest"));` with other lazy imports in `src/App.tsx`
+- Add `<Route path="/gtm-test" element={<GTMTest />} />` after the `/thank-you` route
+- No other files need to change
 
