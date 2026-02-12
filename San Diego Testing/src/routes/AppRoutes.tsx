@@ -8,6 +8,7 @@ import { ResidentHome } from '../pages/resident/Home';
 import { AdminHome } from '../pages/admin/Home';
 import { ProviderHome } from '../pages/provider/Home';
 import ErrorLogs from '../pages/admin/ErrorLogs';
+import { GTMTest } from '../pages/GTMTest';
 
 // Placeholder Pages (Temporary inline for speed, normally separate files)
 const Landing = () => (
@@ -55,6 +56,9 @@ export function AppRoutes() {
 
                 </Route>
             </Route>
+
+            {/* GTM Test */}
+            <Route path="/gtm-test" element={<GTMTest />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
