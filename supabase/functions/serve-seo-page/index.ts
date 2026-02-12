@@ -1834,8 +1834,10 @@ function generateArticleBody(metadata: PageMetadata): string {
     
     <main class="article-container">
       <article itemscope itemtype="https://schema.org/${metadata.content_type === 'qa' ? 'QAPage' : 'BlogPosting'}">
+        ${metadata.content_type === 'qa' ? '<div itemprop="mainEntity" itemscope itemtype="https://schema.org/Question">' : ''}
         <header class="article-header">
-          <h1 itemprop="headline">${escapeHtml(metadata.headline)}</h1>
+          <h1 itemprop="${metadata.content_type === 'qa' ? 'name' : 'headline'}">${escapeHtml(metadata.headline)}</h1>
+          ${metadata.content_type === 'qa' ? '<meta itemprop="answerCount" content="1" />' : ''}
           ${metadata.date_published ? `
             <div class="article-meta">
               <time datetime="${metadata.date_published}" itemprop="datePublished">
@@ -1864,9 +1866,11 @@ function generateArticleBody(metadata: PageMetadata): string {
           </div>
         ` : ''}
         
-        <div class="article-content" itemprop="articleBody">
+        ${metadata.content_type === 'qa' ? '<div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">' : ''}
+        <div class="article-content" itemprop="${metadata.content_type === 'qa' ? 'text' : 'articleBody'}">
           ${mainContent || '<p>Content loading...</p>'}
         </div>
+        ${metadata.content_type === 'qa' ? '</div>' : ''}
         
         ${faqSection}
         
@@ -1875,6 +1879,7 @@ function generateArticleBody(metadata: PageMetadata): string {
           <p>${cta.text}</p>
           <a href="${langPrefix}/contact" class="cta-button">${cta.button}</a>
         </div>
+        ${metadata.content_type === 'qa' ? '</div>' : ''}
       </article>
     </main>
     
