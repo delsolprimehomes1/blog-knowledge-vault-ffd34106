@@ -1,67 +1,64 @@
 
 
-# Fix Schema.org Markup on Q&A Pages
+# Fix Schema.org QAPage Nesting Error
 
 ## Problem
-The Q&A page component (`src/pages/QAPage.tsx`) does not inject any structured data. The JSON-LD schema generator (`src/lib/qaPageSchemaGenerator.ts`) exists but is never called from the page component. While the SSR edge function handles schema for crawlers, the client-side React page has zero Schema.org markup -- neither JSON-LD nor microdata attributes.
+The microdata from the previous fix has incorrect nesting. The Question (`mainEntity`) closes in the hero section (line 295), while the Answer (`acceptedAnswer`) is rendered in the content section (line 358) -- completely outside the Question scope. Google's Rich Results Test requires this hierarchy:
 
-## Changes
-
-### 1. Inject JSON-LD Schema via Helmet (`src/pages/QAPage.tsx`)
-
-Import `generateAllQASchemas` from `qaPageSchemaGenerator.ts` and render the full schema graph as a `<script type="application/ld+json">` tag inside the existing `<Helmet>` block.
-
-This provides the QAPage, WebPage, BreadcrumbList, and Organization schemas in a single `@graph` structure -- the same format Google recommends.
-
-### 2. Add Microdata Attributes to HTML Elements (`src/pages/QAPage.tsx`)
-
-Add Schema.org microdata as a secondary signal alongside JSON-LD:
-
-- Wrap the main content area with `itemScope itemType="https://schema.org/QAPage"`
-- Add a `mainEntity` wrapper with `itemProp="mainEntity" itemScope itemType="https://schema.org/Question"`
-- Set `itemProp="name"` on the H1 question title
-- Add `<meta itemProp="answerCount" content="1" />` inside the Question scope
-- Wrap the answer content with `itemProp="acceptedAnswer" itemScope itemType="https://schema.org/Answer"`
-- Set `itemProp="text"` on the answer div
-
-### 3. No Changes Needed Elsewhere
-
-- The SSR edge function already generates correct QAPage schema for search engine crawlers
-- The schema generator library is already correct (uses QAPage, not FAQPage)
-- All 10 languages are covered automatically since the component reads `qaPage.language`
-
-## Technical Details
-
-**File modified:** `src/pages/QAPage.tsx`
-
-**Import added:**
-```typescript
-import { generateAllQASchemas } from '@/lib/qaPageSchemaGenerator';
+```text
+QAPage
+  └── mainEntity (Question)
+        ├── name (h1)
+        ├── answerCount (meta)
+        └── acceptedAnswer (Answer)
+              └── text (answer content)
 ```
 
-**JSON-LD injection (inside Helmet):**
-```tsx
-<script type="application/ld+json">
-  {JSON.stringify(generateAllQASchemas(qaPage, author))}
-</script>
+Currently it looks like:
+
+```text
+QAPage
+  ├── mainEntity (Question)  ← closes in hero
+  │     ├── name
+  │     └── answerCount
+  └── acceptedAnswer (Answer) ← orphaned, outside Question
+        └── text
 ```
 
-**Microdata structure (simplified):**
-```
-<main itemScope itemType="https://schema.org/QAPage">
-  <div itemProp="mainEntity" itemScope itemType="https://schema.org/Question">
-    <h1 itemProp="name">{question}</h1>
-    <meta itemProp="answerCount" content="1" />
-    <div itemProp="acceptedAnswer" itemScope itemType="https://schema.org/Answer">
-      <article itemProp="text">{answer_main}</article>
+## Solution
+
+Move the `mainEntity` Question wrapper so it opens on the `<main>` tag level and closes after the answer content. This keeps the Question scope spanning both the hero (where the H1 lives) and the content area (where the answer lives).
+
+### Changes to `src/pages/QAPage.tsx`
+
+1. **Remove** the narrow `<div itemProp="mainEntity">` wrapper around just the H1 in the hero (lines 290-295). Keep the H1 with `itemProp="name"` and the `answerCount` meta, but remove the wrapper div.
+
+2. **Add** `itemProp="mainEntity" itemScope itemType="https://schema.org/Question"` to an element that wraps both the hero H1 and the answer content section. The simplest approach: add a new wrapper div right after `<main>` opens, closing it after the `acceptedAnswer` div.
+
+3. **No visual changes** -- only microdata attributes move. All CSS classes, animations, and layout remain identical.
+
+### Resulting structure
+
+```text
+<main itemScope itemType="QAPage">
+  <div itemProp="mainEntity" itemScope itemType="Question">
+    <section> (hero)
+      <h1 itemProp="name">...</h1>
+      <meta itemProp="answerCount" content="1" />
+    </section>
+    <div> (content area)
+      <div itemProp="acceptedAnswer" itemScope itemType="Answer">
+        <article itemProp="text">...</article>
+      </div>
     </div>
-  </div>
+  </div>  ← Question closes AFTER Answer
 </main>
 ```
 
-## Verification
-After deployment, test with:
-- Google Rich Results Test: paste any Q&A page URL
-- Schema Markup Validator: validate the QAPage structure
-- Google Search Console: monitor for schema error resolution
+This produces valid QAPage markup that will pass the Google Rich Results Test across all 10 languages.
 
+## Files Modified
+- `src/pages/QAPage.tsx` (microdata attribute repositioning only)
+
+## Verification
+After deployment, paste any Q&A URL into Google Rich Results Test to confirm zero errors.
