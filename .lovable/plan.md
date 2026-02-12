@@ -1,23 +1,43 @@
 
-# Fix Round Robin Language Dropdown
 
-## Problem
-The "Edit Round" dialog in `/crm/admin/round-robin` lists **Spanish** (`es`) in the language dropdown, but Spanish is not a supported language. **Norwegian** (`no`) is missing and needs to be added.
+# Add Google Tag Manager (GTM-MNQLS97C)
 
-## Change
+## Overview
+Add Google Tag Manager tracking scripts to `index.html` so GTM loads on every page across all routes and languages.
 
-### `src/pages/crm/admin/RoundRobinConfig.tsx` (line 84)
+## Changes
 
-Replace the Spanish entry with Norwegian:
+### `index.html` (single file edit)
 
+1. **Head section** -- Add the GTM script as the very first element inside `<head>`, before the existing inline language-detection script:
+
+```html
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MNQLS97C');</script>
+<!-- End Google Tag Manager -->
 ```
-// Before
-{ code: "es", name: "Spanish" },
 
-// After
-{ code: "no", name: "Norwegian" },
+2. **Body section** -- Add the noscript fallback immediately after the opening `<body>` tag, before `<div id="root">`:
+
+```html
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MNQLS97C"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 ```
 
-The supported languages will then be: English, French, Dutch, Finnish, Polish, German, **Norwegian**, Swedish, Danish, Hungarian — matching the 10 languages defined in `src/types/home.ts`.
+### `public/app-shell.html` (same two additions)
 
-No other files or database changes are needed.
+The app-shell used by content pages (blog, Q&A, compare, locations) also needs the same GTM snippets in the same positions to ensure tracking coverage on SSR/middleware-served pages.
+
+## Technical Notes
+
+- No React code changes needed -- `index.html` is the entry point for all SPA routes.
+- `app-shell.html` covers pages served by the Cloudflare middleware fallback.
+- The `dataLayer` global will be available immediately for any future custom event pushes.
+- GTM will fire on every route change automatically via its built-in History Change trigger.
+
