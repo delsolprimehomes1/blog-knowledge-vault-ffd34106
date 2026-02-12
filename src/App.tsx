@@ -170,6 +170,7 @@ const LandingSv = lazy(() => import("./pages/landing/sv"));
 const LandingNo = lazy(() => import("./pages/landing/no"));
 const OptIn = lazy(() => import("./pages/OptIn"));
 const RetargetingLanding = lazy(() => import("./pages/RetargetingLanding"));
+const GTMTest = lazy(() => import("./pages/GTMTest"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -212,6 +213,7 @@ const App = () => (
               <Route path="/auth/gmail/callback" element={<GmailCallback />} />
               <Route path="/login" element={<Navigate to="/auth" replace />} />
               <Route path="/thank-you" element={<ThankYou />} />
+              <Route path="/gtm-test" element={<GTMTest />} />
 
               {/* ========================================== */}
               {/* PROTECTED ADMIN ROUTES (MUST BE BEFORE /:lang) */}
