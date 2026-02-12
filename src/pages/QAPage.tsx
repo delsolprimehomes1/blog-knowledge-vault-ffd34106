@@ -232,6 +232,7 @@ export default function QAPage() {
       <Header variant="transparent" />
 
       <main className="min-h-screen bg-background" itemScope itemType="https://schema.org/QAPage">
+        <div itemProp="mainEntity" itemScope itemType="https://schema.org/Question">
         {/* Parallax Hero Section */}
         <section className="relative h-[50vh] min-h-[400px] overflow-hidden">
           {qaPage.featured_image_url ? (
@@ -287,12 +288,10 @@ export default function QAPage() {
                 />
               </div>
               {/* Main Question (H1) - qa-question-main class for speakable schema */}
-              <div itemProp="mainEntity" itemScope itemType="https://schema.org/Question">
-                <h1 itemProp="name" className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                  {qaPage.question_main}
-                </h1>
-                <meta itemProp="answerCount" content="1" />
-              </div>
+              <h1 itemProp="name" className="qa-question-main text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white leading-tight max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {qaPage.question_main}
+              </h1>
+              <meta itemProp="answerCount" content="1" />
             </div>
           </div>
         </section>
@@ -440,6 +439,7 @@ export default function QAPage() {
             </section>
           )}
         </div>
+        </div>{/* Close mainEntity Question wrapper */}
       </main>
 
       <Footer />
