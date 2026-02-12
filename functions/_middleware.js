@@ -125,6 +125,97 @@ export async function onRequest({ request, next, env }) {
   }
 
   // ============================================================
+  // BLOG SSR FALLBACK: Try static file first, then edge function
+  // Ensures crawlers get full HTML with internal links section
+  // ============================================================
+  const blogMatch = pathname.match(/^\/([a-z]{2})\/blog\/(.+)/);
+  if (blogMatch) {
+    const staticResponse = await next();
+    const staticClone = staticResponse.clone();
+    const staticBody = await staticClone.text();
+
+    const isComplete =
+      staticBody.includes('<!DOCTYPE html>') &&
+      !staticBody.includes('<div id="root"></div>') &&
+      staticBody.length > 5000 &&
+      staticBody.includes('internal-links-section');
+
+    if (isComplete) {
+      console.log(`[Middleware] Blog static file served (complete): ${pathname}`);
+      const headers = new Headers(staticResponse.headers);
+      headers.set('X-Middleware-Status', 'Active');
+      headers.set('X-SEO-Source', 'static');
+      headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+      headers.set('CDN-Cache-Control', 'max-age=3600');
+      headers.set('Cloudflare-CDN-Cache-Control', 'max-age=3600');
+      headers.set('Vary', 'Accept-Encoding');
+      return new Response(staticBody, {
+        status: staticResponse.status,
+        statusText: staticResponse.statusText,
+        headers,
+      });
+    }
+
+    // Static file missing/thin/no internal links — call SSR
+    console.log(`[Middleware] Blog static incomplete for ${pathname}, trying SSR fallback`);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const ssrResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/serve-seo-page?path=${encodeURIComponent(pathname)}&html=true`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'X-Original-URL': url.toString(),
+            'X-Forwarded-Host': url.host,
+          },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      const ssrBody = await ssrResponse.text();
+
+      if (ssrResponse.ok && ssrBody.includes('<!DOCTYPE html>') && ssrBody.length > 1000) {
+        console.log(`[Middleware] Blog SSR fallback success: ${pathname}`);
+        return new Response(ssrBody, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+            'CDN-Cache-Control': 'max-age=3600',
+            'Cloudflare-CDN-Cache-Control': 'max-age=3600',
+            'Vary': 'Accept-Encoding',
+            'X-SEO-Source': 'edge-function-ssr',
+            'X-Robots-Tag': 'all',
+            'X-Middleware-Status': 'Active',
+          },
+        });
+      }
+
+      console.log(`[Middleware] Blog SSR returned ${ssrResponse.status}, falling through to SPA`);
+    } catch (err) {
+      console.error(`[Middleware] Blog SSR fallback error for ${pathname}:`, err?.message);
+    }
+
+    // Both failed — serve SPA shell with short cache
+    const headers = new Headers(staticResponse.headers);
+    headers.set('X-Middleware-Status', 'Active');
+    headers.set('X-SEO-Source', 'spa-fallback');
+    headers.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600');
+    headers.set('CDN-Cache-Control', 'max-age=300');
+    headers.set('Vary', 'Accept-Encoding');
+    return new Response(staticBody, {
+      status: staticResponse.status,
+      statusText: staticResponse.statusText,
+      headers,
+    });
+  }
+
+  // ============================================================
   // Q&A SSR FALLBACK: Try static file first, then edge function
   // Ensures crawlers always get full HTML even if static files
   // are missing from deployment.
@@ -142,7 +233,8 @@ export async function onRequest({ request, next, env }) {
     const isSubstantialHTML =
       staticBody.includes('<!DOCTYPE html>') &&
       !staticBody.includes('<div id="root"></div>') &&
-      staticBody.length > 5000;
+      staticBody.length > 5000 &&
+      staticBody.includes('internal-links-section');
 
       if (isSubstantialHTML) {
         console.log(`[Middleware] Q&A static file served: ${pathname}`);
