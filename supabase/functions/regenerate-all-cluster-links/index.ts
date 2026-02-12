@@ -31,37 +31,43 @@ serve(async (req) => {
   }
 
   try {
-    const { batchSize = 50, dryRun = false } = await req.json();
+    const { batchSize = 50, dryRun = false, clusterLimit = 0 } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log(`[Bulk Regenerate] Starting with batchSize=${batchSize}, dryRun=${dryRun}`);
+    console.log(`[Bulk Regenerate] Starting with batchSize=${batchSize}, dryRun=${dryRun}, clusterLimit=${clusterLimit}`);
 
-    // Get all unique cluster IDs with published articles
-    const { data: clusterData, error: clusterError } = await supabase
-      .from('blog_articles')
-      .select('cluster_id')
-      .eq('status', 'published')
-      .not('cluster_id', 'is', null);
+    // Unique cluster IDs will be derived from the full article fetch below
+    console.log(`[Bulk Regenerate] Fetching all published articles...`);
 
-    if (clusterError) throw clusterError;
+    // Fetch ALL published articles with pagination (bypass 1000-row default limit)
+    let allArticles: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data: page, error: pageError } = await supabase
+        .from('blog_articles')
+        .select('id, headline, slug, funnel_stage, language, cluster_id, cluster_number')
+        .eq('status', 'published')
+        .not('cluster_id', 'is', null)
+        .range(from, from + pageSize - 1);
+      if (pageError) throw pageError;
+      if (!page || page.length === 0) break;
+      allArticles = allArticles.concat(page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
 
-    // Get unique cluster IDs
-    const uniqueClusterIds = [...new Set(clusterData?.map(c => c.cluster_id).filter(Boolean))];
-    console.log(`[Bulk Regenerate] Found ${uniqueClusterIds.length} unique clusters`);
 
-    // Fetch ALL published articles at once for efficiency
-    const { data: allArticles, error: articlesError } = await supabase
-      .from('blog_articles')
-      .select('id, headline, slug, funnel_stage, language, cluster_id, cluster_number')
-      .eq('status', 'published')
-      .not('cluster_id', 'is', null);
-
-    if (articlesError) throw articlesError;
-
-    console.log(`[Bulk Regenerate] Processing ${allArticles?.length || 0} articles across ${uniqueClusterIds.length} clusters`);
+    // Get unique cluster IDs from fetched articles
+    let uniqueClusterIds = [...new Set(allArticles.map(c => c.cluster_id).filter(Boolean))];
+    // Apply cluster limit if specified (for testing)
+    if (clusterLimit > 0) {
+      uniqueClusterIds = uniqueClusterIds.slice(0, clusterLimit);
+    }
+    console.log(`[Bulk Regenerate] Processing ${uniqueClusterIds.length} clusters`);
 
     // Group articles by cluster and language
     const articlesByCluster: Record<string, Record<string, any[]>> = {};
