@@ -1,85 +1,160 @@
 
 
-# Create Role-Specific Gmail Filter Guides (Corrected Labels)
+# Redesign Apartments Page to Google Images-Style Visual Search
 
 ## Overview
-Create two separate Gmail filter setup guides using the **exact label structures agents and admins already have**.
+Transform the /[lang]/apartments property listings from a traditional card grid into a Google Images-style masonry layout with a hero featured property, hoverable image tiles, and a full-screen lightbox viewer. All existing sections (AutoplayVideo, EmmaSection, Reviews) are preserved.
 
-## Files to Create
+## Database Changes
 
-### 1. `docs/CRM_GMAIL_FILTER_SETUP_AGENTS.md`
+### Migration: Add new columns to `apartments_properties`
+- `partner_source` (TEXT) -- e.g. "Marbella For Sale"
+- `partner_logo` (TEXT) -- URL to partner logo image
+- `gallery_images` (TEXT[]) -- array of real image URLs for the lightbox carousel (separate from the existing `images` JSONB which has placeholder data)
 
-**Audience:** Sales agents (juho@, eetu@, artur@, cedric@, nathalie@, augustin@, nederlands@, cindy@, steven@, info@yenomai.com)
+### Seed Data: Insert 8-10 sample properties
+Insert sample English properties with real Unsplash image URLs covering different property types (villa, penthouse, townhouse, apartment). Each will have 4-6 gallery images, a partner source, and partner logo placeholder. This ensures the masonry grid has enough visual content to demonstrate the design.
 
-**Existing Agent Labels (9 labels):**
-
-```text
-CRM/
-  Urgent
-  Stage-1/
-    T0-Broadcast
-    T1-Escalation
-    T2-Escalation
-    T3-Escalation
-    T4-Final-Warning
-  Reminders/
-    10-Min
-    1-Hour
-  Actions/
-    Reassigned
-```
-
-**Filters (7 filters):**
-
-| # | Filter | Label | Subject Pattern |
-|---|--------|-------|-----------------|
-| 1 | T+0 new leads | CRM/Urgent + CRM/Stage-1/T0-Broadcast | `CRM_NEW_LEAD_XX` (excluding T1-T4) |
-| 2 | T+1 reminder | CRM/Stage-1/T1-Escalation + CRM/Reminders/10-Min | `CRM_NEW_LEAD_XX_T1` (all 11 langs) |
-| 3 | T+2 reminder | CRM/Stage-1/T2-Escalation + CRM/Reminders/10-Min | `CRM_NEW_LEAD_XX_T2` (all 11 langs) |
-| 4 | T+3 reminder | CRM/Stage-1/T3-Escalation + CRM/Reminders/1-Hour | `CRM_NEW_LEAD_XX_T3` (all 11 langs) |
-| 5 | T+4 final warning | CRM/Stage-1/T4-Final-Warning | `CRM_NEW_LEAD_XX_T4` (all 11 langs) |
-| 6 | Reassigned leads | CRM/Actions/Reassigned | `CRM_LEAD_REASSIGNED` or equivalent |
-| 7 | Combined T+1/T+2 alt | CRM/Reminders/10-Min | (optional shortcut combining T1+T2) |
-
-Note: Filters 2 and 3 apply TWO labels each (stage label + reminder label) so agents can view by either stage or timing.
-
-All search queries will explicitly list all 11 language codes (EN, NL, FR, FI, PL, DE, ES, SV, DA, HU, NO) since Gmail does not support wildcards.
-
-Includes: label creation tree, step-by-step filter setup, mobile notification config (Android/iOS), verification checklist, quick-reference table.
-
----
-
-### 2. `docs/CRM_GMAIL_FILTER_SETUP_ADMINS.md`
-
-**Audience:** Admins (Hans for FI/PL, Steven for other languages)
-
-**Existing Admin Labels (3 labels):**
+## Page Structure (Revised Flow)
 
 ```text
-CRM/
-  Admin/
-    Form-Submissions
-    Stage-1-Breach
-    Stage-2-Breach
+Header (fixed, unchanged)
+  |
+Hero Featured Property (first property, full-width image)
+  |
+AutoplayVideo (kept as-is)
+  |
+EmmaSection (kept as-is)
+  |
+Masonry Image Grid (all properties except hero)
+  |
+"See More" / Load More button
+  |
+Elfsight Reviews (kept as-is)
+  |
+Footer (kept as-is)
+  |
+PropertyLightbox (overlay, opens on tile click)
+  |
+EmmaChat (overlay, unchanged)
 ```
 
-**Filters (3 filters):**
+## New Components
 
-| # | Filter | Label | Subject Pattern |
-|---|--------|-------|-----------------|
-| 1 | T+5 unclaimed | CRM/Admin/Stage-1-Breach | `CRM_ADMIN_NO_CLAIM` |
-| 2 | T+5 not called | CRM/Admin/Stage-2-Breach | `CRM_ADMIN_CLAIMED_NOT_CALLED` |
-| 3 | Form submissions | CRM/Admin/Form-Submissions | `"Form Submission" from:crm@notifications...` |
+### 1. `src/components/apartments/ApartmentsHeroProperty.tsx`
+Replaces the current CMS-driven `ApartmentsHero`. Displays the first (featured) property as a full-width hero:
+- Full-width image (h-[500px] mobile, h-[700px] desktop)
+- Gradient overlay at bottom
+- Property title + location + status overlaid bottom-left
+- "Visit" button top-right (branded gold instead of blue to match site theme)
+- Price badge bottom-right
+- Share + Save action buttons below
 
-Includes: same instructional format, admin-specific routing note (Hans=FI/PL, Steven=others), verification checklist.
+### 2. `src/components/apartments/ApartmentsMasonryGrid.tsx`
+CSS columns-based masonry layout:
+- `columns-1 md:columns-2 lg:columns-3` with `gap-3`
+- `break-inside-avoid` on each tile
+- Variable height tiles based on natural image aspect ratio
+- Pagination: loads 20 properties initially, "See More" button loads next batch
 
----
+### 3. `src/components/apartments/ApartmentsPropertyTile.tsx`
+Individual tile in the masonry grid:
+- Property image fills tile with `rounded-lg`
+- Partner logo badge (top-left, small white pill)
+- Hover overlay: darkened image with partner name + property title (bottom gradient)
+- Price badge (bottom-right, visible always)
+- Click triggers lightbox open
 
-## What stays unchanged
-- `docs/CRM_GMAIL_FILTER_SETUP_COMPLETE.md` remains as combined reference
-- No database, code, or edge function changes
-- Documentation only
+### 4. `src/components/apartments/ApartmentsPropertyLightbox.tsx`
+Full-screen property viewer using Radix Dialog:
+- Large image with object-contain
+- Left/right navigation arrows
+- Close (X) button top-right
+- Info bar below image: property title, location, price
+- "Visit" button (opens lead form modal, same as current click behavior)
+- Share + Save action buttons
+- Thumbnail strip at bottom for gallery navigation
+- Keyboard navigation (arrow keys, Escape)
 
-## One question about CRM/Actions/Reassigned
-The reassignment email subject pattern needs clarification. If the CRM sends a specific subject like `CRM_LEAD_REASSIGNED_XX`, I will include a filter for it. If no reassignment email exists yet, I will note the label as "reserved for future use" in the guide.
+### 5. `src/hooks/usePropertyGallery.ts`
+Lightbox state management hook:
+- Current property index
+- Current image index within gallery
+- Navigation helpers (next/prev image, next/prev property)
+- Open/close state
+
+## Modified Components
+
+### `ApartmentsLanding.tsx`
+- Replace `<ApartmentsHero>` with `<ApartmentsHeroProperty>` (uses first fetched property)
+- Replace `<ApartmentsPropertiesSection>` with `<ApartmentsMasonryGrid>`
+- Add `<ApartmentsPropertyLightbox>` overlay
+- Property data fetched once at page level and passed down
+- Keep AutoplayVideo, EmmaSection, Reviews, Footer, EmmaChat exactly as-is
+
+### `ApartmentsPropertiesSection.tsx`
+Kept for reference but no longer imported. The masonry grid replaces it.
+
+## Data Fetching
+
+Single query at page level fetches all visible properties for the language:
+
+```text
+SELECT id, title, location, bedrooms, bathrooms, sqm, price, 
+       property_type, status, featured_image_url, short_description,
+       gallery_images, partner_source, partner_logo, images
+FROM apartments_properties
+WHERE language = [lang] AND visible = true
+ORDER BY display_order ASC
+```
+
+First property becomes the hero. Remaining properties populate the masonry grid. Pagination is client-side initially (show 20, load more on click).
+
+## Translations
+
+Add to all 10 language files under a new `apartments.gallery` namespace:
+- `visit` -- "Visit"
+- `share` -- "Share"
+- `save` -- "Save"
+- `seeMore` -- "See more"
+- `close` -- "Close"
+- `imagesCopyright` -- "Images may be subject to copyright"
+- `previousImage` -- "Previous image"
+- `nextImage` -- "Next image"
+
+## Image Handling
+
+- Gallery images from `gallery_images` TEXT[] column (real URLs)
+- Fallback: if `gallery_images` is empty, use `featured_image_url` as single-image gallery
+- Lazy loading via native `loading="lazy"` on all masonry tiles
+- Hero image loaded eagerly (`loading="eager"`)
+
+## Responsive Behavior
+
+| Breakpoint | Masonry Columns | Hero Height | Tile Gap |
+|------------|----------------|-------------|----------|
+| Mobile (<768px) | 1 column | 400px | 8px |
+| Tablet (768-1024px) | 2 columns | 550px | 12px |
+| Desktop (>1024px) | 3 columns | 700px | 12px |
+
+## SEO Preserved
+
+- All existing Helmet meta tags, hreflang, and schema.org markup unchanged
+- Semantic HTML: h1 on hero property title, h2 on section headers
+- Alt text on all property images from title + location
+- Canonical URLs unchanged
+
+## Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `src/components/apartments/ApartmentsHeroProperty.tsx` | Create |
+| `src/components/apartments/ApartmentsMasonryGrid.tsx` | Create |
+| `src/components/apartments/ApartmentsPropertyTile.tsx` | Create |
+| `src/components/apartments/ApartmentsPropertyLightbox.tsx` | Create |
+| `src/hooks/usePropertyGallery.ts` | Create |
+| `src/pages/apartments/ApartmentsLanding.tsx` | Modify |
+| 10 translation files (en.ts through no.ts) | Modify |
+| Database migration (add columns) | Execute |
+| Database seed (sample properties) | Execute |
 
