@@ -80,6 +80,7 @@ serve(async (req) => {
           round_broadcast_at: new Date().toISOString(),
           claim_window_expires_at: new Date(Date.now() + claimWindowMinutes * 60 * 1000).toISOString(),
           claim_timer_started_at: new Date().toISOString(),
+          claim_timer_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           last_alarm_level: 0,
         })
         .eq("id", lead.id);
