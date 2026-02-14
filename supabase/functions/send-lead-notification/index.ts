@@ -3,6 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 
+/**
+ * Sleep utility for rate limiting protection against Resend's 2 req/sec limit
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -328,7 +335,18 @@ serve(async (req) => {
     // Determine triggered_by source
     const triggeredBySource = triggered_by || 'send-lead-notification';
     
-    for (const agent of agents) {
+    // Randomize agent order to ensure fair notification sequence
+    const shuffledAgents = [...agents].sort(() => Math.random() - 0.5);
+    console.log(`[send-lead-notification] Randomized ${shuffledAgents.length} agents for fair notification order`);
+
+    for (let i = 0; i < shuffledAgents.length; i++) {
+      const agent = shuffledAgents[i];
+
+      // Rate limit protection: 2-second delay between emails (skip first)
+      if (i > 0) {
+        console.log(`[send-lead-notification] Rate limit delay: waiting 2s before email ${i + 1}/${shuffledAgents.length}`);
+        await sleep(2000);
+      }
       const claimUrl = `${appUrl}/crm/agent/leads/${lead.id}/claim`;
       // Admin-targeted notifications should use admin routes
       const isAdminTargetedNotification = isNightHoldAlertNotification || isAdminUnclaimedNotification || isSlaWarningNotification || isFormSubmissionAlertNotification;
