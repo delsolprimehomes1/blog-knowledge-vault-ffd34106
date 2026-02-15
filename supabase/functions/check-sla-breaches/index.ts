@@ -56,6 +56,7 @@ serve(async (req) => {
       .eq("first_action_completed", false)
       .eq("sla_breached", false)
       .eq("archived", false)
+      .neq("assignment_method", "admin_fallback")
       .lt("assigned_at", cutoffTime);
 
     if (error) {
