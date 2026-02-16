@@ -50,19 +50,15 @@ const PropertyCard = ({ property, index, onClick }: { property: Property; index:
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
         />
-        {property.property_type && (
-          <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-landing-navy text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full uppercase">
-            {property.property_type}
-          </span>
-        )}
-        {property.status && property.status !== 'available' && (
-          <span className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-3 sm:py-1 rounded-full uppercase">
-            {property.status}
-          </span>
-        )}
-        {/* Price badge overlay */}
-        <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 px-2 py-0.5 sm:px-3 sm:py-1 bg-white/95 backdrop-blur-sm rounded-md sm:rounded-lg shadow-sm z-20">
-          <p className="font-bold text-landing-navy text-xs sm:text-sm">{formatPrice(property.price)}</p>
+        {/* Bedroom badge top-left */}
+        <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-landing-navy/80 backdrop-blur-sm text-white text-[10px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full flex items-center gap-1">
+          <Bed size={11} className="sm:w-3 sm:h-3" />
+          {property.bedrooms_max && property.bedrooms_max !== property.bedrooms ? `${property.bedrooms}-${property.bedrooms_max}` : property.bedrooms}
+        </span>
+        {/* Price overlay bottom-left */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pt-10 pb-2 px-3 sm:pb-3 sm:px-4">
+          <p className="text-white/80 text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">From</p>
+          <p className="text-white font-bold text-sm sm:text-base">{formatPrice(property.price)}</p>
         </div>
       </div>
 
