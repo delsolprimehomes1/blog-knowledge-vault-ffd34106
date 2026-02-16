@@ -1,47 +1,69 @@
 
 
-## Enhance Apartments Properties Editor
+## Simplify Apartments Landing Page
 
-### What Changes
+Strip the page down to just three elements: header, hero section, and properties grid.
 
-**1. Add bedroom range support (e.g., "2-4")**
-- Add a `bedrooms_max` column to the `apartments_properties` table (nullable integer, defaults to null)
-- When `bedrooms_max` is set and greater than `bedrooms`, display as a range (e.g., "2 - 4") in the table
-- In the form, show two side-by-side inputs: "Bedrooms Min" and "Bedrooms Max"
+### What gets removed
+- AutoplayVideo component
+- EmmaSection component
+- EmmaChat component (floating chat)
+- "Speak with Emma" button from the header
+- Emma-related state and event listeners (`isEmmaOpen`, `openEmmaChat` listener)
+- Google Reviews / Elfsight widget section
+- Elfsight script loading logic
+- `widgetId` state and fetch logic
 
-**2. Add image upload**
-- Replace the "Featured Image URL" text input with a file upload field
-- Upload images to the existing `property-images` storage bucket
-- Show a thumbnail preview of the current image in the form
-- Keep the URL field as a fallback (hidden/secondary) for externally hosted images
+### What stays
+- Fixed header with logo, language selector, and "View Properties" button
+- ApartmentsHero (the existing full-screen hero with headline, subheadline, and CTA from the database)
+- ApartmentsPropertiesSection (the property cards grid with bedroom/bathroom/sqm details)
+- ApartmentsLeadFormModal (so users can still inquire about a property)
+- Footer
+- Helmet / SEO meta tags
 
-**3. Improve description fields in the form**
-- The form already has description and short description fields -- make them more prominent
-- Short description: keep as a single-line `Input` with a character hint (e.g., "Brief summary for cards")
-- Description: keep as a multi-row `Textarea` with more rows for comfortable editing
+### What changes in `ApartmentsLanding.tsx`
+- Replace `ApartmentsHeroProperty` + masonry grid approach with the simpler `ApartmentsHero` component (full-screen hero image with CTA)
+- Below the hero, render `ApartmentsPropertiesSection` which fetches and displays all properties as cards
+- Remove all Emma/video/reviews imports and code
+- Remove the `ApartmentsPropertyLightbox` (was tied to masonry grid) -- clicking a property opens the lead form modal directly
+- Remove unused imports (`MessageCircle`, `AutoplayVideo`, `EmmaSection`, `EmmaChat`, `ApartmentsHeroProperty`, `ApartmentsMasonryGrid`, `ApartmentsPropertyLightbox`, `usePropertyGallery`)
+- Simplify state: only need `selectedProperty`, `modalOpen`, `metaTitle`, `metaDescription`
+- Simplify the page content fetch to only grab meta fields (no reviews/elfsight)
+- Remove the properties fetch from the landing page (handled internally by `ApartmentsPropertiesSection`)
 
-**4. Show short description in the table**
-- Add a "Description" column to the properties table showing a truncated short_description
+### Resulting page structure
+
+```text
++---------------------------+
+|  Header (logo + lang)     |
++---------------------------+
+|                           |
+|   Full-screen Hero        |
+|   (image + headline +     |
+|    CTA button)            |
+|                           |
++---------------------------+
+|                           |
+|   Properties Grid         |
+|   (cards with details)    |
+|                           |
++---------------------------+
+|  Footer                   |
++---------------------------+
+```
 
 ### Technical Details
 
-**Database migration:**
-```sql
-ALTER TABLE apartments_properties 
-ADD COLUMN bedrooms_max integer DEFAULT NULL;
-```
+**File: `src/pages/apartments/ApartmentsLanding.tsx`**
+- Remove imports: `ApartmentsHeroProperty`, `ApartmentsMasonryGrid`, `ApartmentsPropertyLightbox`, `AutoplayVideo`, `EmmaSection`, `EmmaChat`, `usePropertyGallery`, `MessageCircle`
+- Add imports: `ApartmentsHero`, `ApartmentsPropertiesSection`
+- Remove state: `isEmmaOpen`, `widgetId`, `properties`
+- Remove effects: properties fetch, Elfsight script loader, Emma event listener
+- Simplify page content fetch (only meta_title, meta_description)
+- Header: remove "Speak with Emma" button, keep logo + language selector + "View Properties"
+- Main content: `<ApartmentsHero language={language} />` then `<ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />`
+- Keep `ApartmentsLeadFormModal` for property inquiries
+- Keep `Footer`
 
-**Form changes in `ApartmentsProperties.tsx`:**
-- Add `bedrooms_max` to the `Property` interface and `emptyProperty` defaults
-- Split bedrooms row into "Bedrooms Min" / "Bedrooms Max" inputs
-- Add image file upload with preview using the `property-images` bucket
-- Table "Beds" column: show `bedrooms` or `bedrooms - bedrooms_max` when max exists
-
-**Image upload flow:**
-- User selects a file via `<input type="file">`
-- File uploads to `property-images` bucket with a unique path
-- Public URL is stored in `featured_image_url`
-- A thumbnail preview appears in the form after upload
-
-**Property type dropdown update:**
-- Add missing types: `villa`, `townhouse` to match existing data in the database
+No database changes needed. This is a UI-only simplification.
