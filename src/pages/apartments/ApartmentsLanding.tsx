@@ -11,6 +11,15 @@ import { supabase } from '@/integrations/supabase/client';
 
 const SUPPORTED_LANGS = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 
+const VIEW_PROPERTIES_TEXT: Record<string, string> = {
+  en: 'View Properties', nl: 'Bekijk Woningen', fr: 'Voir les Propriétés',
+  de: 'Immobilien Ansehen', fi: 'Näytä Kohteet', pl: 'Zobacz Nieruchomości',
+  da: 'Se Ejendomme', hu: 'Ingatlanok Megtekintése', sv: 'Visa Fastigheter',
+  no: 'Se Eiendommer',
+};
+
+const BASE_URL = 'https://www.delsolprimehomes.com';
+
 interface SelectedProperty {
   id: string;
   title: string;
@@ -48,7 +57,7 @@ const ApartmentsLanding: React.FC = () => {
     setModalOpen(true);
   };
 
-  const canonical = `https://blog-knowledge-vault.lovable.app/${language}/apartments`;
+  const canonical = `${BASE_URL}/${language}/apartments`;
 
   return (
     <>
@@ -57,9 +66,9 @@ const ApartmentsLanding: React.FC = () => {
         <meta name="description" content={metaDescription} />
         <link rel="canonical" href={canonical} />
         {SUPPORTED_LANGS.map(l => (
-          <link key={l} rel="alternate" hrefLang={l} href={`https://blog-knowledge-vault.lovable.app/${l}/apartments`} />
+          <link key={l} rel="alternate" hrefLang={l} href={`${BASE_URL}/${l}/apartments`} />
         ))}
-        <link rel="alternate" hrefLang="x-default" href="https://blog-knowledge-vault.lovable.app/en/apartments" />
+        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/en/apartments`} />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "RealEstateAgent",
@@ -83,7 +92,7 @@ const ApartmentsLanding: React.FC = () => {
               onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
             >
-              View Properties
+              {VIEW_PROPERTIES_TEXT[language] || 'View Properties'}
             </button>
           </div>
         </div>
