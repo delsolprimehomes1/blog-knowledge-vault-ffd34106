@@ -4,6 +4,19 @@ import { MapPin, Bed, Bath, Square, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
+const TRANSLATIONS: Record<string, { featured: string; subtitle: string; view: string; from: string }> = {
+  en: { featured: "Featured Properties", subtitle: "Handpicked residences on the Costa del Sol", view: "View", from: "From" },
+  nl: { featured: "Uitgelichte Woningen", subtitle: "Zorgvuldig geselecteerde woningen aan de Costa del Sol", view: "Bekijk", from: "Vanaf" },
+  fr: { featured: "Propriétés en Vedette", subtitle: "Résidences sélectionnées sur la Costa del Sol", view: "Voir", from: "À partir de" },
+  de: { featured: "Ausgewählte Immobilien", subtitle: "Handverlesene Residenzen an der Costa del Sol", view: "Ansehen", from: "Ab" },
+  fi: { featured: "Esittelyssä Olevat Kohteet", subtitle: "Huolella valitut asunnot Costa del Solilla", view: "Katso", from: "Alkaen" },
+  pl: { featured: "Wyróżniające się Nieruchomości", subtitle: "Starannie wybrane rezydencje na Costa del Sol", view: "Zobacz", from: "Od" },
+  da: { featured: "Udvalgte Ejendomme", subtitle: "Håndplukkede boliger på Costa del Sol", view: "Se", from: "Fra" },
+  hu: { featured: "Kiemelt Ingatlanok", subtitle: "Válogatott rezidenciák a Costa del Solon", view: "Megtekintés", from: "Több mint" },
+  sv: { featured: "Utvalda Fastigheter", subtitle: "Noggrant utvalda bostäder på Costa del Sol", view: "Visa", from: "Från" },
+  no: { featured: "Utvalgte Eiendommer", subtitle: "Nøye utvalgte boliger på Costa del Sol", view: "Se", from: "Fra" },
+};
+
 interface Property {
   id: string;
   title: string;
@@ -29,7 +42,8 @@ const FALLBACK_IMG = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b02
 const formatPrice = (price: number) =>
   new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(price);
 
-const PropertyCard = ({ property, index, onClick }: { property: Property; index: number; onClick: () => void }) => {
+const PropertyCard = ({ property, index, onClick, language }: { property: Property; index: number; onClick: () => void; language: string }) => {
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
   const { elementRef, isVisible } = useScrollAnimation({ threshold: 0.05 });
   const imgSrc = property.featured_image_url?.startsWith('http') ? property.featured_image_url : FALLBACK_IMG;
 
@@ -57,7 +71,7 @@ const PropertyCard = ({ property, index, onClick }: { property: Property; index:
         </span>
         {/* Price overlay bottom-left */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pt-10 pb-2 px-3 sm:pb-3 sm:px-4">
-          <p className="text-white/80 text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">From</p>
+          <p className="text-white/80 text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">{t.from}</p>
           <p className="text-white font-bold text-sm sm:text-base">{formatPrice(property.price)}</p>
         </div>
       </div>
@@ -101,7 +115,7 @@ const PropertyCard = ({ property, index, onClick }: { property: Property; index:
             }}
             className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-landing-gold text-white text-[10px] sm:text-xs font-semibold rounded-md hover:bg-landing-gold/90 transition-colors"
           >
-            <span>View</span>
+            <span>{t.view}</span>
             <ArrowRight size={10} className="sm:w-3 sm:h-3" />
           </button>
         </div>
@@ -163,10 +177,10 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 lg:mb-10 gap-2 pb-3 sm:pb-4 border-b border-gray-100">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-landing-navy">
-            Featured Properties
+            {(TRANSLATIONS[language] || TRANSLATIONS.en).featured}
           </h2>
           <p className="text-xs sm:text-sm text-landing-text-secondary">
-            Handpicked residences on the Costa del Sol
+            {(TRANSLATIONS[language] || TRANSLATIONS.en).subtitle}
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
@@ -176,6 +190,7 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
               property={property}
               index={index}
               onClick={() => handleClick(property)}
+              language={language}
             />
           ))}
         </div>
