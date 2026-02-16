@@ -12,6 +12,7 @@ interface Property {
   bathrooms: number;
   sqm: number;
   price: number;
+  bedrooms_max: number | null;
   property_type: string | null;
   status: string | null;
   featured_image_url: string | null;
@@ -86,7 +87,7 @@ const PropertyCard = ({ property, index, onClick }: { property: Property; index:
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
             <div className="flex items-center gap-1">
-              <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.bedrooms}</span>
+              <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.bedrooms_max && property.bedrooms_max !== property.bedrooms ? `${property.bedrooms} - ${property.bedrooms_max}` : property.bedrooms}</span>
             </div>
             <div className="flex items-center gap-1">
               <Bath size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.bathrooms}</span>
@@ -121,7 +122,7 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
     const fetchProps = async () => {
       const { data } = await supabase
         .from('apartments_properties')
-        .select('id, title, location, bedrooms, bathrooms, sqm, price, property_type, status, featured_image_url, short_description')
+        .select('id, title, location, bedrooms, bedrooms_max, bathrooms, sqm, price, property_type, status, featured_image_url, short_description')
         .eq('language', language)
         .eq('visible', true)
         .order('display_order', { ascending: true });
