@@ -1,88 +1,38 @@
 
-# Fix All 6 Language Configuration Bugs
 
-## Summary
+## Fix: Remove "XX" Prefix from Phone Numbers Everywhere
 
-French, English, Finnish, and Dutch are working correctly. Six languages (DA, DE, HU, NO, SV, PL) have configuration bugs preventing proper lead routing.
+### Problem
+Some legacy phone numbers are stored with an "XX" prefix (e.g., `XX+34613578413`). While two table views already strip this, the lead detail page, mobile cards, and call history still show the raw "XX" prefix.
 
-## Fixes (All Database Updates -- No Code Changes Needed)
+### Solution
+Create a small shared phone sanitization helper and apply it consistently across all components that display phone numbers.
 
-### Fix 1: Update round_number from 0 to 1 for DA, HU, SV, NO
+### Changes
 
-The `register-crm-lead` function queries for `round_number = 1`. These 4 languages have `round_number = 0` and will never match.
+**1. Create a phone sanitization utility**
+- Add a `sanitizePhone` function in `src/lib/phone-utils.ts`
+- It strips any leading "XX" prefix, ensuring the number starts with "+" (e.g., `XX+34...` becomes `+34...`)
 
-```text
-UPDATE crm_round_robin_config 
-SET round_number = 1 
-WHERE language IN ('da', 'hu', 'sv', 'no') AND round_number = 0;
+**2. Update `ContactInfoCard.tsx`** (lead detail page -- the screenshot)
+- Apply `sanitizePhone()` to all three places `lead.phone_number` is displayed or used: the tel link href, the display text, and the copy-to-clipboard call
+
+**3. Update `MobileLeadCard.tsx`**
+- Apply sanitization in `handleCall` and `handleWhatsApp` callbacks
+
+**4. Update `SalestrailCallsCard.tsx`**
+- Sanitize the "Tracking: ..." phone display
+
+**5. Refactor existing inline replacements**
+- Replace the inline `.replace(/^XX\+?/, '+')` calls in `LeadsTable.tsx` and `LeadsOverview.tsx` with the shared `sanitizePhone()` for consistency
+
+### Technical Detail
+```typescript
+// src/lib/phone-utils.ts
+export function sanitizePhone(phone: string | null | undefined): string {
+  if (!phone) return '';
+  return phone.replace(/^XX\+?/, '+');
+}
 ```
 
-### Fix 2: Set is_admin_fallback = true for NO
-
-Norwegian is the only language where `is_admin_fallback` is `false`, preventing T+5 admin notifications.
-
-```text
-UPDATE crm_round_robin_config 
-SET is_admin_fallback = true 
-WHERE language = 'no';
-```
-
-### Fix 3: Update Steven Roberts' languages array
-
-Steven is listed in the DA, DE, HU, SV, NO round-robin configs but his agent profile only has `[en]`. The `claim_lead` function will reject his claims for non-English leads.
-
-```text
-UPDATE crm_agents 
-SET languages = ARRAY['en', 'da', 'de', 'hu', 'sv', 'no'] 
-WHERE id = '288f9795-c3c5-47c2-8aae-e2cd408e862a';
-```
-
-### Fix 4: Add 'no' to Hans's languages array
-
-Hans is the fallback admin for Norwegian but his agent profile is missing `no`.
-
-```text
-UPDATE crm_agents 
-SET languages = ARRAY['en', 'fr', 'nl', 'es', 'de', 'fi', 'pl', 'sv', 'hu', 'da', 'no'] 
-WHERE id = '95808453-dde1-421c-85ba-52fe534ef288';
-```
-
-### Fix 5: Add Artur to PL round-robin config
-
-Artur (active PL agent) is not in the PL config. Currently only Hans is listed, meaning PL leads skip the agent pool entirely.
-
-```text
-UPDATE crm_round_robin_config 
-SET agent_ids = ARRAY[
-  '00286f6c-725f-45e3-8d4a-51e06123357b',
-  '95808453-dde1-421c-85ba-52fe534ef288'
-]::uuid[] 
-WHERE language = 'pl';
-```
-
-### Fix 6: Add Mary Seal to EN round-robin config
-
-Mary Seal is an active English agent with 10 leads but is not in the EN round-robin config.
-
-```text
-UPDATE crm_round_robin_config 
-SET agent_ids = ARRAY[
-  '288f9795-c3c5-47c2-8aae-e2cd408e862a',
-  '45898ffd-3405-4a15-9537-d4ae3954e57e',
-  '95808453-dde1-421c-85ba-52fe534ef288'
-]::uuid[] 
-WHERE language = 'en';
-```
-
-## Post-Fix State
-
-After all fixes, every language will have:
-- `round_number = 1` (matches register-crm-lead query)
-- `is_admin_fallback = true` (enables T+5 admin notifications)  
-- `fallback_admin_id = Hans` (consistent admin coverage)
-- At least 1 non-admin agent in the pool
-- All agents' `languages` arrays matching their round-robin assignments
-
-## No Code Changes Required
-
-All fixes are data corrections. The edge functions are language-agnostic and will work correctly once the configuration data is fixed.
+This is a display-only fix -- no database changes needed. The underlying data remains unchanged, but all UI surfaces will render clean phone numbers.
