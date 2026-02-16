@@ -2,39 +2,34 @@
 
 ## Fix 404 on /admin/villas-content and /admin/villas-properties
 
-The sidebar links were added but the database tables, page components, and routes were never created. Here's what needs to happen:
+Both admin pages are returning 404 because the database tables, page components, and routes were never created -- only the sidebar links exist.
 
-### 1. Database Migration -- Create two new tables
+### What will be done
 
-Create `villas_page_content` (identical schema to `apartments_page_content`) and `villas_properties` (identical schema to `apartments_properties`) with matching RLS policies that reuse the existing `has_apartments_access()` function for editor/admin CRUD and public SELECT for visible/published content.
+**1. Create two database tables**
 
-### 2. New Admin Pages (2 files)
+- `villas_page_content` -- same schema as `apartments_page_content` (headline, subheadline, CTA, hero image, video, reviews, SEO fields, per-language rows)
+- `villas_properties` -- same schema as `apartments_properties` but with `property_type` defaulting to `'villa'` instead of `'apartment'`
+- RLS policies reusing the existing `has_apartments_access()` function for editor/admin CRUD, plus public SELECT for published/visible content
+- `updated_at` triggers on both tables
 
-**`src/pages/admin/VillasPageContent.tsx`**
-- Duplicate of `ApartmentsPageContent.tsx`, replacing all references from `apartments_page_content` to `villas_page_content`
-- Title changed to "Villas Page Content"
-- Exports both default (with AdminLayout) and `VillasPageContentInner` (without wrapper)
+**2. Create two new admin page files**
 
-**`src/pages/admin/VillasProperties.tsx`**
-- Duplicate of `ApartmentsProperties.tsx`, replacing all references from `apartments_properties` to `villas_properties`
-- Title changed to "Villas Properties"
-- Default property_type set to "villa" instead of "apartment"
-- Image upload path changed to `villas/` instead of `apartments/`
-- Exports both default and `VillasPropertiesInner`
+- `src/pages/admin/VillasPageContent.tsx` -- duplicate of ApartmentsPageContent, querying `villas_page_content` instead, title "Villas Page Content"
+- `src/pages/admin/VillasProperties.tsx` -- duplicate of ApartmentsProperties, querying `villas_properties` instead, title "Villas Properties", default property_type `"villa"`, image upload path `villas/`
 
-### 3. Route Registration in App.tsx
+**3. Register routes in App.tsx**
 
-- Add lazy imports for `VillasPageContent` and `VillasProperties`
-- Add two admin routes right after the apartments routes:
-  - `/admin/villas-content` pointing to `VillasPageContent`
-  - `/admin/villas-properties` pointing to `VillasProperties`
+- Add lazy imports for both new pages
+- Add two protected admin routes: `/admin/villas-content` and `/admin/villas-properties`
 
-### File Summary
+### Technical Details
 
-| Action | File |
-|--------|------|
-| Migration | Create `villas_page_content` and `villas_properties` tables + RLS |
-| New | `src/pages/admin/VillasPageContent.tsx` |
-| New | `src/pages/admin/VillasProperties.tsx` |
-| Edit | `src/App.tsx` (add imports + routes) |
+| Action | File / Resource |
+|--------|-----------------|
+| DB Migration | Create `villas_page_content` table with RLS |
+| DB Migration | Create `villas_properties` table with RLS |
+| New file | `src/pages/admin/VillasPageContent.tsx` |
+| New file | `src/pages/admin/VillasProperties.tsx` |
+| Edit | `src/App.tsx` -- add 2 lazy imports + 2 route entries after line 277 |
 
