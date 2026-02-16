@@ -10,6 +10,22 @@ import { registerCrmLead } from '@/utils/crm/registerCrmLead';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+const FORM_TRANSLATIONS: Record<string, {
+  formTitle: string; fullName: string; email: string; phone: string; message: string;
+  consent: string; send: string; sending: string; successTitle: string; successDesc: string;
+}> = {
+  en: { formTitle: "Fill in the form to receive further information", fullName: "Full Name *", email: "Email *", phone: "Phone Number", message: "Message (optional)", consent: "I agree to the processing of my personal data in accordance with the privacy policy. *", send: "Send", sending: "Sending...", successTitle: "Thank you!", successDesc: "We will contact you shortly." },
+  nl: { formTitle: "Vul het formulier in voor meer informatie", fullName: "Volledige naam *", email: "E-mail *", phone: "Telefoonnummer", message: "Bericht (optioneel)", consent: "Ik ga akkoord met de verwerking van mijn persoonsgegevens conform het privacybeleid. *", send: "Versturen", sending: "Verzenden...", successTitle: "Bedankt!", successDesc: "We nemen spoedig contact met u op." },
+  fr: { formTitle: "Remplissez le formulaire pour recevoir plus d'informations", fullName: "Nom complet *", email: "E-mail *", phone: "Téléphone", message: "Message (facultatif)", consent: "J'accepte le traitement de mes données personnelles conformément à la politique de confidentialité. *", send: "Envoyer", sending: "Envoi...", successTitle: "Merci !", successDesc: "Nous vous contacterons sous peu." },
+  de: { formTitle: "Füllen Sie das Formular aus, um weitere Informationen zu erhalten", fullName: "Vollständiger Name *", email: "E-Mail *", phone: "Telefonnummer", message: "Nachricht (optional)", consent: "Ich stimme der Verarbeitung meiner personenbezogenen Daten gemäß der Datenschutzrichtlinie zu. *", send: "Senden", sending: "Senden...", successTitle: "Vielen Dank!", successDesc: "Wir werden uns in Kürze bei Ihnen melden." },
+  fi: { formTitle: "Täytä lomake saadaksesi lisätietoja", fullName: "Koko nimi *", email: "Sähköposti *", phone: "Puhelinnumero", message: "Viesti (valinnainen)", consent: "Hyväksyn henkilötietojeni käsittelyn tietosuojakäytännön mukaisesti. *", send: "Lähetä", sending: "Lähetetään...", successTitle: "Kiitos!", successDesc: "Otamme sinuun pian yhteyttä." },
+  pl: { formTitle: "Wypełnij formularz, aby otrzymać więcej informacji", fullName: "Imię i nazwisko *", email: "E-mail *", phone: "Numer telefonu", message: "Wiadomość (opcjonalnie)", consent: "Wyrażam zgodę na przetwarzanie moich danych osobowych zgodnie z polityką prywatności. *", send: "Wyślij", sending: "Wysyłanie...", successTitle: "Dziękujemy!", successDesc: "Skontaktujemy się wkrótce." },
+  da: { formTitle: "Udfyld formularen for at modtage yderligere information", fullName: "Fulde navn *", email: "E-mail *", phone: "Telefonnummer", message: "Besked (valgfrit)", consent: "Jeg accepterer behandlingen af mine personoplysninger i henhold til privatlivspolitikken. *", send: "Send", sending: "Sender...", successTitle: "Tak!", successDesc: "Vi kontakter dig snarest." },
+  hu: { formTitle: "Töltse ki az űrlapot további információkért", fullName: "Teljes név *", email: "E-mail *", phone: "Telefonszám", message: "Üzenet (opcionális)", consent: "Hozzájárulok személyes adataim kezeléséhez az adatvédelmi irányelveknek megfelelően. *", send: "Küldés", sending: "Küldés...", successTitle: "Köszönjük!", successDesc: "Hamarosan felvesszük Önnel a kapcsolatot." },
+  sv: { formTitle: "Fyll i formuläret för att få mer information", fullName: "Fullständigt namn *", email: "E-post *", phone: "Telefonnummer", message: "Meddelande (valfritt)", consent: "Jag godkänner behandlingen av mina personuppgifter i enlighet med integritetspolicyn. *", send: "Skicka", sending: "Skickar...", successTitle: "Tack!", successDesc: "Vi kontaktar dig inom kort." },
+  no: { formTitle: "Fyll ut skjemaet for å motta mer informasjon", fullName: "Fullt navn *", email: "E-post *", phone: "Telefonnummer", message: "Melding (valgfritt)", consent: "Jeg samtykker til behandling av mine personopplysninger i samsvar med personvernreglene. *", send: "Send", sending: "Sender...", successTitle: "Takk!", successDesc: "Vi kontakter deg snart." },
+};
+
 const formSchema = z.object({
   full_name: z.string().min(2, 'Name is required'),
   email: z.string().email('Valid email required'),
@@ -38,6 +54,7 @@ interface ApartmentsLeadFormModalProps {
 const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open, onOpenChange, property, language }) => {
   const [submitting, setSubmitting] = useState(false);
   const [phone, setPhone] = useState<string>('');
+  const ft = FORM_TRANSLATIONS[language] || FORM_TRANSLATIONS.en;
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -48,7 +65,6 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
     if (!property) return;
     setSubmitting(true);
 
-    const params = new URLSearchParams(window.location.search);
     const [firstName, ...lastParts] = data.full_name.trim().split(' ');
 
     await registerCrmLead({
@@ -70,7 +86,6 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
       referrer: document.referrer || undefined,
     });
 
-    // Increment inquiries (fire-and-forget)
     const { data: current } = await supabase
       .from('apartments_properties')
       .select('inquiries')
@@ -80,7 +95,7 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
       supabase.from('apartments_properties').update({ inquiries: (current.inquiries || 0) + 1 }).eq('id', property.id);
     }
 
-    toast({ title: 'Thank you!', description: 'We will contact you shortly.' });
+    toast({ title: ft.successTitle, description: ft.successDesc });
     reset();
     setPhone('');
     onOpenChange(false);
@@ -99,11 +114,13 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
           </DialogDescription>
         </DialogHeader>
 
+        <p className="text-sm text-gray-600">{ft.formTitle}</p>
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div>
             <input
               {...register('full_name')}
-              placeholder="Full Name *"
+              placeholder={ft.fullName}
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-landing-gold focus:border-transparent outline-none"
             />
             {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name.message}</p>}
@@ -113,7 +130,7 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
             <input
               {...register('email')}
               type="email"
-              placeholder="Email *"
+              placeholder={ft.email}
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-landing-gold focus:border-transparent outline-none"
             />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
@@ -136,7 +153,7 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
           <div>
             <textarea
               {...register('message')}
-              placeholder="Message (optional)"
+              placeholder={ft.message}
               rows={3}
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-landing-gold focus:border-transparent outline-none resize-none"
             />
@@ -144,7 +161,7 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
 
           <label className="flex items-start gap-2 text-sm text-gray-600">
             <input type="checkbox" {...register('gdpr_consent')} className="mt-1 accent-landing-gold" />
-            <span>I agree to the processing of my personal data in accordance with the privacy policy. *</span>
+            <span>{ft.consent}</span>
           </label>
           {errors.gdpr_consent && <p className="text-red-500 text-xs">{errors.gdpr_consent.message}</p>}
 
@@ -154,7 +171,7 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
             className="w-full px-6 py-4 bg-landing-gold text-white rounded-lg font-bold hover:bg-landing-goldDark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 className="animate-spin" size={18} />}
-            {submitting ? 'Sending...' : 'Request Information'}
+            {submitting ? ft.sending : ft.send}
           </button>
         </form>
       </DialogContent>
