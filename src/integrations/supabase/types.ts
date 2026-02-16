@@ -171,6 +171,7 @@ export type Database = {
         Row: {
           bathrooms: number
           bedrooms: number
+          bedrooms_max: number | null
           created_at: string | null
           created_by: string | null
           currency: string | null
@@ -204,6 +205,7 @@ export type Database = {
         Insert: {
           bathrooms: number
           bedrooms: number
+          bedrooms_max?: number | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -237,6 +239,7 @@ export type Database = {
         Update: {
           bathrooms?: number
           bedrooms?: number
+          bedrooms_max?: number | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
