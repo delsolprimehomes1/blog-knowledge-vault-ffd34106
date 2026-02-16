@@ -392,3 +392,6 @@ verify_jwt = false
 
 [functions.manage-apartments-editors]
 verify_jwt = false
+
+[functions.translate-apartments]
+verify_jwt = false
