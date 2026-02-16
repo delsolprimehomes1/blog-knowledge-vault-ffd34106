@@ -1,0 +1,1 @@
+ALTER TABLE apartments_properties ADD COLUMN bedrooms_max integer DEFAULT NULL;

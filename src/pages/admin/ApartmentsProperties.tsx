@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Building2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon } from "lucide-react";
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
@@ -24,6 +24,7 @@ interface Property {
   location: string;
   price: number;
   bedrooms: number;
+  bedrooms_max: number | null;
   bathrooms: number;
   sqm: number;
   property_type: string;
@@ -46,6 +47,7 @@ const emptyProperty = (lang: string): Omit<Property, "id" | "views" | "inquiries
   location: "",
   price: 0,
   bedrooms: 1,
+  bedrooms_max: null,
   bathrooms: 1,
   sqm: 50,
   property_type: "apartment",
@@ -68,6 +70,8 @@ export const ApartmentsPropertiesInner = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Property, "id" | "views" | "inquiries">>(emptyProperty("en"));
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
@@ -105,6 +109,7 @@ export const ApartmentsPropertiesInner = () => {
       location: p.location,
       price: p.price,
       bedrooms: p.bedrooms,
+      bedrooms_max: p.bedrooms_max ?? null,
       bathrooms: p.bathrooms,
       sqm: p.sqm,
       property_type: p.property_type || "apartment",
@@ -118,6 +123,35 @@ export const ApartmentsPropertiesInner = () => {
       featured: p.featured ?? false,
     });
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const path = `apartments/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("property-images")
+      .upload(path, file);
+
+    if (uploadError) {
+      toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("property-images")
+      .getPublicUrl(path);
+
+    updateForm("featured_image_url", urlData.publicUrl);
+    toast({ title: "Image uploaded" });
+    setUploading(false);
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSave = async () => {
@@ -159,11 +193,18 @@ export const ApartmentsPropertiesInner = () => {
     fetchProperties();
   };
 
-  const updateForm = (field: string, value: string | number | boolean) => {
+  const updateForm = (field: string, value: string | number | boolean | null) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
   const fmt = (n: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+
+  const formatBeds = (p: Property) => {
+    if (p.bedrooms_max && p.bedrooms_max > p.bedrooms) {
+      return `${p.bedrooms} - ${p.bedrooms_max}`;
+    }
+    return String(p.bedrooms);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -198,6 +239,7 @@ export const ApartmentsPropertiesInner = () => {
                 <TableHead>Price</TableHead>
                 <TableHead>Beds</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Visible</TableHead>
                 <TableHead>Views</TableHead>
@@ -207,14 +249,15 @@ export const ApartmentsPropertiesInner = () => {
             </TableHeader>
             <TableBody>
               {properties.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No properties for {lang.toUpperCase()}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No properties for {lang.toUpperCase()}</TableCell></TableRow>
               ) : properties.map(p => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.title}</TableCell>
                   <TableCell>{p.location}</TableCell>
                   <TableCell>{fmt(p.price)}</TableCell>
-                  <TableCell>{p.bedrooms}</TableCell>
+                  <TableCell>{formatBeds(p)}</TableCell>
                   <TableCell>{p.property_type}</TableCell>
+                  <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">{p.short_description || "—"}</TableCell>
                   <TableCell>{p.status}</TableCell>
                   <TableCell><Switch checked={p.visible} onCheckedChange={() => toggleVisible(p.id, p.visible)} /></TableCell>
                   <TableCell>{p.views || 0}</TableCell>
@@ -243,8 +286,9 @@ export const ApartmentsPropertiesInner = () => {
               <div><Label>Location *</Label><Input value={form.location} onChange={e => updateForm("location", e.target.value)} /></div>
               <div><Label>Price (€)</Label><Input type="number" value={form.price} onChange={e => updateForm("price", Number(e.target.value))} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Bedrooms</Label><Input type="number" value={form.bedrooms} onChange={e => updateForm("bedrooms", Number(e.target.value))} /></div>
+            <div className="grid grid-cols-4 gap-4">
+              <div><Label>Bedrooms Min</Label><Input type="number" value={form.bedrooms} onChange={e => updateForm("bedrooms", Number(e.target.value))} /></div>
+              <div><Label>Bedrooms Max</Label><Input type="number" value={form.bedrooms_max ?? ""} placeholder="Optional" onChange={e => updateForm("bedrooms_max", e.target.value ? Number(e.target.value) : null)} /></div>
               <div><Label>Bathrooms</Label><Input type="number" value={form.bathrooms} onChange={e => updateForm("bathrooms", Number(e.target.value))} /></div>
               <div><Label>SQM</Label><Input type="number" value={form.sqm} onChange={e => updateForm("sqm", Number(e.target.value))} /></div>
             </div>
@@ -258,6 +302,8 @@ export const ApartmentsPropertiesInner = () => {
                     <SelectItem value="penthouse">Penthouse</SelectItem>
                     <SelectItem value="studio">Studio</SelectItem>
                     <SelectItem value="duplex">Duplex</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="townhouse">Townhouse</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -273,12 +319,69 @@ export const ApartmentsPropertiesInner = () => {
                 </Select>
               </div>
             </div>
-            <div><Label>Short Description</Label><Input value={form.short_description} onChange={e => updateForm("short_description", e.target.value)} /></div>
-            <div><Label>Description</Label><Textarea value={form.description} onChange={e => updateForm("description", e.target.value)} rows={4} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Featured Image URL</Label><Input value={form.featured_image_url} onChange={e => updateForm("featured_image_url", e.target.value)} /></div>
-              <div><Label>Image Alt</Label><Input value={form.featured_image_alt} onChange={e => updateForm("featured_image_alt", e.target.value)} /></div>
+
+            {/* Short Description */}
+            <div>
+              <Label>Short Description</Label>
+              <Input value={form.short_description} onChange={e => updateForm("short_description", e.target.value)} placeholder="Brief summary for property cards" />
+              <p className="text-xs text-muted-foreground mt-1">Shown on property cards and in the table</p>
             </div>
+
+            {/* Description */}
+            <div>
+              <Label>Description</Label>
+              <Textarea value={form.description} onChange={e => updateForm("description", e.target.value)} rows={6} placeholder="Full property description..." />
+            </div>
+
+            {/* Image Upload */}
+            <div className="space-y-3">
+              <Label>Featured Image</Label>
+              <div className="flex items-start gap-4">
+                {/* Preview */}
+                {form.featured_image_url ? (
+                  <img
+                    src={form.featured_image_url}
+                    alt={form.featured_image_alt || "Preview"}
+                    className="w-24 h-24 object-cover rounded-lg border"
+                    onError={(e) => { e.currentTarget.src = 'https://placehold.co/96x96?text=Error'; }}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-lg border border-dashed flex items-center justify-center bg-muted">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                    {uploading ? "Uploading..." : "Upload Image"}
+                  </Button>
+                  <Input
+                    value={form.featured_image_url}
+                    onChange={e => updateForm("featured_image_url", e.target.value)}
+                    placeholder="Or paste image URL"
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Image Alt Text</Label>
+                <Input value={form.featured_image_alt} onChange={e => updateForm("featured_image_alt", e.target.value)} placeholder="Describe the image" />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Display Order</Label><Input type="number" value={form.display_order} onChange={e => updateForm("display_order", Number(e.target.value))} /></div>
             </div>
