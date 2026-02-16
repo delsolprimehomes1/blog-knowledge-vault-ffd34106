@@ -69,6 +69,8 @@ const navGroups = [
       { name: "Page Content", href: "/admin/apartments-content", icon: FileText },
       { name: "Properties", href: "/admin/apartments-properties", icon: Building2 },
       { name: "Editors", href: "/admin/apartments-editors", icon: Users },
+      { name: "Villas Content", href: "/admin/villas-content", icon: FileText },
+      { name: "Villas Properties", href: "/admin/villas-properties", icon: Building2 },
     ],
   },
   {
