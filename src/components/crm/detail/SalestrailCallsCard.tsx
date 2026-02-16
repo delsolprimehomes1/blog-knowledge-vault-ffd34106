@@ -17,6 +17,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { useSalestrailCalls, SalestrailCall } from "@/hooks/useSalestrailCalls";
 import { CallRecordingPlayer } from "./CallRecordingPlayer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { sanitizePhone } from "@/lib/phone-utils";
 
 interface SalestrailCallsCardProps {
   leadId: string;
@@ -147,7 +148,7 @@ export function SalestrailCallsCard({ leadId, phoneNumber }: SalestrailCallsCard
         </div>
         {phoneNumber && (
           <p className="text-xs text-muted-foreground mt-1">
-            Tracking: {phoneNumber}
+            Tracking: {sanitizePhone(phoneNumber)}
           </p>
         )}
       </CardHeader>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { sanitizePhone } from "@/lib/phone-utils";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -340,7 +341,7 @@ export default function LeadsOverview() {
                               {(lead as any).country_prefix?.startsWith('+') && (
                                 <span className="font-medium">{(lead as any).country_prefix}</span>
                               )}
-                              {lead.phone_number?.replace(/^XX\+?/, '+')}
+                              {sanitizePhone(lead.phone_number)}
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-orange-600 border-orange-300">

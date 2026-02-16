@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { sanitizePhone } from "@/lib/phone-utils";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,7 +155,7 @@ export function MobileLeadCard({
   // Handle quick call
   const handleCall = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const phone = lead.full_phone || lead.phone_number;
+    const phone = sanitizePhone(lead.full_phone || lead.phone_number);
     if (phone) {
       window.location.href = `tel:${phone}`;
     }
@@ -163,7 +164,7 @@ export function MobileLeadCard({
   // Handle WhatsApp
   const handleWhatsApp = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const phone = lead.full_phone || lead.phone_number;
+    const phone = sanitizePhone(lead.full_phone || lead.phone_number);
     if (phone) {
       const cleanPhone = phone.replace(/[^0-9]/g, "");
       const message = encodeURIComponent(
