@@ -1,27 +1,40 @@
 
-## Move Villas Under Apartments in Admin Sidebar
 
-### Change
-In `src/components/AdminLayout.tsx`, add the Villas admin links (Page Content and Properties) as additional items inside the existing "Apartments" nav group, rather than creating a separate "Villas" section.
+## Fix 404 on /admin/villas-content and /admin/villas-properties
 
-### Updated "Apartments" group
+The sidebar links were added but the database tables, page components, and routes were never created. Here's what needs to happen:
 
-The nav group will become:
+### 1. Database Migration -- Create two new tables
 
-```
-{
-  label: "Apartments",
-  items: [
-    { name: "Page Content", href: "/admin/apartments-content", icon: FileText },
-    { name: "Properties", href: "/admin/apartments-properties", icon: Building2 },
-    { name: "Editors", href: "/admin/apartments-editors", icon: Users },
-    { name: "Villas Content", href: "/admin/villas-content", icon: FileText },
-    { name: "Villas Properties", href: "/admin/villas-properties", icon: Building2 },
-  ],
-}
-```
+Create `villas_page_content` (identical schema to `apartments_page_content`) and `villas_properties` (identical schema to `apartments_properties`) with matching RLS policies that reuse the existing `has_apartments_access()` function for editor/admin CRUD and public SELECT for visible/published content.
 
-### File changed
-- `src/components/AdminLayout.tsx` -- add two Villas items into the existing Apartments group (lines 67-73)
+### 2. New Admin Pages (2 files)
 
-No other files affected.
+**`src/pages/admin/VillasPageContent.tsx`**
+- Duplicate of `ApartmentsPageContent.tsx`, replacing all references from `apartments_page_content` to `villas_page_content`
+- Title changed to "Villas Page Content"
+- Exports both default (with AdminLayout) and `VillasPageContentInner` (without wrapper)
+
+**`src/pages/admin/VillasProperties.tsx`**
+- Duplicate of `ApartmentsProperties.tsx`, replacing all references from `apartments_properties` to `villas_properties`
+- Title changed to "Villas Properties"
+- Default property_type set to "villa" instead of "apartment"
+- Image upload path changed to `villas/` instead of `apartments/`
+- Exports both default and `VillasPropertiesInner`
+
+### 3. Route Registration in App.tsx
+
+- Add lazy imports for `VillasPageContent` and `VillasProperties`
+- Add two admin routes right after the apartments routes:
+  - `/admin/villas-content` pointing to `VillasPageContent`
+  - `/admin/villas-properties` pointing to `VillasProperties`
+
+### File Summary
+
+| Action | File |
+|--------|------|
+| Migration | Create `villas_page_content` and `villas_properties` tables + RLS |
+| New | `src/pages/admin/VillasPageContent.tsx` |
+| New | `src/pages/admin/VillasProperties.tsx` |
+| Edit | `src/App.tsx` (add imports + routes) |
+
