@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import ApartmentsHeroProperty from '@/components/apartments/ApartmentsHeroProperty';
-import ApartmentsMasonryGrid from '@/components/apartments/ApartmentsMasonryGrid';
-import ApartmentsPropertyLightbox from '@/components/apartments/ApartmentsPropertyLightbox';
+import ApartmentsHero from '@/components/apartments/ApartmentsHero';
+import ApartmentsPropertiesSection from '@/components/apartments/ApartmentsPropertiesSection';
 import ApartmentsLeadFormModal from '@/components/apartments/ApartmentsLeadFormModal';
-import AutoplayVideo from '@/components/landing/AutoplayVideo';
-import EmmaSection from '@/components/landing/EmmaSection';
-import EmmaChat from '@/components/landing/EmmaChat';
 import { Footer } from '@/components/home/Footer';
 import LanguageSelector from '@/components/landing/LanguageSelector';
 import { LanguageCode } from '@/utils/landing/languageDetection';
 import { supabase } from '@/integrations/supabase/client';
-import { usePropertyGallery, GalleryProperty } from '@/hooks/usePropertyGallery';
-import { MessageCircle } from 'lucide-react';
 
 const SUPPORTED_LANGS = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 
@@ -30,78 +24,29 @@ const ApartmentsLanding: React.FC = () => {
   const language = SUPPORTED_LANGS.includes(lang || '') ? lang! : 'en';
   const [selectedProperty, setSelectedProperty] = useState<SelectedProperty | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
   const [metaTitle, setMetaTitle] = useState('Luxury Costa del Sol Apartments | Del Sol Prime Homes');
   const [metaDescription, setMetaDescription] = useState('Find your perfect apartment on the Costa del Sol.');
-  const [widgetId, setWidgetId] = useState('');
-  const [properties, setProperties] = useState<GalleryProperty[]>([]);
 
-  // Fetch page content (meta, reviews)
   useEffect(() => {
     const fetchPageContent = async () => {
       const { data } = await supabase
         .from('apartments_page_content')
-        .select('meta_title, meta_description, elfsight_embed_code, reviews_enabled')
+        .select('meta_title, meta_description')
         .eq('language', language)
         .eq('is_published', true)
         .single();
       if (data) {
         if (data.meta_title) setMetaTitle(data.meta_title);
         if (data.meta_description) setMetaDescription(data.meta_description);
-        if (data.reviews_enabled && data.elfsight_embed_code) {
-          const match = data.elfsight_embed_code.match(/elfsight-app-([a-f0-9-]+)/);
-          if (match) setWidgetId(match[1]);
-        }
       }
     };
     fetchPageContent();
   }, [language]);
 
-  // Fetch properties
-  useEffect(() => {
-    const fetchProperties = async () => {
-      const { data } = await supabase
-        .from('apartments_properties')
-        .select('id, title, location, bedrooms, bathrooms, sqm, price, property_type, status, featured_image_url, short_description, gallery_images, partner_source, partner_logo')
-        .eq('language', language)
-        .eq('visible', true)
-        .order('display_order', { ascending: true });
-      if (data) {
-        setProperties(data as GalleryProperty[]);
-      }
-    };
-    fetchProperties();
-  }, [language]);
-
-  // Load Elfsight platform script
-  useEffect(() => {
-    if (!widgetId) return;
-    if (!document.querySelector('script[src*="elfsightcdn"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://elfsightcdn.com/platform.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, [widgetId]);
-
-  // Listen for openEmmaChat events
-  useEffect(() => {
-    const handleOpenEmma = () => setIsEmmaOpen(true);
-    window.addEventListener('openEmmaChat', handleOpenEmma);
-    return () => window.removeEventListener('openEmmaChat', handleOpenEmma);
-  }, []);
-
-  const heroProperty = properties[0] || null;
-  const gridProperties = properties.slice(1);
-
-  const gallery = usePropertyGallery(gridProperties);
-
   const handlePropertyClick = (property: SelectedProperty) => {
     setSelectedProperty(property);
     setModalOpen(true);
   };
-
-  const openEmma = () => setIsEmmaOpen(true);
 
   const canonical = `https://blog-knowledge-vault.lovable.app/${language}/apartments`;
 
@@ -125,7 +70,6 @@ const ApartmentsLanding: React.FC = () => {
         })}</script>
       </Helmet>
 
-      {/* Fixed Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
         <div className="container mx-auto px-4 flex items-center justify-between h-16">
           <img
@@ -137,58 +81,17 @@ const ApartmentsLanding: React.FC = () => {
             <LanguageSelector currentLang={language as LanguageCode} />
             <button
               onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="hidden sm:inline-flex px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
+              className="px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
             >
               View Properties
-            </button>
-            <button
-              onClick={openEmma}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-landing-gold text-white rounded-lg font-semibold hover:bg-landing-goldDark transition-colors text-sm"
-            >
-              <MessageCircle size={16} />
-              <span className="hidden sm:inline">Speak with Emma</span>
             </button>
           </div>
         </div>
       </header>
 
       <main>
-        {/* Hero Featured Property */}
-        {heroProperty && (
-          <ApartmentsHeroProperty
-            property={heroProperty}
-            language={language}
-            onVisit={() => handlePropertyClick({
-              id: heroProperty.id,
-              title: heroProperty.title,
-              location: heroProperty.location,
-              price: heroProperty.price,
-              property_type: heroProperty.property_type,
-            })}
-          />
-        )}
-
-        <AutoplayVideo language={language} onOpenEmmaChat={openEmma} />
-        <EmmaSection onStartChat={openEmma} />
-
-        {/* Masonry Grid */}
-        <ApartmentsMasonryGrid
-          properties={gridProperties}
-          language={language}
-          onPropertyClick={(idx) => gallery.openLightbox(idx)}
-        />
-
-        {/* Google Reviews */}
-        {widgetId && (
-          <section className="py-20 bg-muted">
-            <div className="container mx-auto px-4">
-              <h2 className="text-3xl lg:text-4xl font-serif font-bold text-foreground text-center mb-12">
-                What Our Clients Say
-              </h2>
-              <div key={widgetId} className={`elfsight-app-${widgetId}`} data-elfsight-app-lazy />
-            </div>
-          </section>
-        )}
+        <ApartmentsHero language={language} />
+        <ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />
       </main>
 
       <Footer />
@@ -197,37 +100,6 @@ const ApartmentsLanding: React.FC = () => {
         open={modalOpen}
         onOpenChange={setModalOpen}
         property={selectedProperty}
-        language={language}
-      />
-
-      <ApartmentsPropertyLightbox
-        isOpen={gallery.isOpen}
-        onClose={gallery.closeLightbox}
-        property={gallery.currentProperty}
-        currentImage={gallery.currentImage}
-        imageIndex={gallery.imageIndex}
-        galleryImages={gallery.galleryImages}
-        onNextImage={gallery.nextImage}
-        onPrevImage={gallery.prevImage}
-        onGoToImage={gallery.goToImage}
-        onVisit={() => {
-          if (gallery.currentProperty) {
-            gallery.closeLightbox();
-            handlePropertyClick({
-              id: gallery.currentProperty.id,
-              title: gallery.currentProperty.title,
-              location: gallery.currentProperty.location,
-              price: gallery.currentProperty.price,
-              property_type: gallery.currentProperty.property_type,
-            });
-          }
-        }}
-        language={language}
-      />
-
-      <EmmaChat
-        isOpen={isEmmaOpen}
-        onClose={() => setIsEmmaOpen(false)}
         language={language}
       />
     </>
