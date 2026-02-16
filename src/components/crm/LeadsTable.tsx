@@ -1,4 +1,5 @@
 import React from "react";
+import { sanitizePhone } from "@/lib/phone-utils";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -321,7 +322,7 @@ export function LeadsTable({
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="space-y-1">
                         <a
-                          href={`tel:${lead.country_prefix?.startsWith('+') ? lead.country_prefix : ''}${lead.phone_number?.replace(/^XX\+?/, '+')}`}
+                          href={`tel:${lead.country_prefix?.startsWith('+') ? lead.country_prefix : ''}${sanitizePhone(lead.phone_number)}`}
                           className="flex items-center gap-1 text-sm hover:text-primary"
                         >
                           <Phone className="w-3 h-3" />
@@ -331,7 +332,7 @@ export function LeadsTable({
                           {lead.country_prefix?.startsWith('+') && (
                             <span className="font-medium">{lead.country_prefix}</span>
                           )}
-                          {lead.phone_number?.replace(/^XX\+?/, '+')}
+                          {sanitizePhone(lead.phone_number)}
                         </a>
                         {lead.email && (
                           <a

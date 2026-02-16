@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { getLanguageFlag } from "@/lib/crm-conditional-styles";
+import { sanitizePhone } from "@/lib/phone-utils";
 import type { Database } from "@/integrations/supabase/types";
 
 type CrmLead = Database["public"]["Tables"]["crm_leads"]["Row"];
@@ -78,18 +79,18 @@ export function ContactInfoCard({
             <dt className="text-xs text-muted-foreground mb-1">Phone Number</dt>
             <dd className="flex items-center gap-2">
               <a
-                href={`tel:${lead.phone_number}`}
+                href={`tel:${sanitizePhone(lead.phone_number)}`}
                 onClick={onCall}
                 className="text-lg font-semibold text-primary hover:underline flex items-center"
               >
                 <Phone className="w-4 h-4 mr-2" />
-                {lead.phone_number}
+                {sanitizePhone(lead.phone_number)}
               </a>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => copyToClipboard(lead.phone_number, "Phone")}
+                onClick={() => copyToClipboard(sanitizePhone(lead.phone_number), "Phone")}
               >
                 <Copy className="w-3 h-3" />
               </Button>

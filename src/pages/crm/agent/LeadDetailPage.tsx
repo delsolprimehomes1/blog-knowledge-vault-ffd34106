@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { sanitizePhone } from "@/lib/phone-utils";
 
 // Hooks
 import { useLeadDetail } from "@/hooks/useLeadDetail";
@@ -89,7 +90,7 @@ export default function LeadDetailPage() {
   // Action handlers
   const handleCall = useCallback(() => {
     if (lead?.phone_number) {
-      window.location.href = `tel:${lead.phone_number}`;
+      window.location.href = `tel:${sanitizePhone(lead.phone_number)}`;
       logContact();
     }
   }, [lead, logContact]);
