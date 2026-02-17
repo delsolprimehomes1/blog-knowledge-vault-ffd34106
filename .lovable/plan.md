@@ -1,27 +1,63 @@
 
 
-## Add Privacy Policy and Terms of Service Links to Form Pop-ups
+## Add Working Hours Columns to CRM Agents
 
-Currently, the consent checkbox on the Apartments lead form modal shows plain text like "I agree to the processing of my personal data in accordance with the privacy policy." with no clickable links. The villas pages reuse the same pattern.
+### 1. Database Migration
 
-### What will be changed
+Add two new columns and a composite index to `crm_agents`. Per project guidelines, validation triggers will be used instead of CHECK constraints (CHECK constraints can cause issues with database restoration).
 
-**1. Update `src/components/apartments/ApartmentsLeadFormModal.tsx`**
+**SQL Migration:**
+```sql
+-- Add columns
+ALTER TABLE crm_agents
+  ADD COLUMN IF NOT EXISTS working_hours_start INTEGER DEFAULT 8,
+  ADD COLUMN IF NOT EXISTS working_hours_end INTEGER DEFAULT 20;
 
-- Split the `consent` string in `FORM_TRANSLATIONS` into two parts: `consentPrefix` (the agreement text) and `consentSuffix` (any trailing text), plus localized labels for "Privacy Policy" and "Terms of Service" for all 10 languages.
-- Replace the plain `<span>{ft.consent}</span>` (line 164) with JSX containing two hyperlinks:
-  - **Privacy Policy** link pointing to `https://policies.google.com/privacy` (opens in new tab)
-  - **Terms of Service** link pointing to `https://policies.google.com/terms` (opens in new tab)
-- Links will be styled with an underline and the landing gold color for visibility.
+-- Validation trigger (replaces CHECK constraints)
+CREATE OR REPLACE FUNCTION public.validate_agent_working_hours()
+RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
+BEGIN
+  IF NEW.working_hours_start < 0 OR NEW.working_hours_start > 23 THEN
+    RAISE EXCEPTION 'working_hours_start must be between 0 and 23';
+  END IF;
+  IF NEW.working_hours_end < 0 OR NEW.working_hours_end > 23 THEN
+    RAISE EXCEPTION 'working_hours_end must be between 0 and 23';
+  END IF;
+  IF NEW.working_hours_end = NEW.working_hours_start THEN
+    RAISE EXCEPTION 'working_hours_end must differ from working_hours_start';
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-**Example rendered text (English):**
-"I agree to the processing of my personal data in accordance with the [Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms). *"
+CREATE TRIGGER trg_validate_agent_working_hours
+  BEFORE INSERT OR UPDATE ON crm_agents
+  FOR EACH ROW EXECUTE FUNCTION validate_agent_working_hours();
 
-This single file change covers all 10 language variants for the Apartments landing pages, and since the Villas landing page (when created) will reuse this same modal component, it will automatically inherit the same linked consent text.
+-- Performance index
+CREATE INDEX IF NOT EXISTS idx_crm_agents_working_hours
+  ON crm_agents(timezone, working_hours_start, working_hours_end);
+```
 
-### Technical details
+### 2. Update TypeScript Type
 
-| Action | File |
-|--------|------|
-| Edit | `src/components/apartments/ApartmentsLeadFormModal.tsx` -- update FORM_TRANSLATIONS to split consent into parts with localized "Privacy Policy" / "Terms of Service" labels, update JSX to render `<a>` tags |
+Add `working_hours_start` and `working_hours_end` to the `CrmAgent` interface in `src/hooks/useCrmAgents.ts`.
+
+### 3. Update Agent Management UI
+
+**AddAgentModal** (`src/components/crm/AddAgentModal.tsx`):
+- Add two number inputs for "Working Hours Start" and "Working Hours End" (default 8 and 20).
+- Add Zod validation for 0-23 range and inequality.
+
+**EditAgentModal** (`src/components/crm/EditAgentModal.tsx`):
+- Add matching fields, pre-populated from agent data.
+
+### 4. Files Changed
+
+| Action | File | Detail |
+|--------|------|--------|
+| Migration | Database | New columns, trigger, index |
+| Edit | `src/hooks/useCrmAgents.ts` | Add fields to `CrmAgent` interface |
+| Edit | `src/components/crm/AddAgentModal.tsx` | Add working hours inputs |
+| Edit | `src/components/crm/EditAgentModal.tsx` | Add working hours inputs |
 
