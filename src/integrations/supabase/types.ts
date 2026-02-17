@@ -5239,6 +5239,174 @@ export type Database = {
         }
         Relationships: []
       }
+      villas_page_content: {
+        Row: {
+          created_at: string | null
+          cta_text: string | null
+          elfsight_embed_code: string | null
+          headline: string
+          hero_image_alt: string | null
+          hero_image_url: string | null
+          id: string
+          is_published: boolean | null
+          language: string
+          meta_description: string | null
+          meta_title: string | null
+          reviews_enabled: boolean | null
+          subheadline: string | null
+          updated_at: string | null
+          updated_by: string | null
+          video_enabled: boolean | null
+          video_thumbnail_url: string | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cta_text?: string | null
+          elfsight_embed_code?: string | null
+          headline: string
+          hero_image_alt?: string | null
+          hero_image_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          language: string
+          meta_description?: string | null
+          meta_title?: string | null
+          reviews_enabled?: boolean | null
+          subheadline?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          video_enabled?: boolean | null
+          video_thumbnail_url?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cta_text?: string | null
+          elfsight_embed_code?: string | null
+          headline?: string
+          hero_image_alt?: string | null
+          hero_image_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          language?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          reviews_enabled?: boolean | null
+          subheadline?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          video_enabled?: boolean | null
+          video_thumbnail_url?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      villas_properties: {
+        Row: {
+          bathrooms: number
+          bedrooms: number
+          bedrooms_max: number | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          display_order: number | null
+          featured: boolean | null
+          featured_image_alt: string | null
+          featured_image_url: string | null
+          features: Json | null
+          gallery_images: string[] | null
+          id: string
+          images: Json | null
+          inquiries: number | null
+          language: string
+          location: string
+          partner_logo: string | null
+          partner_source: string | null
+          price: number
+          property_group_id: string | null
+          property_type: string | null
+          short_description: string | null
+          slug: string | null
+          sqm: number
+          status: string | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          views: number | null
+          visible: boolean | null
+        }
+        Insert: {
+          bathrooms: number
+          bedrooms: number
+          bedrooms_max?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          featured?: boolean | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          features?: Json | null
+          gallery_images?: string[] | null
+          id?: string
+          images?: Json | null
+          inquiries?: number | null
+          language: string
+          location: string
+          partner_logo?: string | null
+          partner_source?: string | null
+          price: number
+          property_group_id?: string | null
+          property_type?: string | null
+          short_description?: string | null
+          slug?: string | null
+          sqm: number
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+          views?: number | null
+          visible?: boolean | null
+        }
+        Update: {
+          bathrooms?: number
+          bedrooms?: number
+          bedrooms_max?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          featured?: boolean | null
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          features?: Json | null
+          gallery_images?: string[] | null
+          id?: string
+          images?: Json | null
+          inquiries?: number | null
+          language?: string
+          location?: string
+          partner_logo?: string | null
+          partner_source?: string | null
+          price?: number
+          property_group_id?: string | null
+          property_type?: string | null
+          short_description?: string | null
+          slug?: string | null
+          sqm?: number
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          views?: number | null
+          visible?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       content_freshness_report: {

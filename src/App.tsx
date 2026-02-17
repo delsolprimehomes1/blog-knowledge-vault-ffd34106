@@ -125,10 +125,14 @@ const ApartmentsPageContent = lazy(() => import("./pages/admin/ApartmentsPageCon
 const ApartmentsProperties = lazy(() => import("./pages/admin/ApartmentsProperties"));
 const ApartmentsEditorManager = lazy(() => import("./pages/admin/ApartmentsEditorManager"));
 const ApartmentsAuth = lazy(() => import("./pages/ApartmentsAuth"));
+const VillasPageContent = lazy(() => import("./pages/admin/VillasPageContent"));
+const VillasProperties = lazy(() => import("./pages/admin/VillasProperties"));
 
 // Inner components for apartments editor layout (no AdminLayout wrapper)
 import { ApartmentsPageContentInner } from "./pages/admin/ApartmentsPageContent";
 import { ApartmentsPropertiesInner } from "./pages/admin/ApartmentsProperties";
+import { VillasPageContentInner } from "./pages/admin/VillasPageContent";
+import { VillasPropertiesInner } from "./pages/admin/VillasProperties";
 
 // CRM Pages
 const AgentLogin = lazy(() => import("./pages/crm/AgentLogin"));
@@ -275,6 +279,8 @@ const App = () => (
               <Route path="/admin/apartments-content" element={<ProtectedRoute><ApartmentsPageContent /></ProtectedRoute>} />
               <Route path="/admin/apartments-properties" element={<ProtectedRoute><ApartmentsProperties /></ProtectedRoute>} />
               <Route path="/admin/apartments-editors" element={<ProtectedRoute><ApartmentsEditorManager /></ProtectedRoute>} />
+              <Route path="/admin/villas-content" element={<ProtectedRoute><VillasPageContent /></ProtectedRoute>} />
+              <Route path="/admin/villas-properties" element={<ProtectedRoute><VillasProperties /></ProtectedRoute>} />
 
               {/* Apartments Editor Login (public) */}
               <Route path="/apartments/login" element={<ApartmentsAuth />} />
