@@ -1,74 +1,27 @@
 
 
-## Fix 404 on /admin/villas-content and /admin/villas-properties
+## Add Privacy Policy and Terms of Service Links to Form Pop-ups
 
-The sidebar links already exist but three things are missing: database tables, page components, and route registrations.
+Currently, the consent checkbox on the Apartments lead form modal shows plain text like "I agree to the processing of my personal data in accordance with the privacy policy." with no clickable links. The villas pages reuse the same pattern.
 
----
+### What will be changed
 
-### Step 1: Database Migration -- Create two tables
+**1. Update `src/components/apartments/ApartmentsLeadFormModal.tsx`**
 
-**Table: `villas_page_content`**
-Identical columns to `apartments_page_content` (id, language, headline, subheadline, cta_text defaulting to 'View Villas', hero_image_url/alt, video fields, reviews fields, SEO fields, is_published, timestamps, updated_by).
+- Split the `consent` string in `FORM_TRANSLATIONS` into two parts: `consentPrefix` (the agreement text) and `consentSuffix` (any trailing text), plus localized labels for "Privacy Policy" and "Terms of Service" for all 10 languages.
+- Replace the plain `<span>{ft.consent}</span>` (line 164) with JSX containing two hyperlinks:
+  - **Privacy Policy** link pointing to `https://policies.google.com/privacy` (opens in new tab)
+  - **Terms of Service** link pointing to `https://policies.google.com/terms` (opens in new tab)
+- Links will be styled with an underline and the landing gold color for visibility.
 
-**Table: `villas_properties`**
-Identical columns to `apartments_properties` (id, language, title, slug, location, price, currency, bedrooms, bedrooms_max, bathrooms, sqm, property_type defaulting to 'villa', description, short_description, features, images, featured_image_url/alt, display_order, visible, status, featured, views, inquiries, timestamps, created_by, updated_by, partner fields, gallery_images).
+**Example rendered text (English):**
+"I agree to the processing of my personal data in accordance with the [Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms). *"
 
-**RLS policies on both tables** (mirroring apartments exactly):
-- Public SELECT for published/visible rows
-- Full CRUD for editors via `has_apartments_access(auth.uid())`
-- Admin ALL via `user_roles` check
+This single file change covers all 10 language variants for the Apartments landing pages, and since the Villas landing page (when created) will reuse this same modal component, it will automatically inherit the same linked consent text.
 
-**Triggers:** `update_updated_at_column()` on both tables.
-
----
-
-### Step 2: Create two admin page components
-
-**`src/pages/admin/VillasPageContent.tsx`**
-- Copy of `ApartmentsPageContent.tsx` (174 lines)
-- Table reference: `villas_page_content`
-- Title: "Villas Page Content"
-- Exports `VillasPageContentInner` (named) and default with `AdminLayout` wrapper
-
-**`src/pages/admin/VillasProperties.tsx`**
-- Copy of `ApartmentsProperties.tsx` (428 lines)
-- Table reference: `villas_properties`
-- Title: "Villas Properties"
-- Default `property_type`: `"villa"` instead of `"apartment"`
-- Image upload path: `villas/` instead of `apartments/`
-- Exports `VillasPropertiesInner` (named) and default with `AdminLayout` wrapper
-
----
-
-### Step 3: Register routes in App.tsx
-
-Add two lazy imports after line 126:
-```text
-const VillasPageContent = lazy(() => import("./pages/admin/VillasPageContent"));
-const VillasProperties = lazy(() => import("./pages/admin/VillasProperties"));
-```
-
-Add inner component imports after line 131:
-```text
-import { VillasPageContentInner } from "./pages/admin/VillasPageContent";
-import { VillasPropertiesInner } from "./pages/admin/VillasProperties";
-```
-
-Add two protected routes after line 277:
-```text
-<Route path="/admin/villas-content" element={<ProtectedRoute><VillasPageContent /></ProtectedRoute>} />
-<Route path="/admin/villas-properties" element={<ProtectedRoute><VillasProperties /></ProtectedRoute>} />
-```
-
----
-
-### Files affected
+### Technical details
 
 | Action | File |
 |--------|------|
-| DB Migration | Create `villas_page_content` + `villas_properties` tables with RLS + triggers |
-| New file | `src/pages/admin/VillasPageContent.tsx` |
-| New file | `src/pages/admin/VillasProperties.tsx` |
-| Edit | `src/App.tsx` (4 imports + 2 routes) |
+| Edit | `src/components/apartments/ApartmentsLeadFormModal.tsx` -- update FORM_TRANSLATIONS to split consent into parts with localized "Privacy Policy" / "Terms of Service" labels, update JSX to render `<a>` tags |
 
