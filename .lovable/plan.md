@@ -1,62 +1,70 @@
 
-## Root Cause: Stale 404 Cached by Cloudflare for /fr/villas/properties
+## Add "Auto-Translate from English" Button to Apartments Page Content
 
-### What's Happening
+### What This Adds
 
-The routing configuration in `public/_redirects` is correct (line 90):
+A single **"Translate from English"** button on the Apartments Page Content admin page that:
+1. Reads the currently saved English (EN) content from the database
+2. Sends the translatable text fields to the AI translation service
+3. Automatically saves translated content for all 9 other languages (NL, FR, DE, FI, PL, DA, HU, SV, NO)
+4. Non-translatable fields (image URLs, video URLs, embed codes, switches) are copied as-is from English
+
+### Fields That Will Be Auto-Translated
+- Headline
+- Subheadline
+- CTA Text
+- Hero Image Alt
+- Meta Title
+- Meta Description
+
+### Fields Copied As-Is (Not Translated)
+- Hero Image URL
+- Video URL / Thumbnail URL
+- Elfsight Embed Code
+- Video Enabled / Reviews Enabled / Is Published switches
+
+### How It Works
+
+The existing `translate-property-description` edge function already handles multi-language translation using the AI gateway. I will create a **new edge function** (`translate-apartments-page-content`) specifically for translating all 6 text fields at once, then saving all 9 language rows to the database in a single operation.
+
+### Files to Change
+
+**1. `supabase/functions/translate-apartments-page-content/index.ts`** (new file)
+- Accepts the English content payload
+- Sends all 6 text fields to `google/gemini-2.5-flash` in a single prompt
+- Returns translations for all 9 target languages
+- Upserts each language row into `apartments_page_content`, preserving image URLs and switches from the existing English row
+
+**2. `src/pages/admin/ApartmentsPageContent.tsx`** (modified)
+- Add a `Sparkles` icon "Translate from English" button next to the Save button
+- Button is only active when viewing the EN tab (or always active — it always reads from EN)
+- Shows a loading spinner while translating
+- After completion, toasts success and refreshes the current language tab view
+- The button text changes to "Translating... (9 languages)" while running
+
+### User Experience Flow
+
+```text
+Admin opens Apartments Page Content
+   ↓
+Types content in EN tab and saves
+   ↓
+Clicks "Translate from English" button
+   ↓
+Button shows spinner: "Translating 9 languages..."
+   ↓
+Edge function reads EN row, translates all fields
+   ↓
+All 9 language rows saved to database
+   ↓
+Toast: "All 9 languages translated and saved!"
+   ↓
+Admin can switch tabs to verify translations
 ```
-/fr/villas/properties  /index.html  200
-```
 
-The middleware on line 95 of `functions/_middleware.js` also correctly matches this path:
-```js
-/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas\/properties|apartments)\/?$/
-```
+### Technical Details
 
-And `public/_headers` has the correct no-cache directives for `/fr/villas/properties` (lines 50-53).
-
-**The problem is Cloudflare has a cached 404 response for `/fr/villas/properties`** from before these redirect rules were added or published. This is the exact same pattern that caused the villas path to be restructured to `/villas/properties` in the first place (as noted in the project memory: *"Cache Busting: Changing path segments is the preferred method for bypassing environmental CDN caching"*).
-
-This is a **Cloudflare edge cache issue** — the CDN is serving a cached 404 for the French (and possibly other language) villas URLs and ignoring the updated `_redirects` rules.
-
-### Why Only French (/fr)?
-
-It's likely that `/fr/villas/properties` was never visited before the routes were configured, so Cloudflare cached the initial 404 response. Other language variants like `/en/villas/properties` may have been visited and cached a 200 response. The cache TTL for 404 responses can be very long on Cloudflare.
-
-### Two-Part Fix
-
-**Part 1 — Immediate: Purge Cloudflare Cache for Villas URLs**
-
-Log in to Cloudflare dashboard → Caching → Cache Purge → Custom Purge, and purge these specific URLs:
-- `https://www.delsolprimehomes.com/fr/villas/properties`
-- `https://www.delsolprimehomes.com/nl/villas/properties`
-- `https://www.delsolprimehomes.com/de/villas/properties`
-- `https://www.delsolprimehomes.com/fi/villas/properties`
-- `https://www.delsolprimehomes.com/pl/villas/properties`
-- `https://www.delsolprimehomes.com/da/villas/properties`
-- `https://www.delsolprimehomes.com/hu/villas/properties`
-- `https://www.delsolprimehomes.com/sv/villas/properties`
-- `https://www.delsolprimehomes.com/no/villas/properties`
-
-Or use "Purge Everything" for simplicity.
-
-**Part 2 — Code Fix: Add `Surrogate-Control` and `CDN-Cache-Control` to all villas/properties routes**
-
-Looking at the current `public/_headers`, the villas routes (lines 42-81) already have `CDN-Cache-Control: no-store` — so this is already done correctly. However, Cloudflare may have cached the 404 **before** these headers were deployed.
-
-Additionally, there is a secondary defensive fix we can apply: add a `query-param cache-bust` redirect for the French and other non-English villas paths, similar to the existing `?*` redirect rules already in `_redirects` (lines 66-75). These query-param rules force Cloudflare to bypass its route cache because the URL shape is different.
-
-But the most reliable fix is the **Cloudflare cache purge** combined with a **comment bump** in `public/_headers` to force Cloudflare to re-read the file.
-
-### What Will Be Changed
-
-**`public/_headers`** — Add a comment timestamp bump to force Cloudflare to re-process the file and re-read all the no-cache directives for villas routes. This is a safe, non-breaking change.
-
-No changes are needed to `_redirects` or the middleware — the routing logic is already correct.
-
-### After the Fix
-
-Once Cloudflare's cached 404 is cleared:
-- `https://www.delsolprimehomes.com/fr/villas/properties` will load correctly
-- All other language villas pages (`/nl/`, `/de/`, `/sv/`, etc.) will also be confirmed working
-- The no-cache headers will prevent this from happening again for these routes
+- The edge function will batch all 6 fields into a single AI call per language to minimize API calls (9 total calls, one per language)
+- Uses the existing `LOVABLE_API_KEY` secret that is already configured for the `translate-property-description` function
+- Upserts via `language` column — if a language row already exists it will be updated, otherwise inserted
+- Non-text fields are copied directly from the English database row to preserve settings across all languages
