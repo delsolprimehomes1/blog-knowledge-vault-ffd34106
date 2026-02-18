@@ -1,72 +1,54 @@
 
-## Add "Translate to All Languages" Button to Apartments & Villas Admin
+## Fix: Translate Status & Property Type Labels in the Admin Properties Table
 
-### What's Needed
+### The Problem
 
-The backend translation infrastructure is already fully built:
-- `supabase/functions/translate-apartments` — reads all 12 English apartment properties and translates title, short description, full description, and image alt text into 9 languages (NL, FR, DE, FI, PL, DA, HU, SV, NO), copying price, beds, baths, sqm, images, status, and display order exactly as-is.
-- `supabase/functions/translate-villas` — same for villas.
+In the admin properties table, two columns always display raw English database values regardless of which language tab is selected:
 
-**The only missing piece is a button in the UI** to trigger these functions. There is currently no button on the `ApartmentsProperties` admin page to call them.
+- **Type column**: shows "apartment", "villa", "townhouse" (always English)
+- **Status column**: shows "available", "for_sale", "new_development" (always English)
 
-### What Gets Translated vs. Copied
-
-| Field | Action |
-|---|---|
-| Title | AI translated |
-| Short Description | AI translated |
-| Full Description | AI translated |
-| Image Alt Text | AI translated |
-| Price | Copied exactly |
-| Bedrooms / Bathrooms / SQM | Copied exactly |
-| Featured Image URL | Copied exactly |
-| Location (Spanish place names) | Kept as-is (Marbella, Estepona, etc.) |
-| Status | Copied exactly |
-| Display Order / Visible / Featured | Copied exactly |
+These are internal database enum-style values stored as English strings. They cannot be translated in the database because they're used as filter keys — but their *display labels* in the admin UI should reflect the selected language.
 
 ### What Will Change
 
-**`src/pages/admin/ApartmentsProperties.tsx`** — Only file to edit.
+**`src/pages/admin/ApartmentsProperties.tsx`** — One file, targeted changes only.
 
-Add to the `PropertiesManager` component:
+Add two translation maps near the top of the `PropertiesManager` component:
 
-1. A `translating` state (`useState(false)`)
-2. A `handleTranslateAll` async function that:
-   - Calls `supabase.functions.invoke('translate-apartments')` or `'translate-villas'` based on the `tableName` prop
-   - Shows a loading spinner during translation (takes ~60-90 seconds for 9 languages with delays)
-   - Shows a success toast: "All 12 properties translated to 9 languages!"
-   - Refreshes the current language view after completion
-   - Handles errors with a destructive toast
-3. A **"Translate to All Languages"** button with a `Languages` icon (from lucide-react) in the header area next to the existing "Add Property" button
-   - Disabled when `translating` is true or when `lang !== "en"` (since it always reads from EN)
-   - Shows spinner + "Translating..." text while running
+**Status translations** (10 languages × 3 values):
+| DB Value | EN | FR | DE | NL | etc. |
+|---|---|---|---|---|---|
+| available | Available | Disponible | Verfügbar | Beschikbaar | ... |
+| for_sale | For Sale | À vendre | Zu verkaufen | Te koop | ... |
+| new_development | New Development | Nouveau projet | Neuentwicklung | Nieuw project | ... |
 
-### User Experience
+**Property type translations** (10 languages × 3 values):
+| DB Value | EN | FR | DE | NL | etc. |
+|---|---|---|---|---|---|
+| apartment | Apartment | Appartement | Wohnung | Appartement | ... |
+| villa | Villa | Villa | Villa | Villa | ... |
+| townhouse | Townhouse | Maison de ville | Stadthaus | Stadswoning | ... |
+| penthouse | Penthouse | Penthouse | Penthouse | Penthouse | ... |
 
-```text
-Admin is on Apartments tab, EN selected
-  ↓
-Sees 12 properties listed
-  ↓
-Clicks "Translate to All Languages" button
-  ↓
-Button shows spinner: "Translating... (~90s)"
-  ↓
-Edge function: reads 12 EN properties → translates to NL, FR, DE, FI, PL, DA, HU, SV, NO
-  ↓
-Toast: "All 12 properties translated to 9 languages!"
-  ↓
-Admin switches to FR tab — sees all 12 properties in French
-  (same price, same beds, same images — only text fields translated)
-```
+Then update the two table cells that display these values:
+
+- **Line 291**: `{p.property_type}` → `{TYPE_LABELS[lang]?.[p.property_type] ?? p.property_type}`
+- **Line 293**: `{p.status}` → `{STATUS_LABELS[lang]?.[p.status] ?? p.status}`
+
+A fallback to the raw value (`?? p.property_type`) ensures that any unexpected values still display rather than showing blank.
 
 ### Technical Details
 
-- The function call will use `supabase.functions.invoke('translate-apartments')` for apartments and `supabase.functions.invoke('translate-villas')` for villas — the correct function is selected automatically based on the `tableName` prop already passed to `PropertiesManager`.
-- The edge function already has a 2-second delay between each language to avoid AI rate limits, meaning the full translation takes about 90 seconds for all 9 languages.
-- The button will show a note: "(Only runs from EN — reads English properties)" so the admin understands it always sources from English.
-- The button is disabled when viewing a non-EN language tab to prevent confusion.
+- The translation maps are **display-only** — they do not change what is written to the database. The underlying database values stay as "apartment", "for_sale", etc. (these are used by the translation edge function as filter keys)
+- This is a client-side label map, not an AI translation — it's instant and always consistent
+- The same `lang` state variable already in `PropertiesManager` is used to select the correct label set
+- No edge function changes, no database changes needed
 
-### No Database Changes Needed
+### Scope
 
-The `apartments_properties` and `villas_properties` tables already have all required columns (`property_group_id`, `gallery_images`, `features`, etc.) and the edge functions already handle the delete-then-insert pattern for clean language updates.
+This is an admin-only UI fix. The public-facing property cards (`ApartmentsPropertiesSection`, `VillasPropertiesSection`) do not display raw status/type strings to visitors, so no changes are needed there.
+
+### Files Changed
+
+- `src/pages/admin/ApartmentsProperties.tsx` — Add two label maps + update two render cells
