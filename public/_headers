@@ -41,24 +41,44 @@
 # Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
 /en/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /nl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /fr/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /de/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /fi/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /pl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /da/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /hu/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /sv/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /no/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /en/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /nl/apartments
