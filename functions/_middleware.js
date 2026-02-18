@@ -88,6 +88,24 @@ export async function onRequest({ request, next, env }) {
     });
   }
 
+  // ============================================================
+  // RULE 3: Early passthrough for villas/apartments SPA routes
+  // MUST be before static file check to prevent cached HTML interference
+  // ============================================================
+  const villaPath = url.pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas|apartments)\/?$/);
+  if (villaPath) {
+    console.log('[Middleware] Villas/Apartments SPA route - early passthrough (no-store)');
+    const spaResponse = await next();
+    const spaHeaders = new Headers(spaResponse.headers);
+    spaHeaders.set('X-Middleware-Status', 'Active');
+    spaHeaders.set('Cache-Control', 'no-store');
+    return new Response(spaResponse.body, {
+      status: spaResponse.status,
+      statusText: spaResponse.statusText,
+      headers: spaHeaders,
+    });
+  }
+
   const pathname = url.pathname;
 
   // Adds a debug header so we can verify middleware execution in the Network tab.
@@ -308,23 +326,6 @@ export async function onRequest({ request, next, env }) {
       status: staticResponse.status,
       statusText: staticResponse.statusText,
       headers,
-    });
-  }
-
-  // Passthrough for villas and apartments landing pages (SPA routes)
-  if (
-    pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/villas\/?$/) ||
-    pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/apartments\/?$/)
-  ) {
-    console.log('[Middleware] Villas/Apartments SPA route - passthrough to _redirects (no-store)');
-    const spaResponse = await next();
-    const spaHeaders = new Headers(spaResponse.headers);
-    spaHeaders.set('X-Middleware-Status', 'Active');
-    spaHeaders.set('Cache-Control', 'no-store');
-    return new Response(spaResponse.body, {
-      status: spaResponse.status,
-      statusText: spaResponse.statusText,
-      headers: spaHeaders,
     });
   }
 
