@@ -1,95 +1,88 @@
 
-## Root Cause: Cloudflare CDN Cache Serving Stale Response
+## Root Cause: Middleware Processes Villas Too Late
 
-### Confirmed Status of All Three Code Fixes
+### The Definitive Diagnosis
 
-After a full audit of every relevant file, all three code changes from the previous fix are correctly in place:
+After auditing every layer — `_redirects`, `_routes.json`, `_middleware.js`, `App.tsx`, React Router order, database — here is the exact failure:
 
-**src/App.tsx (lines 23-34)**: The `if (lang === 'en') return <Navigate to="/" replace />` redirect has been removed. `LanguageHome` now renders `<Home />` directly for `/en`. CORRECT.
-
-**functions/_middleware.js (lines 314-321)**: The villas/apartments passthrough rule is present and firing before the `needsSEO` check. CORRECT.
-
-**public/_redirects (line 90)**: `/:lang/villas /index.html 200` exists. CORRECT.
-
-**React Router (App.tsx line 393)**: `<Route path="/:lang/villas" element={<VillasLanding />} />` is defined before `<Route path="/:lang" element={<LanguageHome />} />` at line 400. CORRECT.
-
-The VillasLanding, VillasHero, and VillasPropertiesSection components are all correct — the data is being fetched and displayed properly when the page loads.
-
-### The Actual Problem
-
-The code is right. The cache is wrong.
-
-Cloudflare's CDN has a cached response for `/en/villas` from before the routing fix was deployed. The middleware uses `stale-while-revalidate=86400` headers (24 hours), meaning Cloudflare serves the old cached response for up to 24 hours even after a new deployment.
-
-Additionally, the language homepages are served as pre-built static HTML from `/en/index.html`. There is a risk that Cloudflare matches `/en/villas` against a cached `/en/index.html` response (the static homepage file) rather than the SPA shell (`/index.html`). When the browser loads the static homepage HTML (which is a fully pre-rendered SSG page, not the React SPA shell), React Router never runs and the villas page never mounts.
-
-### The Fix: Two Changes
-
-#### Change 1 — Add explicit explicit villas routes to `_redirects` BEFORE the language homepage rules
-
-The current order in `public/_redirects` is:
-- Line 65-74: `/en /en/index.html 200` (serves the static homepage HTML for `/en`)
-- Line 90: `/:lang/villas /index.html 200` (serves the SPA shell for villas)
-
-The wildcard rule `/:lang/villas` at line 90 should take precedence over the exact `/en` rule, but Cloudflare processes rules top to bottom and the language homepage rules (lines 65-74) could cause a cached response collision for paths that start with `/en`.
-
-The fix is to add explicit, concrete villas rules for ALL 10 languages ABOVE the language homepage rules (before line 65), so they are unambiguously matched first:
-
-```
-/en/villas  /index.html  200
-/nl/villas  /index.html  200
-/fr/villas  /index.html  200
-/de/villas  /index.html  200
-/fi/villas  /index.html  200
-/pl/villas  /index.html  200
-/da/villas  /index.html  200
-/hu/villas  /index.html  200
-/sv/villas  /index.html  200
-/no/villas  /index.html  200
-/en/apartments  /index.html  200
-/nl/apartments  /index.html  200
-/fr/apartments  /index.html  200
-/de/apartments  /index.html  200
-/fi/apartments  /index.html  200
-/pl/apartments  /index.html  200
-/da/apartments  /index.html  200
-/hu/apartments  /index.html  200
-/sv/apartments  /index.html  200
-/no/apartments  /index.html  200
+**`public/_routes.json` excludes all `.html` files from middleware:**
+```json
+"exclude": ["/*.html", ...]
 ```
 
-These explicit rules will be matched by Cloudflare before any cached `/en/index.html` response, forcing the SPA shell to be served.
+This means any `.html` file served by Cloudflare is delivered **directly**, bypassing the middleware entirely. The `_redirects` rule `/en/villas → /index.html 200` tells Cloudflare to rewrite to `index.html` — but if Cloudflare first checks for a physical `/en/villas/index.html` static file (from a previous pre-rendered deployment or CDN cache) and finds it, it serves that file directly under the `*.html` exclusion rule — bypassing both the middleware villas passthrough and the `_redirects` rule.
 
-#### Change 2 — Add explicit middleware cache bypass for villas/apartments
+**The secondary problem — middleware order is wrong:**
 
-Strengthen the middleware passthrough by adding a `Cache-Control: no-store` override on the response for villas/apartments routes. This tells Cloudflare's CDN to never cache these SPA routes, preventing the stale cache problem from recurring.
+The current middleware processes routes in this order:
+1. www redirect (line 59)
+2. CRM subdomain redirect (line 76)
+3. Static file extension skip (line 104)  ← **Problem: villas routes pass through here and call `next()` immediately because they have no extension — but then fall through to...**
+4. Blog SSR block (line 131)
+5. Q&A SSR block (line 218)
+6. **Villas/Apartments passthrough (line 314)** ← Too late; by this point Cloudflare may have already resolved the request from a cached static file
 
+### The Fix: Move Villas Passthrough to the Top
+
+The villas/apartments passthrough block needs to move to **immediately after the CRM subdomain redirect** (line 89), before the static file extension check at line 104. This guarantees it fires first for any villas/apartments request, before Cloudflare can resolve a cached `.html` file.
+
+**Current order (broken):**
+```text
+Line 59:  www redirect
+Line 76:  CRM subdomain redirect
+Line 104: static extension skip ← next() fires here for /en/villas
+Line 131: Blog SSR block
+Line 218: Q&A SSR block
+Line 314: Villas passthrough ← TOO LATE, already served
+```
+
+**Fixed order:**
+```text
+Line 59:  www redirect
+Line 76:  CRM subdomain redirect
+Line 91:  [NEW POSITION] Villas/Apartments passthrough ← FIRST
+Line 104: static extension skip
+Line 131: Blog SSR block
+Line 218: Q&A SSR block
+```
+
+### Changes Required
+
+**Single file: `functions/_middleware.js`**
+
+Remove the villas/apartments passthrough block from its current position (lines 314-329) and insert it immediately after line 89 (after the CRM subdomain redirect block closes, before `const pathname = url.pathname`).
+
+The block being moved:
 ```javascript
-// In the villas/apartments passthrough block (line 314-321)
-const response = await next();
-const headers = new Headers(response.headers);
-headers.set('X-Middleware-Status', 'Active');
-headers.set('Cache-Control', 'no-store');  // Prevent CDN caching of SPA shell
-return new Response(response.body, {
-  status: response.status,
-  statusText: response.statusText,
-  headers,
-});
+// Passthrough for villas and apartments landing pages (SPA routes)
+// MUST be before static file check to prevent cached HTML interference
+const villaPath = url.pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas|apartments)\/?$/);
+if (villaPath) {
+  console.log('[Middleware] Villas/Apartments SPA route - early passthrough (no-store)');
+  const spaResponse = await next();
+  const spaHeaders = new Headers(spaResponse.headers);
+  spaHeaders.set('X-Middleware-Status', 'Active');
+  spaHeaders.set('Cache-Control', 'no-store');
+  return new Response(spaResponse.body, {
+    status: spaResponse.status,
+    statusText: spaResponse.statusText,
+    headers: spaHeaders,
+  });
+}
 ```
 
-### Files to Change
-
-| File | Change |
-|------|--------|
-| `public/_redirects` | Add 20 explicit rules (10 villas + 10 apartments, one per language) BEFORE the language homepage rules at line 64 |
-| `functions/_middleware.js` | Add `Cache-Control: no-store` to the villas/apartments passthrough response to prevent CDN caching of the SPA shell |
+This must be placed **before** `const pathname = url.pathname` (line 91), so it uses `url.pathname` directly from the URL object.
 
 ### Why This Definitively Fixes It
 
-- Explicit `en/villas → /index.html` rules beat any cached `/en/index.html` responses because they match the full path, not just the prefix
-- `Cache-Control: no-store` on villas/apartments routes prevents Cloudflare from ever caching these SPA routes again
-- The new deployment itself automatically purges Cloudflare's cache for these paths via the Pages deployment cache invalidation
+- Moving the passthrough to line 90 means Cloudflare middleware intercepts villas/apartments requests **before any static file resolution occurs**
+- The `Cache-Control: no-store` header prevents Cloudflare from caching the response and re-serving a stale homepage
+- The explicit `_redirects` rules at lines 64-84 already correctly map `/en/villas → /index.html 200`
+- React Router's `/:lang/villas` route at App.tsx line 393 is already in the correct position (before `/:lang`)
+- All 10 language variants of villas content are confirmed published in the database
 
-### No Database Changes Needed
+### No Other Files Need Changing
 
-All 10 languages of villas content and properties are confirmed live and published in the database. This is a pure routing/caching fix.
+- `public/_redirects` — already correct (20 explicit rules added in previous fix)
+- `src/App.tsx` — already correct (en redirect removed, villas route in correct position)
+- Database — all 10 languages confirmed published
