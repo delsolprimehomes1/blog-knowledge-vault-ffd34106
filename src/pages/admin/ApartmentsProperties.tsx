@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon, Languages } from "lucide-react";
 
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
@@ -75,6 +75,7 @@ const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { ta
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Property, "id" | "views" | "inquiries">>(emptyProperty("en", defaultType));
   const [uploading, setUploading] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProperties = useCallback(async () => {
@@ -197,6 +198,24 @@ const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { ta
   };
 
 
+  const handleTranslateAll = async () => {
+    setTranslating(true);
+    const functionName = tableName === "apartments_properties" ? "translate-apartments" : "translate-villas";
+    try {
+      const { data, error } = await supabase.functions.invoke(functionName);
+      if (error) throw error;
+      const results = data?.results || {};
+      const langCount = Object.keys(results).length;
+      const propCount = Object.values(results).reduce((sum: number, r: any) => sum + (r.properties || 0), 0);
+      toast({ title: "Translation complete!", description: `${propCount} property translations saved across ${langCount} languages.` });
+      fetchProperties();
+    } catch (err: any) {
+      toast({ title: "Translation failed", description: err.message || String(err), variant: "destructive" });
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const updateForm = (field: string, value: string | number | boolean | null) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
@@ -219,6 +238,15 @@ const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { ta
             <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
             <SelectContent>{LANGUAGES.map(l => <SelectItem key={l} value={l}>{l.toUpperCase()}</SelectItem>)}</SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={handleTranslateAll}
+            disabled={translating || lang !== "en"}
+            title={lang !== "en" ? "Switch to EN tab to run translation" : "Translate all EN properties to 9 languages (~90s)"}
+          >
+            {translating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Languages className="h-4 w-4 mr-2" />}
+            {translating ? "Translating... (~90s)" : "Translate to All Languages"}
+          </Button>
           <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />Add Property</Button>
         </div>
       </div>
