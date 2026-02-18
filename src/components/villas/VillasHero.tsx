@@ -40,10 +40,6 @@ const VillasHero: React.FC<VillasHeroProps> = ({ language }) => {
     document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const heroImage = content?.hero_image_url?.startsWith('http')
-    ? content.hero_image_url
-    : FALLBACK_IMAGE;
-
   if (loading) {
     return (
       <div className="relative h-screen w-full">
@@ -52,7 +48,18 @@ const VillasHero: React.FC<VillasHeroProps> = ({ language }) => {
     );
   }
 
-  if (!content) return null;
+  // Fallback content so the hero never renders blank
+  const displayContent = content ?? {
+    headline: 'Luxury Villas on the Costa del Sol',
+    subheadline: 'Discover handpicked villas in Marbella, Estepona, Benahavís and more.',
+    cta_text: 'View Villas',
+    hero_image_url: FALLBACK_IMAGE,
+    hero_image_alt: 'Luxury villa Costa del Sol',
+  };
+
+  const heroImage = displayContent.hero_image_url?.startsWith('http')
+    ? displayContent.hero_image_url
+    : FALLBACK_IMAGE;
 
   return (
     <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
@@ -69,17 +76,17 @@ const VillasHero: React.FC<VillasHeroProps> = ({ language }) => {
           transition={{ duration: 0.8 }}
           className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-6 leading-tight"
         >
-          {content.headline}
+          {displayContent.headline}
         </motion.h1>
 
-        {content.subheadline && (
+        {displayContent.subheadline && (
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto"
           >
-            {content.subheadline}
+            {displayContent.subheadline}
           </motion.p>
         )}
 
@@ -90,7 +97,7 @@ const VillasHero: React.FC<VillasHeroProps> = ({ language }) => {
           onClick={handleScrollToProperties}
           className="px-8 py-4 bg-landing-gold text-white rounded-lg font-bold text-lg hover:bg-landing-goldDark transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
         >
-          {content.cta_text || 'View Villas'}
+          {displayContent.cta_text || 'View Villas'}
         </motion.button>
       </div>
 
