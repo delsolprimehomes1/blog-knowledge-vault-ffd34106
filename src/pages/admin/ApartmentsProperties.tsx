@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon } from "lucide-react";
+
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
@@ -40,7 +42,7 @@ interface Property {
   inquiries: number;
 }
 
-const emptyProperty = (lang: string): Omit<Property, "id" | "views" | "inquiries"> => ({
+const emptyProperty = (lang: string, type: "apartment" | "villa" = "apartment"): Omit<Property, "id" | "views" | "inquiries"> => ({
   language: lang,
   title: "",
   slug: "",
@@ -50,7 +52,7 @@ const emptyProperty = (lang: string): Omit<Property, "id" | "views" | "inquiries
   bedrooms_max: null,
   bathrooms: 1,
   sqm: 50,
-  property_type: "apartment",
+  property_type: type,
   status: "available",
   description: "",
   short_description: "",
@@ -61,7 +63,9 @@ const emptyProperty = (lang: string): Omit<Property, "id" | "views" | "inquiries
   featured: false,
 });
 
-export const ApartmentsPropertiesInner = () => {
+type TableName = "apartments_properties" | "villas_properties";
+
+const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { tableName: TableName; uploadPrefix: string; label: string; defaultType?: "apartment" | "villa" }) => {
   const [lang, setLang] = useState("en");
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,14 +73,14 @@ export const ApartmentsPropertiesInner = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Omit<Property, "id" | "views" | "inquiries">>(emptyProperty("en"));
+  const [form, setForm] = useState<Omit<Property, "id" | "views" | "inquiries">>(emptyProperty("en", defaultType));
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("apartments_properties")
+      .from(tableName)
       .select("*")
       .eq("language", lang)
       .order("display_order");
@@ -96,7 +100,7 @@ export const ApartmentsPropertiesInner = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm(emptyProperty(lang));
+    setForm(emptyProperty(lang, defaultType));
     setDialogOpen(true);
   };
 
@@ -112,7 +116,7 @@ export const ApartmentsPropertiesInner = () => {
       bedrooms_max: p.bedrooms_max ?? null,
       bathrooms: p.bathrooms,
       sqm: p.sqm,
-      property_type: p.property_type || "apartment",
+      property_type: p.property_type || defaultType || "apartment",
       status: p.status || "available",
       description: p.description || "",
       short_description: p.short_description || "",
@@ -131,7 +135,7 @@ export const ApartmentsPropertiesInner = () => {
 
     setUploading(true);
     const ext = file.name.split('.').pop();
-    const path = `apartments/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const path = `${uploadPrefix}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("property-images")
@@ -150,7 +154,6 @@ export const ApartmentsPropertiesInner = () => {
     updateForm("featured_image_url", urlData.publicUrl);
     toast({ title: "Image uploaded" });
     setUploading(false);
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -163,8 +166,8 @@ export const ApartmentsPropertiesInner = () => {
     const payload = { ...form, updated_at: new Date().toISOString() };
 
     const { error } = editingId
-      ? await supabase.from("apartments_properties").update(payload).eq("id", editingId)
-      : await supabase.from("apartments_properties").insert(payload);
+      ? await supabase.from(tableName).update(payload).eq("id", editingId)
+      : await supabase.from(tableName).insert(payload);
 
     if (error) {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
@@ -178,7 +181,7 @@ export const ApartmentsPropertiesInner = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const { error } = await supabase.from("apartments_properties").delete().eq("id", deleteId);
+    const { error } = await supabase.from(tableName).delete().eq("id", deleteId);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
@@ -189,9 +192,10 @@ export const ApartmentsPropertiesInner = () => {
   };
 
   const toggleVisible = async (id: string, current: boolean) => {
-    await supabase.from("apartments_properties").update({ visible: !current }).eq("id", id);
+    await supabase.from(tableName).update({ visible: !current }).eq("id", id);
     fetchProperties();
   };
+
 
   const updateForm = (field: string, value: string | number | boolean | null) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -209,7 +213,7 @@ export const ApartmentsPropertiesInner = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold">Apartments Properties</h1>
+        <h1 className="text-2xl font-bold">{label}</h1>
         <div className="flex items-center gap-3">
           <Select value={lang} onValueChange={setLang}>
             <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
@@ -417,6 +421,36 @@ export const ApartmentsPropertiesInner = () => {
   );
 };
 
+
+export const ApartmentsPropertiesInner = () => {
+  return (
+    <Tabs defaultValue="apartments" className="w-full">
+      <div className="px-6 pt-6">
+        <TabsList>
+          <TabsTrigger value="apartments">Apartments</TabsTrigger>
+          <TabsTrigger value="villas">Villas</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="apartments">
+        <PropertiesManager
+          tableName="apartments_properties"
+          uploadPrefix="apartments"
+          label="Apartments Properties"
+          defaultType="apartment"
+        />
+      </TabsContent>
+      <TabsContent value="villas">
+        <PropertiesManager
+          tableName="villas_properties"
+          uploadPrefix="villas"
+          label="Villas Properties"
+          defaultType="villa"
+        />
+      </TabsContent>
+    </Tabs>
+  );
+};
+
 const ApartmentsProperties = () => {
   return (
     <AdminLayout>
@@ -426,3 +460,4 @@ const ApartmentsProperties = () => {
 };
 
 export default ApartmentsProperties;
+
