@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
@@ -53,6 +53,7 @@ export const ApartmentsPageContentInner = () => {
   const [content, setContent] = useState<PageContent>(emptyContent("en"));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     fetchContent(selectedLang);
@@ -122,6 +123,22 @@ export const ApartmentsPageContentInner = () => {
     setSaving(false);
   };
 
+  const handleTranslate = async () => {
+    setTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('translate-apartments-page-content');
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Translation failed');
+      toast({ title: "All 9 languages translated and saved!" });
+      fetchContent(selectedLang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Translation failed';
+      toast({ title: "Translation failed", description: message, variant: "destructive" });
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const update = (field: keyof PageContent, value: string | boolean) => {
     setContent(prev => ({ ...prev, [field]: value }));
   };
@@ -130,10 +147,16 @@ export const ApartmentsPageContentInner = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Apartments Page Content</h1>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Save
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleTranslate} disabled={translating || saving}>
+            {translating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+            {translating ? "Translating 9 languages..." : "Translate from English"}
+          </Button>
+          <Button onClick={handleSave} disabled={saving || translating}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save
+          </Button>
+        </div>
       </div>
 
       <Tabs value={selectedLang} onValueChange={setSelectedLang}>
