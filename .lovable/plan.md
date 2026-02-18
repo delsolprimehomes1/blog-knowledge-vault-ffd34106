@@ -1,74 +1,51 @@
 
-## Fix: Create the `/en/villas` Landing Page (404 Fix)
+## Fix `/en/villas` — Publish Content & Generate All Language Translations
 
-### Root Cause
-The `/en/villas` URL returns a 404 because:
-1. There is no `VillasLanding` React page component (no `src/pages/villas/VillasLanding.tsx`)
-2. The `/:lang/villas` route is absent from `src/App.tsx`
-3. The `public/_redirects` file has no explicit SPA rule for `/:lang/villas` (though the catch-all `/* /index.html 200` would normally handle it — the missing route in React Router is the real problem)
+### What Is Already Working
+- All React components are created and correct (`VillasLanding`, `VillasHero`, `VillasPropertiesSection`, `VillasLeadFormModal`)
+- Routes are registered in `App.tsx` (`/:lang/villas` and `/villas` redirect)
+- `_redirects` has the correct SPA rule
+- 12 English villa properties exist in the database and are `visible = true`
 
-The admin side (`/admin/villas-content`, `/admin/villas-properties`) exists. The public-facing landing page was never created.
+### Root Cause of the Blank/404 Page
+The English content row in `villas_page_content` has **`is_published = false`**. The `VillasHero` component queries `.eq('is_published', true)` — so it finds nothing and returns `null`, making the page render blank (header + footer only, no hero, no CTA, no visible content trigger).
 
-### What Will Be Built
+Additionally, `meta_title` and `meta_description` are empty, so SEO tags would be blank.
 
-This mirrors the existing Apartments infrastructure exactly, per the project's Villas Infrastructure Standard.
+### What Will Be Fixed
 
-#### 1. New Components (mirroring Apartments)
-
-| New File | Mirrors |
-|---|---|
-| `src/pages/villas/VillasLanding.tsx` | `src/pages/apartments/ApartmentsLanding.tsx` |
-| `src/components/villas/VillasHero.tsx` | `src/components/apartments/ApartmentsHero.tsx` |
-| `src/components/villas/VillasPropertiesSection.tsx` | `src/components/apartments/ApartmentsPropertiesSection.tsx` |
-| `src/components/villas/VillasLeadFormModal.tsx` | `src/components/apartments/ApartmentsLeadFormModal.tsx` |
-
-#### 2. `VillasLanding.tsx` — Main Page
-
-- Reads the `lang` URL param (defaults to `en`)
-- Fetches `villas_page_content` for meta title/description
-- Renders the fixed header with logo + language selector + "View Properties" CTA
-- Includes `<Helmet>` with canonical, 10-language hreflang tags, and JSON-LD schema
-- Manages lead form modal state (opens when a property card is clicked)
-
-#### 3. `VillasHero.tsx`
-
-- Fetches `villas_page_content` (headline, subheadline, cta_text, hero_image_url, hero_image_alt)
-- Full-width hero image with text overlay and a CTA button that scrolls to the properties section
-- Identical layout to `ApartmentsHero`
-
-#### 4. `VillasPropertiesSection.tsx`
-
-- Fetches from `villas_properties` table, filtered by `language` and `is_active = true`
-- Renders property cards in a responsive grid
-- Each card fires `onPropertyClick` to open the lead modal
-
-#### 5. `VillasLeadFormModal.tsx`
-
-- Lead capture modal identical to the apartments version
-- On submit, calls `register-crm-lead` edge function with source `villas_landing_{language}`
-
-#### 6. Register the Route in `src/App.tsx`
-
-Add two entries alongside the existing apartments routes:
-
-```
-<Route path="/villas" element={<Navigate to="/en/villas" replace />} />
-<Route path="/:lang/villas" element={<VillasLanding />} />
+#### Step 1 — Publish the English Content Row (Database)
+Run a direct SQL update:
+```sql
+UPDATE villas_page_content
+SET
+  is_published    = true,
+  meta_title      = 'Luxury Villas on the Costa del Sol | Del Sol Prime Homes',
+  meta_description = 'Discover handpicked luxury villas for sale on the Costa del Sol. New builds and resales in Marbella, Estepona, Benahavís and more.'
+WHERE language = 'en';
 ```
 
-#### 7. `public/_redirects` — Add Explicit SPA Rule
+#### Step 2 — Make VillasHero Resilient (Code)
+Currently `VillasHero` returns `null` if no published content is found, which produces a completely invisible hero section. We will add a fallback so the page shows a default hero if the DB row is unpublished or missing — preventing a blank page in any future content gap.
 
-Add before the final catch-all:
-```
-/:lang/villas  /index.html  200
-```
+#### Step 3 — Trigger Translation for All 9 Other Languages (Edge Function)
+The project has a `translate-villas` edge function (mirroring `translate-apartments`) that auto-generates localized content for the other 9 languages (nl, fr, de, fi, pl, da, hu, sv, no) from the English source row, and sets `is_published = true` on each translated row.
 
-This ensures Cloudflare Pages routes `/en/villas` correctly to the React SPA without relying solely on the catch-all (which can conflict with static file serving rules).
+We will call this edge function for each of the 9 languages to populate all language versions and set them published.
+
+#### Step 4 — Populate Properties for Other Languages
+Properties currently only exist for `en` (12 visible rows). The `translate-villas` edge function or a separate translation step will duplicate and translate the property listings into the other 9 languages so that `/:lang/villas` pages (e.g. `/nl/villas`) render properties rather than an empty grid.
+
+### Files Changed
+
+| Action | Target | Detail |
+|--------|--------|--------|
+| DB update | `villas_page_content` | Set `is_published = true`, add meta title/description for `en` |
+| Code edit | `src/components/villas/VillasHero.tsx` | Add fallback content so hero never renders blank |
+| Edge function call | `translate-villas` | Generate + publish content for nl, fr, de, fi, pl, da, hu, sv, no |
 
 ### Technical Notes
-
-- All data comes from the existing `villas_page_content` and `villas_properties` tables (already managed via the admin panel)
-- Lead source will be `villas_landing_{language}` to match the documented standard
-- The 10 supported languages are: `en, nl, fr, de, fi, pl, da, hu, sv, no`
-- Canonical URL: `https://www.delsolprimehomes.com/{lang}/villas`
-- No new database tables or edge functions are needed
+- The 12 English properties already visible will show immediately after step 1
+- The language switcher in the header will work for all 10 languages once translations are generated
+- Lead form modal, CRM registration (`villas_landing_{language}`), and inquiry counter increments are all wired correctly and will work as soon as the page renders
+- The `LanguageSelector` in the header redirects to `/:lang/villas` — translation content must exist for each language or the properties grid will be empty (graceful empty state is already handled)
