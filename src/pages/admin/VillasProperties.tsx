@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon, ExternalLink } from "lucide-react";
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
@@ -208,7 +208,18 @@ export const VillasPropertiesInner = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold">Villas Properties</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Villas Properties</h1>
+          <a
+            href={`https://www.delsolprimehomes.com/${lang}/villas`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium border border-primary/30 rounded-md px-2.5 py-1 hover:bg-primary/5 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View Live
+          </a>
+        </div>
         <div className="flex items-center gap-3">
           <Select value={lang} onValueChange={setLang}>
             <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>

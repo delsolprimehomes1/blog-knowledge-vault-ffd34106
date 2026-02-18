@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, ExternalLink } from "lucide-react";
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
@@ -128,8 +128,19 @@ export const VillasPageContentInner = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Villas Page Content</h1>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Villas Page Content</h1>
+          <a
+            href={`https://www.delsolprimehomes.com/${selectedLang}/villas`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium border border-primary/30 rounded-md px-2.5 py-1 hover:bg-primary/5 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View Live
+          </a>
+        </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Save
