@@ -1,92 +1,35 @@
 
-## Three Changes in One Deployment
+## Add `Pragma: no-cache` to All 20 Villas/Apartments Paths in `public/_headers`
 
-### What the Current State Shows
+### What Exists Now
 
-After reading all relevant files, here is exactly what exists today:
+`public/_headers` lines 41–81 contain all 20 villas/apartments entries. Each entry currently has exactly one header directive:
 
-**`src/App.tsx` (lines 20-34):** `LanguageHome` renders `<Home />` directly for all valid languages including `en`. There is no redirect from `/en` back to `/`. The user wants `/en` to redirect to `/` (so the homepage URL stays clean), but `/en/villas` and `/en/apartments` must NOT be affected. This requires adding `useLocation` to the import and doing an exact-path check inside `LanguageHome`.
-
-**`public/_redirects` (lines 111-112):** Two duplicate wildcard rules remain:
-- `/:lang/apartments /index.html 200`
-- `/:lang/villas /index.html 200`
-
-These are exact duplicates of the 20 explicit rules already at lines 65-84. They create routing ambiguity and must be removed.
-
-**`public/_headers`:** The file already exists with sitemap, robots.txt, Q&A, and JSON rules. The 20 villas/apartments `Cache-Control: no-store` rules need to be appended to it. The file does NOT already have these rules — this is a new addition.
-
-**`functions/_middleware.js` (line 95):** The early villas/apartments passthrough is already correctly positioned at Rule 3, before the static file check. No changes needed here.
-
-### Change 1 — `src/App.tsx`: Add exact-path redirect for `/en`
-
-Add `useLocation` to the React Router import (it is not currently imported). Update `LanguageHome` to check `location.pathname === '/en'` before redirecting:
-
-```typescript
-// Add useLocation to imports (line 6)
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
-
-// Updated LanguageHome (lines 20-34)
-const LanguageHome = () => {
-  const { lang } = useParams<{ lang: string }>();
-  const location = useLocation();
-
-  // Redirect /en exactly to / for clean homepage URL
-  // Does NOT affect /en/villas or /en/apartments (different routes entirely)
-  if (lang === 'en' && location.pathname === '/en') {
-    return <Navigate to="/" replace />;
-  }
-
-  const isValidLang = lang && SUPPORTED_LANGUAGES.includes(lang as typeof SUPPORTED_LANGUAGES[number]);
-
-  if (!isValidLang) {
-    return <NotFound />;
-  }
-
-  return <Home />;
-};
 ```
-
-Note: `/en/villas` and `/en/apartments` are handled by their own dedicated routes (`<Route path="/:lang/villas" />` etc.) in the router and never hit `LanguageHome` at all — so this redirect is truly safe.
-
-### Change 2 — `public/_redirects`: Remove duplicate wildcard rules (lines 111-112)
-
-Delete lines 111-112:
-```
-/:lang/apartments  /index.html  200
-/:lang/villas      /index.html  200
-```
-
-The 20 explicit language-specific rules at lines 65-84 already handle all 10 languages for both villas and apartments. The wildcard duplicates at lines 111-112 add ambiguity and serve no purpose.
-
-### Change 3 — `public/_headers`: Add cache bypass for all villas/apartments paths
-
-Append 20 new path rules to the existing `public/_headers` file. This operates at the Cloudflare CDN level — before any middleware or `_redirects` processing — and forces Cloudflare to never serve a stale cached version of these SPA routes:
-
-```text
-# Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
 /en/villas
   Cache-Control: no-store, no-cache, must-revalidate
-/nl/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-... (all 10 languages for both /villas and /apartments)
 ```
 
-### Files Changed
+### What Changes
 
-| File | What Changes |
-|------|-------------|
-| `src/App.tsx` | Add `useLocation` import; add exact `/en` path check in `LanguageHome` |
-| `public/_redirects` | Remove lines 111-112 (duplicate wildcard rules) |
-| `public/_headers` | Append 20 villas/apartments cache-control rules |
+Add `  Pragma: no-cache` as a second indented line under every one of the 20 path entries (lines 42–81), so each becomes:
 
-### Why These Changes Are Safe Together
+```
+/en/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+```
 
-- The `/en` redirect in `App.tsx` only fires when `location.pathname === '/en'` exactly. The `/en/villas` route is a completely separate `<Route>` in the router tree and never renders `LanguageHome`.
-- Removing the duplicate `_redirects` rules does not change behavior — the explicit rules at lines 65-84 already match identically.
-- The `_headers` additions only apply to the 20 specific villas/apartments paths — they have no effect on any other route.
+This applies to all 10 villas paths (`/en`, `/nl`, `/fr`, `/de`, `/fi`, `/pl`, `/da`, `/hu`, `/sv`, `/no`) and all 10 apartments paths (same 10 languages).
 
-### No Changes Needed
+### Why This Works
 
-- `functions/_middleware.js` — Rule 3 villas passthrough is already correctly positioned at line 95
-- React Router route order in `App.tsx` — `/:lang/villas` already comes before `/:lang`
-- Database — all content confirmed published in previous audit
+Cloudflare re-hashes the `_headers` asset on every deployment. When the file content changes (even by adding one line), Cloudflare treats it as a new version and invalidates the edge cache entries for the affected paths. The `Pragma: no-cache` directive is a genuine HTTP/1.0 cache-busting header that also signals to any upstream proxy that the response must not be served from cache. Together with `Cache-Control: no-store, no-cache, must-revalidate`, this is the strongest possible cache prevention signal available in a `_headers` file.
+
+### Only File Changed
+
+| File | Lines Modified |
+|------|---------------|
+| `public/_headers` | Lines 43–81 — insert `  Pragma: no-cache` after each `Cache-Control` line (20 insertions total) |
+
+No other files (`App.tsx`, `_redirects`, `_middleware.js`) require any changes.
