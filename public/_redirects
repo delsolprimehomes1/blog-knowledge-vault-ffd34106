@@ -83,9 +83,11 @@
 # CRM routes - explicit SPA routing (prevents 404 on direct access)
 /crm/*  /index.html  200
 
-# SPA routing for language-prefixed app pages (properties only)
+# SPA routing for language-prefixed app pages
 /:lang/properties  /index.html  200
 /:lang/property/:reference  /index.html  200
+/:lang/apartments  /index.html  200
+/:lang/villas  /index.html  200
 
 # SPA fallback - MUST BE LAST
 /*  /index.html  200
