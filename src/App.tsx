@@ -393,8 +393,8 @@ const App = () => (
               <Route path="/:lang/apartments" element={<ApartmentsLanding />} />
 
               {/* Villas landing page */}
-              <Route path="/villas" element={<Navigate to="/en/villas" replace />} />
-              <Route path="/:lang/villas" element={<VillasLanding />} />
+              <Route path="/villas" element={<Navigate to="/en/villas/properties" replace />} />
+              <Route path="/:lang/villas/properties" element={<VillasLanding />} />
 
               {/* ========================================== */}
               {/* LANGUAGE-PREFIXED ROUTES (Phase 2)        */}
