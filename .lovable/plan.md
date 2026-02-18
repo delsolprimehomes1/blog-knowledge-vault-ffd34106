@@ -1,73 +1,62 @@
 
-## Root Cause: Cloudflare Ignoring Cache-Control on Apartments Routes
+## Root Cause: Stale 404 Cached by Cloudflare for /fr/villas/properties
 
 ### What's Happening
 
-The live site at `www.delsolprimehomes.com/en/apartments` is serving the old cached HTML from before the Villas section was added. Cloudflare is ignoring the `no-cache` directives because the apartments entries in `public/_headers` are **incomplete** compared to the villas entries.
-
-Compare the two sets of rules in `public/_headers`:
-
-Villas routes (working correctly — Cloudflare respects these):
+The routing configuration in `public/_redirects` is correct (line 90):
 ```
-/en/villas/properties
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-  Surrogate-Control: no-store
-  CDN-Cache-Control: no-store
+/fr/villas/properties  /index.html  200
 ```
 
-Apartments routes (broken — missing the Cloudflare-specific directives):
-```
-/en/apartments
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-```
-
-Cloudflare's CDN does **not** reliably respect the standard HTTP `Cache-Control` header. It requires its own proprietary directives:
-- `Surrogate-Control: no-store` — tells the Cloudflare edge to never cache this resource
-- `CDN-Cache-Control: no-store` — Cloudflare's preferred override for CDN-layer caching
-
-Without these two directives, Cloudflare caches the HTML regardless of `Cache-Control`, which is why the old "View Properties" button is still showing on the live site even after a cache purge.
-
-### The Fix
-
-Update `public/_headers` to add the missing `Surrogate-Control` and `CDN-Cache-Control` directives to all 10 apartment language routes, making them identical in structure to the villas routes.
-
-### Files to Change
-
-**`public/_headers`** — Lines 82–101
-
-Change each apartment language entry from:
-```
-/en/apartments
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+The middleware on line 95 of `functions/_middleware.js` also correctly matches this path:
+```js
+/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas\/properties|apartments)\/?$/
 ```
 
-To:
-```
-/en/apartments
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-  Surrogate-Control: no-store
-  CDN-Cache-Control: no-store
-```
+And `public/_headers` has the correct no-cache directives for `/fr/villas/properties` (lines 50-53).
 
-This will be applied to all 10 language variants: `en`, `nl`, `fr`, `de`, `fi`, `pl`, `da`, `hu`, `sv`, `no`.
+**The problem is Cloudflare has a cached 404 response for `/fr/villas/properties`** from before these redirect rules were added or published. This is the exact same pattern that caused the villas path to be restructured to `/villas/properties` in the first place (as noted in the project memory: *"Cache Busting: Changing path segments is the preferred method for bypassing environmental CDN caching"*).
 
-### Why This Works
+This is a **Cloudflare edge cache issue** — the CDN is serving a cached 404 for the French (and possibly other language) villas URLs and ignoring the updated `_redirects` rules.
 
-Once these headers are deployed (published), Cloudflare will:
-1. Receive the updated `_headers` file
-2. Recognize `CDN-Cache-Control: no-store` and immediately stop caching the apartments page HTML
-3. Serve the fresh `index.html` on every request, which contains the new React bundle with both "View Apartments" and "View Villas" buttons and the full Villas section
+### Why Only French (/fr)?
 
-No further Cloudflare cache purges will be needed — the directives prevent caching at the edge going forward.
+It's likely that `/fr/villas/properties` was never visited before the routes were configured, so Cloudflare cached the initial 404 response. Other language variants like `/en/villas/properties` may have been visited and cached a 200 response. The cache TTL for 404 responses can be very long on Cloudflare.
 
-### No Code Changes Needed
+### Two-Part Fix
 
-The React code in `ApartmentsLanding.tsx` is already correct and complete. This is purely a Cloudflare cache configuration fix in `public/_headers`.
+**Part 1 — Immediate: Purge Cloudflare Cache for Villas URLs**
 
-### After Deployment
+Log in to Cloudflare dashboard → Caching → Cache Purge → Custom Purge, and purge these specific URLs:
+- `https://www.delsolprimehomes.com/fr/villas/properties`
+- `https://www.delsolprimehomes.com/nl/villas/properties`
+- `https://www.delsolprimehomes.com/de/villas/properties`
+- `https://www.delsolprimehomes.com/fi/villas/properties`
+- `https://www.delsolprimehomes.com/pl/villas/properties`
+- `https://www.delsolprimehomes.com/da/villas/properties`
+- `https://www.delsolprimehomes.com/hu/villas/properties`
+- `https://www.delsolprimehomes.com/sv/villas/properties`
+- `https://www.delsolprimehomes.com/no/villas/properties`
 
-The live page at `www.delsolprimehomes.com/en/apartments` will show:
-- Header with "View Apartments" (outline button) and "View Villas" (gold button)
-- Apartments properties section (`#apartments-section`)
-- Villas properties section below (`#villas-section`)
-- Lead capture modals for both property types
+Or use "Purge Everything" for simplicity.
+
+**Part 2 — Code Fix: Add `Surrogate-Control` and `CDN-Cache-Control` to all villas/properties routes**
+
+Looking at the current `public/_headers`, the villas routes (lines 42-81) already have `CDN-Cache-Control: no-store` — so this is already done correctly. However, Cloudflare may have cached the 404 **before** these headers were deployed.
+
+Additionally, there is a secondary defensive fix we can apply: add a `query-param cache-bust` redirect for the French and other non-English villas paths, similar to the existing `?*` redirect rules already in `_redirects` (lines 66-75). These query-param rules force Cloudflare to bypass its route cache because the URL shape is different.
+
+But the most reliable fix is the **Cloudflare cache purge** combined with a **comment bump** in `public/_headers` to force Cloudflare to re-read the file.
+
+### What Will Be Changed
+
+**`public/_headers`** — Add a comment timestamp bump to force Cloudflare to re-process the file and re-read all the no-cache directives for villas routes. This is a safe, non-breaking change.
+
+No changes are needed to `_redirects` or the middleware — the routing logic is already correct.
+
+### After the Fix
+
+Once Cloudflare's cached 404 is cleared:
+- `https://www.delsolprimehomes.com/fr/villas/properties` will load correctly
+- All other language villas pages (`/nl/`, `/de/`, `/sv/`, etc.) will also be confirmed working
+- The no-cache headers will prevent this from happening again for these routes
