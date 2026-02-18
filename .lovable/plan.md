@@ -1,51 +1,45 @@
 
-## Fix `/en/villas` — Publish Content & Generate All Language Translations
+## Fix: Villas Language Selector Not Navigating
 
-### What Is Already Working
-- All React components are created and correct (`VillasLanding`, `VillasHero`, `VillasPropertiesSection`, `VillasLeadFormModal`)
-- Routes are registered in `App.tsx` (`/:lang/villas` and `/villas` redirect)
-- `_redirects` has the correct SPA rule
-- 12 English villa properties exist in the database and are `visible = true`
+### Root Cause
 
-### Root Cause of the Blank/404 Page
-The English content row in `villas_page_content` has **`is_published = false`**. The `VillasHero` component queries `.eq('is_published', true)` — so it finds nothing and returns `null`, making the page render blank (header + footer only, no hero, no CTA, no visible content trigger).
+The `LanguageSelector` component (`src/components/landing/LanguageSelector.tsx`) has two problems that together break language switching on the Villas (and Apartments) page:
 
-Additionally, `meta_title` and `meta_description` are empty, so SEO tags would be blank.
+1. **CSS-only hover dropdown** — the dropdown uses `group-hover:opacity-100 group-hover:visible` (pure CSS). When a user moves their mouse from the trigger button to a dropdown item, the hover state can be interrupted, especially on precise cursor movements. On some browsers and screen sizes, clicking an item may not register because the dropdown closes before the click event fires.
 
-### What Will Be Fixed
+2. **No visual feedback that the click worked** — the `window.location.href` assignment triggers a full-page reload, but if the dropdown closes before the click lands, nothing happens and the user sees no response.
 
-#### Step 1 — Publish the English Content Row (Database)
-Run a direct SQL update:
-```sql
-UPDATE villas_page_content
-SET
-  is_published    = true,
-  meta_title      = 'Luxury Villas on the Costa del Sol | Del Sol Prime Homes',
-  meta_description = 'Discover handpicked luxury villas for sale on the Costa del Sol. New builds and resales in Marbella, Estepona, Benahavís and more.'
-WHERE language = 'en';
-```
+3. **The replacement pattern is fragile** — `replace("/${currentLang}/", "/${newLang}/")` requires a trailing slash. For `/en/villas` → the pattern `/en/` does match, but if the URL ever ends in the language code without a slash (e.g. `/en`), it fails silently and navigates nowhere.
 
-#### Step 2 — Make VillasHero Resilient (Code)
-Currently `VillasHero` returns `null` if no published content is found, which produces a completely invisible hero section. We will add a fallback so the page shows a default hero if the DB row is unpublished or missing — preventing a blank page in any future content gap.
+### The Fix
 
-#### Step 3 — Trigger Translation for All 9 Other Languages (Edge Function)
-The project has a `translate-villas` edge function (mirroring `translate-apartments`) that auto-generates localized content for the other 9 languages (nl, fr, de, fi, pl, da, hu, sv, no) from the English source row, and sets `is_published = true` on each translated row.
+Update `LanguageSelector` to use a **click-triggered state** (`useState` + `useRef`) instead of pure CSS hover, so:
+- Clicking the flag/language button **toggles** the dropdown open/closed
+- Clicking outside closes it (via a `useEffect` + `document.addEventListener`)
+- Clicking a language item navigates reliably
 
-We will call this edge function for each of the 9 languages to populate all language versions and set them published.
+Additionally, update `VillasLanding.tsx` (and confirm `ApartmentsLanding.tsx` has the same) to pass a **page-aware navigation callback** to the language selector, so instead of a generic `replace("/{lang}/", "/{newLang}/")` string operation, it uses the exact pattern `/{newLang}/villas` — making the navigation 100% reliable regardless of URL structure.
 
-#### Step 4 — Populate Properties for Other Languages
-Properties currently only exist for `en` (12 visible rows). The `translate-villas` edge function or a separate translation step will duplicate and translate the property listings into the other 9 languages so that `/:lang/villas` pages (e.g. `/nl/villas`) render properties rather than an empty grid.
+### Files to Change
 
-### Files Changed
+#### 1. `src/components/landing/LanguageSelector.tsx`
+- Replace `group-hover` CSS hover with `useState(false)` open/close toggle
+- Add `useRef` + `useEffect` to close dropdown on outside click
+- Accept an optional `onLanguageChange?: (lang: LanguageCode) => void` prop — if provided, use it; otherwise fall back to the current `window.location.href` logic
+- Show a chevron indicator that animates when open
 
-| Action | Target | Detail |
-|--------|--------|--------|
-| DB update | `villas_page_content` | Set `is_published = true`, add meta title/description for `en` |
-| Code edit | `src/components/villas/VillasHero.tsx` | Add fallback content so hero never renders blank |
-| Edge function call | `translate-villas` | Generate + publish content for nl, fr, de, fi, pl, da, hu, sv, no |
+#### 2. `src/pages/villas/VillasLanding.tsx`
+- Import `useNavigate` from `react-router-dom`
+- Add `handleLanguageChange` function: `(lang) => navigate("/${lang}/villas")`
+- Pass it as `onLanguageChange={handleLanguageChange}` to `<LanguageSelector>`
 
-### Technical Notes
-- The 12 English properties already visible will show immediately after step 1
-- The language switcher in the header will work for all 10 languages once translations are generated
-- Lead form modal, CRM registration (`villas_landing_{language}`), and inquiry counter increments are all wired correctly and will work as soon as the page renders
-- The `LanguageSelector` in the header redirects to `/:lang/villas` — translation content must exist for each language or the properties grid will be empty (graceful empty state is already handled)
+#### 3. `src/pages/apartments/ApartmentsLanding.tsx`
+- Same change as VillasLanding — pass `onLanguageChange={(lang) => navigate("/${lang}/apartments")}` so the apartments page also benefits from the fix
+
+### Technical Detail: Why Click-State vs CSS Hover
+
+CSS `group-hover` depends on the mouse cursor continuously hovering over the parent element. Because the dropdown is a child of the group container positioned absolutely (moves below the button), there's a gap in the hover chain during mouse movement. Some browsers also have sub-pixel timing issues that cause the hover state to drop. A React `useState` toggle is immune to this — the dropdown stays open until explicitly closed by another click or an outside click.
+
+### No Database Changes Needed
+
+All translation data (all 10 languages) is already published in the database. The fix is purely frontend — making the navigation trigger reliable and the dropdown usable.
