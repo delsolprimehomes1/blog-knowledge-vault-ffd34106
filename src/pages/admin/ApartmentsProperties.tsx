@@ -18,6 +18,32 @@ import { Loader2, Plus, Pencil, Trash2, Eye, MessageCircle, Upload, ImageIcon, L
 
 const LANGUAGES = ["en", "nl", "fr", "de", "fi", "pl", "da", "hu", "sv", "no"];
 
+const STATUS_LABELS: Record<string, Record<string, string>> = {
+  en: { available: "Available", for_sale: "For Sale", new_development: "New Development" },
+  nl: { available: "Beschikbaar", for_sale: "Te koop", new_development: "Nieuw project" },
+  fr: { available: "Disponible", for_sale: "À vendre", new_development: "Nouveau projet" },
+  de: { available: "Verfügbar", for_sale: "Zu verkaufen", new_development: "Neuentwicklung" },
+  fi: { available: "Saatavilla", for_sale: "Myytävänä", new_development: "Uusi kehitys" },
+  pl: { available: "Dostępne", for_sale: "Na sprzedaż", new_development: "Nowa inwestycja" },
+  da: { available: "Tilgængelig", for_sale: "Til salg", new_development: "Ny udvikling" },
+  hu: { available: "Elérhető", for_sale: "Eladó", new_development: "Új fejlesztés" },
+  sv: { available: "Tillgänglig", for_sale: "Till salu", new_development: "Ny utveckling" },
+  no: { available: "Tilgjengelig", for_sale: "Til salgs", new_development: "Ny utvikling" },
+};
+
+const TYPE_LABELS: Record<string, Record<string, string>> = {
+  en: { apartment: "Apartment", villa: "Villa", townhouse: "Townhouse", penthouse: "Penthouse" },
+  nl: { apartment: "Appartement", villa: "Villa", townhouse: "Stadswoning", penthouse: "Penthouse" },
+  fr: { apartment: "Appartement", villa: "Villa", townhouse: "Maison de ville", penthouse: "Penthouse" },
+  de: { apartment: "Wohnung", villa: "Villa", townhouse: "Stadthaus", penthouse: "Penthouse" },
+  fi: { apartment: "Huoneisto", villa: "Huvila", townhouse: "Rivitalo", penthouse: "Penthouse" },
+  pl: { apartment: "Apartament", villa: "Willa", townhouse: "Dom szeregowy", penthouse: "Penthouse" },
+  da: { apartment: "Lejlighed", villa: "Villa", townhouse: "Rækkehus", penthouse: "Penthouse" },
+  hu: { apartment: "Lakás", villa: "Villa", townhouse: "Sorház", penthouse: "Penthouse" },
+  sv: { apartment: "Lägenhet", villa: "Villa", townhouse: "Radhus", penthouse: "Penthouse" },
+  no: { apartment: "Leilighet", villa: "Villa", townhouse: "Rekkehus", penthouse: "Penthouse" },
+};
+
 interface Property {
   id: string;
   language: string;
@@ -288,9 +314,9 @@ const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { ta
                   <TableCell>{p.location}</TableCell>
                   <TableCell>{fmt(p.price)}</TableCell>
                   <TableCell>{formatBeds(p)}</TableCell>
-                  <TableCell>{p.property_type}</TableCell>
+                  <TableCell>{TYPE_LABELS[lang]?.[p.property_type] ?? p.property_type}</TableCell>
                   <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">{p.short_description || "—"}</TableCell>
-                  <TableCell>{p.status}</TableCell>
+                  <TableCell>{STATUS_LABELS[lang]?.[p.status] ?? p.status}</TableCell>
                   <TableCell><Switch checked={p.visible} onCheckedChange={() => toggleVisible(p.id, p.visible)} /></TableCell>
                   <TableCell>{p.views || 0}</TableCell>
                   <TableCell>{p.inquiries || 0}</TableCell>
