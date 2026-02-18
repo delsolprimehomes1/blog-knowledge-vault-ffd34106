@@ -58,7 +58,7 @@ const VillasLanding: React.FC = () => {
     setModalOpen(true);
   };
 
-  const canonical = `${BASE_URL}/${language}/villas`;
+  const canonical = `${BASE_URL}/${language}/villas/properties`;
 
   return (
     <>
@@ -67,9 +67,9 @@ const VillasLanding: React.FC = () => {
         <meta name="description" content={metaDescription} />
         <link rel="canonical" href={canonical} />
         {SUPPORTED_LANGS.map(l => (
-          <link key={l} rel="alternate" hrefLang={l} href={`${BASE_URL}/${l}/villas`} />
+          <link key={l} rel="alternate" hrefLang={l} href={`${BASE_URL}/${l}/villas/properties`} />
         ))}
-        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/en/villas`} />
+        <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/en/villas/properties`} />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "RealEstateAgent",
@@ -88,7 +88,7 @@ const VillasLanding: React.FC = () => {
             className="h-10"
           />
           <div className="flex items-center gap-3 sm:gap-4">
-            <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(lang) => navigate(`/${lang}/villas`)} />
+            <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(lang) => navigate(`/${lang}/villas/properties`)} />
             <button
               onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"

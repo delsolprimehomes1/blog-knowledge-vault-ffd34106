@@ -39,25 +39,25 @@
   Content-Type: application/json; charset=utf-8
 
 # Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
-/en/villas
+/en/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/nl/villas
+/nl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/fr/villas
+/fr/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/de/villas
+/de/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/fi/villas
+/fi/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/pl/villas
+/pl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/da/villas
+/da/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/hu/villas
+/hu/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/sv/villas
+/sv/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-/no/villas
+/no/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /en/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate

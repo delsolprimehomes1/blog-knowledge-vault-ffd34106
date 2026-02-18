@@ -92,7 +92,7 @@ export async function onRequest({ request, next, env }) {
   // RULE 3: Early passthrough for villas/apartments SPA routes
   // MUST be before static file check to prevent cached HTML interference
   // ============================================================
-  const villaPath = url.pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas|apartments)\/?$/);
+  const villaPath = url.pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas\/properties|apartments)\/?$/);
   if (villaPath) {
     console.log('[Middleware] Villas/Apartments SPA route - early passthrough (no-store)');
     const spaResponse = await next();

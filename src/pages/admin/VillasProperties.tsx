@@ -211,7 +211,7 @@ export const VillasPropertiesInner = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Villas Properties</h1>
           <a
-            href={`https://www.delsolprimehomes.com/${lang}/villas`}
+            href={`https://www.delsolprimehomes.com/${lang}/villas/properties`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium border border-primary/30 rounded-md px-2.5 py-1 hover:bg-primary/5 transition-colors"
