@@ -41,41 +41,61 @@
 # Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
 /en/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /nl/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /fr/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /de/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /fi/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /pl/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /da/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /hu/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /sv/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /no/villas
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /en/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /nl/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /fr/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /de/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /fi/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /pl/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /da/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /hu/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /sv/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
 /no/apartments
   Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
