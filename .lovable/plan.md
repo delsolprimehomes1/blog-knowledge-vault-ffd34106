@@ -1,60 +1,73 @@
 
-## Fix: Cloudflare Cache Blocking the Updated Apartments Page
+## Root Cause: Cloudflare Ignoring Cache-Control on Apartments Routes
 
-### The Problem
+### What's Happening
 
-The code in the editor is already correct and fully implemented:
-- "View Apartments" and "View Villas" buttons are in the header
-- `VillasPropertiesSection` is rendered below apartments
-- `VillasLeadFormModal` is wired up
-- Admin tabs for Apartments / Villas are in place
+The live site at `www.delsolprimehomes.com/en/apartments` is serving the old cached HTML from before the Villas section was added. Cloudflare is ignoring the `no-cache` directives because the apartments entries in `public/_headers` are **incomplete** compared to the villas entries.
 
-The Lovable publish status shows **"Up to date"** — meaning the code IS deployed. However, the live site at `www.delsolprimehomes.com/en/apartments` still shows the old UI with only "View Properties".
+Compare the two sets of rules in `public/_headers`:
 
-This is a **Cloudflare CDN cache issue**. The memory notes in this project confirm that Cloudflare caching was explicitly configured for the apartments page (`public/_headers` sets aggressive no-cache headers), but Cloudflare edge nodes may have already cached the old version before those headers were applied.
+Villas routes (working correctly — Cloudflare respects these):
+```
+/en/villas/properties
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+```
 
-### What Needs to Happen
+Apartments routes (broken — missing the Cloudflare-specific directives):
+```
+/en/apartments
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+```
 
-There is **no code change needed**. The fix is a Cloudflare cache purge. Here are the two ways to resolve it:
+Cloudflare's CDN does **not** reliably respect the standard HTTP `Cache-Control` header. It requires its own proprietary directives:
+- `Surrogate-Control: no-store` — tells the Cloudflare edge to never cache this resource
+- `CDN-Cache-Control: no-store` — Cloudflare's preferred override for CDN-layer caching
 
----
+Without these two directives, Cloudflare caches the HTML regardless of `Cache-Control`, which is why the old "View Properties" button is still showing on the live site even after a cache purge.
 
-### Option 1 — Purge Cloudflare Cache (Recommended, Immediate)
+### The Fix
 
-1. Log in to your **Cloudflare dashboard** at `dash.cloudflare.com`
-2. Select your domain `delsolprimehomes.com`
-3. Go to **Caching → Cache Purge**
-4. Click **"Purge Everything"** (or purge these specific URLs):
-   - `https://www.delsolprimehomes.com/en/apartments`
-   - `https://www.delsolprimehomes.com/nl/apartments`
-   - `https://www.delsolprimehomes.com/fr/apartments`
-   - (and any other language variants you need immediately)
-5. Wait 30 seconds, then reload the page in an incognito window
+Update `public/_headers` to add the missing `Surrogate-Control` and `CDN-Cache-Control` directives to all 10 apartment language routes, making them identical in structure to the villas routes.
 
-This will force Cloudflare to fetch the latest version from the origin server (Lovable's published build).
+### Files to Change
 
----
+**`public/_headers`** — Lines 82–101
 
-### Option 2 — Hard Refresh in Browser (Temporary, for testing only)
+Change each apartment language entry from:
+```
+/en/apartments
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+```
 
-On the live URL in Chrome or Safari:
-- **Mac:** `Cmd + Shift + R`
-- **Windows:** `Ctrl + Shift + R`
+To:
+```
+/en/apartments
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+```
 
-Or open in a **new incognito/private window** — this bypasses the local browser cache but NOT the Cloudflare edge cache.
+This will be applied to all 10 language variants: `en`, `nl`, `fr`, `de`, `fi`, `pl`, `da`, `hu`, `sv`, `no`.
 
----
+### Why This Works
 
-### Why This Happened
+Once these headers are deployed (published), Cloudflare will:
+1. Receive the updated `_headers` file
+2. Recognize `CDN-Cache-Control: no-store` and immediately stop caching the apartments page HTML
+3. Serve the fresh `index.html` on every request, which contains the new React bundle with both "View Apartments" and "View Villas" buttons and the full Villas section
 
-The `public/_headers` file sets `Cache-Control: no-store, no-cache` for the apartments pages, but Cloudflare may have cached the old response **before** these headers were in place. A manual purge is the fastest resolution.
+No further Cloudflare cache purges will be needed — the directives prevent caching at the edge going forward.
 
----
+### No Code Changes Needed
 
-### No code changes are required — the implementation is complete and correct.
+The React code in `ApartmentsLanding.tsx` is already correct and complete. This is purely a Cloudflare cache configuration fix in `public/_headers`.
 
-After purging the Cloudflare cache, the live page at `www.delsolprimehomes.com/en/apartments` will show:
-- Header with both **"View Apartments"** and **"View Villas"** buttons
-- Apartments section (scrolls to `#apartments-section`)
-- Villas section below (scrolls to `#villas-section`)
-- Lead form modals for both property types
+### After Deployment
+
+The live page at `www.delsolprimehomes.com/en/apartments` will show:
+- Header with "View Apartments" (outline button) and "View Villas" (gold button)
+- Apartments properties section (`#apartments-section`)
+- Villas properties section below (`#villas-section`)
+- Lead capture modals for both property types
