@@ -40,62 +40,42 @@
 
 # Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
 /en/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /nl/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /fr/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /de/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /fi/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /pl/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /da/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /hu/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /sv/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /no/villas
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /en/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /nl/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /fr/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /de/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /fi/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /pl/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /da/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /hu/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /sv/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
 /no/apartments
-  Cache-Control: no-store, no-cache, must-revalidate
-  Pragma: no-cache
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
