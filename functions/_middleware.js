@@ -316,8 +316,16 @@ export async function onRequest({ request, next, env }) {
     pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/villas\/?$/) ||
     pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/apartments\/?$/)
   ) {
-    console.log('[Middleware] Villas/Apartments SPA route - passthrough to _redirects');
-    return withMiddlewareStatus(await next());
+    console.log('[Middleware] Villas/Apartments SPA route - passthrough to _redirects (no-store)');
+    const spaResponse = await next();
+    const spaHeaders = new Headers(spaResponse.headers);
+    spaHeaders.set('X-Middleware-Status', 'Active');
+    spaHeaders.set('Cache-Control', 'no-store');
+    return new Response(spaResponse.body, {
+      status: spaResponse.status,
+      statusText: spaResponse.statusText,
+      headers: spaHeaders,
+    });
   }
 
   // Check if this route needs SEO
