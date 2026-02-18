@@ -1,63 +1,74 @@
 
+## Fix: Create the `/en/villas` Landing Page (404 Fix)
 
-## Add Working Hours Columns to CRM Agents
+### Root Cause
+The `/en/villas` URL returns a 404 because:
+1. There is no `VillasLanding` React page component (no `src/pages/villas/VillasLanding.tsx`)
+2. The `/:lang/villas` route is absent from `src/App.tsx`
+3. The `public/_redirects` file has no explicit SPA rule for `/:lang/villas` (though the catch-all `/* /index.html 200` would normally handle it — the missing route in React Router is the real problem)
 
-### 1. Database Migration
+The admin side (`/admin/villas-content`, `/admin/villas-properties`) exists. The public-facing landing page was never created.
 
-Add two new columns and a composite index to `crm_agents`. Per project guidelines, validation triggers will be used instead of CHECK constraints (CHECK constraints can cause issues with database restoration).
+### What Will Be Built
 
-**SQL Migration:**
-```sql
--- Add columns
-ALTER TABLE crm_agents
-  ADD COLUMN IF NOT EXISTS working_hours_start INTEGER DEFAULT 8,
-  ADD COLUMN IF NOT EXISTS working_hours_end INTEGER DEFAULT 20;
+This mirrors the existing Apartments infrastructure exactly, per the project's Villas Infrastructure Standard.
 
--- Validation trigger (replaces CHECK constraints)
-CREATE OR REPLACE FUNCTION public.validate_agent_working_hours()
-RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
-BEGIN
-  IF NEW.working_hours_start < 0 OR NEW.working_hours_start > 23 THEN
-    RAISE EXCEPTION 'working_hours_start must be between 0 and 23';
-  END IF;
-  IF NEW.working_hours_end < 0 OR NEW.working_hours_end > 23 THEN
-    RAISE EXCEPTION 'working_hours_end must be between 0 and 23';
-  END IF;
-  IF NEW.working_hours_end = NEW.working_hours_start THEN
-    RAISE EXCEPTION 'working_hours_end must differ from working_hours_start';
-  END IF;
-  RETURN NEW;
-END;
-$$;
+#### 1. New Components (mirroring Apartments)
 
-CREATE TRIGGER trg_validate_agent_working_hours
-  BEFORE INSERT OR UPDATE ON crm_agents
-  FOR EACH ROW EXECUTE FUNCTION validate_agent_working_hours();
+| New File | Mirrors |
+|---|---|
+| `src/pages/villas/VillasLanding.tsx` | `src/pages/apartments/ApartmentsLanding.tsx` |
+| `src/components/villas/VillasHero.tsx` | `src/components/apartments/ApartmentsHero.tsx` |
+| `src/components/villas/VillasPropertiesSection.tsx` | `src/components/apartments/ApartmentsPropertiesSection.tsx` |
+| `src/components/villas/VillasLeadFormModal.tsx` | `src/components/apartments/ApartmentsLeadFormModal.tsx` |
 
--- Performance index
-CREATE INDEX IF NOT EXISTS idx_crm_agents_working_hours
-  ON crm_agents(timezone, working_hours_start, working_hours_end);
+#### 2. `VillasLanding.tsx` — Main Page
+
+- Reads the `lang` URL param (defaults to `en`)
+- Fetches `villas_page_content` for meta title/description
+- Renders the fixed header with logo + language selector + "View Properties" CTA
+- Includes `<Helmet>` with canonical, 10-language hreflang tags, and JSON-LD schema
+- Manages lead form modal state (opens when a property card is clicked)
+
+#### 3. `VillasHero.tsx`
+
+- Fetches `villas_page_content` (headline, subheadline, cta_text, hero_image_url, hero_image_alt)
+- Full-width hero image with text overlay and a CTA button that scrolls to the properties section
+- Identical layout to `ApartmentsHero`
+
+#### 4. `VillasPropertiesSection.tsx`
+
+- Fetches from `villas_properties` table, filtered by `language` and `is_active = true`
+- Renders property cards in a responsive grid
+- Each card fires `onPropertyClick` to open the lead modal
+
+#### 5. `VillasLeadFormModal.tsx`
+
+- Lead capture modal identical to the apartments version
+- On submit, calls `register-crm-lead` edge function with source `villas_landing_{language}`
+
+#### 6. Register the Route in `src/App.tsx`
+
+Add two entries alongside the existing apartments routes:
+
+```
+<Route path="/villas" element={<Navigate to="/en/villas" replace />} />
+<Route path="/:lang/villas" element={<VillasLanding />} />
 ```
 
-### 2. Update TypeScript Type
+#### 7. `public/_redirects` — Add Explicit SPA Rule
 
-Add `working_hours_start` and `working_hours_end` to the `CrmAgent` interface in `src/hooks/useCrmAgents.ts`.
+Add before the final catch-all:
+```
+/:lang/villas  /index.html  200
+```
 
-### 3. Update Agent Management UI
+This ensures Cloudflare Pages routes `/en/villas` correctly to the React SPA without relying solely on the catch-all (which can conflict with static file serving rules).
 
-**AddAgentModal** (`src/components/crm/AddAgentModal.tsx`):
-- Add two number inputs for "Working Hours Start" and "Working Hours End" (default 8 and 20).
-- Add Zod validation for 0-23 range and inequality.
+### Technical Notes
 
-**EditAgentModal** (`src/components/crm/EditAgentModal.tsx`):
-- Add matching fields, pre-populated from agent data.
-
-### 4. Files Changed
-
-| Action | File | Detail |
-|--------|------|--------|
-| Migration | Database | New columns, trigger, index |
-| Edit | `src/hooks/useCrmAgents.ts` | Add fields to `CrmAgent` interface |
-| Edit | `src/components/crm/AddAgentModal.tsx` | Add working hours inputs |
-| Edit | `src/components/crm/EditAgentModal.tsx` | Add working hours inputs |
-
+- All data comes from the existing `villas_page_content` and `villas_properties` tables (already managed via the admin panel)
+- Lead source will be `villas_landing_{language}` to match the documented standard
+- The 10 supported languages are: `en, nl, fr, de, fi, pl, da, hu, sv, no`
+- Canonical URL: `https://www.delsolprimehomes.com/{lang}/villas`
+- No new database tables or edge functions are needed
