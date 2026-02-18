@@ -62,16 +62,27 @@
 /blog/:slug  /blog/:slug/index.html  200
 
 # Explicit villas/apartments rules - MUST come before language homepage rules to prevent cache collision
-/en/villas  /index.html  200
-/nl/villas  /index.html  200
-/fr/villas  /index.html  200
-/de/villas  /index.html  200
-/fi/villas  /index.html  200
-/pl/villas  /index.html  200
-/da/villas  /index.html  200
-/hu/villas  /index.html  200
-/sv/villas  /index.html  200
-/no/villas  /index.html  200
+# Force trailing slash on villas to bypass stale Cloudflare cache
+/en/villas  /en/villas/  301
+/nl/villas  /nl/villas/  301
+/fr/villas  /fr/villas/  301
+/de/villas  /de/villas/  301
+/fi/villas  /fi/villas/  301
+/pl/villas  /pl/villas/  301
+/da/villas  /da/villas/  301
+/hu/villas  /hu/villas/  301
+/sv/villas  /sv/villas/  301
+/no/villas  /no/villas/  301
+/en/villas/  /index.html  200
+/nl/villas/  /index.html  200
+/fr/villas/  /index.html  200
+/de/villas/  /index.html  200
+/fi/villas/  /index.html  200
+/pl/villas/  /index.html  200
+/da/villas/  /index.html  200
+/hu/villas/  /index.html  200
+/sv/villas/  /index.html  200
+/no/villas/  /index.html  200
 /en/apartments  /index.html  200
 /nl/apartments  /index.html  200
 /fr/apartments  /index.html  200
