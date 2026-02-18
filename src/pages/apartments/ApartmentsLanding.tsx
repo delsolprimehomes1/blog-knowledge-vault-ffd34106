@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import ApartmentsHero from '@/components/apartments/ApartmentsHero';
 import ApartmentsPropertiesSection from '@/components/apartments/ApartmentsPropertiesSection';
@@ -30,6 +30,7 @@ interface SelectedProperty {
 
 const ApartmentsLanding: React.FC = () => {
   const { lang } = useParams<{ lang: string }>();
+  const navigate = useNavigate();
   const language = SUPPORTED_LANGS.includes(lang || '') ? lang! : 'en';
   const [selectedProperty, setSelectedProperty] = useState<SelectedProperty | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -87,7 +88,7 @@ const ApartmentsLanding: React.FC = () => {
             className="h-10"
           />
           <div className="flex items-center gap-3 sm:gap-4">
-            <LanguageSelector currentLang={language as LanguageCode} />
+            <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(lang) => navigate(`/${lang}/apartments`)} />
             <button
               onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
