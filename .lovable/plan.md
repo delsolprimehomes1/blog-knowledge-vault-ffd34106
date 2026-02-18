@@ -1,79 +1,60 @@
 
-## Add Villas Section to the Apartments Landing Page
+## Fix: Cloudflare Cache Blocking the Updated Apartments Page
 
-### What the User Wants
+### The Problem
 
-The public apartments page (`/:lang/apartments`) currently shows only apartments. The user wants to add a **Villas section** below the apartments so that:
+The code in the editor is already correct and fully implemented:
+- "View Apartments" and "View Villas" buttons are in the header
+- `VillasPropertiesSection` is rendered below apartments
+- `VillasLeadFormModal` is wired up
+- Admin tabs for Apartments / Villas are in place
 
-1. The page navbar has two buttons — "View Apartments" and "View Villas" — each scrolling to their respective section.
-2. The Villas section on the public page pulls data from the existing `villas_properties` table (already in the database).
-3. The **admin `Apartments Properties` page** (`/admin/apartments-properties`) gets a **tab or toggle** so admins can switch between managing Apartments and Villas properties — without needing to navigate away.
+The Lovable publish status shows **"Up to date"** — meaning the code IS deployed. However, the live site at `www.delsolprimehomes.com/en/apartments` still shows the old UI with only "View Properties".
 
----
+This is a **Cloudflare CDN cache issue**. The memory notes in this project confirm that Cloudflare caching was explicitly configured for the apartments page (`public/_headers` sets aggressive no-cache headers), but Cloudflare edge nodes may have already cached the old version before those headers were applied.
 
-### How the Page Currently Works
+### What Needs to Happen
 
-```text
-ApartmentsLanding (/:lang/apartments)
-  ├── Header (logo + language selector + "View Properties" button)
-  ├── ApartmentsHero  (hero image, headline from apartments_page_content)
-  ├── ApartmentsPropertiesSection  (grid of property cards from apartments_properties)
-  └── Footer
-```
-
-The goal is to extend it to:
-
-```text
-ApartmentsLanding (/:lang/apartments)
-  ├── Header (logo + language selector + "View Apartments" + "View Villas" buttons)
-  ├── ApartmentsHero
-  ├── ApartmentsPropertiesSection  [id="apartments-section"]
-  ├── VillasPropertiesSection      [id="villas-section"]  ← NEW
-  └── Footer
-```
+There is **no code change needed**. The fix is a Cloudflare cache purge. Here are the two ways to resolve it:
 
 ---
 
-### Changes Required
+### Option 1 — Purge Cloudflare Cache (Recommended, Immediate)
 
-#### 1. `src/pages/apartments/ApartmentsLanding.tsx`
+1. Log in to your **Cloudflare dashboard** at `dash.cloudflare.com`
+2. Select your domain `delsolprimehomes.com`
+3. Go to **Caching → Cache Purge**
+4. Click **"Purge Everything"** (or purge these specific URLs):
+   - `https://www.delsolprimehomes.com/en/apartments`
+   - `https://www.delsolprimehomes.com/nl/apartments`
+   - `https://www.delsolprimehomes.com/fr/apartments`
+   - (and any other language variants you need immediately)
+5. Wait 30 seconds, then reload the page in an incognito window
 
-- Add a second `SelectedProperty` state for villas modal (or reuse the same modal pattern).
-- Add `VillasPropertiesSection` import and render it below `ApartmentsPropertiesSection`.
-- Add `VillasLeadFormModal` import and render it (reusing the existing villas lead form modal that already exists in `src/components/villas/VillasLeadFormModal.tsx`).
-- Update the header to have two nav buttons: "View Apartments" and "View Villas", each scrolling to `apartments-section` and `villas-section` respectively.
-
-#### 2. `src/components/apartments/ApartmentsPropertiesSection.tsx`
-
-- Change the `<section>` id from `"properties-section"` to `"apartments-section"` so that the scroll targets are distinct.
-
-#### 3. `src/pages/admin/ApartmentsProperties.tsx`
-
-- Add a **Tabs** component at the top with two tabs: **"Apartments"** and **"Villas"**.
-- The "Apartments" tab shows the existing apartments property management UI (unchanged).
-- The "Villas" tab shows a copy of the same UI but reads/writes to `villas_properties` instead of `apartments_properties`, defaulting `property_type` to `"villa"`.
-- The page title updates to reflect the active tab ("Apartments Properties" / "Villas Properties").
-- The image upload path prefix changes to `villas/` when the Villas tab is active.
-
-No database migrations needed — `villas_properties` table already exists (it's what `VillasPropertiesSection` already reads from). No new routes or sidebar entries needed since this is embedded in the existing admin page.
+This will force Cloudflare to fetch the latest version from the origin server (Lovable's published build).
 
 ---
 
-### Technical Details
+### Option 2 — Hard Refresh in Browser (Temporary, for testing only)
 
-**Section scroll targets:**
-- Apartments section: `id="apartments-section"`
-- Villas section: `id="villas-section"`
+On the live URL in Chrome or Safari:
+- **Mac:** `Cmd + Shift + R`
+- **Windows:** `Ctrl + Shift + R`
 
-**Villas section on public page:**
-- Reuses the existing `VillasPropertiesSection` component (`src/components/villas/VillasPropertiesSection.tsx`) which already queries `villas_properties` with `language` and `visible=true` filters.
-- Lead form reuses `VillasLeadFormModal` from `src/components/villas/VillasLeadFormModal.tsx`.
+Or open in a **new incognito/private window** — this bypasses the local browser cache but NOT the Cloudflare edge cache.
 
-**Admin tabs:**
-- Wraps the existing `ApartmentsPropertiesInner` logic in a `Tabs` container.
-- The Villas tab duplicates the form/table logic but points to `villas_properties` — keeping property type default as `"villa"` and upload path as `villas/`.
+---
 
-**Files to change:**
-1. `src/pages/apartments/ApartmentsLanding.tsx`
-2. `src/components/apartments/ApartmentsPropertiesSection.tsx`
-3. `src/pages/admin/ApartmentsProperties.tsx`
+### Why This Happened
+
+The `public/_headers` file sets `Cache-Control: no-store, no-cache` for the apartments pages, but Cloudflare may have cached the old response **before** these headers were in place. A manual purge is the fastest resolution.
+
+---
+
+### No code changes are required — the implementation is complete and correct.
+
+After purging the Cloudflare cache, the live page at `www.delsolprimehomes.com/en/apartments` will show:
+- Header with both **"View Apartments"** and **"View Villas"** buttons
+- Apartments section (scrolls to `#apartments-section`)
+- Villas section below (scrolls to `#villas-section`)
+- Lead form modals for both property types
