@@ -5619,6 +5619,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_agent_available_now: { Args: { p_agent_id: string }; Returns: boolean }
       is_crm_agent: { Args: { _user_id: string }; Returns: boolean }
       match_lead_by_phone: {
         Args: { agent_uuid: string; search_digits: string }
