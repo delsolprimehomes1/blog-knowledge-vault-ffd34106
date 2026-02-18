@@ -37,3 +37,45 @@
 # JSON files
 /*.json
   Content-Type: application/json; charset=utf-8
+
+# Villas/Apartments SPA routes - prevent CDN caching of stale static HTML
+/en/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/nl/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/fr/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/de/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/fi/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/pl/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/da/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/hu/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/sv/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/no/villas
+  Cache-Control: no-store, no-cache, must-revalidate
+/en/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/nl/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/fr/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/de/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/fi/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/pl/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/da/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/hu/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/sv/apartments
+  Cache-Control: no-store, no-cache, must-revalidate
+/no/apartments
+  Cache-Control: no-store, no-cache, must-revalidate

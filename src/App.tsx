@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LanguageProvider } from "@/i18n";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -19,9 +19,13 @@ import { SUPPORTED_LANGUAGES } from "@/types/hreflang";
 // Language-prefixed homepage wrapper - validates lang param and renders Home or NotFound
 const LanguageHome = () => {
   const { lang } = useParams<{ lang: string }>();
+  const location = useLocation();
 
-  // /en renders Home directly — canonical tag handles SEO deduplication
-  // (removed redirect to avoid redirect loops on /en/villas and similar routes)
+  // Redirect /en exactly to / for clean homepage URL
+  // Does NOT affect /en/villas or /en/apartments — those are separate <Route> entries
+  if (lang === 'en' && location.pathname === '/en') {
+    return <Navigate to="/" replace />;
+  }
 
   // Check if it's a valid language code
   const isValidLang = lang && SUPPORTED_LANGUAGES.includes(lang as typeof SUPPORTED_LANGUAGES[number]);

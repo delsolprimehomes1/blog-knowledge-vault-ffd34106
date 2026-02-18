@@ -108,8 +108,6 @@
 # SPA routing for language-prefixed app pages
 /:lang/properties  /index.html  200
 /:lang/property/:reference  /index.html  200
-/:lang/apartments  /index.html  200
-/:lang/villas  /index.html  200
 
 # SPA fallback - MUST BE LAST
 /*  /index.html  200
