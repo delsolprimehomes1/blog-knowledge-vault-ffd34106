@@ -81,21 +81,41 @@
   CDN-Cache-Control: no-store
 /en/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /nl/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /fr/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /de/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /fi/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /pl/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /da/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /hu/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /sv/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
 /no/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
