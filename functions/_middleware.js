@@ -311,6 +311,15 @@ export async function onRequest({ request, next, env }) {
     });
   }
 
+  // Passthrough for villas and apartments landing pages (SPA routes)
+  if (
+    pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/villas\/?$/) ||
+    pathname.match(/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/apartments\/?$/)
+  ) {
+    console.log('[Middleware] Villas/Apartments SPA route - passthrough to _redirects');
+    return withMiddlewareStatus(await next());
+  }
+
   // Check if this route needs SEO
   if (needsSEO(pathname)) {
     console.log('[Middleware] Routing to SEO edge function:', pathname);
