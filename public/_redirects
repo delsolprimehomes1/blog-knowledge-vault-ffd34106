@@ -84,7 +84,7 @@
 /hu/villas  /hu/villas/properties  301
 /sv/villas  /sv/villas/properties  301
 /no/villas  /no/villas/properties  301
-# New /villas/properties URLs → serve SPA
+# New /villas/properties URLs → serve SPA (cache-bust v2 2026-02-18)
 /en/villas/properties  /index.html  200
 /nl/villas/properties  /index.html  200
 /fr/villas/properties  /index.html  200
