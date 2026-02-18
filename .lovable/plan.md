@@ -1,65 +1,79 @@
 
-## Fix: Bust the Stale Cloudflare Cache for /en/villas/properties
+## Add Villas Section to the Apartments Landing Page
 
-### Root Cause
+### What the User Wants
 
-The files are all correctly configured:
-- `public/_redirects` line 88: `/en/villas/properties /index.html 200` — correct
-- `App.tsx` line 397: `<Route path="/:lang/villas/properties" element={<VillasLanding />} />` — correct
-- `functions/_middleware.js` line 95: regex correctly matches `villas/properties` — correct
+The public apartments page (`/:lang/apartments`) currently shows only apartments. The user wants to add a **Villas section** below the apartments so that:
 
-The problem is that Cloudflare's edge nodes have a **stale cached 301 redirect** for `/en/villas/properties → /` (homepage) written during the earlier routing experiments. Even though the rules are fixed, Cloudflare is serving the cached redirect to incognito users from its edge cache.
+1. The page navbar has two buttons — "View Apartments" and "View Villas" — each scrolling to their respective section.
+2. The Villas section on the public page pulls data from the existing `villas_properties` table (already in the database).
+3. The **admin `Apartments Properties` page** (`/admin/apartments-properties`) gets a **tab or toggle** so admins can switch between managing Apartments and Villas properties — without needing to navigate away.
 
-The `public/_headers` file already has `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate` for `/en/villas/properties`, but that header only applies to **fresh responses**. It cannot override a response that is already cached at the edge.
+---
 
-### The Fix: Force Cloudflare to Abandon the Stale Cache
+### How the Page Currently Works
 
-The most reliable way to bust a stale Cloudflare CDN cache without direct dashboard access is to make a meaningful change to the headers file for those exact paths. Cloudflare re-validates its cache when the response headers change.
-
-**Step 1 — Add a cache-busting `Vary` header to `public/_headers`**
-
-For all 10 `/lang/villas/properties` paths, add a `Surrogate-Control: no-store` header alongside the existing `Cache-Control`. Cloudflare respects `Surrogate-Control` specifically at the CDN layer and will immediately drop cached entries for those paths.
-
-Current state of lines 42-61 in `public/_headers`:
-```
-/en/villas/properties
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+```text
+ApartmentsLanding (/:lang/apartments)
+  ├── Header (logo + language selector + "View Properties" button)
+  ├── ApartmentsHero  (hero image, headline from apartments_page_content)
+  ├── ApartmentsPropertiesSection  (grid of property cards from apartments_properties)
+  └── Footer
 ```
 
-New state (add one line per path):
-```
-/en/villas/properties
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-  Surrogate-Control: no-store
-  CDN-Cache-Control: no-store
-```
+The goal is to extend it to:
 
-This will be applied to all 10 language variants.
-
-**Step 2 — Add a versioned `ETag`-busting query comment to `_redirects`**
-
-Touch the `/en/villas/properties /index.html 200` rule with a comment above it to force Cloudflare Pages to treat the redirects config as changed, triggering a full re-evaluation:
-
-```
-# villas/properties SPA rewrite - cache-bust v2
-/en/villas/properties  /index.html  200
+```text
+ApartmentsLanding (/:lang/apartments)
+  ├── Header (logo + language selector + "View Apartments" + "View Villas" buttons)
+  ├── ApartmentsHero
+  ├── ApartmentsPropertiesSection  [id="apartments-section"]
+  ├── VillasPropertiesSection      [id="villas-section"]  ← NEW
+  └── Footer
 ```
 
-### Files to Change
+---
 
-1. **`public/_headers`** — Add `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store` to all 10 `/:lang/villas/properties` blocks (lines 42-61).
+### Changes Required
 
-2. **`public/_redirects`** — Add a version comment above the 10 villas/properties rewrite rules (lines 87-97) to force Cloudflare Pages to invalidate its rules cache on next deploy.
+#### 1. `src/pages/apartments/ApartmentsLanding.tsx`
 
-### Why This Won't Break Anything Else
+- Add a second `SelectedProperty` state for villas modal (or reuse the same modal pattern).
+- Add `VillasPropertiesSection` import and render it below `ApartmentsPropertiesSection`.
+- Add `VillasLeadFormModal` import and render it (reusing the existing villas lead form modal that already exists in `src/components/villas/VillasLeadFormModal.tsx`).
+- Update the header to have two nav buttons: "View Apartments" and "View Villas", each scrolling to `apartments-section` and `villas-section` respectively.
 
-- The `Surrogate-Control` and `CDN-Cache-Control` headers only affect the exact paths they are declared for.
-- The homepage rule (`/en / 301`) is untouched.
-- The `/:lang` → `LanguageHome` React route is untouched.
-- Apartments (`/en/apartments`) already works — those paths are not being changed.
+#### 2. `src/components/apartments/ApartmentsPropertiesSection.tsx`
 
-### Expected Outcome After Deploy
+- Change the `<section>` id from `"properties-section"` to `"apartments-section"` so that the scroll targets are distinct.
 
-- `https://www.delsolprimehomes.com/en/villas/properties` loads the Villas landing page correctly in incognito.
-- All 10 language variants resolve correctly.
-- No homepage redirect loop.
+#### 3. `src/pages/admin/ApartmentsProperties.tsx`
+
+- Add a **Tabs** component at the top with two tabs: **"Apartments"** and **"Villas"**.
+- The "Apartments" tab shows the existing apartments property management UI (unchanged).
+- The "Villas" tab shows a copy of the same UI but reads/writes to `villas_properties` instead of `apartments_properties`, defaulting `property_type` to `"villa"`.
+- The page title updates to reflect the active tab ("Apartments Properties" / "Villas Properties").
+- The image upload path prefix changes to `villas/` when the Villas tab is active.
+
+No database migrations needed — `villas_properties` table already exists (it's what `VillasPropertiesSection` already reads from). No new routes or sidebar entries needed since this is embedded in the existing admin page.
+
+---
+
+### Technical Details
+
+**Section scroll targets:**
+- Apartments section: `id="apartments-section"`
+- Villas section: `id="villas-section"`
+
+**Villas section on public page:**
+- Reuses the existing `VillasPropertiesSection` component (`src/components/villas/VillasPropertiesSection.tsx`) which already queries `villas_properties` with `language` and `visible=true` filters.
+- Lead form reuses `VillasLeadFormModal` from `src/components/villas/VillasLeadFormModal.tsx`.
+
+**Admin tabs:**
+- Wraps the existing `ApartmentsPropertiesInner` logic in a `Tabs` container.
+- The Villas tab duplicates the form/table logic but points to `villas_properties` — keeping property type default as `"villa"` and upload path as `villas/`.
+
+**Files to change:**
+1. `src/pages/apartments/ApartmentsLanding.tsx`
+2. `src/components/apartments/ApartmentsPropertiesSection.tsx`
+3. `src/pages/admin/ApartmentsProperties.tsx`
