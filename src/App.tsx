@@ -20,12 +20,10 @@ import { SUPPORTED_LANGUAGES } from "@/types/hreflang";
 const LanguageHome = () => {
   const { lang } = useParams<{ lang: string }>();
 
-  // If lang is 'en', redirect to root to avoid duplicate URLs
-  if (lang === 'en') {
-    return <Navigate to="/" replace />;
-  }
+  // /en renders Home directly — canonical tag handles SEO deduplication
+  // (removed redirect to avoid redirect loops on /en/villas and similar routes)
 
-  // Check if it's a valid language code (excluding 'en' which redirects above)
+  // Check if it's a valid language code
   const isValidLang = lang && SUPPORTED_LANGUAGES.includes(lang as typeof SUPPORTED_LANGUAGES[number]);
 
   if (!isValidLang) {
