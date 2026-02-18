@@ -1,5 +1,5 @@
-# Root homepage - redirect to English (301 for SEO)
-/  /en  301
+# Root homepage - /en redirects to / (clean URL)
+/en  /  301
 
 # Static files - serve directly (MUST come before SPA routes)
 /sitemap.xml  /sitemap.xml  200
@@ -62,6 +62,17 @@
 /blog/:slug  /blog/:slug/index.html  200
 
 # Explicit villas/apartments rules - MUST come before language homepage rules to prevent cache collision
+# Query-param variants → 301 (bypasses CDN cached 404s)
+/en/villas?*  /en/villas/properties  301
+/nl/villas?*  /nl/villas/properties  301
+/fr/villas?*  /fr/villas/properties  301
+/de/villas?*  /de/villas/properties  301
+/fi/villas?*  /fi/villas/properties  301
+/pl/villas?*  /pl/villas/properties  301
+/da/villas?*  /da/villas/properties  301
+/hu/villas?*  /hu/villas/properties  301
+/sv/villas?*  /sv/villas/properties  301
+/no/villas?*  /no/villas/properties  301
 # Old /villas URLs → 301 to /villas/properties (SEO continuity)
 /en/villas  /en/villas/properties  301
 /nl/villas  /nl/villas/properties  301
