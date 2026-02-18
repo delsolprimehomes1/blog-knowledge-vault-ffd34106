@@ -153,7 +153,7 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
 
   if (loading) {
     return (
-      <section id="properties-section" className="py-16 sm:py-20 lg:py-24 bg-gray-50/50">
+      <section id="apartments-section" className="py-16 sm:py-20 lg:py-24 bg-gray-50/50">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {[1, 2, 3].map(i => (
@@ -173,7 +173,7 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
   }
 
   return (
-    <section id="properties-section" className="py-16 sm:py-20 lg:py-24 bg-gray-50/50">
+    <section id="apartments-section" className="py-16 sm:py-20 lg:py-24 bg-gray-50/50">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 lg:mb-10 gap-2 pb-3 sm:pb-4 border-b border-gray-100">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-landing-navy">

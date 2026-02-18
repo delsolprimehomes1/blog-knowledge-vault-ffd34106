@@ -4,6 +4,8 @@ import { Helmet } from 'react-helmet';
 import ApartmentsHero from '@/components/apartments/ApartmentsHero';
 import ApartmentsPropertiesSection from '@/components/apartments/ApartmentsPropertiesSection';
 import ApartmentsLeadFormModal from '@/components/apartments/ApartmentsLeadFormModal';
+import VillasPropertiesSection from '@/components/villas/VillasPropertiesSection';
+import VillasLeadFormModal from '@/components/villas/VillasLeadFormModal';
 import { Footer } from '@/components/home/Footer';
 import LanguageSelector from '@/components/landing/LanguageSelector';
 import { LanguageCode } from '@/utils/landing/languageDetection';
@@ -11,11 +13,18 @@ import { supabase } from '@/integrations/supabase/client';
 
 const SUPPORTED_LANGS = ['en', 'nl', 'fr', 'de', 'fi', 'pl', 'da', 'hu', 'sv', 'no'];
 
-const VIEW_PROPERTIES_TEXT: Record<string, string> = {
-  en: 'View Properties', nl: 'Bekijk Woningen', fr: 'Voir les Propriétés',
-  de: 'Immobilien Ansehen', fi: 'Näytä Kohteet', pl: 'Zobacz Nieruchomości',
-  da: 'Se Ejendomme', hu: 'Ingatlanok Megtekintése', sv: 'Visa Fastigheter',
-  no: 'Se Eiendommer',
+const VIEW_APARTMENTS_TEXT: Record<string, string> = {
+  en: 'View Apartments', nl: 'Bekijk Appartementen', fr: 'Voir les Appartements',
+  de: 'Apartments Ansehen', fi: 'Näytä Asunnot', pl: 'Zobacz Apartamenty',
+  da: 'Se Lejligheder', hu: 'Lakások Megtekintése', sv: 'Visa Lägenheter',
+  no: 'Se Leiligheter',
+};
+
+const VIEW_VILLAS_TEXT: Record<string, string> = {
+  en: 'View Villas', nl: 'Bekijk Villa\'s', fr: 'Voir les Villas',
+  de: 'Villen Ansehen', fi: 'Näytä Huvilat', pl: 'Zobacz Wille',
+  da: 'Se Villaer', hu: 'Villák Megtekintése', sv: 'Visa Villor',
+  no: 'Se Villaer',
 };
 
 const BASE_URL = 'https://www.delsolprimehomes.com';
@@ -34,6 +43,8 @@ const ApartmentsLanding: React.FC = () => {
   const language = SUPPORTED_LANGS.includes(lang || '') ? lang! : 'en';
   const [selectedProperty, setSelectedProperty] = useState<SelectedProperty | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedVilla, setSelectedVilla] = useState<SelectedProperty | null>(null);
+  const [villaModalOpen, setVillaModalOpen] = useState(false);
   const [metaTitle, setMetaTitle] = useState('Luxury Costa del Sol Apartments | Del Sol Prime Homes');
   const [metaDescription, setMetaDescription] = useState('Find your perfect apartment on the Costa del Sol.');
 
@@ -56,6 +67,11 @@ const ApartmentsLanding: React.FC = () => {
   const handlePropertyClick = (property: SelectedProperty) => {
     setSelectedProperty(property);
     setModalOpen(true);
+  };
+
+  const handleVillaClick = (property: SelectedProperty) => {
+    setSelectedVilla(property);
+    setVillaModalOpen(true);
   };
 
   const canonical = `${BASE_URL}/${language}/apartments`;
@@ -87,13 +103,19 @@ const ApartmentsLanding: React.FC = () => {
             alt="Del Sol Prime Homes"
             className="h-10"
           />
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(lang) => navigate(`/${lang}/apartments`)} />
             <button
-              onClick={() => document.getElementById('properties-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-4 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
+              onClick={() => document.getElementById('apartments-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-3 py-2 bg-transparent text-landing-navy border border-gray-200 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
             >
-              {VIEW_PROPERTIES_TEXT[language] || 'View Properties'}
+              {VIEW_APARTMENTS_TEXT[language] || 'View Apartments'}
+            </button>
+            <button
+              onClick={() => document.getElementById('villas-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-3 py-2 bg-landing-gold text-white rounded-lg font-semibold hover:bg-landing-gold/90 transition-colors text-sm"
+            >
+              {VIEW_VILLAS_TEXT[language] || 'View Villas'}
             </button>
           </div>
         </div>
@@ -102,6 +124,7 @@ const ApartmentsLanding: React.FC = () => {
       <main>
         <ApartmentsHero language={language} />
         <ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />
+        <VillasPropertiesSection language={language} onPropertyClick={handleVillaClick} />
       </main>
 
       <Footer />
@@ -112,8 +135,16 @@ const ApartmentsLanding: React.FC = () => {
         property={selectedProperty}
         language={language}
       />
+
+      <VillasLeadFormModal
+        open={villaModalOpen}
+        onOpenChange={setVillaModalOpen}
+        property={selectedVilla}
+        language={language}
+      />
     </>
   );
 };
 
 export default ApartmentsLanding;
+
