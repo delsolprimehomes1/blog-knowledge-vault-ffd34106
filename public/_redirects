@@ -61,6 +61,28 @@
 # SPA routing for blog articles
 /blog/:slug  /blog/:slug/index.html  200
 
+# Explicit villas/apartments rules - MUST come before language homepage rules to prevent cache collision
+/en/villas  /index.html  200
+/nl/villas  /index.html  200
+/fr/villas  /index.html  200
+/de/villas  /index.html  200
+/fi/villas  /index.html  200
+/pl/villas  /index.html  200
+/da/villas  /index.html  200
+/hu/villas  /index.html  200
+/sv/villas  /index.html  200
+/no/villas  /index.html  200
+/en/apartments  /index.html  200
+/nl/apartments  /index.html  200
+/fr/apartments  /index.html  200
+/de/apartments  /index.html  200
+/fi/apartments  /index.html  200
+/pl/apartments  /index.html  200
+/da/apartments  /index.html  200
+/hu/apartments  /index.html  200
+/sv/apartments  /index.html  200
+/no/apartments  /index.html  200
+
 # Language-prefixed homepages - serve SSG HTML (MUST come before SPA fallback)
 /en   /en/index.html  200
 /de   /de/index.html  200
