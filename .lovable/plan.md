@@ -1,57 +1,88 @@
 
-## What Is Actually Wrong — And the Fix
+## New Page: `/:lang/listings` — Apartments-Only Landing Page
 
-### The Good News
-All the cache-busting rules for apartments, villas, and `/index.html` are already present in `public/_headers`. The middleware already has the full Golden Trio. **Nothing is actually missing from the file in Lovable.**
+### What This Creates
 
-### The Real Problem: Cloudflare Silently Dropped the Rules
-Based on the project's own memory records, Cloudflare's `_headers` parser is extremely sensitive. If it encounters any syntax issue anywhere in the file, it silently stops processing rules beyond that point — which can reduce 28+ rules down to just 8. The current deployment likely has a stale cached version of the file where rules were dropped.
+A completely new, standalone landing page at `/:lang/listings` for all 10 language variants (en, nl, fr, de, fi, pl, da, hu, sv, no). It mirrors the visual layout of the apartments page but is entirely independent — separate file, separate route, separate URL, separate cache rules — so it can go live immediately without touching or risking the existing `/apartments` page.
 
-There are two small issues to fix that will force Cloudflare to re-read everything cleanly:
+The page will show: Logo header with language switcher → Hero section → Apartments properties grid → Footer + Lead form modal.
 
 ---
 
-### Fix 1 — Bump the Timestamp (Force Cloudflare to Re-Process the File)
+### Files to Create
 
-**Line 1** currently reads:
-```
-# Cache rules last updated: 2026-02-19T10:00:00Z
-```
+**1. `src/pages/listings/ListingsLanding.tsx`** — New page component
 
-Changing this to a new timestamp causes the file hash to change, which forces Cloudflare to invalidate its cached copy of `_headers` and re-read every rule from scratch. This is the established safe method documented in the project memory.
-
-New value:
-```
-# Cache rules last updated: 2026-02-19T14:00:00Z
-```
+Cloned from `ApartmentsLanding.tsx` with these key differences:
+- Imports `ApartmentsHero` and `ApartmentsPropertiesSection` (apartments content, no villas section)
+- All internal references use `/listings` instead of `/apartments`
+- The `canonical` and `hreflang` URLs point to `/{lang}/listings`
+- Language selector navigates to `/{lang}/listings`
+- Meta title/description fetched from `apartments_page_content` (same database table, reusing existing published content — no new database needed)
+- Header has a single "View Listings" button (no villas button needed)
 
 ---
 
-### Fix 2 — Complete the `/index.html` Block (Add `proxy-revalidate`)
+### Files to Modify
 
-**Lines 7** currently reads:
-```
-Cache-Control: no-store, no-cache, must-revalidate
+**2. `src/App.tsx`** — Register the new routes
+
+Add a lazy import and two new routes, placed alongside the existing apartments routes:
+
+```tsx
+const ListingsLanding = lazy(() => import("./pages/listings/ListingsLanding"));
+
+// In the Routes section, after the apartments route:
+<Route path="/listings" element={<Navigate to="/en/listings" replace />} />
+<Route path="/:lang/listings" element={<ListingsLanding />} />
 ```
 
-This is missing `proxy-revalidate` — the fourth value in the Golden Trio standard used on all other SPA routes. It should match:
+**3. `public/_redirects`** — Tell Cloudflare to serve SPA shell for the new paths
+
+Add 10 explicit rules (same pattern used for apartments):
 ```
-Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+/en/listings  /index.html  200
+/nl/listings  /index.html  200
+... (all 10 languages)
 ```
+These must be placed before the `/*  /index.html  200` catch-all at the bottom.
+
+**4. `public/_headers`** — Add Golden Trio cache-busting rules for the new paths
+
+Add 10 explicit no-store blocks (same Golden Trio as apartments):
+```
+/en/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+... (all 10 languages)
+```
+
+Also bump the timestamp on line 1 to `2026-02-19T18:00:00Z` to force Cloudflare to re-parse the entire file and pick up the new rules.
+
+**5. `functions/_middleware.js`** — Add `/listings` to the middleware intercept pattern
+
+The existing Rule 3 intercepts `villas/properties` and `apartments`. The same rule needs to also match `listings` so the middleware sets the Golden Trio headers at the edge for all listing requests. This is a one-line regex change to the existing pattern.
 
 ---
 
-### Files Changed
+### Why This Approach Is Safe
 
-| File | Change |
-|------|--------|
-| `public/_headers` | Line 1: bump timestamp. Line 7: add `proxy-revalidate` to `/index.html` Cache-Control value |
+- Zero changes to the existing `/apartments` page, components, or database
+- The new page reuses the existing `apartments_page_content` database table and `ApartmentsHero` / `ApartmentsPropertiesSection` components — no new database tables needed
+- All 4 layers of cache protection are applied (middleware + `_headers` + `_redirects` + SPA route), matching the exact same architecture as apartments and villas
+- The route is added before the `/:lang` wildcard in App.tsx so it won't conflict with language homepage routing
 
-### No Other Changes Needed
-- All 10 apartment locale rules (`/en/apartments` through `/no/apartments`) — already present ✓
-- All 10 villa locale rules (`/en/villas/properties` through `/no/villas/properties`) — already present ✓
-- `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store` on all SPA routes — already present ✓
-- `functions/_middleware.js` Rule 3 Golden Trio — already present ✓
+---
 
-### After Deploying
-Push to GitHub → Cloudflare will detect the changed file hash → re-read all 130 lines of `_headers` → all cache rules will be active. Immediately visit `www.delsolprimehomes.com/en/apartments` to confirm it loads without a redirect.
+### Technical Summary
+
+| Layer | Change |
+|-------|--------|
+| New page component | `src/pages/listings/ListingsLanding.tsx` |
+| React Router | 2 new routes in `src/App.tsx` |
+| Cloudflare redirects | 10 new rules in `public/_redirects` |
+| Cloudflare cache headers | 10 new Golden Trio blocks in `public/_headers` |
+| Middleware edge intercept | Pattern update in `functions/_middleware.js` |
+
+After deploying to GitHub → Cloudflare, `www.delsolprimehomes.com/en/listings` will load the apartments-only landing page live with no redirect issues.
