@@ -119,8 +119,24 @@ export async function onRequest({ request, next, env }) {
     });
   }
 
-  // Skip static files
+  // Skip static files — but index.html must never be cached (it is the SPA entry point)
   if (STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
+    // Special handling: index.html must always be served fresh (no-store)
+    // A stale cached index.html references old JS bundles that no longer exist → blank page
+    if (pathname === '/index.html' || pathname.endsWith('/index.html')) {
+      const indexResponse = await next();
+      const indexHeaders = new Headers(indexResponse.headers);
+      indexHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      indexHeaders.set('Surrogate-Control', 'no-store');
+      indexHeaders.set('CDN-Cache-Control', 'no-store');
+      indexHeaders.set('X-Middleware-Status', 'Active');
+      return new Response(indexResponse.body, {
+        status: indexResponse.status,
+        statusText: indexResponse.statusText,
+        headers: indexHeaders,
+      });
+    }
+
     // Special handling for XML files
     if (pathname.endsWith('.xml')) {
       const response = await next();
