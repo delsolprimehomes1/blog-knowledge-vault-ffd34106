@@ -1,76 +1,52 @@
 
-## Why Apartments and Villas Redirect to Homepage After Every Deployment
+## Fix: Add Missing Cache Headers to Apartments/Villas Middleware Rule
 
-### The Exact Problem
+### Root Cause
 
-This is a **Cloudflare edge cache race condition** that only affects pure SPA routes (apartments, villas) — not pre-rendered pages (blog, Q&A).
-
-Here is the sequence:
-
-1. You push code → GitHub → Cloudflare starts deploying a new build.
-2. Every new build generates a **new JS bundle filename** (e.g. `assets/index-abc123.js` → `assets/index-def456.js`).
-3. `index.html` is updated to reference the new bundle name.
-4. During the ~1-5 minute global propagation window, some Cloudflare edge nodes still serve the **old `index.html`** (which references the old bundle name).
-5. The old bundle file (`assets/index-abc123.js`) no longer exists in the new deployment.
-6. React fails to load silently → the app never boots → the browser shows whatever `/` returns → **looks like a redirect to the homepage**.
-7. After propagation completes, `index.html` is fresh everywhere and it works again.
-
-**Why only apartments/villas?** Every other important page (blog, Q&A, language homepages) is pre-rendered as static HTML during the build — they carry their full content in the HTML file itself and don't depend on the React JS bundle loading correctly. Apartments and villas are **pure SPA routes** — they are 100% reliant on `index.html` loading the correct new JS bundle.
-
-**Why doesn't the `no-store` header in `_headers` fix it?** The `_headers` rules for `/en/apartments` etc. apply `no-store` to those URL paths, but `index.html` is an underlying static file. The static file itself gets cached at the edge separately from the URL path rule. Additionally, the middleware's `STATIC_EXTENSIONS` list includes `.html`, which causes the middleware to skip Rule 3 (the villas/apartments passthrough) for `.html` files before it even has a chance to apply the `no-store` header.
-
-### The Fix: Two Changes
-
-**1. Add `no-store` for `index.html` itself in `public/_headers`**
-
-The root `index.html` must never be cached at the edge, because it is the entry point for all SPA routes. Adding:
+Rule 3 in `functions/_middleware.js` (lines 96-107) intercepts the apartments and villas routes correctly, but only sets ONE of the three required cache headers:
 
 ```
-/index.html
-  Cache-Control: no-store, no-cache, must-revalidate
-  Surrogate-Control: no-store
-  CDN-Cache-Control: no-store
+spaHeaders.set('Cache-Control', 'no-store');   ← only this is set
+// Surrogate-Control: no-store                 ← MISSING
+// CDN-Cache-Control: no-store                 ← MISSING
 ```
 
-This ensures that when Cloudflare serves the apartments/villas SPA routes (which resolve to `/index.html` via `_redirects`), it always fetches a fresh copy of `index.html` rather than a cached stale one.
+Cloudflare's edge CDN specifically looks at `Surrogate-Control` and `CDN-Cache-Control` to decide whether to cache a response. Without those two headers, Cloudflare ignores the `Cache-Control: no-store` instruction and keeps serving its cached copy. That stale cached `index.html` references an old JS bundle filename that no longer exists after a new deploy — React fails to load silently, and the browser falls back to `/`, which looks like a redirect to the homepage.
 
-**2. Remove `.html` from the middleware static skip list (or add an exception for index.html)**
+### The Fix — One File, Three Lines Added
 
-In `functions/_middleware.js`, the `STATIC_EXTENSIONS` array includes `.html`. This means when a request for `/en/apartments` resolves to `/index.html` via `_redirects`, and the middleware encounters it on re-entry, it skips Rule 3 entirely because the resolved path ends in `.html`.
+**`functions/_middleware.js` — Rule 3 block (lines 96–107)**
 
-The fix is to modify the static extension check so that `index.html` is never skipped — the middleware should still passthrough (which is fine) but should set the `no-store` cache header on it:
-
-Change the static file skip at line 123 to also explicitly set `no-store` headers when the path is `/index.html`:
+Add the two missing headers to the `spaHeaders` block:
 
 ```javascript
-// Skip static files — but index.html must never be cached (it is the SPA entry point)
-if (STATIC_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
-  if (pathname === '/index.html' || pathname.endsWith('/index.html')) {
-    const response = await next();
-    const headers = new Headers(response.headers);
-    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    headers.set('Surrogate-Control', 'no-store');
-    headers.set('CDN-Cache-Control', 'no-store');
-    headers.set('X-Middleware-Status', 'Active');
-    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-  }
-  // ... rest of existing static file handling
+spaHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+spaHeaders.set('Surrogate-Control', 'no-store');      // ← ADD THIS
+spaHeaders.set('CDN-Cache-Control', 'no-store');       // ← ADD THIS
 ```
 
-### Files to Change
-
-| File | Change |
-|---|---|
-| `public/_headers` | Add `no-store` block for `/index.html` at the top of the file |
-| `functions/_middleware.js` | In the static file skip block (~line 123), add a special branch for `index.html` that forces `no-store` headers through |
+Also strengthen `Cache-Control` from just `no-store` to the full "Golden Trio" value `no-store, no-cache, must-revalidate, proxy-revalidate` — consistent with the `_headers` file rules.
 
 ### What This Achieves
 
-- `index.html` is never stored at Cloudflare's edge — every request for it gets the freshest copy.
-- This means apartments/villas routes always boot with the correct, current JS bundle.
-- All other static assets (JS, CSS, images) continue to be cached aggressively at the edge (this is correct — they use hashed filenames so stale cache is never an issue).
-- No change to any React component, routing logic, or database.
+- Cloudflare's CDN layer will now see `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store` and will stop caching the SPA shell for apartments and villas routes
+- Every request to `/en/apartments`, `/nl/apartments` etc. will always get a fresh `index.html` with the correct current JS bundle filename
+- No more "redirects to homepage" immediately after a deployment
+- This matches the "Golden Trio" standard already documented in the project memory and already applied in `public/_headers`
 
-### Important Note on Testing
+### Files Changed
 
-Because middleware does not run on Lovable preview URLs, this fix can only be fully verified on the live production domain (`www.delsolprimehomes.com`) after pushing to Cloudflare. The behaviour to watch for: deploy a change to the apartments page → immediately visit `/en/apartments` → it should load correctly without waiting 1-5 minutes for propagation.
+| File | Change |
+|------|--------|
+| `functions/_middleware.js` | Lines 100-101: Expand `Cache-Control` value + add `Surrogate-Control` and `CDN-Cache-Control` headers to Rule 3 |
+
+### No Other Changes Needed
+
+The `public/_headers` file already has the correct Golden Trio for all apartment/villa paths and for `/index.html`. The middleware `index.html` exception (lines 126-138) is also correctly set. **The only gap is Rule 3 missing two headers.**
+
+### Testing After Deploy
+
+Once pushed to GitHub → Cloudflare:
+1. Visit `www.delsolprimehomes.com/en/apartments` immediately after deploy completes
+2. It should load the apartments page without any redirect
+3. To verify the headers are being set, open browser DevTools → Network tab → click the `/en/apartments` request → check Response Headers for `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store`
