@@ -1,52 +1,57 @@
 
-## Fix: Add Missing Cache Headers to Apartments/Villas Middleware Rule
+## What Is Actually Wrong — And the Fix
 
-### Root Cause
+### The Good News
+All the cache-busting rules for apartments, villas, and `/index.html` are already present in `public/_headers`. The middleware already has the full Golden Trio. **Nothing is actually missing from the file in Lovable.**
 
-Rule 3 in `functions/_middleware.js` (lines 96-107) intercepts the apartments and villas routes correctly, but only sets ONE of the three required cache headers:
+### The Real Problem: Cloudflare Silently Dropped the Rules
+Based on the project's own memory records, Cloudflare's `_headers` parser is extremely sensitive. If it encounters any syntax issue anywhere in the file, it silently stops processing rules beyond that point — which can reduce 28+ rules down to just 8. The current deployment likely has a stale cached version of the file where rules were dropped.
 
+There are two small issues to fix that will force Cloudflare to re-read everything cleanly:
+
+---
+
+### Fix 1 — Bump the Timestamp (Force Cloudflare to Re-Process the File)
+
+**Line 1** currently reads:
 ```
-spaHeaders.set('Cache-Control', 'no-store');   ← only this is set
-// Surrogate-Control: no-store                 ← MISSING
-// CDN-Cache-Control: no-store                 ← MISSING
-```
-
-Cloudflare's edge CDN specifically looks at `Surrogate-Control` and `CDN-Cache-Control` to decide whether to cache a response. Without those two headers, Cloudflare ignores the `Cache-Control: no-store` instruction and keeps serving its cached copy. That stale cached `index.html` references an old JS bundle filename that no longer exists after a new deploy — React fails to load silently, and the browser falls back to `/`, which looks like a redirect to the homepage.
-
-### The Fix — One File, Three Lines Added
-
-**`functions/_middleware.js` — Rule 3 block (lines 96–107)**
-
-Add the two missing headers to the `spaHeaders` block:
-
-```javascript
-spaHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-spaHeaders.set('Surrogate-Control', 'no-store');      // ← ADD THIS
-spaHeaders.set('CDN-Cache-Control', 'no-store');       // ← ADD THIS
+# Cache rules last updated: 2026-02-19T10:00:00Z
 ```
 
-Also strengthen `Cache-Control` from just `no-store` to the full "Golden Trio" value `no-store, no-cache, must-revalidate, proxy-revalidate` — consistent with the `_headers` file rules.
+Changing this to a new timestamp causes the file hash to change, which forces Cloudflare to invalidate its cached copy of `_headers` and re-read every rule from scratch. This is the established safe method documented in the project memory.
 
-### What This Achieves
+New value:
+```
+# Cache rules last updated: 2026-02-19T14:00:00Z
+```
 
-- Cloudflare's CDN layer will now see `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store` and will stop caching the SPA shell for apartments and villas routes
-- Every request to `/en/apartments`, `/nl/apartments` etc. will always get a fresh `index.html` with the correct current JS bundle filename
-- No more "redirects to homepage" immediately after a deployment
-- This matches the "Golden Trio" standard already documented in the project memory and already applied in `public/_headers`
+---
+
+### Fix 2 — Complete the `/index.html` Block (Add `proxy-revalidate`)
+
+**Lines 7** currently reads:
+```
+Cache-Control: no-store, no-cache, must-revalidate
+```
+
+This is missing `proxy-revalidate` — the fourth value in the Golden Trio standard used on all other SPA routes. It should match:
+```
+Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+```
+
+---
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `functions/_middleware.js` | Lines 100-101: Expand `Cache-Control` value + add `Surrogate-Control` and `CDN-Cache-Control` headers to Rule 3 |
+| `public/_headers` | Line 1: bump timestamp. Line 7: add `proxy-revalidate` to `/index.html` Cache-Control value |
 
 ### No Other Changes Needed
+- All 10 apartment locale rules (`/en/apartments` through `/no/apartments`) — already present ✓
+- All 10 villa locale rules (`/en/villas/properties` through `/no/villas/properties`) — already present ✓
+- `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store` on all SPA routes — already present ✓
+- `functions/_middleware.js` Rule 3 Golden Trio — already present ✓
 
-The `public/_headers` file already has the correct Golden Trio for all apartment/villa paths and for `/index.html`. The middleware `index.html` exception (lines 126-138) is also correctly set. **The only gap is Rule 3 missing two headers.**
-
-### Testing After Deploy
-
-Once pushed to GitHub → Cloudflare:
-1. Visit `www.delsolprimehomes.com/en/apartments` immediately after deploy completes
-2. It should load the apartments page without any redirect
-3. To verify the headers are being set, open browser DevTools → Network tab → click the `/en/apartments` request → check Response Headers for `Surrogate-Control: no-store` and `CDN-Cache-Control: no-store`
+### After Deploying
+Push to GitHub → Cloudflare will detect the changed file hash → re-read all 130 lines of `_headers` → all cache rules will be active. Immediately visit `www.delsolprimehomes.com/en/apartments` to confirm it loads without a redirect.
