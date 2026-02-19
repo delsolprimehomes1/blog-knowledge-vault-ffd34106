@@ -22,8 +22,6 @@ interface Property {
   title: string;
   location: string;
   bedrooms: number;
-  bathrooms: number;
-  sqm: number;
   price: number;
   bedrooms_max: number | null;
   property_type: string | null;
@@ -126,7 +124,7 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
     const fetchProps = async () => {
       const { data } = await supabase
         .from('apartments_properties')
-        .select('id, title, location, bedrooms, bedrooms_max, bathrooms, sqm, price, property_type, status, featured_image_url, short_description')
+        .select('id, title, location, bedrooms, bedrooms_max, price, property_type, status, featured_image_url, short_description')
         .eq('language', language)
         .eq('visible', true)
         .order('display_order', { ascending: true });
