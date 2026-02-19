@@ -4,17 +4,17 @@ import { MapPin, Bed, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
-const TRANSLATIONS: Record<string, { featured: string; subtitle: string; view: string; from: string }> = {
-  en: { featured: "Featured Properties", subtitle: "Handpicked residences on the Costa del Sol", view: "View", from: "From" },
-  nl: { featured: "Uitgelichte Woningen", subtitle: "Zorgvuldig geselecteerde woningen aan de Costa del Sol", view: "Bekijk", from: "Vanaf" },
-  fr: { featured: "Propriétés en Vedette", subtitle: "Résidences sélectionnées sur la Costa del Sol", view: "Voir", from: "À partir de" },
-  de: { featured: "Ausgewählte Immobilien", subtitle: "Handverlesene Residenzen an der Costa del Sol", view: "Ansehen", from: "Ab" },
-  fi: { featured: "Esittelyssä Olevat Kohteet", subtitle: "Huolella valitut asunnot Costa del Solilla", view: "Katso", from: "Alkaen" },
-  pl: { featured: "Wyróżniające się Nieruchomości", subtitle: "Starannie wybrane rezydencje na Costa del Sol", view: "Zobacz", from: "Od" },
-  da: { featured: "Udvalgte Ejendomme", subtitle: "Håndplukkede boliger på Costa del Sol", view: "Se", from: "Fra" },
-  hu: { featured: "Kiemelt Ingatlanok", subtitle: "Válogatott rezidenciák a Costa del Solon", view: "Megtekintés", from: "Több mint" },
-  sv: { featured: "Utvalda Fastigheter", subtitle: "Noggrant utvalda bostäder på Costa del Sol", view: "Visa", from: "Från" },
-  no: { featured: "Utvalgte Eiendommer", subtitle: "Nøye utvalgte boliger på Costa del Sol", view: "Se", from: "Fra" },
+const TRANSLATIONS: Record<string, { featured: string; subtitle: string; view: string; from: string; introText: string }> = {
+  en: { featured: "Featured Properties", subtitle: "Handpicked residences on the Costa del Sol", view: "View", from: "From", introText: "This is a selection of the latest modern property developments along the main seaside resorts on the Costa del Sol (Malaga), in the beautiful southern Spanish region of Andalucia." },
+  nl: { featured: "Uitgelichte Woningen", subtitle: "Zorgvuldig geselecteerde woningen aan de Costa del Sol", view: "Bekijk", from: "Vanaf", introText: "Dit is een selectie van de nieuwste moderne vastgoedontwikkelingen langs de belangrijkste badplaatsen aan de Costa del Sol (Málaga), in de prachtige zuidelijke Spaanse regio Andalusië." },
+  fr: { featured: "Propriétés en Vedette", subtitle: "Résidences sélectionnées sur la Costa del Sol", view: "Voir", from: "À partir de", introText: "Voici une sélection des derniers projets immobiliers modernes le long des principales stations balnéaires de la Costa del Sol (Málaga), dans la magnifique région méridionale espagnole d'Andalousie." },
+  de: { featured: "Ausgewählte Immobilien", subtitle: "Handverlesene Residenzen an der Costa del Sol", view: "Ansehen", from: "Ab", introText: "Dies ist eine Auswahl der neuesten modernen Immobilienprojekte entlang der wichtigsten Seebäder der Costa del Sol (Málaga), in der wunderschönen südspanischen Region Andalusien." },
+  fi: { featured: "Esittelyssä Olevat Kohteet", subtitle: "Huolella valitut asunnot Costa del Solilla", view: "Katso", from: "Alkaen", introText: "Tämä on valikoima uusimmista moderneista kiinteistökehityshankkeista Costa del Solin (Málaga) tärkeimpien rantakuurorien varrella, kauniissa Espanjan eteläisessä Andalusian alueella." },
+  pl: { featured: "Wyróżniające się Nieruchomości", subtitle: "Starannie wybrane rezydencje na Costa del Sol", view: "Zobacz", from: "Od", introText: "To jest wybór najnowszych nowoczesnych inwestycji nieruchomościowych wzdłuż głównych nadmorskich kurortów Costa del Sol (Málaga), w pięknym południowym hiszpańskim regionie Andaluzji." },
+  da: { featured: "Udvalgte Ejendomme", subtitle: "Håndplukkede boliger på Costa del Sol", view: "Se", from: "Fra", introText: "Dette er et udvalg af de nyeste moderne ejendomsudviklinger langs de vigtigste badebyer på Costa del Sol (Málaga), i den smukke sydlige spanske region Andalusien." },
+  hu: { featured: "Kiemelt Ingatlanok", subtitle: "Válogatott rezidenciák a Costa del Solon", view: "Megtekintés", from: "Több mint", introText: "Ez a Costa del Sol (Málaga) fő tengerparti üdülőhelyei mentén található legújabb modern ingatlanfejlesztések válogatása, Spanyolország gyönyörű déli régiójában, Andalúziában." },
+  sv: { featured: "Utvalda Fastigheter", subtitle: "Noggrant utvalda bostäder på Costa del Sol", view: "Visa", from: "Från", introText: "Detta är ett urval av de senaste moderna fastighetsutvecklingarna längs de viktigaste badorternas Costa del Sol (Málaga), i den vackra södra spanska regionen Andalusien." },
+  no: { featured: "Utvalgte Eiendommer", subtitle: "Nøye utvalgte boliger på Costa del Sol", view: "Se", from: "Fra", introText: "Dette er et utvalg av de nyeste moderne eiendomsutviklingene langs de viktigste badestrendene på Costa del Sol (Málaga), i den vakre sørlige spanske regionen Andalucia." },
 };
 
 interface Property {
@@ -164,8 +164,16 @@ const ApartmentsPropertiesSection: React.FC<ApartmentsPropertiesSectionProps> = 
     );
   }
 
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
+
   return (
     <section id="apartments-section" className="py-16 sm:py-20 lg:py-24 bg-gray-50/50">
+      {/* Intro text strip */}
+      <div className="container mx-auto px-4 sm:px-6 pt-0 pb-6 sm:pb-8">
+        <p className="text-sm sm:text-base text-gray-600 italic text-center max-w-2xl mx-auto leading-relaxed">
+          {t.introText}
+        </p>
+      </div>
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 lg:mb-10 gap-2 pb-3 sm:pb-4 border-b border-gray-100">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif font-bold text-landing-navy">
