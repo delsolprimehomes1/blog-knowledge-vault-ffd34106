@@ -73,17 +73,6 @@
 /hu/villas?*  /hu/villas/properties  301
 /sv/villas?*  /sv/villas/properties  301
 /no/villas?*  /no/villas/properties  301
-# Old /villas URLs → 301 to /villas/properties (SEO continuity)
-/en/villas  /en/villas/properties  301
-/nl/villas  /nl/villas/properties  301
-/fr/villas  /fr/villas/properties  301
-/de/villas  /de/villas/properties  301
-/fi/villas  /fi/villas/properties  301
-/pl/villas  /pl/villas/properties  301
-/da/villas  /da/villas/properties  301
-/hu/villas  /hu/villas/properties  301
-/sv/villas  /sv/villas/properties  301
-/no/villas  /no/villas/properties  301
 # /villas/properties URLs → serve SPA
 /en/villas/properties  /index.html  200
 /nl/villas/properties  /index.html  200
@@ -108,7 +97,6 @@
 /no/apartments  /index.html  200
 
 # Language-prefixed homepages - serve SSG HTML (MUST come before SPA fallback)
-/en   /en/index.html  200
 /de   /de/index.html  200
 /nl   /nl/index.html  200
 /fr   /fr/index.html  200
