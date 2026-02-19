@@ -118,7 +118,7 @@ const ApartmentsLanding: React.FC = () => {
       </header>
 
       <main>
-        <ApartmentsHero language={language} />
+        <ApartmentsHero language={language} onCtaClick={() => { setSelectedProperty(null); setModalOpen(true); }} />
         <ApartmentsPropertiesSection language={language} onPropertyClick={handlePropertyClick} />
         <VillasPropertiesSection language={language} onPropertyClick={handleVillaClick} />
       </main>
