@@ -1,42 +1,41 @@
 
-## Change: Relax the Villas/Apartments Regex in `functions/_middleware.js`
+## Add Intro Text Strip Between Hero and "Featured Properties"
 
-### What the Current Pattern Does
+### Where It Goes
 
-Line 95 currently reads:
+Inside `src/components/apartments/ApartmentsPropertiesSection.tsx`, between the `<section>` opening tag and the existing `Featured Properties` heading block. No new files or components are needed — this is a self-contained addition to the existing translations map and JSX.
 
-```
-/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas\/properties|apartments)\/?$/
-```
+### Translations (all 10 locales)
 
-- `\/?` — optionally matches a trailing slash
-- `$` — anchors the match to the **end of the string**
+The intro text will be added as a new `introText` key inside the existing `TRANSLATIONS` constant in `ApartmentsPropertiesSection.tsx`:
 
-Because of the `$` anchor, this regex only matches the path when nothing follows after the optional trailing slash. If the URL has a query string (e.g. `?ref=google`) or any additional path segment, `url.pathname` itself won't include query strings (those live in `url.search`), but the strict `$` anchor can still cause subtle mismatches when path normalization appends extra characters.
+| Language | Translation |
+|----------|-------------|
+| en | This is a selection of the latest modern property developments along the main seaside resorts on the Costa del Sol (Malaga), in the beautiful southern Spanish region of Andalucia. |
+| nl | Dit is een selectie van de nieuwste moderne vastgoedontwikkelingen langs de belangrijkste badplaatsen aan de Costa del Sol (Málaga), in de prachtige zuidelijke Spaanse regio Andalusië. |
+| fr | Voici une sélection des derniers projets immobiliers modernes le long des principales stations balnéaires de la Costa del Sol (Málaga), dans la magnifique région méridionale espagnole d'Andalousie. |
+| de | Dies ist eine Auswahl der neuesten modernen Immobilienprojekte entlang der wichtigsten Seebäder der Costa del Sol (Málaga), in der wunderschönen südspanischen Region Andalusien. |
+| fi | Tämä on valikoima uusimmista moderneista kiinteistökehityshankkeista Costa del Solin (Málaga) tärkeimpien rantakuurorien varrella, kauniissa Espanjan eteläisessä Andalusian alueella. |
+| pl | To jest wybór najnowszych nowoczesnych inwestycji nieruchomościowych wzdłuż głównych nadmorskich kurortów Costa del Sol (Málaga), w pięknym południowym hiszpańskim regionie Andaluzji. |
+| da | Dette er et udvalg af de nyeste moderne ejendomsudviklinger langs de vigtigste badebyer på Costa del Sol (Málaga), i den smukke sydlige spanske region Andalusien. |
+| hu | Ez a Costa del Sol (Málaga) fő tengerparti üdülőhelyei mentén található legújabb modern ingatlanfejlesztések válogatása, Spanyolország gyönyörű déli régiójában, Andalúziában. |
+| sv | Detta är ett urval av de senaste moderna fastighetsutvecklingarna längs de viktigaste badorternas Costa del Sol (Málaga), i den vackra södra spanska regionen Andalusien. |
+| no | Dette er et utvalg av de nyeste moderne eiendomsutviklingene langs de viktigste badestrendene på Costa del Sol (Málaga), i den vakre sørlige spanske regionen Andalucia. |
 
-More importantly, removing `/?$` and using a plain prefix match makes the rule **forward-compatible**: any future sub-paths under `/en/villas/properties/...` or `/en/apartments/...` will also be caught and get the correct `Cache-Control: no-store` passthrough.
+### Visual Design (Mobile-Optimised)
 
-### The Single Change
+- Thin horizontal rule above the text to separate from hero
+- Text centred, `max-w-2xl mx-auto` for controlled line length on wide screens
+- Font: `text-sm sm:text-base` — readable but clearly subordinate to the "Featured Properties" heading below
+- Colour: `text-gray-600` — muted, editorial feel
+- Padding: `px-4 pt-8 pb-4 sm:pt-10 sm:pb-6` — compact on mobile, slightly more breathing room on desktop
+- Italic styling to give it a descriptive/editorial tone distinct from the heading
 
-**File:** `functions/_middleware.js` — line 95
+### Technical Change
 
-| | Pattern |
-|---|---|
-| **Before** | `/^\/(en\|nl\|fr\|de\|fi\|pl\|da\|hu\|sv\|no)\/(villas\/properties\|apartments)\/?$/` |
-| **After** | `/^\/(en\|nl\|fr\|de\|fi\|pl\|da\|hu\|sv\|no)\/(villas\/properties\|apartments)/` |
+Single file edit — `src/components/apartments/ApartmentsPropertiesSection.tsx`:
 
-Removed: `\/?$` (the optional trailing slash and end-of-string anchor).
+1. Add `introText` to every locale entry in the `TRANSLATIONS` constant (lines 7–18)
+2. Insert a new `<div>` between the `<section>` opening and the existing heading block (around line 170), rendering `t.introText` inside a `<p>` tag with the styling described above
 
-### What Changes in Behaviour
-
-- `/en/villas/properties` — still matches (as before)
-- `/en/villas/properties/` — still matches (as before, via optional slash — now even simpler)
-- `/en/apartments` — still matches
-- `/en/villas/properties?foo=bar` — now matches (query string is in `url.search`, but the pathname is still the right shape)
-- `/en/villas/properties/some-sub-page` — now matches (forward-compatible)
-- `/en/villas` — does NOT match (correct: bare `/villas` is handled by the `_redirects` 301 rule, not the middleware)
-- `/en/blog/something` — does NOT match (correct: different path segment)
-
-### No Other Files Changed
-
-Only the one regex on line 95 of `functions/_middleware.js` is modified. All other rules, headers, and logic remain identical.
+No database changes, no new files, no new dependencies.
