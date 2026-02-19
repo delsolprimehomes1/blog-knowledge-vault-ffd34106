@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { Facebook, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 
 export const Footer: React.FC = () => {
@@ -27,9 +27,6 @@ export const Footer: React.FC = () => {
             <div className="flex gap-4">
               <a href="https://facebook.com/delsolprimehomes" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-prime-gold hover:text-prime-900 transition-colors">
                 <Facebook size={18} />
-              </a>
-              <a href="https://instagram.com/delsolprimehomes" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-prime-gold hover:text-prime-900 transition-colors">
-                <Instagram size={18} />
               </a>
               <a href="https://linkedin.com/company/delsolprimehomes" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-prime-gold hover:text-prime-900 transition-colors">
                 <Linkedin size={18} />
