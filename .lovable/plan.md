@@ -1,46 +1,38 @@
 
-## Remove Bathrooms & SQM from All Apartment and Villa Property Cards
+## Fix: Clean Up Leftover bathrooms/sqm References & Republish
 
-### What's Being Removed
+### Root Cause
 
-The **Bathrooms** and **SQM** stats currently appear on every property card on the public-facing Apartments and Villas pages, and in the admin table view. The request is to remove them entirely from:
+The published page is showing the OLD version — the code changes removing Bath and SQM were made to the test/preview environment but the **published site has not been updated yet** to reflect those changes.
 
-1. **Public property cards** — Apartments section
-2. **Public property cards** — Villas section
-3. **Admin table columns** — the Bathrooms & SQM display columns in the list view
-4. **Admin edit form** — the Bathrooms and SQM input fields (optional: keep in DB but hide from form, or leave as-is since the data still exists in the database)
+Additionally, in both component files, the previous edit correctly removed the JSX rendering of Bath and SQM, but left behind two things that should also be cleaned up:
 
-### Files to Change
+1. `bathrooms: number` and `sqm: number` still in the `Property` interface
+2. `bathrooms` and `sqm` still in the Supabase `.select()` query string
 
-**1. `src/components/apartments/ApartmentsPropertiesSection.tsx`**
-- Remove the `Bath` and `Square` icon imports (no longer needed)
-- Remove `bathrooms` and `sqm` from the `Property` interface
-- Remove `bathrooms` and `sqm` from the `.select()` query string
-- Delete the two `<div>` stat rows for Bath and Square inside `PropertyCard`
-- The remaining stats row will show only the **Beds** count
+These are harmless to the display but fetching unused data. Cleaning them up will make the code consistent and prevent any future confusion.
 
-**2. `src/components/villas/VillasPropertiesSection.tsx`**
-- Same changes as above — identical structure
+### What Will Change
 
-**3. `src/pages/admin/ApartmentsProperties.tsx`**
-- Remove Bathrooms and SQM from the **admin table columns** (TableHead + TableCell) so the list view is cleaner
-- Remove the Bathrooms and SQM **input fields** from the Edit/Add Property dialog form
-- Keep the fields in the database schema and the `form` state object so existing data is preserved — the fields just won't be shown or edited through the UI going forward
+**`src/components/apartments/ApartmentsPropertiesSection.tsx`**
+- Remove `bathrooms: number` and `sqm: number` from the `Property` interface (lines 25-26)
+- Remove `bathrooms, sqm` from the `.select()` query string (line 129)
 
-### What the Card Will Look Like After
+**`src/components/villas/VillasPropertiesSection.tsx`**
+- Remove `bathrooms: number` and `sqm: number` from the `Property` interface (lines 25-26)
+- Remove `bathrooms, sqm` from the `.select()` query string (line 120)
 
-The bottom stats row on each property card will show only:
+### Why the Published Page Still Shows Bath/SQM
 
-```
-[Bed icon] 2 - 3          [View →]
-```
+The published URL (`blog-knowledge-vault.lovable.app`) is serving a **previously published build**. Every time you make changes in the editor, they appear in the preview but the published site only updates when you click **Publish**. The previous removal of Bath/SQM happened after the last publish, so the live site is still on the old version.
 
-Instead of the current:
+After this cleanup is applied, **republishing will fix the published page** — Bath and SQM will be completely gone.
 
-```
-[Bed icon] 2 - 3   [Bath icon] 2   [Sq icon] 120m²          [View →]
-```
+### No Design Changes
 
-### No Database Changes
+The cards already look correct in the preview. This is purely a code hygiene fix + a republish to push the working version to production.
 
-The `bathrooms` and `sqm` columns stay in the database as-is. Existing values are preserved. The translation edge functions will continue to copy these fields as they do now — they just won't be displayed to users or editable through the admin form.
+### Files Changed
+
+- `src/components/apartments/ApartmentsPropertiesSection.tsx` — Remove 2 interface fields + update select query
+- `src/components/villas/VillasPropertiesSection.tsx` — Remove 2 interface fields + update select query
