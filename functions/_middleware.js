@@ -98,7 +98,9 @@ export async function onRequest({ request, next, env }) {
     const spaResponse = await next();
     const spaHeaders = new Headers(spaResponse.headers);
     spaHeaders.set('X-Middleware-Status', 'Active');
-    spaHeaders.set('Cache-Control', 'no-store');
+    spaHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    spaHeaders.set('Surrogate-Control', 'no-store');
+    spaHeaders.set('CDN-Cache-Control', 'no-store');
     return new Response(spaResponse.body, {
       status: spaResponse.status,
       statusText: spaResponse.statusText,
