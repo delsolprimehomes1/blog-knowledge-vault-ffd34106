@@ -63,7 +63,6 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!property) return;
     setSubmitting(true);
 
     const [firstName, ...lastParts] = data.full_name.trim().split(' ');
@@ -79,21 +78,23 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
       pageUrl: window.location.href,
       pageTitle: document.title,
       language,
-      propertyRef: property.title,
-      propertyPrice: property.price,
-      propertyType: property.property_type || undefined,
-      interest: `${property.title} - ${property.location}`,
-      message: data.message || `Interested in: ${property.title}`,
+      propertyRef: property?.title || 'General Inquiry',
+      propertyPrice: property?.price,
+      propertyType: property?.property_type || undefined,
+      interest: property ? `${property.title} - ${property.location}` : 'General Inquiry',
+      message: data.message || (property ? `Interested in: ${property.title}` : 'General inquiry from landing page'),
       referrer: document.referrer || undefined,
     });
 
-    const { data: current } = await supabase
-      .from('apartments_properties')
-      .select('inquiries')
-      .eq('id', property.id)
-      .single();
-    if (current) {
-      supabase.from('apartments_properties').update({ inquiries: (current.inquiries || 0) + 1 }).eq('id', property.id);
+    if (property) {
+      const { data: current } = await supabase
+        .from('apartments_properties')
+        .select('inquiries')
+        .eq('id', property.id)
+        .single();
+      if (current) {
+        supabase.from('apartments_properties').update({ inquiries: (current.inquiries || 0) + 1 }).eq('id', property.id);
+      }
     }
 
     toast({ title: ft.successTitle, description: ft.successDesc });
@@ -103,19 +104,12 @@ const ApartmentsLeadFormModal: React.FC<ApartmentsLeadFormModalProps> = ({ open,
     setSubmitting(false);
   };
 
-  if (!property) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-landing-navy">{property.title}</DialogTitle>
-          <DialogDescription className="flex items-center gap-1">
-            <MapPin size={14} /> {property.location}
-          </DialogDescription>
+          <DialogTitle className="text-landing-navy">{ft.formTitle}</DialogTitle>
         </DialogHeader>
-
-        <p className="text-sm text-gray-600">{ft.formTitle}</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div>

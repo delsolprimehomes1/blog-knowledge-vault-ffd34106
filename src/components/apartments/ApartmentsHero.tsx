@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 
 interface ApartmentsHeroProps {
   language: string;
+  onCtaClick?: () => void;
 }
 
 interface PageContent {
@@ -18,7 +19,7 @@ interface PageContent {
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80';
 
-const ApartmentsHero: React.FC<ApartmentsHeroProps> = ({ language }) => {
+const ApartmentsHero: React.FC<ApartmentsHeroProps> = ({ language, onCtaClick }) => {
   const [content, setContent] = useState<PageContent | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +88,7 @@ const ApartmentsHero: React.FC<ApartmentsHeroProps> = ({ language }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          onClick={handleScrollToProperties}
+          onClick={onCtaClick || handleScrollToProperties}
           className="px-8 py-4 bg-landing-gold text-white rounded-lg font-bold text-lg hover:bg-landing-goldDark transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
         >
           {content.cta_text || 'View Apartments'}
