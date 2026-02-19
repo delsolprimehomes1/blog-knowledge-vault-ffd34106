@@ -1,30 +1,42 @@
 
-## Remove Duplicate Redirect Rules from `public/_redirects`
+## Change: Relax the Villas/Apartments Regex in `functions/_middleware.js`
 
-### What's Wrong
+### What the Current Pattern Does
 
-Cloudflare Pages uses **first-match wins** routing — when a path appears more than once in `_redirects`, Cloudflare honours only the first occurrence and silently ignores all later ones. Two sets of duplicates exist:
+Line 95 currently reads:
 
-**Duplicate Set 1 — Lines 77–86** (10 rules): Plain `/lang/villas` → `/lang/villas/properties` 301 redirects.
-- `/en/villas`, `/nl/villas`, `/fr/villas`, `/de/villas`, `/fi/villas`, `/pl/villas`, `/da/villas`, `/hu/villas`, `/sv/villas`, `/no/villas`
-- These paths already appear on lines 66–75 as query-param variants (`/en/villas?*` etc.), and Cloudflare's wildcard `?*` also matches bare paths with no query string, making the plain duplicates redundant and conflicting.
+```
+/^\/(en|nl|fr|de|fi|pl|da|hu|sv|no)\/(villas\/properties|apartments)\/?$/
+```
 
-**Duplicate Set 2 — Line 111**: `/en /en/index.html 200`
-- `/en` already appears on line 2 as `/en / 301`. Having `/en` a second time on line 111 means Cloudflare locks onto the first rule (line 2) and ignores line 111 entirely — but it also signals to Cloudflare's parser that the file may contain further inconsistencies, risking broader rule suppression.
+- `\/?` — optionally matches a trailing slash
+- `$` — anchors the match to the **end of the string**
 
-### What Will Be Removed
+Because of the `$` anchor, this regex only matches the path when nothing follows after the optional trailing slash. If the URL has a query string (e.g. `?ref=google`) or any additional path segment, `url.pathname` itself won't include query strings (those live in `url.search`), but the strict `$` anchor can still cause subtle mismatches when path normalization appends extra characters.
 
-| Lines | Rule | Reason Removed |
-|-------|------|----------------|
-| 77–86 | 10 × `/lang/villas → /lang/villas/properties 301` | Duplicate of lines 66–75 |
-| 111 | `/en /en/index.html 200` | Duplicate of line 2 (`/en / 301`) |
+More importantly, removing `/?$` and using a plain prefix match makes the rule **forward-compatible**: any future sub-paths under `/en/villas/properties/...` or `/en/apartments/...` will also be caught and get the correct `Cache-Control: no-store` passthrough.
 
-### What Stays (unchanged)
+### The Single Change
 
-- Lines 66–75: The `?*` query-param villas redirects — these are kept as the **canonical** set, and in Cloudflare they match both bare paths and query-string paths, so no redirect coverage is lost.
-- Line 2: `/en / 301` — the correct and only `/en` rule.
-- All other rules remain exactly as-is.
+**File:** `functions/_middleware.js` — line 95
 
-### File Change Summary
+| | Pattern |
+|---|---|
+| **Before** | `/^\/(en\|nl\|fr\|de\|fi\|pl\|da\|hu\|sv\|no)\/(villas\/properties\|apartments)\/?$/` |
+| **After** | `/^\/(en\|nl\|fr\|de\|fi\|pl\|da\|hu\|sv\|no)\/(villas\/properties\|apartments)/` |
 
-- **`public/_redirects`**: Remove lines 77–86 (10 rules) and line 111 (1 rule). Net result: 11 fewer lines, zero duplicate paths.
+Removed: `\/?$` (the optional trailing slash and end-of-string anchor).
+
+### What Changes in Behaviour
+
+- `/en/villas/properties` — still matches (as before)
+- `/en/villas/properties/` — still matches (as before, via optional slash — now even simpler)
+- `/en/apartments` — still matches
+- `/en/villas/properties?foo=bar` — now matches (query string is in `url.search`, but the pathname is still the right shape)
+- `/en/villas/properties/some-sub-page` — now matches (forward-compatible)
+- `/en/villas` — does NOT match (correct: bare `/villas` is handled by the `_redirects` 301 rule, not the middleware)
+- `/en/blog/something` — does NOT match (correct: different path segment)
+
+### No Other Files Changed
+
+Only the one regex on line 95 of `functions/_middleware.js` is modified. All other rules, headers, and logic remain identical.
