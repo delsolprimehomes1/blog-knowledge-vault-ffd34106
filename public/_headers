@@ -1,4 +1,4 @@
-# Cache rules last updated: 2026-02-19T18:00:00Z
+# Cache rules last updated: 2026-02-19T20:00:00Z
 
 # index.html — SPA entry point — MUST NEVER be cached at the edge
 # A stale index.html references old JS bundle filenames that no longer exist after deploy
@@ -7,6 +7,7 @@
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 # Sitemap XML files - serve with short cache for freshness
 /sitemap.xml
   Content-Type: application/xml; charset=utf-8
@@ -52,78 +53,97 @@
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /nl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /fr/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /de/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /fi/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /pl/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /da/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /hu/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /sv/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /no/villas/properties
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /en/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /nl/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /fr/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /de/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /fi/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /pl/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /da/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /hu/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /sv/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
+
 /no/apartments
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
