@@ -96,6 +96,18 @@
 /sv/apartments  /index.html  200
 /no/apartments  /index.html  200
 
+# /listings URLs → serve SPA
+/en/listings  /index.html  200
+/nl/listings  /index.html  200
+/fr/listings  /index.html  200
+/de/listings  /index.html  200
+/fi/listings  /index.html  200
+/pl/listings  /index.html  200
+/da/listings  /index.html  200
+/hu/listings  /index.html  200
+/sv/listings  /index.html  200
+/no/listings  /index.html  200
+
 # Language-prefixed homepages - serve SSG HTML (MUST come before SPA fallback)
 /de   /de/index.html  200
 /nl   /nl/index.html  200

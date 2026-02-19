@@ -1,4 +1,4 @@
-# Cache rules last updated: 2026-02-19T14:00:00Z
+# Cache rules last updated: 2026-02-19T18:00:00Z
 
 # index.html — SPA entry point — MUST NEVER be cached at the edge
 # A stale index.html references old JS bundle filenames that no longer exist after deploy
@@ -125,6 +125,56 @@
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
 /no/apartments
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/en/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/nl/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/fr/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/de/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/fi/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/pl/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/da/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/hu/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/sv/listings
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+
+/no/listings
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
