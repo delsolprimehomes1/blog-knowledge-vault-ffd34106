@@ -344,11 +344,9 @@ const PropertiesManager = ({ tableName, uploadPrefix, label, defaultType }: { ta
               <div><Label>Location *</Label><Input value={form.location} onChange={e => updateForm("location", e.target.value)} /></div>
               <div><Label>Price (€)</Label><Input type="number" value={form.price} onChange={e => updateForm("price", Number(e.target.value))} /></div>
             </div>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>Bedrooms Min</Label><Input type="number" value={form.bedrooms} onChange={e => updateForm("bedrooms", Number(e.target.value))} /></div>
               <div><Label>Bedrooms Max</Label><Input type="number" value={form.bedrooms_max ?? ""} placeholder="Optional" onChange={e => updateForm("bedrooms_max", e.target.value ? Number(e.target.value) : null)} /></div>
-              <div><Label>Bathrooms</Label><Input type="number" value={form.bathrooms} onChange={e => updateForm("bathrooms", Number(e.target.value))} /></div>
-              <div><Label>SQM</Label><Input type="number" value={form.sqm} onChange={e => updateForm("sqm", Number(e.target.value))} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
