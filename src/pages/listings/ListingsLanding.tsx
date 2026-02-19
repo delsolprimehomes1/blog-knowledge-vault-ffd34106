@@ -81,9 +81,9 @@ const ListingsLanding: React.FC = () => {
       </Helmet>
 
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
-        <div className="container mx-auto px-4 flex items-center justify-between h-16">
+        <div className="container mx-auto px-4 flex items-center justify-center relative h-16">
           <span className="text-lg sm:text-xl font-serif font-bold tracking-widest text-landing-gold">DELSOLPRIMEHOMES</span>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="absolute right-4 flex items-center gap-2 sm:gap-3">
             <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(l) => navigate(`/${l}/listings`)} />
             <button
               onClick={() => document.getElementById('apartments-section')?.scrollIntoView({ behavior: 'smooth' })}
