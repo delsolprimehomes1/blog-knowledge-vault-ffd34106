@@ -1,10 +1,10 @@
-# Cache rules last updated: 2026-02-19T10:00:00Z
+# Cache rules last updated: 2026-02-19T14:00:00Z
 
 # index.html — SPA entry point — MUST NEVER be cached at the edge
 # A stale index.html references old JS bundle filenames that no longer exist after deploy
 # This is the root cause of apartments/villas "redirecting to homepage" after every push
 /index.html
-  Cache-Control: no-store, no-cache, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Surrogate-Control: no-store
   CDN-Cache-Control: no-store
 # Sitemap XML files - serve with short cache for freshness
