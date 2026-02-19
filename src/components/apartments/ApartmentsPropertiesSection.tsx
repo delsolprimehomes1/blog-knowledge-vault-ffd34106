@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Bed, Bath, Square, ArrowRight } from 'lucide-react';
+import { MapPin, Bed, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
@@ -96,14 +96,8 @@ const PropertyCard = ({ property, index, onClick, language }: { property: Proper
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
               <Bed size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.bedrooms_max && property.bedrooms_max !== property.bedrooms ? `${property.bedrooms} - ${property.bedrooms_max}` : property.bedrooms}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Bath size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.bathrooms}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Square size={12} className="sm:w-[14px] sm:h-[14px]" /> <span>{property.sqm}m²</span>
             </div>
           </div>
 
