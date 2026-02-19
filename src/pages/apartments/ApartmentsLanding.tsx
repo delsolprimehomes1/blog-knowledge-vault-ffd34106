@@ -98,11 +98,7 @@ const ApartmentsLanding: React.FC = () => {
 
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
         <div className="container mx-auto px-4 flex items-center justify-between h-16">
-          <img
-            src="https://storage.googleapis.com/msgsndr/9m2UBN29nuaCWceOgW2Z/media/6926151522d3b65c0becbaf4.png"
-            alt="Del Sol Prime Homes"
-            className="h-10"
-          />
+          <span className="text-lg sm:text-xl font-serif font-bold tracking-widest text-landing-gold">DELSOLPRIMEHOMES</span>
           <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSelector currentLang={language as LanguageCode} onLanguageChange={(lang) => navigate(`/${lang}/apartments`)} />
             <button
