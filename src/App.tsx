@@ -68,6 +68,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Contact = lazy(() => import("./pages/Contact"));
 const ApartmentsLanding = lazy(() => import("./pages/apartments/ApartmentsLanding"));
+const ListingsLanding = lazy(() => import("./pages/listings/ListingsLanding"));
 const VillasLanding = lazy(() => import("./pages/villas/VillasLanding"));
 
 // Lazy load ALL admin pages (rarely accessed, heavy components)
@@ -391,6 +392,10 @@ const App = () => (
               {/* Apartments landing page */}
               <Route path="/apartments" element={<Navigate to="/en/apartments" replace />} />
               <Route path="/:lang/apartments" element={<ApartmentsLanding />} />
+
+              {/* Listings landing page (standalone, apartments-only) */}
+              <Route path="/listings" element={<Navigate to="/en/listings" replace />} />
+              <Route path="/:lang/listings" element={<ListingsLanding />} />
 
               {/* Villas landing page */}
               <Route path="/villas" element={<Navigate to="/en/villas/properties" replace />} />
