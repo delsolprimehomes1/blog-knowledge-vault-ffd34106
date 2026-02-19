@@ -1,88 +1,53 @@
 
-## New Page: `/:lang/listings` — Apartments-Only Landing Page
+## Root Cause Found: Missing Blank Lines in `_headers` Villas/Apartments Blocks
 
-### What This Creates
+### The Exact Problem
 
-A completely new, standalone landing page at `/:lang/listings` for all 10 language variants (en, nl, fr, de, fi, pl, da, hu, sv, no). It mirrors the visual layout of the apartments page but is entirely independent — separate file, separate route, separate URL, separate cache rules — so it can go live immediately without touching or risking the existing `/apartments` page.
+Looking at `public/_headers` lines 51–130, every single villas/apartments path block is stacked directly on top of the next one — **zero blank lines** between them. This violates the Cloudflare parser standard documented in project memory:
 
-The page will show: Logo header with language switcher → Hero section → Apartments properties grid → Footer + Lead form modal.
+> "Every path block must be separated by a blank line."
 
----
+The Cloudflare `_headers` parser silently stops reading after it hits ambiguous block boundaries. The `/listings` blocks (lines 132–180) DO have blank lines and are parsed correctly, but the parser may have already stopped or partially failed by then because of the corrupted villas/apartments section above.
 
-### Files to Create
+Additionally, there is no blank line between the `/index.html` block (lines 6–9) and the `# Sitemap XML files` comment (line 10). This may corrupt the very first block.
 
-**1. `src/pages/listings/ListingsLanding.tsx`** — New page component
-
-Cloned from `ApartmentsLanding.tsx` with these key differences:
-- Imports `ApartmentsHero` and `ApartmentsPropertiesSection` (apartments content, no villas section)
-- All internal references use `/listings` instead of `/apartments`
-- The `canonical` and `hreflang` URLs point to `/{lang}/listings`
-- Language selector navigates to `/{lang}/listings`
-- Meta title/description fetched from `apartments_page_content` (same database table, reusing existing published content — no new database needed)
-- Header has a single "View Listings" button (no villas button needed)
+Critically: the `/en/apartments` page has the same problem — and has been broken for the same reason since the last deploy.
 
 ---
 
-### Files to Modify
+### Why Preview Works But Live Does Not
 
-**2. `src/App.tsx`** — Register the new routes
-
-Add a lazy import and two new routes, placed alongside the existing apartments routes:
-
-```tsx
-const ListingsLanding = lazy(() => import("./pages/listings/ListingsLanding"));
-
-// In the Routes section, after the apartments route:
-<Route path="/listings" element={<Navigate to="/en/listings" replace />} />
-<Route path="/:lang/listings" element={<ListingsLanding />} />
-```
-
-**3. `public/_redirects`** — Tell Cloudflare to serve SPA shell for the new paths
-
-Add 10 explicit rules (same pattern used for apartments):
-```
-/en/listings  /index.html  200
-/nl/listings  /index.html  200
-... (all 10 languages)
-```
-These must be placed before the `/*  /index.html  200` catch-all at the bottom.
-
-**4. `public/_headers`** — Add Golden Trio cache-busting rules for the new paths
-
-Add 10 explicit no-store blocks (same Golden Trio as apartments):
-```
-/en/listings
-  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
-  Surrogate-Control: no-store
-  CDN-Cache-Control: no-store
-... (all 10 languages)
-```
-
-Also bump the timestamp on line 1 to `2026-02-19T18:00:00Z` to force Cloudflare to re-parse the entire file and pick up the new rules.
-
-**5. `functions/_middleware.js`** — Add `/listings` to the middleware intercept pattern
-
-The existing Rule 3 intercepts `villas/properties` and `apartments`. The same rule needs to also match `listings` so the middleware sets the Golden Trio headers at the edge for all listing requests. This is a one-line regex change to the existing pattern.
+Cloudflare Pages Functions (middleware) **do not run on preview domains** (`*.lovable.app`). In preview, React Router handles everything client-side and the route works fine. On live (`www.delsolprimehomes.com`), the Cloudflare edge serves a stale cached `index.html` (because the no-store headers were never applied due to parser failure) → the stale HTML references old JS bundle hashes that no longer exist → React fails silently → falls back to `/`.
 
 ---
 
-### Why This Approach Is Safe
+### The Fix: Add Blank Lines Between Every Block in `_headers`
 
-- Zero changes to the existing `/apartments` page, components, or database
-- The new page reuses the existing `apartments_page_content` database table and `ApartmentsHero` / `ApartmentsPropertiesSection` components — no new database tables needed
-- All 4 layers of cache protection are applied (middleware + `_headers` + `_redirects` + SPA route), matching the exact same architecture as apartments and villas
-- The route is added before the `/:lang` wildcard in App.tsx so it won't conflict with language homepage routing
+Two specific areas need fixing:
+
+**Area 1 — After `/index.html` block (line 9):** Add a blank line before the `# Sitemap` comment.
+
+**Area 2 — Villas/Apartments blocks (lines 51–130):** Add a blank line after every CDN-Cache-Control line, before the next path. That means 19 blank lines inserted across the 20 stacked blocks.
+
+The listings blocks (lines 132–180) already have blank lines and do NOT need changes.
+
+**Also bump the timestamp** on line 1 from `2026-02-19T18:00:00Z` to a new value (e.g. `2026-02-19T20:00:00Z`) to change the file hash and force Cloudflare to re-parse the entire file.
 
 ---
 
-### Technical Summary
+### Files Changed
 
-| Layer | Change |
-|-------|--------|
-| New page component | `src/pages/listings/ListingsLanding.tsx` |
-| React Router | 2 new routes in `src/App.tsx` |
-| Cloudflare redirects | 10 new rules in `public/_redirects` |
-| Cloudflare cache headers | 10 new Golden Trio blocks in `public/_headers` |
-| Middleware edge intercept | Pattern update in `functions/_middleware.js` |
+| File | Change |
+|------|--------|
+| `public/_headers` | Add blank lines between all villas/apartments path blocks (lines 51–130). Add blank line after `/index.html` block. Bump timestamp. |
 
-After deploying to GitHub → Cloudflare, `www.delsolprimehomes.com/en/listings` will load the apartments-only landing page live with no redirect issues.
+No other files need changing — `_redirects`, `App.tsx`, and `_middleware.js` are all correctly configured.
+
+---
+
+### After Deploying
+
+Once the fix is merged and deployed to Cloudflare:
+1. Visit `www.delsolprimehomes.com/en/listings` in a private/incognito browser window
+2. Open DevTools → Network tab → click the `/en/listings` request → check Response Headers for `Cache-Control: no-store` and `CDN-Cache-Control: no-store`
+3. The page should load the apartments listing page with no redirect
