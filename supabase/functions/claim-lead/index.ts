@@ -65,8 +65,9 @@ serve(async (req) => {
         contact_timer_started_at: now.toISOString(),
         contact_timer_expires_at: contactWindowExpiry.toISOString(),
         contact_sla_breached: false,
-        // Clear claim timer since lead is now claimed
+        // Clear claim timers since lead is now claimed
         claim_timer_expires_at: null,
+        claim_window_expires_at: null,
         // Stop escalating alarms - set to 99 so cron job ignores this lead
         last_alarm_level: 99,
       })
