@@ -147,14 +147,18 @@ export function useLeadActivities({ leadId, agentId }: UseLeadActivitiesOptions)
       if (meaningfulActions.includes(input.activityType)) {
         const { error: slaError } = await supabase
           .from("crm_leads")
-          .update({ first_action_completed: true })
-          .eq("id", leadId)
-          .eq("first_action_completed", false); // Only update if not already set
+          .update({
+            first_action_completed: true,
+            contact_timer_expires_at: null,
+            contact_sla_breached: false,
+            first_contact_at: new Date().toISOString(),
+          })
+          .eq("id", leadId);
 
         if (slaError) {
-          console.error("[useLeadActivities] Error updating SLA status:", slaError);
+          console.error("[useLeadActivities] SLA update error:", slaError);
         } else {
-          console.log("[useLeadActivities] SLA timer stopped - first action completed");
+          console.log("[useLeadActivities] SLA timer stopped - contact timers cleared");
         }
       }
 
