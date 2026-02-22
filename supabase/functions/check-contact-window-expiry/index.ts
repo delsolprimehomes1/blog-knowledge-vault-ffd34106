@@ -52,6 +52,48 @@ serve(async (req) => {
 
     for (const lead of expiredLeads) {
       try {
+        // SAFETY CHECK 1: Verify no contact activities exist (race condition safety net)
+        const { data: recentActivities } = await supabase
+          .from("crm_activities")
+          .select("id, activity_type, created_at")
+          .eq("lead_id", lead.id)
+          .in("activity_type", ["call", "email", "whatsapp", "meeting"])
+          .gte("created_at", lead.assigned_at || lead.created_at)
+          .limit(1);
+
+        console.log(`[check-contact-window-expiry] Evaluating lead ${lead.id}:`, {
+          name: `${lead.first_name} ${lead.last_name}`,
+          phone: lead.phone_number,
+          assigned_at: lead.assigned_at,
+          contact_timer_expires_at: lead.contact_timer_expires_at,
+          first_action_completed: lead.first_action_completed,
+          activities_found: recentActivities?.length || 0,
+        });
+
+        if (recentActivities && recentActivities.length > 0) {
+          console.log(`[check-contact-window-expiry] FALSE POSITIVE: Lead ${lead.id} has activities. Fixing flags.`);
+          await supabase.from("crm_leads").update({
+            first_action_completed: true,
+            contact_timer_expires_at: null,
+            contact_sla_breached: false,
+            updated_at: new Date().toISOString(),
+          }).eq("id", lead.id);
+          processedCount++;
+          continue;
+        }
+
+        // SAFETY CHECK 2: Re-read lead to catch last-second Salestrail updates
+        const { data: freshLead } = await supabase
+          .from("crm_leads")
+          .select("first_action_completed, contact_timer_expires_at")
+          .eq("id", lead.id)
+          .single();
+
+        if (freshLead?.first_action_completed || !freshLead?.contact_timer_expires_at) {
+          console.log(`[check-contact-window-expiry] Lead ${lead.id} was updated since query. Skipping.`);
+          continue;
+        }
+
         // Get the assigned agent details
         let agentName = "Unknown Agent";
         let agentEmail: string | null = null;
