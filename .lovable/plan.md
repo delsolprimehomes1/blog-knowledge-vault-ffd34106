@@ -1,74 +1,117 @@
 
 
-# Fix SLA Warning Email Agent Attribution
+# Fix: False "Agent Failed to Make Contact" Emails
 
-## Problem Analysis
+## Problem
 
-After thorough code review, I found the root cause: The `check-sla-breaches` edge function correctly resolves the assigned agent's name via `assigned_agent_id`, but it does NOT pass the agent's **email address** to the SLA warning email template. This means Hans (the admin) sees which agent claimed the lead by name, but cannot easily contact them.
+The `check-contact-window-expiry` cron (runs every 1 minute) fires false emails even when agents call within 5 minutes. Hans confirmed this happened today with agent Nathalie Tascione calling lead Mntnant Oui within 5 minutes, yet the email still fired.
 
-Additionally, the SLA warning email template (`generateSlaWarningEmailHtml` in `send-lead-notification`) is missing the agent's email and the exact claimed-at timestamp -- making it harder for Hans to follow up.
+## Root Cause
 
-There are also TWO separate functions sending emails with the same subject line `CRM_ADMIN_CLAIMED_NOT_CALLED_...`, which causes confusion:
-- `check-sla-breaches` sends via `send-lead-notification` (SLA warning -- lead claimed but no activity after 10 min)
-- `check-contact-window-expiry` sends directly via Resend (contact window -- lead claimed but no call after 5 min)
+The `check-contact-window-expiry` function does NOT verify whether a call actually happened. It only checks the `crm_leads` table for these flags:
 
-## Changes Required
+```
+contact_timer_expires_at < NOW()
+AND lead_claimed = true
+AND first_action_completed = false
+AND contact_sla_breached = false
+```
 
-### 1. Update `check-sla-breaches/index.ts` -- Pass Agent Email
+The problem is a **race condition between two systems**:
 
-Currently (line 136-155), only `assigned_agent_name` is passed. Add `assigned_agent_email` so the email template can show it.
+1. **Salestrail webhook** sets `first_action_completed = true` and clears `contact_timer_expires_at` -- but ONLY if the phone number matches (last 9 digits). If Salestrail sends the webhook even 10-20 seconds after the cron fires, the email is already sent.
+
+2. **Manual activity logging** (useLeadActivities hook) -- was fixed in a previous update to also clear these fields, but agents typically don't manually log calls since Salestrail auto-logs them.
+
+The cron runs every 1 minute. So the sequence is:
+- T+0:00 -- Lead claimed, `contact_timer_expires_at` set to T+5:00
+- T+3:00 -- Agent calls lead via phone
+- T+5:01 -- Cron fires, sees `contact_timer_expires_at < NOW()` and `first_action_completed = false`
+- T+5:05 -- Salestrail webhook arrives, sets `first_action_completed = true` (too late)
+- Result: False email sent
+
+## Fix: Add Safety Check Before Sending Email
+
+The function should perform a **secondary verification** by checking `crm_activities` for any logged contact activity before sending the email. This catches cases where the Salestrail webhook arrived but the `first_action_completed` flag update failed or was delayed.
+
+### Changes to `supabase/functions/check-contact-window-expiry/index.ts`
+
+**Change 1: Add activity verification before processing each lead**
+
+After the existing query finds "expired" leads (line 48), add a verification step inside the loop that checks `crm_activities` for any call/email/whatsapp/meeting logged against that lead since it was claimed. If activity exists, silently fix the lead flags and skip the email.
 
 ```typescript
-body: JSON.stringify({
-  lead: { ... },
-  agents: [adminAgent],
-  claimWindowMinutes: slaMinutes,
-  notification_type: "sla_warning",
-  assigned_agent_name: `${assignedAgent?.first_name || "Unknown"} ${assignedAgent?.last_name || "Agent"}`,
-  assigned_agent_email: assignedAgent?.email || null,   // NEW
-  assigned_at_timestamp: lead.assigned_at,               // NEW
-  time_since_assignment_minutes: timeSinceAssignment,
-}),
+// NEW: Before sending email, verify no activities exist (safety net for race conditions)
+const { data: recentActivities } = await supabase
+  .from("crm_activities")
+  .select("id, activity_type, created_at")
+  .eq("lead_id", lead.id)
+  .in("activity_type", ["call", "email", "whatsapp", "meeting"])
+  .gte("created_at", lead.assigned_at || lead.created_at)
+  .limit(1);
+
+if (recentActivities && recentActivities.length > 0) {
+  // Activity exists! This is a false positive. Fix the lead flags silently.
+  console.log(`[check-contact-window-expiry] FALSE POSITIVE: Lead ${lead.id} has ${recentActivities.length} activities. Fixing flags.`);
+  
+  await supabase.from("crm_leads").update({
+    first_action_completed: true,
+    contact_timer_expires_at: null,
+    contact_sla_breached: false,
+  }).eq("id", lead.id);
+  
+  continue; // Skip email -- agent did their job
+}
 ```
 
-Also update the activity timeline note (line 188-194) to include the agent's full name and email:
+**Change 2: Re-check `first_action_completed` immediately before sending email**
 
+After the activity check, do one more fresh read of the lead to catch last-second Salestrail updates:
+
+```typescript
+// Re-check lead status (Salestrail may have updated it in the last few seconds)
+const { data: freshLead } = await supabase
+  .from("crm_leads")
+  .select("first_action_completed, contact_timer_expires_at")
+  .eq("id", lead.id)
+  .single();
+
+if (freshLead?.first_action_completed || !freshLead?.contact_timer_expires_at) {
+  console.log(`[check-contact-window-expiry] Lead ${lead.id} was updated since query. Skipping.`);
+  continue;
+}
 ```
-SLA WARNING: No first action logged within ${slaMinutes}-minute SLA window.
-Claimed by: ${assignedAgent?.first_name} ${assignedAgent?.last_name} (${assignedAgent?.email})
-Claimed at: ${lead.assigned_at}
-Elapsed: ${timeSinceAssignment} minutes
-Admin (${adminAgent?.first_name}) notified.
+
+**Change 3: Add diagnostic logging**
+
+Log details about each lead being evaluated so future issues are easier to debug:
+
+```typescript
+console.log(`[check-contact-window-expiry] Evaluating lead ${lead.id}:`, {
+  name: `${lead.first_name} ${lead.last_name}`,
+  phone: lead.phone_number,
+  assigned_at: lead.assigned_at,
+  contact_timer_expires_at: lead.contact_timer_expires_at,
+  first_action_completed: lead.first_action_completed,
+  activities_found: recentActivities?.length || 0,
+});
 ```
 
-### 2. Update `send-lead-notification/index.ts` -- Accept and Display Agent Email
+### Summary of Execution Order
 
-Add `assigned_agent_email` and `assigned_at_timestamp` to the `NotificationRequest` interface.
+For each lead found by the initial query:
 
-Update `generateSlaWarningEmailHtml` function signature to accept the new fields, and add an "Agent Email" row and "Claimed At" timestamp to the email template so Hans can see exactly who claimed the lead, their email, and when.
+1. Log diagnostic info about the lead
+2. Check `crm_activities` for any contact activity since claim -- if found, fix flags and skip
+3. Re-read the lead from DB to catch last-second Salestrail updates -- if fixed, skip
+4. Only THEN proceed with sending the breach email
 
-### 3. Update `check-contact-window-expiry/index.ts` -- Add Claimed At Timestamp
+### Files Changed
 
-Currently shows "Claimed: X minutes ago" but not the actual timestamp. Add the formatted timestamp so Hans can cross-reference.
-
-### 4. Differentiate Email Subjects
-
-Change the SLA warning subject to distinguish it from the contact window expiry:
-- Contact window (5 min): `CRM_ADMIN_CLAIMED_NOT_CALLED_XX | Lead claimed but not called (5-min contact SLA)`
-- SLA warning (10 min): `CRM_ADMIN_SLA_WARNING_XX | Lead claimed but not worked (10-min SLA breach)`
-
-## Technical Details
-
-### Files Modified
-1. `supabase/functions/check-sla-breaches/index.ts` -- Pass agent email + timestamp, improve activity note
-2. `supabase/functions/send-lead-notification/index.ts` -- Accept new fields in interface, update SLA warning template with agent email and claimed-at time, change subject line
-3. `supabase/functions/check-contact-window-expiry/index.ts` -- Add formatted timestamp, change subject line
+| File | Change |
+|------|--------|
+| `supabase/functions/check-contact-window-expiry/index.ts` | Add activity verification, fresh-read safety check, and diagnostic logging |
 
 ### Edge Functions to Deploy
-- `check-sla-breaches`
-- `send-lead-notification`
 - `check-contact-window-expiry`
-
-### No Database Changes Needed
-The `crm_leads` table already has `assigned_at` (used as claimed-at timestamp) and the agent join works correctly via `assigned_agent_id`.
 
