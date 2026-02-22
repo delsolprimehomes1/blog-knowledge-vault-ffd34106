@@ -121,6 +121,12 @@ serve(async (req) => {
         const claimedAt = lead.assigned_at ? new Date(lead.assigned_at) : new Date(lead.created_at);
         const now = new Date();
         const elapsedMinutes = Math.floor((now.getTime() - claimedAt.getTime()) / 60000);
+        
+        // Format claimed-at timestamp for display
+        let claimedAtDisplay = 'Unknown';
+        try {
+          claimedAtDisplay = claimedAt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Madrid' });
+        } catch { /* fallback */ }
 
         // Send email notification if we have an admin email
         if (adminEmail && RESEND_API_KEY) {
@@ -133,7 +139,7 @@ serve(async (req) => {
             body: JSON.stringify({
               from: "CRM Alerts <crm@notifications.delsolprimehomes.com>",
               to: [adminEmail],
-              subject: `CRM_ADMIN_CLAIMED_NOT_CALLED_${lead.language.toUpperCase()} | Lead claimed but not called (SLA breach)`,
+              subject: `CRM_ADMIN_CLAIMED_NOT_CALLED_${lead.language.toUpperCase()} | Lead claimed but not called (5-min contact SLA)`,
               html: `
                 <!DOCTYPE html>
                 <html>
@@ -174,7 +180,7 @@ serve(async (req) => {
                         <h3 style="margin-top: 0;">Agent Details</h3>
                         <p><span class="label">Agent:</span> <span class="value">${agentName}</span></p>
                         <p><span class="label">Agent Email:</span> <span class="value">${agentEmail || "Not available"}</span></p>
-                        <p><span class="label">Claimed:</span> <span class="value">${elapsedMinutes} minutes ago</span></p>
+                        <p><span class="label">Claimed:</span> <span class="value">${elapsedMinutes} minutes ago (${claimedAtDisplay} Madrid time)</span></p>
                       </div>
 
                       <div class="alert-box">
