@@ -151,6 +151,8 @@ serve(async (req) => {
               claimWindowMinutes: slaMinutes,
               notification_type: "sla_warning",
               assigned_agent_name: `${assignedAgent?.first_name || "Unknown"} ${assignedAgent?.last_name || "Agent"}`,
+              assigned_agent_email: assignedAgent?.email || null,
+              assigned_at_timestamp: lead.assigned_at,
               time_since_assignment_minutes: timeSinceAssignment,
             }),
           });
@@ -189,7 +191,7 @@ serve(async (req) => {
         lead_id: lead.id,
         agent_id: lead.assigned_agent_id,
         activity_type: "note",
-        notes: `⚠️ SLA WARNING: No first action logged within the ${slaMinutes}-minute SLA window. Admin (${adminAgent?.first_name || "Admin"}) has been notified. Lead remains assigned to ${assignedAgent?.first_name || "Agent"} ${assignedAgent?.last_name || ""}.`,
+        notes: `⚠️ SLA WARNING: No first action logged within ${slaMinutes}-minute SLA window.\nClaimed by: ${assignedAgent?.first_name || "Unknown"} ${assignedAgent?.last_name || "Agent"} (${assignedAgent?.email || "no email"})\nClaimed at: ${lead.assigned_at}\nElapsed: ${timeSinceAssignment} minutes\nAdmin (${adminAgent?.first_name || "Admin"}) notified. Lead remains assigned.`,
         created_at: new Date().toISOString(),
       });
 
